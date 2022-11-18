@@ -13,7 +13,7 @@ from rest_tools.server import RestHandlerSetup, RestServer
 from wipac_dev_tools import from_environment_as_dataclass
 
 from . import config
-from .routes import MsainHandler
+from .routes import MainHandler
 
 
 async def start(debug: bool = False) -> RestServer:
