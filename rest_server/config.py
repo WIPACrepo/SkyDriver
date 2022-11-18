@@ -1,7 +1,7 @@
 """Config settings."""
 
-
 import dataclasses as dc
+import os
 
 # --------------------------------------------------------------------------------------
 # Constants
@@ -22,6 +22,8 @@ class EnvConfig:
     REST_PORT: int = 8080
 
 
+AUTH_SERVICE_ACCOUNT = "skydriver-service-account"
+
 EXCLUDE_DBS = [
     "system.indexes",
     "production",
@@ -32,3 +34,11 @@ EXCLUDE_DBS = [
 ]
 
 EXCLUDE_COLLECTIONS = ["system.indexes"]
+
+
+def is_testing() -> bool:
+    """Return true if this is the test environment.
+
+    Note: this needs to run on import.
+    """
+    return bool(os.environ.get("CI_TEST_ENV", False))
