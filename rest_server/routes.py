@@ -54,7 +54,8 @@ class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/$"
 
-    def get(self) -> None:
+    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    async def get(self) -> None:
         """Handle GET."""
         self.write({})
 
@@ -67,7 +68,8 @@ class EventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/event/(?P<event_id>\w+)$"
 
-    def get(self, event_id: str) -> None:
+    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    async def get(self, event_id: str) -> None:
         """Get matching scan id(s) for the given event id."""
         scan_ids = []
 
@@ -82,7 +84,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/scan$"
 
-    def post(self) -> None:
+    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    async def post(self) -> None:
         """Start a new scan."""
         scan_id = "0"
         info = {}
@@ -103,7 +106,8 @@ class ScanInfoHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/scan/(?P<scan_id>\w+)$"
 
-    def get(self, scan_id: str) -> None:
+    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
         """Get scan progress."""
         info = {}
 
@@ -114,7 +118,8 @@ class ScanInfoHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             }
         )
 
-    def delete(self, scan_id: str) -> None:
+    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
         info = {}
 
@@ -134,7 +139,8 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/results/(?P<scan_id>\w+)$"
 
-    def get(self, scan_id: str) -> None:
+    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
         """Get a scan's persisted results."""
         info = {}
 
@@ -145,7 +151,8 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             }
         )
 
-    def delete(self, scan_id: str) -> None:
+    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    async def delete(self, scan_id: str) -> None:
         """Delete a scan's persisted results."""
         info = {}
 
