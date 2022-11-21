@@ -4,16 +4,16 @@
 import argparse
 import asyncio
 import dataclasses as dc
+import inspect
 import logging
 from typing import Any, Dict
 from urllib.parse import quote_plus
 
 import coloredlogs  # type: ignore[import]
-from rest_tools.server import RestHandlerSetup, RestServer
+from rest_tools.server import RestHandler, RestHandlerSetup, RestServer
 from wipac_dev_tools import from_environment_as_dataclass
 
-from . import config
-from .routes import MainHandler
+from . import config, routes
 
 
 async def start(debug: bool = False) -> RestServer:
@@ -45,7 +45,14 @@ async def start(debug: bool = False) -> RestServer:
 
     # Configure REST Routes
     server = RestServer(debug=debug)
-    server.add_route(MainHandler.ROUTE, MainHandler, args)  # get
+    for name, klass in inspect.getmembers(routes):
+        if not issubclass(klass, RestHandler):
+            continue
+        try:
+            server.add_route(getattr(klass, "ROUTE"), klass, args)  # get
+            logging.info(f"Added handler: {name}")
+        except AttributeError:
+            continue
 
     server.startup(address=env.REST_HOST, port=env.REST_PORT)
     return server
