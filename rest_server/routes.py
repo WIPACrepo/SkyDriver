@@ -60,3 +60,101 @@ class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
 
 # -----------------------------------------------------------------------------
+
+
+class EventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles mapping an event to scan(s)."""
+
+    ROUTE = r"/event/(?P<event_id>\w+)$"
+
+    def get(self, event_id: str) -> None:
+        """Get matching scan id(s) for the given event id."""
+        scan_ids = []
+
+        self.write({"event_id": event_id, "scan_ids": scan_ids})
+
+
+# -----------------------------------------------------------------------------
+
+
+class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles starting new scans."""
+
+    ROUTE = r"/scan$"
+
+    def post(self) -> None:
+        """Start a new scan."""
+        scan_id = "0"
+        info = {}
+
+        self.write(
+            {
+                "scan_id": scan_id,
+                "info": info,  # TODO: replace 'info' with addl keys
+            }
+        )
+
+
+# -----------------------------------------------------------------------------
+
+
+class ScanInfoHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles actions on an in-progress scan."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)$"
+
+    def get(self, scan_id: str) -> None:
+        """Get scan progress."""
+        info = {}
+
+        self.write(
+            {
+                "scan_id": scan_id,
+                "info": info,  # TODO: replace 'info' with addl keys
+            }
+        )
+
+    def delete(self, scan_id: str) -> None:
+        """Abort a scan."""
+        info = {}
+
+        self.write(
+            {
+                "scan_id": scan_id,
+                "info": info,  # TODO: replace 'info' with addl keys
+            }
+        )
+
+
+# -----------------------------------------------------------------------------
+
+
+class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles actions on persisted scan results."""
+
+    ROUTE = r"/results/(?P<scan_id>\w+)$"
+
+    def get(self, scan_id: str) -> None:
+        """Get a scan's persisted results."""
+        info = {}
+
+        self.write(
+            {
+                "scan_id": scan_id,
+                "info": info,  # TODO: replace 'info' with addl keys
+            }
+        )
+
+    def delete(self, scan_id: str) -> None:
+        """Delete a scan's persisted results."""
+        info = {}
+
+        self.write(
+            {
+                "scan_id": scan_id,
+                "info": info,  # TODO: replace 'info' with addl keys
+            }
+        )
+
+
+# -----------------------------------------------------------------------------
