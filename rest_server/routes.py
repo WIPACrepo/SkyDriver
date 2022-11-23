@@ -43,7 +43,8 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)
         # pylint: disable=W0201
-        self.meta_db = database.MetaDatabaseClient(MotorClient(mongodb_url))
+        self.event_db = database.EventPseudoDatabaseClient(MotorClient(mongodb_url))
+        self.inflight_db = database.InflightDatabaseClient(MotorClient(mongodb_url))
         self.results_db = database.ResultsDatabaseClient(MotorClient(mongodb_url))
 
 
@@ -72,9 +73,14 @@ class EventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def get(self, event_id: str) -> None:
         """Get matching scan id(s) for the given event id."""
-        scan_ids = list(self.meta_db.event_to_scan_id(event_id))
+        scan_ids = list(self.event_db.get_scan_ids(event_id))
 
         self.write({"event_id": event_id, "scan_ids": scan_ids})
+
+    #
+    # NOTE - this needs to stay user-read-only b/c
+    #         it's updated by the launching of a new scan
+    #
 
 
 # -----------------------------------------------------------------------------
@@ -92,7 +98,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         scan_id = self.cluster.launch_scan(event)
 
-        info = self.meta_db.get_info(scan_id)
+        info = self.inflight_db.get(scan_id)
 
         self.write(
             {
@@ -105,15 +111,15 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class MetaHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
-    """Handles actions on scan's compute info."""
+class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles actions on scan's progress."""
 
-    ROUTE = r"/scan/meta/(?P<scan_id>\w+)$"
+    ROUTE = r"/scan/inflight/(?P<scan_id>\w+)$"
 
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
-        info = self.meta_db.get(scan_id)
+        info = self.inflight_db.get(scan_id)
 
         self.write(
             {
@@ -121,17 +127,13 @@ class MetaHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 "info": info,  # TODO: replace 'info' with addl keys
             }
         )
-
-    #
-    # NOTE - could add a POST/PUT for increasing compute to an ongoing scan
-    #
 
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
-        info = self.meta_db.get(scan_id)
+        info = self.inflight_db.get(scan_id)
 
-        self.meta_db.mark_as_deleted(scan_id)
+        self.inflight_db.mark_as_deleted(scan_id)
 
         self.write(
             {
@@ -139,6 +141,8 @@ class MetaHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 "info": info,  # TODO: replace 'info' with addl keys
             }
         )
+
+    # TODO - PATCH: add progress report from scanner
 
 
 # -----------------------------------------------------------------------------
@@ -174,6 +178,8 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 "results": results,  # TODO: replace 'info' with addl keys
             }
         )
+
+    # TODO - PUT: add results from scanner
 
 
 # -----------------------------------------------------------------------------
