@@ -9,7 +9,7 @@ from typing import Any
 from motor.motor_tornado import MotorClient  # type: ignore
 from rest_tools.server import RestHandler, handler  # type: ignore
 
-from . import db_interface
+from . import database
 from .config import AUTH_SERVICE_ACCOUNT, is_testing
 
 if is_testing():
@@ -43,7 +43,8 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)
         # pylint: disable=W0201
-        self.db = db_interface.SkyDriverDatabaseClient(MotorClient(mongodb_url))
+        self.meta_db = database.MetaDatabaseClient(MotorClient(mongodb_url))
+        self.results_db = database.ResultsDatabaseClient(MotorClient(mongodb_url))
 
 
 # -----------------------------------------------------------------------------
@@ -71,7 +72,7 @@ class EventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def get(self, event_id: str) -> None:
         """Get matching scan id(s) for the given event id."""
-        scan_ids = []
+        scan_ids = list(self.meta_db.event_to_scan_id(event_id))
 
         self.write({"event_id": event_id, "scan_ids": scan_ids})
 
@@ -87,8 +88,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def post(self) -> None:
         """Start a new scan."""
-        scan_id = "0"
-        info = {}
+        # TODO - get event from JSON body args
+
+        scan_id = self.cluster.launch_scan(event)
+
+        info = self.meta_db.get_info(scan_id)
 
         self.write(
             {
@@ -101,15 +105,15 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScanInfoHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
-    """Handles actions on an in-progress scan."""
+class MetaHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles actions on scan's compute info."""
 
-    ROUTE = r"/scan/(?P<scan_id>\w+)$"
+    ROUTE = r"/scan/meta/(?P<scan_id>\w+)$"
 
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
-        info = {}
+        info = self.meta_db.get(scan_id)
 
         self.write(
             {
@@ -118,10 +122,16 @@ class ScanInfoHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             }
         )
 
+    #
+    # NOTE - could add a POST/PUT for increasing compute to an ongoing scan
+    #
+
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
-        info = {}
+        info = self.meta_db.get(scan_id)
+
+        self.meta_db.mark_as_deleted(scan_id)
 
         self.write(
             {
@@ -137,29 +147,31 @@ class ScanInfoHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles actions on persisted scan results."""
 
-    ROUTE = r"/results/(?P<scan_id>\w+)$"
+    ROUTE = r"/scan/results/(?P<scan_id>\w+)$"
 
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted results."""
-        info = {}
+        results = self.results_db.get(scan_id)
 
         self.write(
             {
                 "scan_id": scan_id,
-                "info": info,  # TODO: replace 'info' with addl keys
+                "results": results,  # TODO: replace 'info' with addl keys
             }
         )
 
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Delete a scan's persisted results."""
-        info = {}
+        results = self.results_db.get(scan_id)
+
+        self.results_db.mark_as_deleted(scan_id)
 
         self.write(
             {
                 "scan_id": scan_id,
-                "info": info,  # TODO: replace 'info' with addl keys
+                "results": results,  # TODO: replace 'info' with addl keys
             }
         )
 
