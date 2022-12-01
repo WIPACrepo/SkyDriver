@@ -1,9 +1,9 @@
 """Routes handlers for the SkyDriver REST API server interface."""
 
 
+import dataclasses as dc
 import json
 import logging
-from dataclasses import asdict
 from typing import Any
 
 from motor.motor_tornado import MotorClient  # type: ignore
@@ -107,7 +107,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         self.write(
             {
                 "scan_id": doc._id,
-                "info": info,  # TODO: replace 'info' with addl keys
+                "inflight": dc.asdict(doc),
             }
         )
 
@@ -123,26 +123,26 @@ class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
-        info = self.inflights.get(scan_id)
+        inflight = self.inflights.get(scan_id)
 
         self.write(
             {
                 "scan_id": scan_id,
-                "info": info,  # TODO: replace 'info' with addl keys
+                "inflight": dc.asdict(inflight),
             }
         )
 
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
-        info = self.inflights.get(scan_id)
+        inflight = self.inflights.get(scan_id)
 
         self.inflights.mark_as_deleted(scan_id)
 
         self.write(
             {
                 "scan_id": scan_id,
-                "info": info,  # TODO: replace 'info' with addl keys
+                "inflight": dc.asdict(inflight),
             }
         )
 
@@ -160,26 +160,26 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted results."""
-        results = self.results.get(scan_id)
+        result = self.results.get(scan_id)
 
         self.write(
             {
                 "scan_id": scan_id,
-                "results": results,  # TODO: replace 'info' with addl keys
+                "result": dc.asdict(result),
             }
         )
 
     @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Delete a scan's persisted results."""
-        results = self.results.get(scan_id)
+        result = self.results.get(scan_id)
 
         self.results.mark_as_deleted(scan_id)
 
         self.write(
             {
                 "scan_id": scan_id,
-                "results": results,  # TODO: replace 'info' with addl keys
+                "result": dc.asdict(result),
             }
         )
 
