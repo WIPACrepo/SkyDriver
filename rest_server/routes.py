@@ -43,9 +43,9 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)
         # pylint: disable=W0201
-        self.events = database.EventPseudoCollectionClient(MotorClient(mongodb_url))
-        self.inflights = database.InflightCollectionClient(MotorClient(mongodb_url))
-        self.results = database.ResultsCollectionClient(MotorClient(mongodb_url))
+        self.events = database.EventPseudoClient(MotorClient(mongodb_url))
+        self.inflights = database.InflightClient(MotorClient(mongodb_url))
+        self.results = database.ResultClient(MotorClient(mongodb_url))
 
 
 # -----------------------------------------------------------------------------
@@ -96,13 +96,17 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Start a new scan."""
         # TODO - get event from JSON body args
 
-        scan_id = self.cluster.launch_scan(event)
+        doc = event * event  # TODO
 
-        info = self.inflights.get(scan_id)
+        doc = self.inflights.set(None, doc)  # generates ID
+
+        self.cluster.launch_scan(event, doc._id)
+
+        # TODO: update db?
 
         self.write(
             {
-                "scan_id": scan_id,
+                "scan_id": doc._id,
                 "info": info,  # TODO: replace 'info' with addl keys
             }
         )

@@ -1,7 +1,7 @@
 """Database interface for persisted scan data."""
 
 import dataclasses as dc
-from typing import Iterator
+from typing import Iterator, TypeVar
 
 import pymongo.errors
 from bson.objectid import ObjectId
@@ -9,8 +9,8 @@ from motor.motor_tornado import MotorClient  # type: ignore
 from tornado import web
 
 
-class SkyDriverCollectionClient:
-    """MotorClient with additional guardrails for SkyDriver things."""
+class ScanAttrClient:
+    """Allows access to a specific attribute of the 'Scan' collection."""
 
     def __init__(self, motor_client: MotorClient) -> None:
         self._mongo = motor_client
@@ -19,7 +19,7 @@ class SkyDriverCollectionClient:
 # -----------------------------------------------------------------------------
 
 
-class EventPseudoCollectionClient(SkyDriverCollectionClient):
+class EventPseudoClient(ScanAttrClient):
     """Serves as a wrapper for things about an event."""
 
     async def get_scan_ids(event_id: str) -> Iterator[str]:
@@ -31,76 +31,81 @@ class EventPseudoCollectionClient(SkyDriverCollectionClient):
 
 
 @dc.dataclass(frozen=True)
-class MongoDoc:
-    """The generic MongoDB document for SkyDriver."""
+class Inflight:
+    """Contains a manifest of the scan."""
+
+
+@dc.dataclass(frozen=True)
+class Result:
+    """Encompasses the physics results for a scan."""
+
+
+@dc.dataclass(frozen=True)
+class ScanDoc:
+    """Encapsulates a unique scan entity."""
 
     _id: ObjectId
-    is_deleted: bool
+    is_deleted: bool = False
+    event_id: str
+    inflight: Inflight
+    result: Result = None
+
+
+# -----------------------------------------------------------------------------
+
+
+T = TypeVar("T")
 
 
 class ReadWriteActions:
     """Template common read/write actions."""
 
-    async def get(self, scan_id: str) -> MongoDoc:
-        """Get `MongoDoc` using `scan_id`."""
+    async def get(self, scan_id: str) -> T:
+        """Get `T` using `scan_id`."""
         return NotImplemented
 
-    async def set(self, scan_id: str, doc: MongoDoc) -> MongoDoc:
-        """Set/add/update `MongoDoc` at doc matching `scan_id`."""
+    async def set(self, scan_id: str, data: T) -> T:
+        """Set/add/update `T` at doc matching `scan_id`."""
         return NotImplemented
 
-    async def mark_as_deleted(self, scan_id: str) -> MongoDoc:
-        """Mark `MongoDoc` at doc matching `scan_id` as deleted."""
-        return NotImplemented
-
-
-# -----------------------------------------------------------------------------
-
-
-@dc.dataclass(frozen=True)
-class InflightDoc(MongoDoc):
-    """The MongoDB document for the 'Inflight' collection."""
-
-    pass
-
-
-class InflightCollectionClient(SkyDriverCollectionClient, ReadWriteActions):
-    """Wraps the collection for metadata about a scan."""
-
-    async def get(self, scan_id: str) -> InflightDoc:
-        """Get `InflightDoc` using `scan_id`."""
-        return NotImplemented
-
-    async def set(self, scan_id: str, doc: InflightDoc) -> InflightDoc:
-        """Set/add/update `InflightDoc` at doc matching `scan_id`."""
-        return NotImplemented
-
-    async def mark_as_deleted(self, scan_id: str) -> InflightDoc:
-        """Mark `InflightDoc` at doc matching `scan_id` as deleted."""
+    async def mark_as_deleted(self, scan_id: str) -> T:
+        """Mark `T` at doc matching `scan_id` as deleted."""
         return NotImplemented
 
 
 # -----------------------------------------------------------------------------
 
 
-@dc.dataclass(frozen=True)
-class ResultsDoc(MongoDoc):
-    """The MongoDB document for the 'results' collection."""
+class InflightClient(ScanAttrClient, ReadWriteActions):
+    """Wraps the attribute for the metadata of a scan."""
 
-    pass
+    async def get(self, scan_id: str) -> Inflight:
+        """Get `Inflight` using `scan_id`."""
+        return Inflight()
+
+    async def set(self, scan_id: str, data: Inflight) -> Inflight:
+        """Set/add/update `Inflight` at doc matching `scan_id`."""
+        return Inflight()
+
+    async def mark_as_deleted(self, scan_id: str) -> Inflight:
+        """Mark `Inflight` at doc matching `scan_id` as deleted."""
+        return Inflight()
 
 
-class ResultsCollectionClient(SkyDriverCollectionClient, ReadWriteActions):
-    """Wraps the collection for the results of a scan."""
+# -----------------------------------------------------------------------------
 
-    async def get(self, scan_id: str) -> ResultsDoc:
-        """Get `ResultsDoc` using `scan_id`."""
-        return NotImplemented
 
-    async def set(self, scan_id: str, doc: ResultsDoc) -> ResultsDoc:
-        """Set/add/update `ResultsDoc` at doc matching `scan_id`."""
-        return NotImplemented
+class ResultClient(ScanAttrClient, ReadWriteActions):
+    """Wraps the attribute for the result of a scan."""
 
-    async def mark_as_deleted(self, scan_id: str) -> ResultsDoc:
-        """Mark `ResultsDoc` at doc matching `scan_id` as deleted."""
-        return NotImplemented
+    async def get(self, scan_id: str) -> Result:
+        """Get `Result` using `scan_id`."""
+        return Result()
+
+    async def set(self, scan_id: str, data: Result) -> Result:
+        """Set/add/update `Result` at doc matching `scan_id`."""
+        return Result()
+
+    async def mark_as_deleted(self, scan_id: str) -> Result:
+        """Mark `Result` at doc matching `scan_id` as deleted."""
+        return Result()
