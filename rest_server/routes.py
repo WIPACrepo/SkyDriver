@@ -149,7 +149,7 @@ class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
-        inflight = self.inflights.get(scan_id)
+        inflight = self.inflights.set(scan_id, data)
 
         self.write(
             {
@@ -193,7 +193,17 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             }
         )
 
-    # TODO - PUT: add results from scanner
+    @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
+    async def put(self, scan_id: str) -> None:
+        """Put (persist) a scan's results."""
+        result = self.results.set(scan_id, data)
+
+        self.write(
+            {
+                "scan_id": scan_id,
+                "result": dc.asdict(result),
+            }
+        )
 
 
 # -----------------------------------------------------------------------------
