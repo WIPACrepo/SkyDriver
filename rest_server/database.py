@@ -7,30 +7,6 @@ import pymongo.errors
 from motor.motor_tornado import MotorClient, MotorCollection  # type: ignore
 from tornado import web
 
-_DB_NAME = "SKYDRIVER_DB"
-_COLL_NAME = "SCANS"
-
-
-class ScanCollectionFacade:
-    """Allows specific semantic actions on the 'Scan' collection."""
-
-    def __init__(self, motor_client: MotorClient) -> None:
-        self.collection: MotorCollection = motor_client[_DB_NAME][_COLL_NAME]
-
-
-# -----------------------------------------------------------------------------
-
-
-class EventPseudoClient(ScanCollectionFacade):
-    """Serves as a wrapper for things about an event."""
-
-    async def get_scan_ids(self, event_id: str) -> Iterator[str]:
-        """Search over scans and find all matching event-id."""
-        pass
-
-
-# -----------------------------------------------------------------------------
-
 
 @dc.dataclass(frozen=True)
 class Inflight:
@@ -51,6 +27,36 @@ class ScanDoc:
     event_id: str
     inflight: Inflight
     result: Result = None
+
+
+# -----------------------------------------------------------------------------
+
+
+_DB_NAME = "SKYDRIVER_DB"
+_COLL_NAME = "SCANS"
+
+
+class ScanCollectionFacade:
+    """Allows specific semantic actions on the 'Scan' collection."""
+
+    def __init__(self, motor_client: MotorClient) -> None:
+        self.collection: MotorCollection = motor_client[_DB_NAME][_COLL_NAME]
+
+    async def get_doc(self, scan_id: str) -> ScanDoc:
+        """Get document by 'scan_id'."""
+        doc = await self.collection.find_one({"scan_id": scan_id})
+        return ScanDoc(**doc)
+
+
+# -----------------------------------------------------------------------------
+
+
+class EventPseudoClient(ScanCollectionFacade):
+    """Serves as a wrapper for things about an event."""
+
+    async def get_scan_ids(self, event_id: str) -> Iterator[str]:
+        """Search over scans and find all matching event-id."""
+        pass
 
 
 # -----------------------------------------------------------------------------
@@ -91,7 +97,8 @@ class InflightClient(ScanCollectionFacade, RESTActions):
 
     async def get(self, scan_id: str) -> Inflight:
         """Get `Inflight` using `scan_id`."""
-        return Inflight()
+        doc = await self.get_doc(scan_id)
+        return doc.inflight
 
     async def post(self, scan_id: str, data: Inflight, event_id: str) -> Inflight:
         """Create `Inflight` at doc with `scan_id`."""
@@ -114,9 +121,10 @@ class InflightClient(ScanCollectionFacade, RESTActions):
 class ResultClient(ScanCollectionFacade, RESTActions):
     """Wraps the attribute for the result of a scan."""
 
-    async def get(self, scan_id: str) -> Result:
+    async def get(self, scan_id: str) -> Result | None:
         """Get `Result` using `scan_id`."""
-        return Result()
+        doc = await self.get_doc(scan_id)
+        return doc.result
 
     async def put(self, scan_id: str, data: Result) -> Result:
         """Override `Result` at doc matching `scan_id`."""
