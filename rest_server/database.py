@@ -32,6 +32,10 @@ class ScanDoc:
 # -----------------------------------------------------------------------------
 
 
+class DocumentNotFoundError(Exception):
+    """Raised when a document is not found."""
+
+
 _DB_NAME = "SKYDRIVER_DB"
 _COLL_NAME = "SCANS"
 
@@ -44,7 +48,10 @@ class ScanCollectionFacade:
 
     async def get_doc(self, scan_id: str) -> ScanDoc:
         """Get document by 'scan_id'."""
-        doc = await self.collection.find_one({"scan_id": scan_id})
+        query = {"scan_id": scan_id}
+        doc = await self.collection.find_one(query)
+        if not doc:
+            raise DocumentNotFoundError(query)
         return ScanDoc(**doc)
 
 
