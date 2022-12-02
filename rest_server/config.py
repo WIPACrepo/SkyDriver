@@ -22,7 +22,8 @@ class EnvConfig:
     REST_PORT: int = 8080
 
 
-AUTH_SERVICE_ACCOUNT = "skydriver-service-account"
+USER_ACCT = "skydriver-service-account"
+SKYMAP_SCANNER_ACCT = "skymap-scanner-service-account"
 
 EXCLUDE_DBS = [
     "system.indexes",

@@ -10,7 +10,7 @@ from motor.motor_tornado import MotorClient  # type: ignore
 from rest_tools.server import RestHandler, handler  # type: ignore
 
 from . import database
-from .config import AUTH_SERVICE_ACCOUNT, is_testing
+from .config import SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
 
 if is_testing():
 
@@ -56,7 +56,7 @@ class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/$"
 
-    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self) -> None:
         """Handle GET."""
         self.write({})
@@ -70,7 +70,7 @@ class EventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/event/(?P<event_id>\w+)$"
 
-    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, event_id: str) -> None:
         """Get matching scan id(s) for the given event id."""
         scan_ids = list(self.events.get_scan_ids(event_id))
@@ -91,7 +91,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/scan$"
 
-    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self) -> None:
         """Start a new scan."""
         # TODO - get event from JSON body args
@@ -120,7 +120,7 @@ class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/scan/inflight/(?P<scan_id>\w+)$"
 
-    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
         inflight = self.inflights.get(scan_id)
@@ -132,7 +132,7 @@ class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             }
         )
 
-    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
         inflight = self.inflights.get(scan_id)
@@ -146,7 +146,17 @@ class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             }
         )
 
-    # TODO - PATCH: add progress report from scanner
+    @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
+    async def patch(self, scan_id: str) -> None:
+        """Update scan progress."""
+        inflight = self.inflights.get(scan_id)
+
+        self.write(
+            {
+                "scan_id": scan_id,
+                "inflight": dc.asdict(inflight),
+            }
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -157,7 +167,7 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/scan/results/(?P<scan_id>\w+)$"
 
-    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted results."""
         result = self.results.get(scan_id)
@@ -169,7 +179,7 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             }
         )
 
-    @service_account_auth(roles=[AUTH_SERVICE_ACCOUNT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Delete a scan's persisted results."""
         result = self.results.get(scan_id)
