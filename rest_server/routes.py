@@ -96,9 +96,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Start a new scan."""
         # TODO - get event from JSON body args
 
-        doc = event * event  # TODO
+        inflight = event * event  # TODO
 
-        doc = self.inflights.set(None, doc)  # generates ID
+        inflight = self.inflights.post(None, inflight, event_id)  # generates ID
 
         self.cluster.launch_scan(event, doc.uuid)
 
@@ -107,7 +107,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         self.write(
             {
                 "scan_id": doc.uuid,
-                "inflight": dc.asdict(doc),
+                "inflight": dc.asdict(inflight),
             }
         )
 
@@ -149,7 +149,7 @@ class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
-        inflight = self.inflights.set(scan_id, data)
+        inflight = self.inflights.patch(scan_id, data)
 
         self.write(
             {
@@ -196,7 +196,7 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's results."""
-        result = self.results.set(scan_id, data)
+        result = self.results.put(scan_id, data)
 
         self.write(
             {
