@@ -1,7 +1,7 @@
 """Database interface for persisted scan data."""
 
 import dataclasses as dc
-from typing import Iterator, TypeVar
+from typing import Iterator
 
 import pymongo.errors
 from motor.motor_tornado import MotorClient, MotorCollection  # type: ignore
@@ -62,37 +62,7 @@ class EventPseudoClient(ScanCollectionFacade):
 # -----------------------------------------------------------------------------
 
 
-T = TypeVar("T")
-
-
-class RESTActions:
-    """Template common read/write actions."""
-
-    async def get(self, scan_id: str) -> T:
-        """Get `T` using `scan_id`."""
-        return NotImplemented
-
-    async def post(self, scan_id: str, data: T) -> T:
-        """Create `T` at doc with `scan_id`."""
-        return NotImplemented
-
-    async def patch(self, scan_id: str, data: T) -> T:
-        """Update `T` at doc matching `scan_id`."""
-        return NotImplemented
-
-    async def put(self, scan_id: str, data: T) -> T:
-        """Override `T` at doc matching `scan_id`."""
-        return NotImplemented
-
-    async def mark_as_deleted(self, scan_id: str) -> T:
-        """Mark `T` at doc matching `scan_id` as deleted."""
-        return NotImplemented
-
-
-# -----------------------------------------------------------------------------
-
-
-class InflightClient(ScanCollectionFacade, RESTActions):
+class InflightClient(ScanCollectionFacade):
     """Wraps the attribute for the metadata of a scan."""
 
     async def get(self, scan_id: str) -> Inflight:
@@ -100,8 +70,8 @@ class InflightClient(ScanCollectionFacade, RESTActions):
         doc = await self.get_doc(scan_id)
         return doc.inflight
 
-    async def post(self, scan_id: str, data: Inflight, event_id: str) -> Inflight:
-        """Create `Inflight` at doc with `scan_id`."""
+    async def post(self, data: Inflight, event_id: str) -> Inflight:
+        """Create `Inflight` doc."""
         return Inflight()
 
     async def patch(self, scan_id: str, data: Inflight) -> Inflight:
@@ -118,7 +88,7 @@ class InflightClient(ScanCollectionFacade, RESTActions):
 # -----------------------------------------------------------------------------
 
 
-class ResultClient(ScanCollectionFacade, RESTActions):
+class ResultClient(ScanCollectionFacade):
     """Wraps the attribute for the result of a scan."""
 
     async def get(self, scan_id: str) -> Result | None:
