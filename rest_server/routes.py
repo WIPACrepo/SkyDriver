@@ -100,13 +100,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         doc = self.inflights.set(None, doc)  # generates ID
 
-        self.cluster.launch_scan(event, doc._id)
+        self.cluster.launch_scan(event, doc.uuid)
 
         # TODO: update db?
 
         self.write(
             {
-                "scan_id": doc._id,
+                "scan_id": doc.uuid,
                 "inflight": dc.asdict(doc),
             }
         )

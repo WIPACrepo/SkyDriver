@@ -4,7 +4,6 @@ import dataclasses as dc
 from typing import Iterator, TypeVar
 
 import pymongo.errors
-from bson.objectid import ObjectId
 from motor.motor_tornado import MotorClient  # type: ignore
 from tornado import web
 
@@ -44,7 +43,7 @@ class Result:
 class ScanDoc:
     """Encapsulates a unique scan entity."""
 
-    _id: ObjectId
+    uuid: str
     is_deleted: bool = False
     event_id: str
     inflight: Inflight
