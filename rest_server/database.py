@@ -135,10 +135,16 @@ class ResultClient(ScanCollectionFacade):
         doc = await self.get_scandoc(scan_id)
         return doc.result
 
-    async def put(self, scan_id: str, data: Result) -> Result:
+    async def put(self, scan_id: str, result: Result) -> Result:
         """Override `Result` at doc matching `scan_id`."""
-        return Result()
+        doc = await self.get_scandoc(scan_id)
+        doc.result = result
+        await self.upsert_scandoc(doc)
+        return result
 
     async def mark_as_deleted(self, scan_id: str) -> Result:
         """Mark `Result` at doc matching `scan_id` as deleted."""
-        return Result()
+        doc = await self.get_scandoc(scan_id)
+        doc.result = None
+        await self.upsert_scandoc(doc)
+        return doc.result
