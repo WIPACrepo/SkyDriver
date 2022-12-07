@@ -75,9 +75,14 @@ class ScanCollectionFacade:
 class EventPseudoClient(ScanCollectionFacade):
     """Serves as a wrapper for things about an event."""
 
-    async def get_scan_ids(self, event_id: str) -> Iterator[str]:
+    async def get_scan_ids(self, event_id: str, include_deleted: bool) -> Iterator[str]:
         """Search over scans and find all matching event-id."""
-        pass
+
+        # we're going to skip the dataclass (ScanDoc) stuff for right now
+        async for doc in self._coll.find({"event_id": event_id}):
+            if not include_deleted and doc["is_deleted"]:
+                continue
+            yield doc["scan_id"]
 
 
 # -----------------------------------------------------------------------------
