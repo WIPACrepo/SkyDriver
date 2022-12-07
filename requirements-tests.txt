@@ -71,7 +71,7 @@ opentelemetry-sdk==1.14.0
     #   wipac-telemetry
 opentelemetry-semantic-conventions==0.35b0
     # via opentelemetry-sdk
-packaging==21.3
+packaging==22.0
     # via pytest
 pluggy==1.0.0
     # via pytest
@@ -88,8 +88,6 @@ pymongo==4.3.3
     # via
     #   motor
     #   rest-server (setup.py)
-pyparsing==3.0.9
-    # via packaging
 pytest==7.2.0
     # via
     #   pytest-asyncio
