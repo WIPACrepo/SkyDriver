@@ -73,13 +73,13 @@ class EventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, event_id: str) -> None:
         """Get matching scan id(s) for the given event id."""
-        scan_ids = list(self.events.get_scan_ids(event_id))
+        scan_ids = [s async for s in self.events.get_scan_ids(event_id)]
 
         self.write({"event_id": event_id, "scan_ids": scan_ids})
 
     #
-    # NOTE - this needs to stay user-read-only b/c
-    #         it's updated by the launching of a new scan
+    # NOTE - 'EventMappingHandler' needs to stay user-read-only b/c
+    #         it's indirectly updated by the launching of a new scan
     #
 
 
@@ -98,7 +98,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         inflight = event * event  # TODO
 
-        inflight = self.inflights.post(None, inflight, event_id)  # generates ID
+        inflight = await self.inflights.post(None, inflight, event_id)  # generates ID
 
         self.cluster.launch_scan(event, doc.uuid)
 
@@ -123,7 +123,7 @@ class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
-        inflight = self.inflights.get(scan_id)
+        inflight = await self.inflights.get(scan_id)
 
         self.write(
             {
@@ -135,9 +135,9 @@ class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
-        inflight = self.inflights.get(scan_id)
+        inflight = await self.inflights.get(scan_id)
 
-        self.inflights.mark_as_deleted(scan_id)
+        await self.inflights.mark_as_deleted(scan_id)
 
         self.write(
             {
@@ -149,7 +149,7 @@ class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
-        inflight = self.inflights.patch(scan_id, data)
+        inflight = await self.inflights.patch(scan_id, data)
 
         self.write(
             {
@@ -170,7 +170,7 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted results."""
-        result = self.results.get(scan_id)
+        result = await self.results.get(scan_id)
 
         self.write(
             {
@@ -182,9 +182,9 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Delete a scan's persisted results."""
-        result = self.results.get(scan_id)
+        result = await self.results.get(scan_id)
 
-        self.results.mark_as_deleted(scan_id)
+        await self.results.mark_as_deleted(scan_id)
 
         self.write(
             {
@@ -196,7 +196,8 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's results."""
-        result = self.results.put(scan_id, data)
+
+        result = await self.results.put(scan_id, data)
 
         self.write(
             {
