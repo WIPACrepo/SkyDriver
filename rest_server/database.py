@@ -5,6 +5,7 @@ import uuid
 from typing import Iterator
 
 import pymongo.errors
+from dacite import from_dict
 from motor.motor_tornado import MotorClient, MotorCollection  # type: ignore
 from tornado import web
 
@@ -48,18 +49,20 @@ class ScanCollectionFacade:
     def __init__(self, motor_client: MotorClient) -> None:
         self._coll: MotorCollection = motor_client[_DB_NAME][_COLL_NAME]
 
-    async def get_doc(self, scan_id: str) -> ScanDoc:
+    async def get_scandoc(self, scan_id: str) -> ScanDoc:
         """Get document by 'scan_id'."""
         query = {"scan_id": scan_id}
         doc = await self._coll.find_one(query)
         if not doc:
             raise DocumentNotFoundError(query)
-        return ScanDoc(**doc)
+        return from_dict(ScanDoc, doc)
 
-    async def upsert_doc(self, doc: ScanDoc) -> ScanDoc:
+    async def upsert_scandoc(self, doc: ScanDoc) -> ScanDoc:
         """Insert/update the doc."""
         res = await self._coll.replace_one(
-            {"scan_id": doc.scan_id}, dc.asdict(doc), upsert=True
+            {"scan_id": doc.scan_id},
+            dc.asdict(doc),
+            upsert=True,
         )
         if not res["modifiedCount"]:
             raise web.HTTPError(
@@ -93,7 +96,7 @@ class InflightClient(ScanCollectionFacade):
 
     async def get(self, scan_id: str) -> Manifest:
         """Get `Manifest` using `scan_id`."""
-        doc = await self.get_doc(scan_id)
+        doc = await self.get_scandoc(scan_id)
         return doc.manifest
 
     async def post(self, manifest: Manifest, event_id: str) -> Manifest:
@@ -103,21 +106,21 @@ class InflightClient(ScanCollectionFacade):
             event_id,
             manifest,
         )
-        await self.upsert_doc(doc)
+        await self.upsert_scandoc(doc)
         return doc.manifest
 
     async def patch(self, scan_id: str, progress: dict) -> dict:
         """Update `progress` at doc matching `scan_id`."""
-        doc = await self.get_doc(scan_id)
+        doc = await self.get_scandoc(scan_id)
         doc.progress = progress
-        await self.upsert_doc(doc)
+        await self.upsert_scandoc(doc)
         return doc.progress
 
     async def mark_as_deleted(self, scan_id: str) -> Manifest:
         """Mark `Manifest` at doc matching `scan_id` as deleted."""
-        doc = await self.get_doc(scan_id)
+        doc = await self.get_scandoc(scan_id)
         doc.is_deleted = True
-        await self.upsert_doc(doc)
+        await self.upsert_scandoc(doc)
         return doc.manifest
 
 
@@ -129,7 +132,7 @@ class ResultClient(ScanCollectionFacade):
 
     async def get(self, scan_id: str) -> Result | None:
         """Get `Result` using `scan_id`."""
-        doc = await self.get_doc(scan_id)
+        doc = await self.get_scandoc(scan_id)
         return doc.result
 
     async def put(self, scan_id: str, data: Result) -> Result:
