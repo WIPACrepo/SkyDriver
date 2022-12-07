@@ -69,7 +69,7 @@ class ScanCollectionFacade:
                 500,
                 reason=f"Failed to insert scan document ({doc.scan_id})",
             )
-        return doc
+        return from_dict(ScanDoc, res.raw_result)
 
 
 # -----------------------------------------------------------------------------
