@@ -43,7 +43,7 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)
         # pylint: disable=W0201
-        self.events = database.EventPseudoClient(MotorClient(mongodb_url))
+        self.events = database.EventClient(MotorClient(mongodb_url))
         self.inflights = database.InflightClient(MotorClient(mongodb_url))
         self.results = database.ResultClient(MotorClient(mongodb_url))
 

@@ -75,7 +75,7 @@ class ScanCollectionFacade:
 # -----------------------------------------------------------------------------
 
 
-class EventPseudoClient(ScanCollectionFacade):
+class EventClient(ScanCollectionFacade):
     """Serves as a wrapper for things about an event."""
 
     async def get_scan_ids(self, event_id: str, include_deleted: bool) -> Iterator[str]:
@@ -106,21 +106,21 @@ class InflightClient(ScanCollectionFacade):
             event_id,
             manifest,
         )
-        await self.upsert_scandoc(doc)
+        doc = await self.upsert_scandoc(doc)
         return doc.manifest
 
     async def patch(self, scan_id: str, progress: dict) -> dict:
         """Update `progress` at doc matching `scan_id`."""
         doc = await self.get_scandoc(scan_id)
         doc.progress = progress
-        await self.upsert_scandoc(doc)
+        doc = await self.upsert_scandoc(doc)
         return doc.progress
 
     async def mark_as_deleted(self, scan_id: str) -> Manifest:
         """Mark `Manifest` at doc matching `scan_id` as deleted."""
         doc = await self.get_scandoc(scan_id)
         doc.is_deleted = True
-        await self.upsert_scandoc(doc)
+        dpc = await self.upsert_scandoc(doc)
         return doc.manifest
 
 
@@ -139,12 +139,12 @@ class ResultClient(ScanCollectionFacade):
         """Override `Result` at doc matching `scan_id`."""
         doc = await self.get_scandoc(scan_id)
         doc.result = result
-        await self.upsert_scandoc(doc)
-        return result
+        doc await self.upsert_scandoc(doc)
+        return doc.result
 
     async def mark_as_deleted(self, scan_id: str) -> Result:
         """Mark `Result` at doc matching `scan_id` as deleted."""
         doc = await self.get_scandoc(scan_id)
         doc.result = None
-        await self.upsert_scandoc(doc)
+        doc = await self.upsert_scandoc(doc)
         return doc.result
