@@ -98,7 +98,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         inflight = event * event  # TODO
 
-        inflight = await self.inflights.post(None, inflight, event_id)  # generates ID
+        scandoc = await self.inflights.post(None, inflight, event_id)  # generates ID
 
         self.cluster.launch_scan(event, doc.uuid)
 
@@ -107,7 +107,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         self.write(
             {
                 "scan_id": doc.uuid,
-                "inflight": dc.asdict(inflight),
+                "info": dc.asdict(inflight),
             }
         )
 
@@ -123,38 +123,41 @@ class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
-        inflight = await self.inflights.get(scan_id)
+        scandoc = await self.inflights.get(scan_id)
 
         self.write(
             {
                 "scan_id": scan_id,
-                "inflight": dc.asdict(inflight),
+                "info": dc.asdict(scandoc),
             }
         )
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
-        inflight = await self.inflights.get(scan_id)
+        scandoc = await self.inflights.get(scan_id)
 
-        await self.inflights.mark_as_deleted(scan_id)
+        scandoc = await self.inflights.mark_as_deleted(scan_id)
 
         self.write(
             {
                 "scan_id": scan_id,
-                "inflight": dc.asdict(inflight),
+                "info": dc.asdict(scandoc),
             }
         )
 
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
-        inflight = await self.inflights.patch(scan_id, data)
+        data = self.get_argument("progress", type=dict)
+        progress = database.Progress(**data)
+
+        scandoc = await self.inflights.patch(scan_id, progress)
 
         self.write(
             {
                 "scan_id": scan_id,
-                "inflight": dc.asdict(inflight),
+                "info": dc.asdict(scandoc),
             }
         )
 
@@ -196,6 +199,8 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's results."""
+        data = self.get_argument("result", type=dict)
+        result = database.Result(**data)
 
         result = await self.results.put(scan_id, data)
 
