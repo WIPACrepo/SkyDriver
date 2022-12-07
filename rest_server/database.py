@@ -2,34 +2,40 @@
 
 import dataclasses as dc
 import uuid
-from typing import Iterator
+from typing import Any, AsyncIterator, Dict, Type, TypeVar
 
-import pymongo.errors
-from dacite import from_dict
+# import pymongo.errors
+from dacite import from_dict  # type: ignore[attr-defined]
 from motor.motor_tornado import MotorClient, MotorCollection  # type: ignore
 from tornado import web
 
 
 @dc.dataclass(frozen=True)
-class Manifest:
-    """Contains a manifest of the scan."""
+class Progress:
+    """Encompasses the computational progress of a scan."""
 
 
-@dc.dataclass(frozen=True)
-class Result:
+@dc.dataclass
+class ScanIDDataclass:
+    """A dataclass with a scan id."""
+
+    scan_id: str
+    is_deleted: bool
+
+
+@dc.dataclass
+class Result(ScanIDDataclass):
     """Encompasses the physics results for a scan."""
 
+    json: dict
 
-@dc.dataclass(frozen=True)
-class ScanDoc:
-    """Encapsulates a unique scan entity."""
 
-    uuid: str
+@dc.dataclass
+class Manifest(ScanIDDataclass):
+    """Encapsulates the manifest of a unique scan entity."""
+
     event_id: str
-    manifest: Manifest
-    progress: dict = None
-    result: Result = None
-    is_deleted: bool = False
+    progress: Progress = Progress()
 
 
 # -----------------------------------------------------------------------------
@@ -38,52 +44,103 @@ class ScanDoc:
 class DocumentNotFoundError(Exception):
     """Raised when a document is not found."""
 
+    def __init__(self, collection: str, query: Dict[str, Any]):
+        super().__init__(f"{collection}: {query}")
 
-_DB_NAME = "SKYDRIVER_DB"
-_COLL_NAME = "SCANS"
+
+_DB_NAME = "SkyDriver_DB"
+_MANIFEST_COLL_NAME = "Manifests"
+_RESULTS_COLL_NAME = "Results"
+S = TypeVar("S", bound=ScanIDDataclass)
 
 
-class ScanCollectionFacade:
-    """Allows specific semantic actions on the 'Scan' collection."""
+class ScanIDCollectionFacade:
+    """Allows specific semantic actions on the collections by Scan ID."""
 
     def __init__(self, motor_client: MotorClient) -> None:
-        self._coll: MotorCollection = motor_client[_DB_NAME][_COLL_NAME]
+        # place in a dictionary so there's some safeguarding against bogus collections
+        self._collections: Dict[str, MotorCollection] = {
+            _MANIFEST_COLL_NAME: motor_client[_DB_NAME][_MANIFEST_COLL_NAME],
+            _RESULTS_COLL_NAME: motor_client[_DB_NAME][_RESULTS_COLL_NAME],
+        }
 
-    async def get_scandoc(self, scan_id: str) -> ScanDoc:
+    async def _find_one(self, coll: str, scan_id: str, scandc_type: Type[S]) -> S:
         """Get document by 'scan_id'."""
         query = {"scan_id": scan_id}
-        doc = await self._coll.find_one(query)
-        if not doc:
-            raise DocumentNotFoundError(query)
-        return from_dict(ScanDoc, doc)
+        doc = await self._collections[coll].find_one(query)
 
-    async def upsert_scandoc(self, doc: ScanDoc) -> ScanDoc:
+        if not doc:
+            raise DocumentNotFoundError(coll, query)
+        return from_dict(scandc_type, doc)  # type: ignore[no-any-return] # mypy's erring
+
+    async def _upsert(self, coll: str, scandc: S) -> S:
         """Insert/update the doc."""
-        res = await self._coll.replace_one(
-            {"scan_id": doc.scan_id},
-            dc.asdict(doc),
+        res = await self._collections[coll].replace_one(
+            {"scan_id": scandc.scan_id},
+            dc.asdict(scandc),
             upsert=True,
         )
         if not res["modifiedCount"]:
             raise web.HTTPError(
                 500,
-                reason=f"Failed to insert scan document ({doc.scan_id})",
+                reason=f"Failed to insert {coll} document ({scandc.scan_id})",
             )
-        return from_dict(ScanDoc, res.raw_result)
+        return from_dict(type(scandc), res.raw_result)  # type: ignore[no-any-return] # mypy's erring
 
 
 # -----------------------------------------------------------------------------
 
 
-class EventClient(ScanCollectionFacade):
-    """Serves as a wrapper for things about an event."""
+class ManifestClient(ScanIDCollectionFacade):
+    """Wraps the attribute for the metadata of a scan."""
 
-    async def get_scan_ids(self, event_id: str, include_deleted: bool) -> Iterator[str]:
+    async def find_one(self, scan_id: str) -> Manifest:
+        """Find one manifest and return it."""
+        return await self._find_one(_MANIFEST_COLL_NAME, scan_id, Manifest)
+
+    async def upsert(self, scandc: Manifest) -> Manifest:
+        """Insert/update manifest and return it."""
+        return await self._upsert(_MANIFEST_COLL_NAME, scandc)
+
+    # ------------------------------------------------------------------
+
+    async def get(self, scan_id: str) -> Manifest:
+        """Get `Manifest` using `scan_id`."""
+        manifest = await self.find_one(scan_id)
+        return manifest
+
+    async def post(self, event_id: str) -> Manifest:
+        """Create `Manifest` doc."""
+        manifest = Manifest(
+            uuid.uuid4().hex,
+            False,
+            event_id,
+            # TODO: more args here
+        )
+        manifest = await self.upsert(manifest)
+        return manifest
+
+    async def patch(self, scan_id: str, progress: Progress) -> Manifest:
+        """Update `progress` at doc matching `scan_id`."""
+        manifest = await self.find_one(scan_id)
+        manifest.progress = progress
+        manifest = await self.upsert(manifest)
+        return manifest
+
+    async def mark_as_deleted(self, scan_id: str) -> Manifest:
+        """Mark `Manifest` at doc matching `scan_id` as deleted."""
+        manifest = await self.find_one(scan_id)
+        manifest.is_deleted = True
+        manifest = await self.upsert(manifest)
+        return manifest
+
+    async def get_scan_ids(self, event_id: str, incl_del: bool) -> AsyncIterator[str]:
         """Search over scans and find all matching event-id."""
 
-        # we're going to skip the dataclass (ScanDoc) stuff for right now
-        async for doc in self._coll.find({"event_id": event_id}):
-            if not include_deleted and doc["is_deleted"]:
+        # skip the dataclass-casting b/c we're just returning a str
+        query = {"event_id": event_id}
+        async for doc in self._collections[_MANIFEST_COLL_NAME].find(query):
+            if not incl_del and doc["is_deleted"]:
                 continue
             yield doc["scan_id"]
 
@@ -91,60 +148,36 @@ class EventClient(ScanCollectionFacade):
 # -----------------------------------------------------------------------------
 
 
-class InflightClient(ScanCollectionFacade):
-    """Wraps the attribute for the metadata of a scan."""
-
-    async def get(self, scan_id: str) -> Manifest:
-        """Get `Manifest` using `scan_id`."""
-        doc = await self.get_scandoc(scan_id)
-        return doc.manifest
-
-    async def post(self, manifest: Manifest, event_id: str) -> Manifest:
-        """Create `Manifest` doc."""
-        doc = ScanDoc(
-            uuid.uuid4().hex,
-            event_id,
-            manifest,
-        )
-        doc = await self.upsert_scandoc(doc)
-        return doc.manifest
-
-    async def patch(self, scan_id: str, progress: dict) -> dict:
-        """Update `progress` at doc matching `scan_id`."""
-        doc = await self.get_scandoc(scan_id)
-        doc.progress = progress
-        doc = await self.upsert_scandoc(doc)
-        return doc.progress
-
-    async def mark_as_deleted(self, scan_id: str) -> Manifest:
-        """Mark `Manifest` at doc matching `scan_id` as deleted."""
-        doc = await self.get_scandoc(scan_id)
-        doc.is_deleted = True
-        dpc = await self.upsert_scandoc(doc)
-        return doc.manifest
-
-
-# -----------------------------------------------------------------------------
-
-
-class ResultClient(ScanCollectionFacade):
+class ResultClient(ScanIDCollectionFacade):
     """Wraps the attribute for the result of a scan."""
+
+    async def find_one(self, scan_id: str) -> Result:
+        """Find one result and return it."""
+        return await self._find_one(_RESULTS_COLL_NAME, scan_id, Result)
+
+    async def upsert(self, scandc: Result) -> Result:
+        """Insert/update result and return it."""
+        return await self._upsert(_RESULTS_COLL_NAME, scandc)
+
+    # ------------------------------------------------------------------
 
     async def get(self, scan_id: str) -> Result | None:
         """Get `Result` using `scan_id`."""
-        doc = await self.get_scandoc(scan_id)
-        return doc.result
+        try:
+            result = await self.find_one(scan_id)
+        except DocumentNotFoundError:
+            return None
+        return result
 
-    async def put(self, scan_id: str, result: Result) -> Result:
+    async def put(self, scan_id: str, json_result: dict) -> Result:
         """Override `Result` at doc matching `scan_id`."""
-        doc = await self.get_scandoc(scan_id)
-        doc.result = result
-        doc await self.upsert_scandoc(doc)
-        return doc.result
+        result = Result(scan_id, False, json_result)
+        result = await self.upsert(result)
+        return result
 
     async def mark_as_deleted(self, scan_id: str) -> Result:
         """Mark `Result` at doc matching `scan_id` as deleted."""
-        doc = await self.get_scandoc(scan_id)
-        doc.result = None
-        doc = await self.upsert_scandoc(doc)
-        return doc.result
+        result = await self.find_one(scan_id)
+        result.is_deleted = True
+        result = await self.upsert(result)
+        return result

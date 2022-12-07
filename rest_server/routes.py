@@ -2,7 +2,6 @@
 
 
 import dataclasses as dc
-import json
 import logging
 from typing import Any
 
@@ -43,8 +42,7 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)
         # pylint: disable=W0201
-        self.events = database.EventClient(MotorClient(mongodb_url))
-        self.inflights = database.InflightClient(MotorClient(mongodb_url))
+        self.manifests = database.ManifestClient(MotorClient(mongodb_url))
         self.results = database.ResultClient(MotorClient(mongodb_url))
 
 
@@ -73,7 +71,9 @@ class EventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, event_id: str) -> None:
         """Get matching scan id(s) for the given event id."""
-        scan_ids = [s async for s in self.events.get_scan_ids(event_id)]
+        incl_del = self.get_argument("include_deleted", default=False, type=bool)
+
+        scan_ids = [s async for s in self.manifests.get_scan_ids(event_id, incl_del)]
 
         self.write({"event_id": event_id, "scan_ids": scan_ids})
 
@@ -94,57 +94,42 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self) -> None:
         """Start a new scan."""
-        # TODO - get event from JSON body args
+        event_id = self.get_argument("event_id", type=str)
+        # TODO: get more args
 
-        inflight = event * event  # TODO
+        manifest = await self.manifests.post(event_id)  # generates ID
 
-        scandoc = await self.inflights.post(None, inflight, event_id)  # generates ID
-
-        self.cluster.launch_scan(event, doc.uuid)
+        # TODO: call k8s service
+        # self.cluster.launch_scan(manifest)
 
         # TODO: update db?
 
-        self.write(
-            {
-                "scan_id": doc.uuid,
-                "info": dc.asdict(inflight),
-            }
-        )
+        self.write(dc.asdict(manifest))
 
 
 # -----------------------------------------------------------------------------
 
 
-class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
-    """Handles actions on scan's progress."""
+class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles actions on scan's manifest."""
 
-    ROUTE = r"/scan/inflight/(?P<scan_id>\w+)$"
+    ROUTE = r"/scan/manifest/(?P<scan_id>\w+)$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
-        scandoc = await self.inflights.get(scan_id)
+        manifest = await self.manifests.get(scan_id)
 
-        self.write(
-            {
-                "scan_id": scan_id,
-                "info": dc.asdict(scandoc),
-            }
-        )
+        self.write(dc.asdict(manifest))
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
-        scandoc = await self.inflights.get(scan_id)
+        manifest = await self.manifests.get(scan_id)
 
-        scandoc = await self.inflights.mark_as_deleted(scan_id)
+        manifest = await self.manifests.mark_as_deleted(scan_id)
 
-        self.write(
-            {
-                "scan_id": scan_id,
-                "info": dc.asdict(scandoc),
-            }
-        )
+        self.write(dc.asdict(manifest))
 
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
@@ -152,14 +137,9 @@ class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         data = self.get_argument("progress", type=dict)
         progress = database.Progress(**data)
 
-        scandoc = await self.inflights.patch(scan_id, progress)
+        manifest = await self.manifests.patch(scan_id, progress)
 
-        self.write(
-            {
-                "scan_id": scan_id,
-                "info": dc.asdict(scandoc),
-            }
-        )
+        self.write(dc.asdict(manifest))
 
 
 # -----------------------------------------------------------------------------
@@ -168,48 +148,32 @@ class InflightHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles actions on persisted scan results."""
 
-    ROUTE = r"/scan/results/(?P<scan_id>\w+)$"
+    ROUTE = r"/scan/result/(?P<scan_id>\w+)$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
-        """Get a scan's persisted results."""
+        """Get a scan's persisted result."""
         result = await self.results.get(scan_id)
 
-        self.write(
-            {
-                "scan_id": scan_id,
-                "result": dc.asdict(result),
-            }
-        )
+        self.write(dc.asdict(result))
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
-        """Delete a scan's persisted results."""
+        """Delete a scan's persisted result."""
         result = await self.results.get(scan_id)
 
         await self.results.mark_as_deleted(scan_id)
 
-        self.write(
-            {
-                "scan_id": scan_id,
-                "result": dc.asdict(result),
-            }
-        )
+        self.write(dc.asdict(result))
 
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
-        """Put (persist) a scan's results."""
-        data = self.get_argument("result", type=dict)
-        result = database.Result(**data)
+        """Put (persist) a scan's result."""
+        json_result = self.get_argument("json", type=dict)
 
-        result = await self.results.put(scan_id, data)
+        result = await self.results.put(scan_id, json_result)
 
-        self.write(
-            {
-                "scan_id": scan_id,
-                "result": dc.asdict(result),
-            }
-        )
+        self.write(dc.asdict(result))
 
 
 # -----------------------------------------------------------------------------
