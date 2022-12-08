@@ -22,7 +22,7 @@ async def test_00(rc: RestClient) -> None:
     event_id = "abc123"
 
     # launch scan
-    await rc.request("POST", "/scan")
+    await rc.request("POST", "/scan", {"event_id": event_id})
 
     # query by event id
     resp = await rc.request("GET", f"/event/{event_id}")
