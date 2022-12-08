@@ -11,7 +11,7 @@ pytestmark = pytest.mark.asyncio  # marks all tests as async
 @pytest.fixture
 def rc() -> RestClient:
     """Get data source REST client."""
-    return RestClient("http://localhost", token=None, timeout=1, retries=0)
+    return RestClient("http://localhost:8080", token=None, timeout=1, retries=0)
 
 
 ########################################################################################
