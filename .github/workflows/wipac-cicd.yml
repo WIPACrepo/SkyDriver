@@ -64,10 +64,12 @@ jobs:
       - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.py3 }}
-      - name: Test
+      - name: pip install
         run: |
           pip install --upgrade pip wheel setuptools
           pip install .[tests]
+      - name: Test
+        run: |
           pytest -vvv tests/unit
 
   integration-tests:
@@ -88,10 +90,13 @@ jobs:
         uses: supercharge/mongodb-github-action@1.8.0
         # TODO: change port/username/password?
 
-      - name: Start REST server & Test
+      - name: pip install
         run: |
           pip install --upgrade pip wheel setuptools
           pip install .[tests]
+
+      - name: Start REST server & Test
+        run: |
           python3 -m rest_server > server.out 2>&1 &
 
           sleep 3
