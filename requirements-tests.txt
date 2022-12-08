@@ -93,7 +93,7 @@ pytest==7.2.0
     #   pytest-asyncio
     #   pytest-mock
     #   rest-server (setup.py)
-pytest-asyncio==0.20.2
+pytest-asyncio==0.20.3
     # via rest-server (setup.py)
 pytest-mock==3.10.0
     # via rest-server (setup.py)
