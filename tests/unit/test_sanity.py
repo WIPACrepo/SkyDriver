@@ -42,7 +42,7 @@ def test_00__rest_handlers() -> None:
         if not inspect.isclass(klass):  # is a class?
             continue
         # if it's in the list, it must be a RestHandler
-        if klass in known_handlers:
+        if klass in list(known_handlers) + [handlers.BaseSkyDriverHandler]:
             assert issubclass(klass, RestHandler)
         # if it's a RestHandler, it must be in the list
         if issubclass(klass, RestHandler):
