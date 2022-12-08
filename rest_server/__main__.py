@@ -45,11 +45,11 @@ async def start(debug: bool = False) -> RestServer:
 
     # Configure REST Routes
     server = RestServer(debug=debug)
-    for name, klass in inspect.getmembers(handlers):
-        if not issubclass(klass, RestHandler):
-            continue
+    for name, klass in inspect.getmembers(
+        handlers, predicate=lambda x: issubclass(x, RestHandler)
+    ):
         try:
-            server.add_route(getattr(klass, "ROUTE"), klass, args)  # get
+            server.add_route(getattr(klass, "ROUTE"), klass, args)
             logging.info(f"Added handler: {name}")
         except AttributeError:
             continue

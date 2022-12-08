@@ -38,14 +38,7 @@ def test_00__rest_handlers() -> None:
         assert handler.ROUTE == route
 
     # find
-    for _, klass in inspect.getmembers(handlers):
-        if not inspect.isclass(klass):  # is a class?
-            continue
-        if klass == handlers.BaseSkyDriverHandler:
-            continue
-        # if it's in the list, it must be a RestHandler
-        if klass in list(known_handlers.keys()):
-            assert issubclass(klass, RestHandler)
-        # if it's a RestHandler, it must be in the list
-        if issubclass(klass, RestHandler):
-            assert klass in known_handlers
+    for _, klass in inspect.getmembers(
+        handlers, predicate=lambda x: issubclass(x, RestHandler)
+    ):
+        assert klass in known_handlers or klass == handlers.BaseSkyDriverHandler
