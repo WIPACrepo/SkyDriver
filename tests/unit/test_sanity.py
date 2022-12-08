@@ -39,6 +39,8 @@ def test_00__rest_handlers() -> None:
 
     # find
     for _, klass in inspect.getmembers(handlers):
+        if not inspect.isclass(klass):  # is a class?
+            continue
         # if it's in the list, it must be a RestHandler
         if klass in known_handlers:
             assert issubclass(klass, RestHandler)
