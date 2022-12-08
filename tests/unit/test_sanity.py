@@ -39,6 +39,6 @@ def test_00__rest_handlers() -> None:
 
     # find
     for _, klass in inspect.getmembers(
-        handlers, predicate=lambda x: issubclass(x, RestHandler)
+        handlers, predicate=lambda x: inspect.isclass(x) and issubclass(x, RestHandler)
     ):
         assert klass in known_handlers or klass == handlers.BaseSkyDriverHandler

@@ -46,7 +46,7 @@ async def start(debug: bool = False) -> RestServer:
     # Configure REST Routes
     server = RestServer(debug=debug)
     for name, klass in inspect.getmembers(
-        handlers, predicate=lambda x: issubclass(x, RestHandler)
+        handlers, predicate=lambda x: inspect.isclass(x) and issubclass(x, RestHandler)
     ):
         try:
             server.add_route(getattr(klass, "ROUTE"), klass, args)
