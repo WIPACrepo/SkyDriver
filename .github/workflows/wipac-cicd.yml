@@ -57,12 +57,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
+      matrix:
+        py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
         with:
-          python-version: ${{ matrix.py3_versions }}
+          python-version: ${{ matrix.py3 }}
       - name: Test
         run: |
           pip install --upgrade pip wheel setuptools
@@ -74,12 +75,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
+      matrix:
+        py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
         with:
-          python-version: ${{ matrix.py3_versions }}
+          python-version: ${{ matrix.py3 }}
       - name: Start up REST server
         run: |
           start up REST server
