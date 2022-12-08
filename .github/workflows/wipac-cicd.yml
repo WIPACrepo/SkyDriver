@@ -2,6 +2,9 @@ name: wipac ci/cd
 
 on: [push]
 
+env:
+  CI_TEST: 'yes'
+
 jobs:
 
   flake8:

@@ -3,6 +3,8 @@
 import dataclasses as dc
 import os
 
+from wipac_dev_tools import from_environment_as_dataclass
+
 # --------------------------------------------------------------------------------------
 # Constants
 
@@ -20,6 +22,10 @@ class EnvConfig:
     MONGODB_PORT: int = 27017
     REST_HOST: str = "localhost"
     REST_PORT: int = 8080
+    CI_TEST: bool = False
+
+
+ENV = from_environment_as_dataclass(EnvConfig)
 
 
 USER_ACCT = "skydriver-service-account"
@@ -42,4 +48,4 @@ def is_testing() -> bool:
 
     Note: this needs to run on import.
     """
-    return bool(os.environ.get("CI_TEST_ENV", False))
+    return ENV.CI_TEST

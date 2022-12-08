@@ -11,29 +11,28 @@ from urllib.parse import quote_plus
 
 import coloredlogs  # type: ignore[import]
 from rest_tools.server import RestHandler, RestHandlerSetup, RestServer
-from wipac_dev_tools import from_environment_as_dataclass
 
-from . import config, handlers
+from . import handlers
+from .config import ENV
 
 
 async def start(debug: bool = False) -> RestServer:
     """Start a Mad Dash REST service."""
-    env = from_environment_as_dataclass(config.EnvConfig)
-    for field in dc.fields(env):
+    for field in dc.fields(ENV):
         logging.info(
-            f"{field.name}\t{getattr(env, field.name)}\t({type(getattr(env, field.name)).__name__})"
+            f"{field.name}\t{getattr(ENV, field.name)}\t({type(getattr(ENV, field.name)).__name__})"
         )
 
-    mongodb_auth_user = quote_plus(env.MONGODB_AUTH_USER)
-    mongodb_auth_pass = quote_plus(env.MONGODB_AUTH_PASS)
-    mongodb_host = env.MONGODB_HOST
-    mongodb_port = env.MONGODB_PORT
+    mongodb_auth_user = quote_plus(ENV.MONGODB_AUTH_USER)
+    mongodb_auth_pass = quote_plus(ENV.MONGODB_AUTH_PASS)
+    mongodb_host = ENV.MONGODB_HOST
+    mongodb_port = ENV.MONGODB_PORT
 
     rhs_config: Dict[str, Any] = {"debug": debug}
-    if env.AUTH_OPENID_URL:
+    if ENV.AUTH_OPENID_URL:
         rhs_config["auth"] = {
-            "audience": env.AUTH_AUDIENCE,
-            "openid_url": env.AUTH_OPENID_URL,
+            "audience": ENV.AUTH_AUDIENCE,
+            "openid_url": ENV.AUTH_OPENID_URL,
         }
     args = RestHandlerSetup(rhs_config)
 
@@ -57,7 +56,7 @@ async def start(debug: bool = False) -> RestServer:
         except AttributeError:
             continue
 
-    server.startup(address=env.REST_HOST, port=env.REST_PORT)
+    server.startup(address=ENV.REST_HOST, port=ENV.REST_PORT)
     return server
 
 
