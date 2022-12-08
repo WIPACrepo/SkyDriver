@@ -79,19 +79,29 @@ jobs:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.py3 }}
-      - name: Start up REST server
+
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.8.0
+        # TODO: change port/username/password?
+
+      - name: Start REST server & Test
         run: |
-          start up REST server
           pip install --upgrade pip wheel setuptools
           pip install .[tests]
-      - name: Test
-        run: |
-          pip install --upgrade pip wheel setuptools
-          pip install .[tests]
+          python3 -m rest_server > server.out 2>&1 &
+
           pytest -vvv tests/integration
+
+          wait -n  # for server (errors when server fails)
+
+      - name: Dump server stdout/stderr (for debugging)
+        if: always()
+        run: |
+          cat server.out
 
   release:
     # only run on main/master/default
