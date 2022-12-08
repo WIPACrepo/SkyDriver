@@ -94,6 +94,7 @@ jobs:
           pip install .[tests]
           python3 -m rest_server > server.out 2>&1 &
 
+          sleep 3
           pytest -vvv tests/integration
 
           wait -n  # for server (errors when server fails)
