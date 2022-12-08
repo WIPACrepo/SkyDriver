@@ -52,13 +52,49 @@ jobs:
       - id: versions
         uses: WIPACrepo/wipac-dev-py-versions-action@v2
 
-  # TODO: tests
-  # tests:
+  unit-tests:
+    needs: [py-versions]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.py3_versions }}
+      - name: Test
+        run: |
+          pip install --upgrade pip wheel setuptools
+          pip install .[tests]
+          pytest -vvv tests/unit
+
+  integration-tests:
+    needs: [py-versions]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.py3_versions }}
+      - name: Start up REST server
+        run: |
+          start up REST server
+          pip install --upgrade pip wheel setuptools
+          pip install .[tests]
+      - name: Test
+        run: |
+          pip install --upgrade pip wheel setuptools
+          pip install .[tests]
+          pytest -vvv tests/integration
 
   release:
     # only run on main/master/default
     if: format('refs/heads/{0}', github.event.repository.default_branch) == github.ref
-    needs: [py-setup] # tests] # TODO
+    needs: [py-setup, unit-tests, integration-tests]
     runs-on: ubuntu-latest
     concurrency: release
     steps:
