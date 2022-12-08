@@ -1,7 +1,6 @@
 """Config settings."""
 
 import dataclasses as dc
-import os
 
 from wipac_dev_tools import from_environment_as_dataclass
 
