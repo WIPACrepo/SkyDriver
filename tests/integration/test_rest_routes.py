@@ -1,5 +1,7 @@
 """Integration tests for the REST server."""
 
+# pylint: disable=redefined-outer-name
+
 import pytest
 from rest_tools.client import RestClient
 
@@ -9,7 +11,7 @@ pytestmark = pytest.mark.asyncio  # marks all tests as async
 @pytest.fixture
 def rc() -> RestClient:
     """Get data source REST client."""
-    return RestClient("localhost", token=None, timeout=60.0, retries=10)
+    return RestClient("http://localhost", token=None, timeout=60.0, retries=10)
 
 
 ########################################################################################
