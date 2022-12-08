@@ -13,7 +13,7 @@ import coloredlogs  # type: ignore[import]
 from rest_tools.server import RestHandler, RestHandlerSetup, RestServer
 from wipac_dev_tools import from_environment_as_dataclass
 
-from . import config, routes
+from . import config, handlers
 
 
 async def start(debug: bool = False) -> RestServer:
@@ -45,7 +45,7 @@ async def start(debug: bool = False) -> RestServer:
 
     # Configure REST Routes
     server = RestServer(debug=debug)
-    for name, klass in inspect.getmembers(routes):
+    for name, klass in inspect.getmembers(handlers):
         if not issubclass(klass, RestHandler):
             continue
         try:
