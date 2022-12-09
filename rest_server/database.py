@@ -103,7 +103,7 @@ class ScanIDCollectionFacade:
         if not res.modified_count:
             raise web.HTTPError(
                 400,  # TODO - change to 500
-                reason=f"Failed to insert {coll} document ({scandc.scan_id})",
+                log_message=f"Failed to insert {coll} document ({scandc.scan_id})",
             )
         return from_dict(type(scandc), res.raw_result)  # type: ignore[no-any-return] # mypy's erring
 
