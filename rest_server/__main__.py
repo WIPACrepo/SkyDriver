@@ -76,7 +76,7 @@ if __name__ == "__main__":
     _args = parser.parse_args()
 
     coloredlogs.install(
-        fmt="%(asctime)s %(hostname)s %(name)s[%(process)d] <%(filename)s:%(lineno)s/%(funcName)s()> %(levelname)s %(message)s",
+        fmt="%(asctime)s %(hostname)s %(name)s[%(process)d] [%(filename)s:%(lineno)s/%(funcName)s()] %(levelname)s %(message)s",
         level=_args.log,
     )
 
