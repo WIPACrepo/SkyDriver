@@ -8,10 +8,9 @@ from typing import Any
 from motor.motor_tornado import MotorClient  # type: ignore
 from rest_tools.server import RestHandler, handler
 
-from utils import log_and_call
-
 from . import database
 from .config import SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
+from .utils import log_and_call
 
 if is_testing():
 
