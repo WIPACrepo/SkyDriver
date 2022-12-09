@@ -49,8 +49,8 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
         logging.debug(
             f"{self.__class__.__name__} "
             f"{self.request.method}("
-            f"{', '.join(self.path_args)}, "
-            f"{', '.join({f'{k}:{v}' for k,v in self.path_kwargs.items()})})"
+            f"{self.path_args}, "
+            f"{self.path_kwargs})"
         )
         super().prepare()
 
