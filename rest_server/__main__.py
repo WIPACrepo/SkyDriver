@@ -9,7 +9,6 @@ import logging
 from typing import Any, Dict
 from urllib.parse import quote_plus
 
-import coloredlogs  # type: ignore[import]
 from motor.motor_tornado import MotorClient  # type: ignore
 from rest_tools.server import RestHandler, RestHandlerSetup, RestServer
 
@@ -75,6 +74,9 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--log", default="DEBUG", help="the output logging level")
     _args = parser.parse_args()
 
-    coloredlogs.install(level=getattr(logging, _args.log.upper()))
+    logging.basicConfig(
+        format="%(asctime)s %(hostname)s %(name)s[%(process)d] <%(filename)s:%(lineno)s/%(funcName)s()> %(levelname)s %(message)s"
+    )
+    logging.getLogger().setLevel(_args.log)
 
     main()
