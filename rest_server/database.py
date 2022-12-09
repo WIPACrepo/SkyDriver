@@ -2,7 +2,7 @@
 
 import dataclasses as dc
 import uuid
-from typing import Any, AsyncIterator, Dict, List, Type, TypeVar
+from typing import Any, AsyncIterator, Dict, Type, TypeVar
 
 # import pymongo.errors
 from dacite import from_dict  # type: ignore[attr-defined]

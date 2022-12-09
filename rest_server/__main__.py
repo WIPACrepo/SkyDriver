@@ -57,7 +57,7 @@ async def start(debug: bool = False) -> RestServer:
         except AttributeError:
             continue
 
-    await database.ensure_indexes(MotorClient(mongodb_url))
+    # await database.ensure_indexes(MotorClient(mongodb_url))
     server.startup(address=ENV.REST_HOST, port=ENV.REST_PORT)
     return server
 
