@@ -8,6 +8,8 @@ from typing import Any
 from motor.motor_tornado import MotorClient  # type: ignore
 from rest_tools.server import RestHandler, handler
 
+from utils import log_and_call
+
 from . import database
 from .config import SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
 
@@ -101,6 +103,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     ROUTE = r"/scan$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @log_and_call("test??")
     async def post(self) -> None:
         """Start a new scan."""
         event_id = self.get_argument("event_id", type=str)
