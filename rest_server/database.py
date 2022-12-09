@@ -2,7 +2,7 @@
 
 import dataclasses as dc
 import uuid
-from typing import Any, AsyncIterator, Dict, Type, TypeVar
+from typing import Any, AsyncIterator, Dict, List, Type, TypeVar
 
 # import pymongo.errors
 from dacite import from_dict  # type: ignore[attr-defined]
@@ -52,6 +52,23 @@ _DB_NAME = "SkyDriver_DB"
 _MANIFEST_COLL_NAME = "Manifests"
 _RESULTS_COLL_NAME = "Results"
 S = TypeVar("S", bound=ScanIDDataclass)
+
+
+async def ensure_indexes(motor_client: MotorClient) -> None:
+    """Create indexes in collections.
+
+    Call on server startup.
+    """
+
+    async def index_collection(coll: str, indexes: Dict[str, bool]) -> None:
+        for index, unique in indexes.items():
+            await motor_client[_DB_NAME][coll].create_index(
+                index, name=f"{index}_index", unique=unique
+            )
+        # logging.debug(motor_client[_DB_NAME][coll].list_indexes())
+
+    await index_collection(_MANIFEST_COLL_NAME, {"scan_id": True})
+    await index_collection(_RESULTS_COLL_NAME, {"scan_id": True})
 
 
 class ScanIDCollectionFacade:

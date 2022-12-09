@@ -10,9 +10,10 @@ from typing import Any, Dict
 from urllib.parse import quote_plus
 
 import coloredlogs  # type: ignore[import]
+from motor.motor_tornado import MotorClient  # type: ignore
 from rest_tools.server import RestHandler, RestHandlerSetup, RestServer
 
-from . import handlers
+from . import database, handlers
 from .config import ENV
 
 
@@ -56,6 +57,7 @@ async def start(debug: bool = False) -> RestServer:
         except AttributeError:
             continue
 
+    await database.ensure_indexes(MotorClient(mongodb_url))
     server.startup(address=ENV.REST_HOST, port=ENV.REST_PORT)
     return server
 
