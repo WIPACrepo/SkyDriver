@@ -10,7 +10,6 @@ from rest_tools.server import RestHandler, handler
 
 from . import database
 from .config import SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
-from .utils import log_and_call
 
 if is_testing():
 
@@ -102,7 +101,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     ROUTE = r"/scan$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    @log_and_call(logging.getLogger(), "test??")
     async def post(self) -> None:
         """Start a new scan."""
         event_id = self.get_argument("event_id", type=str)
