@@ -2,6 +2,7 @@
 
 import dataclasses as dc
 
+import coloredlogs  # type: ignore[import]
 from wipac_dev_tools import from_environment_as_dataclass
 
 # --------------------------------------------------------------------------------------
@@ -48,3 +49,15 @@ def is_testing() -> bool:
     Note: this needs to run on import.
     """
     return ENV.CI_TEST
+
+
+def config_logging(level: str) -> None:
+    """Configure the logging level and format.
+
+    This is separated into a function for consistency between app and
+    testing environments.
+    """
+    coloredlogs.install(
+        fmt="%(asctime)s %(hostname)s %(name)s[%(process)d] [%(filename)s:%(lineno)s/%(funcName)s()] %(levelname)s %(message)s",
+        level=level.upper(),
+    )

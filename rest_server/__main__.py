@@ -3,10 +3,8 @@
 import argparse
 import asyncio
 
-import coloredlogs  # type: ignore[import]
-
 from . import server
-from .config import ENV
+from .config import ENV, config_logging
 
 
 async def main() -> None:
@@ -25,9 +23,6 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--log", default="DEBUG", help="the output logging level")
     _args = parser.parse_args()
 
-    coloredlogs.install(
-        fmt="%(asctime)s %(hostname)s %(name)s[%(process)d] [%(filename)s:%(lineno)s/%(funcName)s()] %(levelname)s %(message)s",
-        level=_args.log,
-    )
+    config_logging(_args.log)
 
     asyncio.run(main())
