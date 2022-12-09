@@ -80,7 +80,7 @@ class ScanIDCollectionFacade:
             dc.asdict(scandc),
             upsert=True,
         )
-        if not res["modifiedCount"]:
+        if not res.modified_count:
             raise web.HTTPError(
                 500,
                 reason=f"Failed to insert {coll} document ({scandc.scan_id})",
