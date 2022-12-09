@@ -11,7 +11,7 @@ from .config import ENV
 
 async def main() -> None:
     """Start server."""
-    rs = await server.make(debug=True)
+    rs = await server.make()
     rs.startup(address=ENV.REST_HOST, port=ENV.REST_PORT)  # type: ignore[no-untyped-call]
     try:
         await asyncio.Event().wait()

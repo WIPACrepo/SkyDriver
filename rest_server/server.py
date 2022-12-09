@@ -11,7 +11,7 @@ from motor.motor_tornado import MotorClient  # type: ignore
 from rest_tools.server import RestHandler, RestHandlerSetup, RestServer
 
 from . import database, handlers
-from .config import ENV
+from .config import ENV, is_testing
 
 
 def mongodb_url() -> str:
@@ -33,7 +33,7 @@ async def make(debug: bool = False) -> RestServer:
             f"{field.name}\t{getattr(ENV, field.name)}\t({type(getattr(ENV, field.name)).__name__})"
         )
 
-    rhs_config: Dict[str, Any] = {"debug": debug}
+    rhs_config: Dict[str, Any] = {"debug": debug or is_testing()}
     if ENV.AUTH_OPENID_URL:
         rhs_config["auth"] = {
             "audience": ENV.AUTH_AUDIENCE,
