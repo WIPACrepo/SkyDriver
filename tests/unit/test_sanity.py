@@ -35,7 +35,7 @@ def test_00__rest_handlers() -> None:
     # search for all known handlers
     for handler, (route, methods) in known_handlers.items():
         assert all(x in dir(handler) for x in methods)
-        assert handler.ROUTE == route
+        assert handler.ROUTE == route  # type: ignore[attr-defined]  # base type does not have ROUTE
 
     # find
     for _, klass in inspect.getmembers(
