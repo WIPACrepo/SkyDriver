@@ -2,23 +2,70 @@
 
 # pylint: disable=redefined-outer-name
 
+import socket
+from typing import Any, AsyncIterator, Callable
+
 import pytest
+import pytest_asyncio
+from motor.motor_tornado import MotorClient  # type: ignore
+from rest_server.database import drop_collections
+from rest_server.server import make, mongodb_url
 from rest_tools.client import RestClient
 
-pytestmark = pytest.mark.asyncio  # marks all tests as async
+########################################################################################
 
 
 @pytest.fixture
-def rc() -> RestClient:
-    """Get data source REST client."""
-    return RestClient("http://localhost:8080", token=None, timeout=1, retries=0)
+def port() -> int:
+    """Get an ephemeral port number."""
+    # https://unix.stackexchange.com/a/132524
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("", 0))
+    addr = s.getsockname()
+    ephemeral_port = addr[1]
+    s.close()
+    return ephemeral_port
+
+
+@pytest_asyncio.fixture
+async def mongo_clear() -> Any:
+    """Clear the MongoDB after test completes."""
+    motor_client = MotorClient(mongodb_url())
+    try:
+        await drop_collections(motor_client)
+        yield
+    finally:
+        await drop_collections(motor_client)
+
+
+@pytest_asyncio.fixture
+async def server(
+    monkeypatch: Any,
+    port: int,
+    mongo_clear: Any,  # pylint:disable=unused-argument
+) -> AsyncIterator[Callable[[], RestClient]]:
+    """Startup server in this process, yield RestClient func, then clean up."""
+    monkeypatch.setenv("PORT", str(port))
+
+    rs = await make(debug=True)
+    await rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
+
+    def client() -> RestClient:
+        return RestClient(f"http://localhost:{port}", timeout=1, retries=0)
+
+    try:
+        yield client
+    finally:
+        await rs.stop()  # type: ignore[no-untyped-call]
 
 
 ########################################################################################
 
 
-async def test_00(rc: RestClient) -> None:
+async def test_00(server: Callable[[], RestClient]) -> None:
     """Test normal scan creation and retrieval."""
+    rc = server()
+
     event_id = "abc123"
 
     # launch scan

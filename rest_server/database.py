@@ -72,6 +72,12 @@ async def ensure_indexes(motor_client: MotorClient) -> None:
     await index_collection(_RESULTS_COLL_NAME, {"scan_id": True})
 
 
+async def drop_collections(motor_client: MotorClient) -> None:
+    """Drop the "regular" collections -- most useful for testing."""
+    await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].drop()
+    await motor_client[_DB_NAME][_RESULTS_COLL_NAME].drop()
+
+
 class ScanIDCollectionFacade:
     """Allows specific semantic actions on the collections by Scan ID."""
 
@@ -102,7 +108,7 @@ class ScanIDCollectionFacade:
         )
         if not res.modified_count:
             raise web.HTTPError(
-                400,  # TODO - change to 500
+                500,
                 log_message=f"Failed to insert {coll} document ({scandc.scan_id})",
             )
         return from_dict(type(scandc), res.raw_result)  # type: ignore[no-any-return] # mypy's erring

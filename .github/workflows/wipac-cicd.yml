@@ -98,19 +98,9 @@ jobs:
           pip install --upgrade pip wheel setuptools
           pip install .[tests]
 
-      - name: Start REST server & Test
+      - name: Test
         run: |
-          python3 -m rest_server > server.out 2>&1 &
-
-          sleep 3
           pytest -vvv tests/integration
-
-          wait -n  # for server (errors when server fails)
-
-      - name: Dump server stdout/stderr (for debugging)
-        if: always()
-        run: |
-          cat server.out
 
   release:
     # only run on main/master/default
