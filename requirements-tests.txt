@@ -17,7 +17,9 @@ cffi==1.15.1
 charset-normalizer==2.1.1
     # via requests
 coloredlogs==15.0.1
-    # via wipac-telemetry
+    # via
+    #   rest-server (setup.py)
+    #   wipac-telemetry
 cryptography==38.0.4
     # via pyjwt
 dacite==1.6.0

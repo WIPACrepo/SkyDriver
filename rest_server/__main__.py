@@ -6,7 +6,7 @@ import asyncio
 import dataclasses as dc
 import inspect
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, coloredlogs
 from urllib.parse import quote_plus
 
 from motor.motor_tornado import MotorClient  # type: ignore
@@ -74,9 +74,9 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--log", default="DEBUG", help="the output logging level")
     _args = parser.parse_args()
 
-    logging.basicConfig(
-        format="%(asctime)s %(hostname)s %(name)s[%(process)d] <%(filename)s:%(lineno)s/%(funcName)s()> %(levelname)s %(message)s"
+    coloredlogs.install(
+        fmt="%(asctime)s %(hostname)s %(name)s[%(process)d] <%(filename)s:%(lineno)s/%(funcName)s()> %(levelname)s %(message)s",
+        level=_args.log,
     )
-    logging.getLogger().setLevel(_args.log)
 
     main()
