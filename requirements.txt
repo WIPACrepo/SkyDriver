@@ -38,30 +38,30 @@ idna==3.4
     # via requests
 motor==3.1.1
     # via rest-server (setup.py)
-opentelemetry-api==1.14.0
+opentelemetry-api==1.15.0
     # via
     #   opentelemetry-exporter-jaeger-proto-grpc
     #   opentelemetry-exporter-jaeger-thrift
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-sdk
     #   wipac-telemetry
-opentelemetry-exporter-jaeger==1.14.0
+opentelemetry-exporter-jaeger==1.15.0
     # via wipac-telemetry
-opentelemetry-exporter-jaeger-proto-grpc==1.14.0
+opentelemetry-exporter-jaeger-proto-grpc==1.15.0
     # via opentelemetry-exporter-jaeger
-opentelemetry-exporter-jaeger-thrift==1.14.0
+opentelemetry-exporter-jaeger-thrift==1.15.0
     # via opentelemetry-exporter-jaeger
-opentelemetry-exporter-otlp-proto-http==1.14.0
+opentelemetry-exporter-otlp-proto-http==1.15.0
     # via wipac-telemetry
-opentelemetry-proto==1.14.0
+opentelemetry-proto==1.15.0
     # via opentelemetry-exporter-otlp-proto-http
-opentelemetry-sdk==1.14.0
+opentelemetry-sdk==1.15.0
     # via
     #   opentelemetry-exporter-jaeger-proto-grpc
     #   opentelemetry-exporter-jaeger-thrift
     #   opentelemetry-exporter-otlp-proto-http
     #   wipac-telemetry
-opentelemetry-semantic-conventions==0.35b0
+opentelemetry-semantic-conventions==0.36b0
     # via opentelemetry-sdk
 protobuf==3.20.3
     # via
