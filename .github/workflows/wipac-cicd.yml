@@ -100,7 +100,7 @@ jobs:
 
       - name: Test
         run: |
-          pytest -vvv tests/integration
+          pytest -vvv -s tests/integration
 
   release:
     # only run on main/master/default
