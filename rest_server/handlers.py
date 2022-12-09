@@ -46,11 +46,10 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
         self.results = database.ResultClient(MotorClient(mongodb_url))
 
     def prepare(self):
+        # TODO: put this into rest-tools
         logging.debug(
-            f"{self.__class__.__name__} "
-            f"{self.request.method}("
-            f"{self.path_args}, "
-            f"{self.path_kwargs})"
+            f"{self.request.path} {self.request.method}("
+            f"{self.path_args}, {self.path_kwargs}) [{self.__class__.__name__}]"
         )
         super().prepare()
 
