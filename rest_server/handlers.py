@@ -104,6 +104,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     async def post(self) -> None:
         """Start a new scan."""
         event_id = self.get_argument("event_id", type=str)
+        logging.info(f"{event_id=}")
         # TODO: get more args
 
         manifest = await self.manifests.post(event_id)  # generates ID

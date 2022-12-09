@@ -1,6 +1,7 @@
 """Database interface for persisted scan data."""
 
 import dataclasses as dc
+import logging
 import uuid
 from typing import Any, AsyncIterator, Dict, Type, TypeVar
 
@@ -83,6 +84,7 @@ class ScanIDCollectionFacade:
 
     async def _find_one(self, coll: str, scan_id: str, scandc_type: Type[S]) -> S:
         """Get document by 'scan_id'."""
+        logging.debug(f"in {coll=} finding doc with {scan_id=} for {scandc_type=}")
         query = {"scan_id": scan_id}
         doc = await self._collections[coll].find_one(query)
 
@@ -92,6 +94,7 @@ class ScanIDCollectionFacade:
 
     async def _upsert(self, coll: str, scandc: S) -> S:
         """Insert/update the doc."""
+        logging.debug(f"in {coll=} replacing doc with {scandc=}")
         res = await self._collections[coll].replace_one(
             {"scan_id": scandc.scan_id},
             dc.asdict(scandc),
@@ -123,11 +126,13 @@ class ManifestClient(ScanIDCollectionFacade):
 
     async def get(self, scan_id: str) -> Manifest:
         """Get `Manifest` using `scan_id`."""
+        logging.debug(f"getting manifest for {scan_id=}")
         manifest = await self.find_one(scan_id)
         return manifest
 
     async def post(self, event_id: str) -> Manifest:
         """Create `Manifest` doc."""
+        logging.debug(f"creating manifest for {event_id=}")
         manifest = Manifest(
             uuid.uuid4().hex,
             False,
@@ -139,6 +144,7 @@ class ManifestClient(ScanIDCollectionFacade):
 
     async def patch(self, scan_id: str, progress: Progress) -> Manifest:
         """Update `progress` at doc matching `scan_id`."""
+        logging.debug(f"patching progress for {scan_id=}")
         manifest = await self.find_one(scan_id)
         manifest.progress = progress
         manifest = await self.upsert(manifest)
@@ -146,6 +152,7 @@ class ManifestClient(ScanIDCollectionFacade):
 
     async def mark_as_deleted(self, scan_id: str) -> Manifest:
         """Mark `Manifest` at doc matching `scan_id` as deleted."""
+        logging.debug(f"marking manifest as deleted for {scan_id=}")
         manifest = await self.find_one(scan_id)
         manifest.is_deleted = True
         manifest = await self.upsert(manifest)
@@ -153,6 +160,7 @@ class ManifestClient(ScanIDCollectionFacade):
 
     async def get_scan_ids(self, event_id: str, incl_del: bool) -> AsyncIterator[str]:
         """Search over scans and find all matching event-id."""
+        logging.debug(f"get matching scan ids for {event_id=} ({incl_del=})")
 
         # skip the dataclass-casting b/c we're just returning a str
         query = {"event_id": event_id}
@@ -180,6 +188,7 @@ class ResultClient(ScanIDCollectionFacade):
 
     async def get(self, scan_id: str) -> Result | None:
         """Get `Result` using `scan_id`."""
+        logging.debug(f"getting result for {scan_id=}")
         try:
             result = await self.find_one(scan_id)
         except DocumentNotFoundError:
@@ -188,12 +197,14 @@ class ResultClient(ScanIDCollectionFacade):
 
     async def put(self, scan_id: str, json_result: dict) -> Result:
         """Override `Result` at doc matching `scan_id`."""
+        logging.debug(f"overriding result for {scan_id=}")
         result = Result(scan_id, False, json_result)
         result = await self.upsert(result)
         return result
 
     async def mark_as_deleted(self, scan_id: str) -> Result:
         """Mark `Result` at doc matching `scan_id` as deleted."""
+        logging.debug(f"marking result as deleted for {scan_id=}")
         result = await self.find_one(scan_id)
         result.is_deleted = True
         result = await self.upsert(result)
