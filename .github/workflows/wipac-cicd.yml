@@ -100,7 +100,11 @@ jobs:
 
       - name: Test
         run: |
-          pytest -vvv -s tests/integration
+          pytest -vvv tests/integration
+
+      - name: Dump logs
+        run: |
+          cat pytest.logs
 
   release:
     # only run on main/master/default
