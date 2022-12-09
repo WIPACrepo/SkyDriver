@@ -6,9 +6,10 @@ import asyncio
 import dataclasses as dc
 import inspect
 import logging
-from typing import Any, Dict, coloredlogs
+from typing import Any, Dict
 from urllib.parse import quote_plus
 
+import coloredlogs
 from motor.motor_tornado import MotorClient  # type: ignore
 from rest_tools.server import RestHandler, RestHandlerSetup, RestServer
 
