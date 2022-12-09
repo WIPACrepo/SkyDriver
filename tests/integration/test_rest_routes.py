@@ -48,7 +48,7 @@ async def server(
     monkeypatch.setenv("PORT", str(port))
 
     rs = await make(debug=True)
-    await rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
+    rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:
         return RestClient(f"http://localhost:{port}", timeout=1, retries=0)
