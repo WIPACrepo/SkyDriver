@@ -103,7 +103,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     ROUTE = r"/scan$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    @log_and_call("test??")
+    @log_and_call(logging.getLogger(), "test??")
     async def post(self) -> None:
         """Start a new scan."""
         event_id = self.get_argument("event_id", type=str)
