@@ -53,6 +53,11 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
         )
         super().prepare()
 
+    def write_error(self, status_code=500, **kwargs):
+        # TODO: put this into rest-tools
+        logging.error(f"{status_code}: {self._reason}")
+        super().write_error(status_code, **kwargs)
+
 
 # -----------------------------------------------------------------------------
 
