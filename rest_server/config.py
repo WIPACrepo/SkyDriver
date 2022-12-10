@@ -58,6 +58,6 @@ def config_logging(level: str) -> None:
     testing environments.
     """
     coloredlogs.install(
-        fmt="%(asctime)s %(hostname)s %(name)s[%(process)d] [%(filename)s:%(lineno)s/%(funcName)s()] %(levelname)s %(message)s",
+        fmt="%(asctime)s.%(msecs)03d %(hostname)s %(name)s[%(process)d] [%(filename)s:%(lineno)s/%(funcName)s()] %(levelname)s %(message)s",
         level=level.upper(),
     )
