@@ -73,7 +73,7 @@ async def test_00(server: Callable[[], RestClient]) -> None:
 
     # launch scan
     resp = await rc.request("POST", "/scan", {"event_id": event_id})
-    scan_id = resp["scan_id"]
+    scan_id = resp["scan_id"]  # keep around
 
     # query by event id
     resp = await rc.request("GET", f"/event/{event_id}")
@@ -81,34 +81,52 @@ async def test_00(server: Callable[[], RestClient]) -> None:
 
     # LOOP:
     for i in range(10):
+        progress = {"count": i, "double_count": i * 2, "count_pow": i**i}
         # update progress
-        await rc.request("PATCH", f"/scan/manifest/{scan_id}")
+        resp = await rc.request(
+            "PATCH", f"/scan/manifest/{scan_id}", {"progress": progress}
+        )
+        # TODO: assert
+        progress_resp = resp  # keep around
+
         # query progress
-        await rc.request("GET", f"/scan/manifest/{scan_id}")
+        resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
+        assert progress_resp == resp
 
     # send finished result
-    await rc.request("PUT", f"/scan/result/{scan_id}")
+    result = {"alpha": (i + 1) ** i, "beta": -i}
+    resp = await rc.request("PUT", f"/scan/result/{scan_id}", {"result": result})
+    # TODO: assert
+    result_resp = resp  # keep around
 
     # query progress
-    await rc.request("GET", f"/scan/manifest/{scan_id}")
+    resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
+    assert progress_resp == resp
 
     # query result
-    await rc.request("GET", f"/scan/result/{scan_id}")
+    resp = await rc.request("GET", f"/scan/result/{scan_id}")
+    assert result_resp == resp
 
     # delete manifest
-    await rc.request("DELETE", f"/scan/manifest/{scan_id}")
+    resp = await rc.request("DELETE", f"/scan/manifest/{scan_id}")
+    # TODO: assert
 
     # query w/ scan id (fails)
-    await rc.request("GET", f"/scan/manifest/{scan_id}")
+    resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
+    # TODO: assert
 
     # query by event id (none)
-    await rc.request("GET", f"/event/{event_id}")
+    resp = await rc.request("GET", f"/event/{event_id}")
+    assert not resp["scan_ids"]
 
     # query result (still exists)
-    await rc.request("GET", f"/scan/result/{scan_id}")
+    resp = await rc.request("GET", f"/scan/result/{scan_id}")
+    assert result_resp == resp
 
     # delete result
-    await rc.request("DELETE", f"/scan/result/{scan_id}")
+    resp = await rc.request("DELETE", f"/scan/result/{scan_id}")
+    # TODO: assert
 
     # query result (fails)
-    await rc.request("GET", f"/scan/result/{scan_id}")
+    resp = await rc.request("GET", f"/scan/result/{scan_id}")
+    # TODO: assert
