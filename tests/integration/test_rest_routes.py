@@ -72,11 +72,12 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     event_id = "abc123"
 
     # launch scan
-    await rc.request("POST", "/scan", {"event_id": event_id})
+    resp = await rc.request("POST", "/scan", {"event_id": event_id})
+    scan_id = resp["scan_id"]
 
     # query by event id
     resp = await rc.request("GET", f"/event/{event_id}")
-    scan_id = resp["scan_id"]
+    assert [scan_id] == resp["scan_ids"]
 
     # LOOP:
     for i in range(10):
