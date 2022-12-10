@@ -111,7 +111,9 @@ class ScanIDCollectionFacade:
                 500,
                 log_message=f"Failed to insert {coll} document ({scandc.scan_id}): {res.raw_result}",
             )
-        return from_dict(type(scandc), res.raw_result)  # type: ignore[no-any-return] # mypy's erring
+
+        doc = await self._collections[coll].find_one({"_id": res.upserted_id})
+        return from_dict(type(scandc), doc)  # type: ignore[no-any-return] # mypy's erring
 
 
 # -----------------------------------------------------------------------------
