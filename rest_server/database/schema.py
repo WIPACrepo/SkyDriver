@@ -20,13 +20,13 @@ class ScanIDDataclass:
 class Result(ScanIDDataclass):
     """Encompasses the physics results for a scan."""
 
-    json_result: dict[str, Any]  # actual keys/values are open to requestor
+    json_dict: dict[str, Any]  # actual keys/values are open to requestor
 
     def __repr__(self) -> str:
         dicto = dc.asdict(self)
-        dicto.pop("json_result")
+        dicto.pop("json_dict")
         # shorten b/c this can be a LARGE dict
-        dicto["json_result_HASH"] = hash(str(self.json_result))
+        dicto["json_dict_HASH"] = hash(str(self.json_dict))
         rep = f"{self.__class__.__name__}{dicto}"
         return rep
 

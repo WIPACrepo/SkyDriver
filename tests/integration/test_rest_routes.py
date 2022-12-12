@@ -109,11 +109,11 @@ async def test_00(server: Callable[[], RestClient]) -> None:
 
     # send finished result
     result = {"alpha": (i + 1) ** i, "beta": -i}
-    resp = await rc.request("PUT", f"/scan/result/{scan_id}", {"json_result": result})
+    resp = await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": result})
     assert resp == {
         "scan_id": scan_id,
         "is_deleted": False,
-        "json_result": result,
+        "json_dict": result,
     }
     result_resp = resp  # keep around
 
@@ -157,7 +157,7 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     assert resp == {
         "scan_id": scan_id,
         "is_deleted": True,
-        "json_result": result,
+        "json_dict": result,
     }
 
     # query result (fails)

@@ -182,10 +182,10 @@ class ResultClient(ScanIDCollectionFacade):
             return None
         return result
 
-    async def put(self, scan_id: str, json_result: dict[str, Any]) -> schema.Result:
+    async def put(self, scan_id: str, json_dict: dict[str, Any]) -> schema.Result:
         """Override `schema.Result` at doc matching `scan_id`."""
         LOGGER.debug(f"overriding result for {scan_id=}")
-        result = schema.Result(scan_id, False, json_result)
+        result = schema.Result(scan_id, False, json_dict)
         result = await self.upsert(result)
         return result
 
