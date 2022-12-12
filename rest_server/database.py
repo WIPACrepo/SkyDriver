@@ -5,18 +5,20 @@ import logging
 import uuid
 from typing import Any, AsyncIterator, Type, TypeVar
 
+import pydantic
+
 # import pymongo.errors
 from dacite import from_dict  # type: ignore[attr-defined]
 from motor.motor_tornado import MotorClient, MotorCollection  # type: ignore
 from tornado import web
 
 
-@dc.dataclass(frozen=True)
+@pydantic.dataclasses.dataclass(frozen=True)
 class Progress:
     """Encompasses the computational progress of a scan."""
 
 
-@dc.dataclass
+@pydantic.dataclasses.dataclass
 class ScanIDDataclass:
     """A dataclass with a scan id."""
 
@@ -24,14 +26,14 @@ class ScanIDDataclass:
     is_deleted: bool
 
 
-@dc.dataclass
+@pydantic.dataclasses.dataclass
 class Result(ScanIDDataclass):
     """Encompasses the physics results for a scan."""
 
     json: dict[str, Any]
 
 
-@dc.dataclass
+@pydantic.dataclasses.dataclass
 class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
 
