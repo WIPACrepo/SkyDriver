@@ -4,7 +4,7 @@
 import dataclasses as dc
 import inspect
 import logging
-from typing import Any, Dict
+from typing import Any
 from urllib.parse import quote_plus
 
 from motor.motor_tornado import MotorClient  # type: ignore
@@ -33,7 +33,7 @@ async def make(debug: bool = False) -> RestServer:
             f"{field.name}\t{getattr(ENV, field.name)}\t({type(getattr(ENV, field.name)).__name__})"
         )
 
-    rhs_config: Dict[str, Any] = {"debug": debug or is_testing()}
+    rhs_config: dict[str, Any] = {"debug": debug or is_testing()}
     if ENV.AUTH_OPENID_URL:
         rhs_config["auth"] = {
             "audience": ENV.AUTH_AUDIENCE,

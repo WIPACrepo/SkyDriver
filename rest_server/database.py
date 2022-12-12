@@ -3,7 +3,7 @@
 import dataclasses as dc
 import logging
 import uuid
-from typing import Any, AsyncIterator, Dict, Type, TypeVar
+from typing import Any, AsyncIterator, Type, TypeVar
 
 # import pymongo.errors
 from dacite import from_dict  # type: ignore[attr-defined]
@@ -28,7 +28,7 @@ class ScanIDDataclass:
 class Result(ScanIDDataclass):
     """Encompasses the physics results for a scan."""
 
-    json: dict
+    json: dict[str, Any]
 
 
 @dc.dataclass
@@ -45,7 +45,7 @@ class Manifest(ScanIDDataclass):
 class DocumentNotFoundError(Exception):
     """Raised when a document is not found."""
 
-    def __init__(self, collection: str, query: Dict[str, Any]):
+    def __init__(self, collection: str, query: dict[str, Any]):
         super().__init__(f"{collection}: {query}")
 
 
@@ -61,7 +61,7 @@ async def ensure_indexes(motor_client: MotorClient) -> None:
     Call on server startup.
     """
 
-    async def index_collection(coll: str, indexes: Dict[str, bool]) -> None:
+    async def index_collection(coll: str, indexes: dict[str, bool]) -> None:
         for index, unique in indexes.items():
             await motor_client[_DB_NAME][coll].create_index(
                 index, name=f"{index}_index", unique=unique
@@ -83,7 +83,7 @@ class ScanIDCollectionFacade:
 
     def __init__(self, motor_client: MotorClient) -> None:
         # place in a dictionary so there's some safeguarding against bogus collections
-        self._collections: Dict[str, MotorCollection] = {
+        self._collections: dict[str, MotorCollection] = {
             _MANIFEST_COLL_NAME: motor_client[_DB_NAME][_MANIFEST_COLL_NAME],
             _RESULTS_COLL_NAME: motor_client[_DB_NAME][_RESULTS_COLL_NAME],
         }
@@ -203,7 +203,7 @@ class ResultClient(ScanIDCollectionFacade):
             return None
         return result
 
-    async def put(self, scan_id: str, json_result: dict) -> Result:
+    async def put(self, scan_id: str, json_result: dict[str, Any]) -> Result:
         """Override `Result` at doc matching `scan_id`."""
         logging.debug(f"overriding result for {scan_id=}")
         result = Result(scan_id, False, json_result)
