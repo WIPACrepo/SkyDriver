@@ -87,7 +87,7 @@ class ScanIDCollectionFacade:
                 log_message=f"Failed to insert/update {coll} document ({scandc.scan_id}): {res.raw_result}",
             )
 
-        doc = await self._collections[coll].find_one({"_id": res.upserted_id})
+        doc = await self._collections[coll].find_one({"scan_id": scandc.scan_id})
         return from_dict(type(scandc), doc)  # type: ignore[no-any-return] # mypy's erring
 
 
