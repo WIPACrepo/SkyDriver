@@ -79,10 +79,12 @@ class ScanIDCollectionFacade:
             dc.asdict(scandc),
             upsert=True,
         )
-        if not res.upserted_id:
+        ok_update = bool(res.matched_count and res.modified_count)
+        ok_insert = bool(res.upserted_id)
+        if not ok_update and not ok_insert:
             raise web.HTTPError(
                 500,
-                log_message=f"Failed to insert {coll} document ({scandc.scan_id}): {res.raw_result}",
+                log_message=f"Failed to insert/update {coll} document ({scandc.scan_id}): {res.raw_result}",
             )
 
         doc = await self._collections[coll].find_one({"_id": res.upserted_id})
