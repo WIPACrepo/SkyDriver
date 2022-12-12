@@ -9,7 +9,7 @@ import pytest
 import pytest_asyncio
 from motor.motor_tornado import MotorClient  # type: ignore
 from rest_server.config import config_logging
-from rest_server.database import drop_collections
+from rest_server.database.interface import drop_collections
 from rest_server.server import make, mongodb_url
 from rest_tools.client import RestClient
 

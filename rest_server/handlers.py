@@ -42,8 +42,8 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)
         # pylint: disable=W0201
-        self.manifests = database.ManifestClient(MotorClient(mongodb_url))
-        self.results = database.ResultClient(MotorClient(mongodb_url))
+        self.manifests = database.interface.ManifestClient(MotorClient(mongodb_url))
+        self.results = database.interface.ResultClient(MotorClient(mongodb_url))
 
     def prepare(self):
         # TODO: put this into rest-tools
@@ -144,7 +144,7 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
         data = self.get_argument("progress", type=dict)
-        progress = database.Progress(**data)
+        progress = database.schema.Progress(**data)
 
         manifest = await self.manifests.patch(scan_id, progress)
 

@@ -5,41 +5,12 @@ import logging
 import uuid
 from typing import Any, AsyncIterator, Type, TypeVar
 
-import pydantic
-
 # import pymongo.errors
 from dacite import from_dict  # type: ignore[attr-defined]
 from motor.motor_tornado import MotorClient, MotorCollection  # type: ignore
 from tornado import web
 
-
-@pydantic.dataclasses.dataclass(frozen=True)
-class Progress:
-    """Encompasses the computational progress of a scan."""
-
-
-@pydantic.dataclasses.dataclass
-class ScanIDDataclass:
-    """A dataclass with a scan id."""
-
-    scan_id: str
-    is_deleted: bool
-
-
-@pydantic.dataclasses.dataclass
-class Result(ScanIDDataclass):
-    """Encompasses the physics results for a scan."""
-
-    json_result: dict[str, Any]
-
-
-@pydantic.dataclasses.dataclass
-class Manifest(ScanIDDataclass):
-    """Encapsulates the manifest of a unique scan entity."""
-
-    event_id: str
-    progress: Progress = Progress()
-
+from . import schema
 
 # -----------------------------------------------------------------------------
 
@@ -54,7 +25,7 @@ class DocumentNotFoundError(Exception):
 _DB_NAME = "SkyDriver_DB"
 _MANIFEST_COLL_NAME = "Manifests"
 _RESULTS_COLL_NAME = "Results"
-S = TypeVar("S", bound=ScanIDDataclass)
+S = TypeVar("S", bound=schema.ScanIDDataclass)
 
 
 async def ensure_indexes(motor_client: MotorClient) -> None:
@@ -124,26 +95,26 @@ class ScanIDCollectionFacade:
 class ManifestClient(ScanIDCollectionFacade):
     """Wraps the attribute for the metadata of a scan."""
 
-    async def find_one(self, scan_id: str) -> Manifest:
+    async def find_one(self, scan_id: str) -> schema.Manifest:
         """Find one manifest and return it."""
-        return await self._find_one(_MANIFEST_COLL_NAME, scan_id, Manifest)
+        return await self._find_one(_MANIFEST_COLL_NAME, scan_id, schema.Manifest)
 
-    async def upsert(self, scandc: Manifest) -> Manifest:
+    async def upsert(self, scandc: schema.Manifest) -> schema.Manifest:
         """Insert/update manifest and return it."""
         return await self._upsert(_MANIFEST_COLL_NAME, scandc)
 
     # ------------------------------------------------------------------
 
-    async def get(self, scan_id: str) -> Manifest:
-        """Get `Manifest` using `scan_id`."""
+    async def get(self, scan_id: str) -> schema.Manifest:
+        """Get `schema.Manifest` using `scan_id`."""
         logging.debug(f"getting manifest for {scan_id=}")
         manifest = await self.find_one(scan_id)
         return manifest
 
-    async def post(self, event_id: str) -> Manifest:
-        """Create `Manifest` doc."""
+    async def post(self, event_id: str) -> schema.Manifest:
+        """Create `schema.Manifest` doc."""
         logging.debug(f"creating manifest for {event_id=}")
-        manifest = Manifest(
+        manifest = schema.Manifest(
             uuid.uuid4().hex,
             False,
             event_id,
@@ -152,7 +123,7 @@ class ManifestClient(ScanIDCollectionFacade):
         manifest = await self.upsert(manifest)
         return manifest
 
-    async def patch(self, scan_id: str, progress: Progress) -> Manifest:
+    async def patch(self, scan_id: str, progress: schema.Progress) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
         logging.debug(f"patching progress for {scan_id=}")
         manifest = await self.find_one(scan_id)
@@ -160,8 +131,8 @@ class ManifestClient(ScanIDCollectionFacade):
         manifest = await self.upsert(manifest)
         return manifest
 
-    async def mark_as_deleted(self, scan_id: str) -> Manifest:
-        """Mark `Manifest` at doc matching `scan_id` as deleted."""
+    async def mark_as_deleted(self, scan_id: str) -> schema.Manifest:
+        """Mark `schema.Manifest` at doc matching `scan_id` as deleted."""
         logging.debug(f"marking manifest as deleted for {scan_id=}")
         manifest = await self.find_one(scan_id)
         manifest.is_deleted = True
@@ -186,18 +157,18 @@ class ManifestClient(ScanIDCollectionFacade):
 class ResultClient(ScanIDCollectionFacade):
     """Wraps the attribute for the result of a scan."""
 
-    async def find_one(self, scan_id: str) -> Result:
+    async def find_one(self, scan_id: str) -> schema.Result:
         """Find one result and return it."""
-        return await self._find_one(_RESULTS_COLL_NAME, scan_id, Result)
+        return await self._find_one(_RESULTS_COLL_NAME, scan_id, schema.Result)
 
-    async def upsert(self, scandc: Result) -> Result:
+    async def upsert(self, scandc: schema.Result) -> schema.Result:
         """Insert/update result and return it."""
         return await self._upsert(_RESULTS_COLL_NAME, scandc)
 
     # ------------------------------------------------------------------
 
-    async def get(self, scan_id: str) -> Result | None:
-        """Get `Result` using `scan_id`."""
+    async def get(self, scan_id: str) -> schema.Result | None:
+        """Get `schema.Result` using `scan_id`."""
         logging.debug(f"getting result for {scan_id=}")
         try:
             result = await self.find_one(scan_id)
@@ -205,15 +176,15 @@ class ResultClient(ScanIDCollectionFacade):
             return None
         return result
 
-    async def put(self, scan_id: str, json_result: dict[str, Any]) -> Result:
-        """Override `Result` at doc matching `scan_id`."""
+    async def put(self, scan_id: str, json_result: dict[str, Any]) -> schema.Result:
+        """Override `schema.Result` at doc matching `scan_id`."""
         logging.debug(f"overriding result for {scan_id=}")
-        result = Result(scan_id, False, json_result)
+        result = schema.Result(scan_id, False, json_result)
         result = await self.upsert(result)
         return result
 
-    async def mark_as_deleted(self, scan_id: str) -> Result:
-        """Mark `Result` at doc matching `scan_id` as deleted."""
+    async def mark_as_deleted(self, scan_id: str) -> schema.Result:
+        """Mark `schema.Result` at doc matching `scan_id` as deleted."""
         logging.debug(f"marking result as deleted for {scan_id=}")
         result = await self.find_one(scan_id)
         result.is_deleted = True
