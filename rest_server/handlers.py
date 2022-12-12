@@ -174,7 +174,7 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Delete a scan's persisted result."""
         result = await self.results.get(scan_id)
 
-        await self.results.mark_as_deleted(scan_id)
+        result = await self.results.mark_as_deleted(scan_id)
 
         self.write(dc.asdict(result))
 
