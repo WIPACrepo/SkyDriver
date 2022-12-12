@@ -99,7 +99,7 @@ async def test_00(server: Callable[[], RestClient]) -> None:
 
     # send finished result
     result = {"alpha": (i + 1) ** i, "beta": -i}
-    resp = await rc.request("PUT", f"/scan/result/{scan_id}", {"result": result})
+    resp = await rc.request("PUT", f"/scan/result/{scan_id}", {"json_result": result})
     assert resp == {
         "scan_id": scan_id,
         "is_deleted": False,
