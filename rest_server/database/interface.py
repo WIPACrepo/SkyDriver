@@ -131,7 +131,7 @@ class ManifestClient(ScanIDCollectionFacade):
     async def patch(self, scan_id: str, progress: dict[str, Any]) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching progress for {scan_id=}")
-        manifest = await self.find_one(scan_id)
+        manifest = await self.find_one(scan_id, True)
         manifest.progress = progress
         manifest = await self.upsert(manifest)
         return manifest
@@ -139,7 +139,7 @@ class ManifestClient(ScanIDCollectionFacade):
     async def mark_as_deleted(self, scan_id: str) -> schema.Manifest:
         """Mark `schema.Manifest` at doc matching `scan_id` as deleted."""
         LOGGER.debug(f"marking manifest as deleted for {scan_id=}")
-        manifest = await self.find_one(scan_id)
+        manifest = await self.find_one(scan_id, True)
         manifest.is_deleted = True
         manifest = await self.upsert(manifest)
         return manifest
@@ -191,7 +191,7 @@ class ResultClient(ScanIDCollectionFacade):
     async def mark_as_deleted(self, scan_id: str) -> schema.Result:
         """Mark `schema.Result` at doc matching `scan_id` as deleted."""
         LOGGER.debug(f"marking result as deleted for {scan_id=}")
-        result = await self.find_one(scan_id)
+        result = await self.find_one(scan_id, True)
         result.is_deleted = True
         result = await self.upsert(result)
         return result
