@@ -71,6 +71,16 @@ async def test_00(server: Callable[[], RestClient]) -> None:
 
     event_id = "abc123"
 
+    #
+    # EMPTY DB
+
+    # query by event id
+    resp = await rc.request("GET", f"/event/{event_id}")
+    assert not resp["scan_ids"]  # no matches
+
+    #
+    # POPULATE DB
+
     # launch scan
     resp = await rc.request("POST", "/scan", {"event_id": event_id})
     scan_id = resp["scan_id"]  # keep around
@@ -115,6 +125,9 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     resp = await rc.request("GET", f"/scan/result/{scan_id}")
     assert result_resp == resp
 
+    #
+    # DELETE MANIFEST
+
     # delete manifest
     resp = await rc.request("DELETE", f"/scan/manifest/{scan_id}")
     assert resp == {
@@ -135,6 +148,9 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     # query result (still exists)
     resp = await rc.request("GET", f"/scan/result/{scan_id}")
     assert result_resp == resp
+
+    #
+    # DELETE RESULT
 
     # delete result
     resp = await rc.request("DELETE", f"/scan/result/{scan_id}")

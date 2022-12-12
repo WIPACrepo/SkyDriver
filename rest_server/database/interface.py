@@ -4,9 +4,9 @@ import dataclasses as dc
 import uuid
 from typing import Any, AsyncIterator, Type, TypeVar
 
-# import pymongo.errors
 from dacite import from_dict  # type: ignore[attr-defined]
 from motor.motor_tornado import MotorClient, MotorCollection  # type: ignore
+from pymongo import ReturnDocument
 from tornado import web
 
 from ..config import LOGGER
@@ -74,20 +74,17 @@ class ScanIDCollectionFacade:
     async def _upsert(self, coll: str, scandc: S) -> S:
         """Insert/update the doc."""
         LOGGER.debug(f"in {coll=} replacing doc with {scandc=}")
-        res = await self._collections[coll].replace_one(
+        doc = await self._collections[coll].find_one_and_replace(
             {"scan_id": scandc.scan_id},
             dc.asdict(scandc),
             upsert=True,
+            return_document=ReturnDocument.AFTER,
         )
-        ok_update = bool(res.matched_count and res.modified_count)
-        ok_insert = bool(res.upserted_id)
-        if not ok_update and not ok_insert:
+        if not doc:
             raise web.HTTPError(
                 500,
-                log_message=f"Failed to insert/update {coll} document ({scandc.scan_id}): {res.raw_result}",
+                log_message=f"Failed to insert/update {coll} document ({scandc.scan_id})",
             )
-
-        doc = await self._collections[coll].find_one({"scan_id": scandc.scan_id})
         return from_dict(type(scandc), doc)  # type: ignore[no-any-return] # mypy's erring
 
 
