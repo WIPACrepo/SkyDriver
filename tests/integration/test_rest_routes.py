@@ -86,7 +86,12 @@ async def test_00(server: Callable[[], RestClient]) -> None:
         resp = await rc.request(
             "PATCH", f"/scan/manifest/{scan_id}", {"progress": progress}
         )
-        # TODO: assert
+        assert resp == {
+            "scan_id": scan_id,
+            "is_deleted": False,
+            "event_id": event_id,
+            "progress": progress,
+        }
         progress_resp = resp  # keep around
 
         # query progress
@@ -96,7 +101,11 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     # send finished result
     result = {"alpha": (i + 1) ** i, "beta": -i}
     resp = await rc.request("PUT", f"/scan/result/{scan_id}", {"result": result})
-    # TODO: assert
+    assert resp == {
+        "scan_id": scan_id,
+        "is_deleted": False,
+        "json_result": result,
+    }
     result_resp = resp  # keep around
 
     # query progress
@@ -109,7 +118,12 @@ async def test_00(server: Callable[[], RestClient]) -> None:
 
     # delete manifest
     resp = await rc.request("DELETE", f"/scan/manifest/{scan_id}")
-    # TODO: assert
+    assert resp == {
+        "scan_id": scan_id,
+        "is_deleted": True,
+        "event_id": event_id,
+        "progress": progress,
+    }
 
     # query w/ scan id (fails)
     resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
@@ -117,7 +131,7 @@ async def test_00(server: Callable[[], RestClient]) -> None:
 
     # query by event id (none)
     resp = await rc.request("GET", f"/event/{event_id}")
-    assert not resp["scan_ids"]
+    assert not resp["scan_ids"]  # no matches
 
     # query result (still exists)
     resp = await rc.request("GET", f"/scan/result/{scan_id}")
@@ -125,7 +139,11 @@ async def test_00(server: Callable[[], RestClient]) -> None:
 
     # delete result
     resp = await rc.request("DELETE", f"/scan/result/{scan_id}")
-    # TODO: assert
+    assert resp == {
+        "scan_id": scan_id,
+        "is_deleted": True,
+        "json_result": result,
+    }
 
     # query result (fails)
     resp = await rc.request("GET", f"/scan/result/{scan_id}")
