@@ -66,17 +66,18 @@ class ScanIDCollectionFacade:
 
     async def _find_one(self, coll: str, scan_id: str, scandc_type: Type[S]) -> S:
         """Get document by 'scan_id'."""
-        LOGGER.debug(f"in {coll=} finding doc with {scan_id=} for {scandc_type=}")
+        LOGGER.debug(f"finding: ({coll=}) doc with {scan_id=} for {scandc_type=}")
         query = {"scan_id": scan_id}
         doc = await self._collections[coll].find_one(query)
-
         if not doc:
             raise DocumentNotFoundError(coll, query)
-        return from_dict(scandc_type, doc)  # type: ignore[no-any-return] # mypy's erring
+        scandc = from_dict(scandc_type, doc)
+        LOGGER.debug(f"found: ({coll=}) doc {scandc}")
+        return scandc  # type: ignore[no-any-return]  # mypy internal bug
 
     async def _upsert(self, coll: str, scandc: S) -> S:
         """Insert/update the doc."""
-        LOGGER.debug(f"in {coll=} replacing doc with {scandc=}")
+        LOGGER.debug(f"replacing: ({coll=}) doc with {scandc=}")
         doc = await self._collections[coll].find_one_and_replace(
             {"scan_id": scandc.scan_id},
             dc.asdict(scandc),
@@ -88,7 +89,9 @@ class ScanIDCollectionFacade:
                 500,
                 log_message=f"Failed to insert/update {coll} document ({scandc.scan_id})",
             )
-        return from_dict(type(scandc), doc)  # type: ignore[no-any-return] # mypy's erring
+        scandc = from_dict(type(scandc), doc)
+        LOGGER.debug(f"replaced: ({coll=}) doc {scandc}")
+        return scandc
 
 
 # -----------------------------------------------------------------------------
@@ -143,13 +146,14 @@ class ManifestClient(ScanIDCollectionFacade):
 
     async def get_scan_ids(self, event_id: str, incl_del: bool) -> AsyncIterator[str]:
         """Search over scans and find all matching event-id."""
-        LOGGER.debug(f"get matching scan ids for {event_id=} ({incl_del=})")
+        LOGGER.debug(f"matching: scan ids for {event_id=} ({incl_del=})")
 
         # skip the dataclass-casting b/c we're just returning a str
         query = {"event_id": event_id}
         async for doc in self._collections[_MANIFEST_COLL_NAME].find(query):
             if not incl_del and doc["is_deleted"]:
                 continue
+            LOGGER.debug(f"match: {doc['scan_id']=} for {event_id=} ({incl_del=})")
             yield doc["scan_id"]
 
 

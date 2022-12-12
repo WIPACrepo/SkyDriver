@@ -22,6 +22,14 @@ class Result(ScanIDDataclass):
 
     json_result: dict[str, Any]  # actual keys/values are open to requestor
 
+    def __repr__(self) -> str:
+        dicto = dc.asdict(self)
+        dicto.pop("json_result")
+        # shorten b/c this can be a LARGE dict
+        dicto["json_result_HASH"] = hash(str(self.json_result))
+        rep = f"{self.__class__.__name__}{dicto}"
+        return rep
+
 
 @typechecked(always=True)  # always b/c we want full data validation
 @dc.dataclass
