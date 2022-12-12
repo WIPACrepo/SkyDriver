@@ -2,11 +2,13 @@
 
 # pylint: disable=redefined-outer-name
 
+import re
 import socket
 from typing import Any, AsyncIterator, Callable
 
 import pytest
 import pytest_asyncio
+import requests
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_server.config import config_logging
 from rest_server.database.interface import drop_collections
@@ -68,7 +70,6 @@ async def server(
 async def test_00(server: Callable[[], RestClient]) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
-
     event_id = "abc123"
 
     #
@@ -138,8 +139,13 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     }
 
     # query w/ scan id (fails)
-    resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
-    # TODO: assert
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest/{scan_id}"
+        ),
+    ):
+        await rc.request("GET", f"/scan/manifest/{scan_id}")
 
     # query by event id (none)
     resp = await rc.request("GET", f"/event/{event_id}")
@@ -161,5 +167,10 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     }
 
     # query result (fails)
-    resp = await rc.request("GET", f"/scan/result/{scan_id}")
-    # TODO: assert
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"404 Client Error: Not Found for url: {rc.address}/scan/result/{scan_id}"
+        ),
+    ):
+        await rc.request("GET", f"/scan/result/{scan_id}")
