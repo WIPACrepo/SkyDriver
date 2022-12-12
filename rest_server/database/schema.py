@@ -5,11 +5,6 @@ from typing import Any
 import pydantic
 
 
-@pydantic.dataclasses.dataclass(frozen=True)
-class Progress:
-    """Encompasses the computational progress of a scan."""
-
-
 @pydantic.dataclasses.dataclass
 class ScanIDDataclass:
     """A dataclass with a scan id."""
@@ -22,7 +17,7 @@ class ScanIDDataclass:
 class Result(ScanIDDataclass):
     """Encompasses the physics results for a scan."""
 
-    json_result: dict[str, Any]
+    json_result: dict[str, Any]  # actual keys/values are open to requestor
 
 
 @pydantic.dataclasses.dataclass
@@ -30,4 +25,4 @@ class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
 
     event_id: str
-    progress: Progress = Progress()
+    progress: dict[str, Any]  # actual keys/values are open to requestor

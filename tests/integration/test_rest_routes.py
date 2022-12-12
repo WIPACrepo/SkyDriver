@@ -93,7 +93,6 @@ async def test_00(server: Callable[[], RestClient]) -> None:
             "progress": progress,
         }
         progress_resp = resp  # keep around
-
         # query progress
         resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
         assert progress_resp == resp

@@ -2,7 +2,7 @@
 
 
 import dataclasses as dc
-from typing import Any
+from typing import Any, cast
 
 from motor.motor_tornado import MotorClient  # type: ignore
 from rest_tools.server import RestHandler, handler
@@ -142,10 +142,12 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
-        data = self.get_argument("progress", type=dict)
-        progress = database.schema.Progress(**data)
+        progress = self.get_argument("progress", type=dict)
 
-        manifest = await self.manifests.patch(scan_id, progress)
+        manifest = await self.manifests.patch(
+            scan_id,
+            cast(dict[str, Any], progress),
+        )
 
         self.write(dc.asdict(manifest))
 
@@ -179,7 +181,10 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Put (persist) a scan's result."""
         json_result = self.get_argument("json", type=dict)
 
-        result = await self.results.put(scan_id, json_result)  # type: ignore[arg-type]
+        result = await self.results.put(
+            scan_id,
+            cast(dict[str, Any], json_result),
+        )
 
         self.write(dc.asdict(result))
 

@@ -125,7 +125,7 @@ class ManifestClient(ScanIDCollectionFacade):
         manifest = await self.upsert(manifest)
         return manifest
 
-    async def patch(self, scan_id: str, progress: schema.Progress) -> schema.Manifest:
+    async def patch(self, scan_id: str, progress: dict[str, Any]) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching progress for {scan_id=}")
         manifest = await self.find_one(scan_id)
