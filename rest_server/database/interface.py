@@ -64,12 +64,16 @@ class ScanIDCollectionFacade:
             _RESULTS_COLL_NAME: motor_client[_DB_NAME][_RESULTS_COLL_NAME],
         }
 
-    async def _find_one(self, coll: str, scan_id: str, scandc_type: Type[S]) -> S:
+    async def _find_one(
+        self, coll: str, scan_id: str, scandc_type: Type[S], incl_del: bool
+    ) -> S:
         """Get document by 'scan_id'."""
         LOGGER.debug(f"finding: ({coll=}) doc with {scan_id=} for {scandc_type=}")
         query = {"scan_id": scan_id}
         doc = await self._collections[coll].find_one(query)
         if not doc:
+            raise DocumentNotFoundError(coll, query)
+        if doc["is_deleted"] and not incl_del:
             raise DocumentNotFoundError(coll, query)
         scandc = from_dict(scandc_type, doc)
         LOGGER.debug(f"found: ({coll=}) doc {scandc}")
@@ -100,9 +104,11 @@ class ScanIDCollectionFacade:
 class ManifestClient(ScanIDCollectionFacade):
     """Wraps the attribute for the metadata of a scan."""
 
-    async def find_one(self, scan_id: str) -> schema.Manifest:
+    async def find_one(self, scan_id: str, incl_del: bool) -> schema.Manifest:
         """Find one manifest and return it."""
-        return await self._find_one(_MANIFEST_COLL_NAME, scan_id, schema.Manifest)
+        return await self._find_one(
+            _MANIFEST_COLL_NAME, scan_id, schema.Manifest, incl_del
+        )
 
     async def upsert(self, scandc: schema.Manifest) -> schema.Manifest:
         """Insert/update manifest and return it."""
@@ -110,10 +116,10 @@ class ManifestClient(ScanIDCollectionFacade):
 
     # ------------------------------------------------------------------
 
-    async def get(self, scan_id: str) -> schema.Manifest:
+    async def get(self, scan_id: str, incl_del: bool) -> schema.Manifest:
         """Get `schema.Manifest` using `scan_id`."""
         LOGGER.debug(f"getting manifest for {scan_id=}")
-        manifest = await self.find_one(scan_id)
+        manifest = await self.find_one(scan_id, incl_del)
         return manifest
 
     async def post(self, event_id: str) -> schema.Manifest:
@@ -163,9 +169,11 @@ class ManifestClient(ScanIDCollectionFacade):
 class ResultClient(ScanIDCollectionFacade):
     """Wraps the attribute for the result of a scan."""
 
-    async def find_one(self, scan_id: str) -> schema.Result:
+    async def find_one(self, scan_id: str, incl_del: bool) -> schema.Result:
         """Find one result and return it."""
-        return await self._find_one(_RESULTS_COLL_NAME, scan_id, schema.Result)
+        return await self._find_one(
+            _RESULTS_COLL_NAME, scan_id, schema.Result, incl_del
+        )
 
     async def upsert(self, scandc: schema.Result) -> schema.Result:
         """Insert/update result and return it."""
@@ -173,11 +181,11 @@ class ResultClient(ScanIDCollectionFacade):
 
     # ------------------------------------------------------------------
 
-    async def get(self, scan_id: str) -> schema.Result | None:
+    async def get(self, scan_id: str, incl_del: bool) -> schema.Result | None:
         """Get `schema.Result` using `scan_id`."""
         LOGGER.debug(f"getting result for {scan_id=}")
         try:
-            result = await self.find_one(scan_id)
+            result = await self.find_one(scan_id, incl_del)
         except DocumentNotFoundError:
             return None
         return result

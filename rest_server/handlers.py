@@ -128,7 +128,9 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
-        manifest = await self.manifests.get(scan_id)
+        incl_del = self.get_argument("include_deleted", default=False, type=bool)
+
+        manifest = await self.manifests.get(scan_id, incl_del)
 
         self.write(dc.asdict(manifest))
 
@@ -165,7 +167,9 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted result."""
-        result = await self.results.get(scan_id)
+        incl_del = self.get_argument("include_deleted", default=False, type=bool)
+
+        result = await self.results.get(scan_id, incl_del)
 
         self.write(dc.asdict(result))
 
