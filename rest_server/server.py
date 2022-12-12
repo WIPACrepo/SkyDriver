@@ -10,7 +10,7 @@ from urllib.parse import quote_plus
 from motor.motor_tornado import MotorClient  # type: ignore
 from rest_tools.server import RestHandler, RestHandlerSetup, RestServer
 
-from . import database.interface, handlers
+from . import database, handlers
 from .config import ENV, is_testing
 
 
