@@ -30,7 +30,7 @@ class ScanIDDataclass:
 class Result(ScanIDDataclass):
     """Encompasses the physics results for a scan."""
 
-    json: dict[str, Any]
+    json_result: dict[str, Any]
 
 
 @pydantic.dataclasses.dataclass

@@ -180,7 +180,7 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Put (persist) a scan's result."""
         json_result = self.get_argument("json", type=dict)
 
-        result = await self.results.put(scan_id, json_result)
+        result = await self.results.put(scan_id, json_result)  # type: ignore[arg-type]
 
         self.write(dc.asdict(result))
 
