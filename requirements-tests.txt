@@ -82,8 +82,6 @@ protobuf==3.20.3
     #   wipac-telemetry
 pycparser==2.21
     # via cffi
-pydantic==1.10.2
-    # via rest-server (setup.py)
 pyjwt[crypto]==2.5.0
     # via wipac-rest-tools
 pymongo==4.3.3
@@ -118,12 +116,13 @@ tornado==6.2
     # via
     #   rest-server (setup.py)
     #   wipac-rest-tools
+typeguard==2.13.3
+    # via rest-server (setup.py)
 types-cryptography==3.3.23.2
     # via pyjwt
 typing-extensions==4.4.0
     # via
     #   opentelemetry-sdk
-    #   pydantic
     #   wipac-dev-tools
     #   wipac-telemetry
 urllib3==1.26.13
@@ -133,7 +132,7 @@ wipac-dev-tools==1.6.10
     #   rest-server (setup.py)
     #   wipac-rest-tools
     #   wipac-telemetry
-wipac-rest-tools[telemetry]==1.3.16
+wipac-rest-tools[telemetry]==1.3.18
     # via rest-server (setup.py)
 wipac-telemetry==0.2.5
     # via wipac-rest-tools
