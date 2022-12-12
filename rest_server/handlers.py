@@ -2,21 +2,20 @@
 
 
 import dataclasses as dc
-import logging
 from typing import Any
 
 from motor.motor_tornado import MotorClient  # type: ignore
 from rest_tools.server import RestHandler, handler
 
 from . import database
-from .config import SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
+from .config import LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
 
 if is_testing():
 
     def service_account_auth(**kwargs):  # type: ignore
         def make_wrapper(method):
             async def wrapper(self, *args, **kwargs):
-                logging.warning("TESTING: auth disabled")
+                LOGGER.warning("TESTING: auth disabled")
                 return await method(self, *args, **kwargs)
 
             return wrapper
@@ -47,7 +46,7 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
 
     def prepare(self):
         # TODO: put this into rest-tools
-        logging.debug(
+        LOGGER.debug(
             f"{self.request.path} {self.request.method}("
             f"{self.path_args}, {self.path_kwargs}) [{self.__class__.__name__}]"
         )
@@ -103,7 +102,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     async def post(self) -> None:
         """Start a new scan."""
         event_id = self.get_argument("event_id", type=str)
-        logging.info(f"{event_id=}")
+        LOGGER.info(f"{event_id=}")
         # TODO: get more args
 
         manifest = await self.manifests.post(event_id)  # generates ID

@@ -1,9 +1,12 @@
 """Config settings."""
 
 import dataclasses as dc
+import logging
 
 import coloredlogs  # type: ignore[import]
 from wipac_dev_tools import from_environment_as_dataclass
+
+LOGGER = logging.getLogger("skydriver")
 
 # --------------------------------------------------------------------------------------
 # Constants
@@ -58,6 +61,6 @@ def config_logging(level: str) -> None:
     testing environments.
     """
     coloredlogs.install(
-        fmt="%(asctime)s.%(msecs)03d %(hostname)s %(name)s[%(process)d] [%(filename)s:%(lineno)s/%(funcName)s()] %(levelname)s %(message)s",
+        fmt="%(asctime)s.%(msecs)03d [%(levelname)8s] %(hostname)s %(name)s[%(process)d] %(message)s <%(filename)s:%(lineno)s/%(funcName)s()>",
         level=level.upper(),
     )

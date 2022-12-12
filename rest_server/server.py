@@ -3,7 +3,6 @@
 
 import dataclasses as dc
 import inspect
-import logging
 from typing import Any
 from urllib.parse import quote_plus
 
@@ -11,7 +10,7 @@ from motor.motor_tornado import MotorClient  # type: ignore
 from rest_tools.server import RestHandler, RestHandlerSetup, RestServer
 
 from . import database, handlers
-from .config import ENV, is_testing
+from .config import ENV, LOGGER, is_testing
 
 
 def mongodb_url() -> str:
@@ -29,7 +28,7 @@ def mongodb_url() -> str:
 async def make(debug: bool = False) -> RestServer:
     """Make a SkyDriver REST service (does not start up automatically)."""
     for field in dc.fields(ENV):
-        logging.info(
+        LOGGER.info(
             f"{field.name}\t{getattr(ENV, field.name)}\t({type(getattr(ENV, field.name)).__name__})"
         )
 
@@ -54,7 +53,7 @@ async def make(debug: bool = False) -> RestServer:
     ):
         try:
             rs.add_route(getattr(klass, "ROUTE"), klass, args)
-            logging.info(f"Added handler: {name}")
+            LOGGER.info(f"Added handler: {name}")
         except AttributeError:
             continue
 
