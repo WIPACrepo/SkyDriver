@@ -6,7 +6,7 @@ from typing import Any
 from typeguard import typechecked
 
 
-@typechecked
+@typechecked(always=True)  # always b/c we want full data validation
 @dc.dataclass
 class ScanIDDataclass:
     """A dataclass with a scan id."""
@@ -15,7 +15,7 @@ class ScanIDDataclass:
     is_deleted: bool
 
 
-@typechecked
+@typechecked(always=True)  # always b/c we want full data validation
 @dc.dataclass
 class Result(ScanIDDataclass):
     """Encompasses the physics results for a scan."""
@@ -23,7 +23,7 @@ class Result(ScanIDDataclass):
     json_result: dict[str, Any]  # actual keys/values are open to requestor
 
 
-@typechecked
+@typechecked(always=True)  # always b/c we want full data validation
 @dc.dataclass
 class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
