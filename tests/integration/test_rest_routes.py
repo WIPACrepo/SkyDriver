@@ -7,7 +7,7 @@ from typing import Any, AsyncIterator, Callable
 
 import pytest
 import pytest_asyncio
-from motor.motor_tornado import MotorClient  # type: ignore
+from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_server.config import config_logging
 from rest_server.database.interface import drop_collections
 from rest_server.server import make, mongodb_url
@@ -33,7 +33,7 @@ def port() -> int:
 @pytest_asyncio.fixture
 async def mongo_clear() -> Any:
     """Clear the MongoDB after test completes."""
-    motor_client = MotorClient(mongodb_url())
+    motor_client = AsyncIOMotorClient(mongodb_url())
     try:
         await drop_collections(motor_client)
         yield

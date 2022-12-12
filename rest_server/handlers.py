@@ -4,7 +4,7 @@
 import dataclasses as dc
 from typing import Any, cast
 
-from motor.motor_tornado import MotorClient  # type: ignore
+from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.server import RestHandler, handler
 
 from . import database
@@ -41,8 +41,10 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)
         # pylint: disable=W0201
-        self.manifests = database.interface.ManifestClient(MotorClient(mongodb_url))
-        self.results = database.interface.ResultClient(MotorClient(mongodb_url))
+        self.manifests = database.interface.ManifestClient(
+            AsyncIOMotorClient(mongodb_url)
+        )
+        self.results = database.interface.ResultClient(AsyncIOMotorClient(mongodb_url))
 
     def prepare(self):
         # TODO: put this into rest-tools

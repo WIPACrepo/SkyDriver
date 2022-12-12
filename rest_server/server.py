@@ -6,7 +6,7 @@ import inspect
 from typing import Any
 from urllib.parse import quote_plus
 
-from motor.motor_tornado import MotorClient  # type: ignore
+from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.server import RestHandler, RestHandlerSetup, RestServer
 
 from . import database, handlers
@@ -57,5 +57,5 @@ async def make(debug: bool = False) -> RestServer:
         except AttributeError:
             continue
 
-    await database.interface.ensure_indexes(MotorClient(args["mongodb_url"]))
+    await database.interface.ensure_indexes(AsyncIOMotorClient(args["mongodb_url"]))
     return rs

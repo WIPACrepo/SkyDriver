@@ -5,7 +5,10 @@ import uuid
 from typing import Any, AsyncIterator, Type, TypeVar
 
 from dacite import from_dict  # type: ignore[attr-defined]
-from motor.motor_tornado import MotorClient, MotorCollection  # type: ignore
+from motor.motor_asyncio import (  # type: ignore
+    AsyncIOMotorClient,
+    AsyncIOMotorCollection,
+)
 from pymongo import ReturnDocument
 from tornado import web
 
@@ -28,7 +31,7 @@ _RESULTS_COLL_NAME = "Results"
 S = TypeVar("S", bound=schema.ScanIDDataclass)
 
 
-async def ensure_indexes(motor_client: MotorClient) -> None:
+async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
     """Create indexes in collections.
 
     Call on server startup.
@@ -45,7 +48,7 @@ async def ensure_indexes(motor_client: MotorClient) -> None:
     await index_collection(_RESULTS_COLL_NAME, {"scan_id": True})
 
 
-async def drop_collections(motor_client: MotorClient) -> None:
+async def drop_collections(motor_client: AsyncIOMotorClient) -> None:
     """Drop the "regular" collections -- most useful for testing."""
     await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].drop()
     await motor_client[_DB_NAME][_RESULTS_COLL_NAME].drop()
@@ -54,9 +57,9 @@ async def drop_collections(motor_client: MotorClient) -> None:
 class ScanIDCollectionFacade:
     """Allows specific semantic actions on the collections by Scan ID."""
 
-    def __init__(self, motor_client: MotorClient) -> None:
+    def __init__(self, motor_client: AsyncIOMotorClient) -> None:
         # place in a dictionary so there's some safeguarding against bogus collections
-        self._collections: dict[str, MotorCollection] = {
+        self._collections: dict[str, AsyncIOMotorCollection] = {
             _MANIFEST_COLL_NAME: motor_client[_DB_NAME][_MANIFEST_COLL_NAME],
             _RESULTS_COLL_NAME: motor_client[_DB_NAME][_RESULTS_COLL_NAME],
         }
