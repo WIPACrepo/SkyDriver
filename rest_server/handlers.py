@@ -137,7 +137,7 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
-        manifest = await self.manifests.get(scan_id)
+        # TODO - call to k8s
 
         manifest = await self.manifests.mark_as_deleted(scan_id)
 
@@ -176,7 +176,6 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Delete a scan's persisted result."""
-        result = await self.results.get(scan_id)
 
         result = await self.results.mark_as_deleted(scan_id)
 

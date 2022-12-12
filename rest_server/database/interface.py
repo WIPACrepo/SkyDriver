@@ -18,13 +18,6 @@ from . import schema
 # -----------------------------------------------------------------------------
 
 
-class DocumentNotFoundError(Exception):
-    """Raised when a document is not found."""
-
-    def __init__(self, collection: str, query: dict[str, Any]):
-        super().__init__(f"{collection}: {query}")
-
-
 _DB_NAME = "SkyDriver_DB"
 _MANIFEST_COLL_NAME = "Manifests"
 _RESULTS_COLL_NAME = "Results"
@@ -71,10 +64,11 @@ class ScanIDCollectionFacade:
         LOGGER.debug(f"finding: ({coll=}) doc with {scan_id=} for {scandc_type=}")
         query = {"scan_id": scan_id}
         doc = await self._collections[coll].find_one(query)
-        if not doc:
-            raise DocumentNotFoundError(coll, query)
-        if doc["is_deleted"] and not incl_del:
-            raise DocumentNotFoundError(coll, query)
+        if (not doc) or (doc["is_deleted"] and not incl_del):
+            raise web.HTTPError(
+                404,
+                log_message=f"Document Not Found: {coll} document ({scan_id})",
+            )
         scandc = from_dict(scandc_type, doc)
         LOGGER.debug(f"found: ({coll=}) doc {scandc}")
         return scandc  # type: ignore[no-any-return]  # mypy internal bug
@@ -184,10 +178,7 @@ class ResultClient(ScanIDCollectionFacade):
     async def get(self, scan_id: str, incl_del: bool) -> schema.Result | None:
         """Get `schema.Result` using `scan_id`."""
         LOGGER.debug(f"getting result for {scan_id=}")
-        try:
-            result = await self.find_one(scan_id, incl_del)
-        except DocumentNotFoundError:
-            return None
+        result = await self.find_one(scan_id, incl_del)
         return result
 
     async def put(self, scan_id: str, json_dict: dict[str, Any]) -> schema.Result:
