@@ -386,7 +386,9 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
+        match=re.escape(
+            f"400 Client Error: `json_dict`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/result/{scan_id}"
+        ),
     ) as e:
         await rc.request("PUT", f"/scan/result/{scan_id}", {})
     print(e.value)
