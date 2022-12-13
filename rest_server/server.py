@@ -2,12 +2,11 @@
 
 
 import dataclasses as dc
-import inspect
 from typing import Any
 from urllib.parse import quote_plus
 
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
-from rest_tools.server import RestHandler, RestHandlerSetup, RestServer
+from rest_tools.server import RestHandlerSetup, RestServer
 
 from . import database, handlers
 from .config import ENV, LOGGER, is_testing
@@ -45,15 +44,17 @@ async def make(debug: bool = False) -> RestServer:
 
     # Configure REST Routes
     rs = RestServer(debug=debug)
-    for name, klass in inspect.getmembers(
-        handlers,
-        predicate=lambda x: (
-            inspect.isclass(x) and issubclass(x, RestHandler) and x != RestHandler
-        ),
-    ):
+
+    for klass in [
+        handlers.EventMappingHandler,
+        handlers.MainHandler,
+        handlers.ManifestHandler,
+        handlers.ResultsHandler,
+        handlers.ScanLauncherHandler,
+    ]:
         try:
             rs.add_route(getattr(klass, "ROUTE"), klass, args)
-            LOGGER.info(f"Added handler: {name}")
+            LOGGER.info(f"Added handler: {klass.__name__}")
         except AttributeError:
             continue
 
