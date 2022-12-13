@@ -196,9 +196,7 @@ async def _delete_result(
         await rc.request("GET", f"/scan/result/{scan_id}")
 
     # query w/ incl_del
-    resp = await rc.request(
-        "GET", f"/scan/manifest/{scan_id}", {"include_deleted": True}
-    )
+    resp = await rc.request("GET", f"/scan/result/{scan_id}", {"include_deleted": True})
     assert del_resp == resp
 
 
