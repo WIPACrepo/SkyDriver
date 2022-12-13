@@ -304,6 +304,11 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # OK
     manifest = await _do_progress(rc, event_id, scan_id, 10)
 
+    # # no arg
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("GET", "/scan/manifest/")
+    print(e.value)
+
     #
     # SEND RESULT
     #
@@ -332,6 +337,11 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
 
     # OK
     result = await _send_result(rc, scan_id, manifest)
+
+    # # no arg
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("GET", "/scan/result/")
+    print(e.value)
 
     #
     # DELETE MANIFEST
