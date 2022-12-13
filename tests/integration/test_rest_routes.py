@@ -141,6 +141,7 @@ async def _delete_manifest(
         "event_id": event_id,
         "progress": last_known_manifest["progress"],
     }
+    del_resp = resp  # keep around
 
     # query w/ scan id (fails)
     with pytest.raises(
@@ -151,9 +152,19 @@ async def _delete_manifest(
     ):
         await rc.request("GET", f"/scan/manifest/{scan_id}")
 
+    # query w/ incl_del
+    resp = await rc.request(
+        "GET", f"/scan/manifest/{scan_id}", {"include_deleted": True}
+    )
+    assert del_resp == resp
+
     # query by event id (none)
     resp = await rc.request("GET", f"/event/{event_id}")
     assert not resp["scan_ids"]  # no matches
+
+    # query by event id w/ incl_del
+    resp = await rc.request("GET", f"/event/{event_id}", {"include_deleted": True})
+    assert resp["scan_ids"] == [scan_id]
 
     # query result (still exists)
     resp = await rc.request("GET", f"/scan/result/{scan_id}")
@@ -173,6 +184,7 @@ async def _delete_result(
         "is_deleted": True,
         "json_dict": last_known_manifest["json_dict"],
     }
+    del_resp = resp  # keep around
 
     # query result (fails)
     with pytest.raises(
@@ -182,6 +194,12 @@ async def _delete_result(
         ),
     ):
         await rc.request("GET", f"/scan/result/{scan_id}")
+
+    # query w/ incl_del
+    resp = await rc.request(
+        "GET", f"/scan/manifest/{scan_id}", {"include_deleted": True}
+    )
+    assert del_resp == resp
 
 
 ########################################################################################
@@ -193,7 +211,8 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     event_id = "abc123"
 
     #
-    # EMPTY DB
+    # PRECHECK EMPTY DB
+    #
 
     # query by event id
     resp = await rc.request("GET", f"/event/{event_id}")
@@ -201,70 +220,146 @@ async def test_00(server: Callable[[], RestClient]) -> None:
 
     #
     # LAUNCH SCAN
+    #
     scan_id = await _launch_scan(rc, event_id)
 
     #
     # ADD PROGRESS
+    #
     manifest = await _do_progress(rc, event_id, scan_id, 10)
 
     #
     # SEND RESULT
+    #
     result = await _send_result(rc, scan_id, manifest)
 
     #
     # DELETE MANIFEST
+    #
     await _delete_manifest(rc, event_id, scan_id, manifest, result)
 
     #
     # DELETE RESULT
+    #
     await _delete_result(rc, scan_id, manifest)
 
 
+async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
+    """Failure-test scan creation and retrieval."""
+    rc = server()
+    event_id = "abc123"
+
     #
-    # DELETE MANIFEST
+    # PRECHECK EMPTY DB
+    #
 
-    # delete manifest
-    resp = await rc.request("DELETE", f"/scan/manifest/{scan_id}")
-    assert resp == {
-        "scan_id": scan_id,
-        "is_deleted": True,
-        "event_id": event_id,
-        "progress": progress,
-    }
-
-    # query w/ scan id (fails)
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest/{scan_id}"
-        ),
-    ):
-        await rc.request("GET", f"/scan/manifest/{scan_id}")
-
-    # query by event id (none)
+    # query by event id
     resp = await rc.request("GET", f"/event/{event_id}")
     assert not resp["scan_ids"]  # no matches
 
-    # query result (still exists)
-    resp = await rc.request("GET", f"/scan/result/{scan_id}")
-    assert result_resp == resp
+    # bad url
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("GET", "/event/")
+    print(e.value)
+
+    #
+    # LAUNCH SCAN
+    #
+
+    # ERROR
+    # # no arg
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("POST", "/scan")
+    print(e.value)
+
+    # OK
+    scan_id = await _launch_scan(rc, event_id)
+
+    #
+    # ADD PROGRESS
+    #
+
+    # ERROR - update progress
+    # # no arg
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("PATCH", "/scan/manifest/")
+    print(e)
+    # # no arg w/ body
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("PATCH", "/scan/manifest/", {"progress": {"a": 1}})
+    print(e)
+    # # empty body
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("PATCH", f"/scan/manifest/{scan_id}", {})
+    print(e)
+    # # empty body-arg
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("PATCH", f"/scan/manifest/{scan_id}", {"progress": {}})
+    print(e)
+    # # bad-type body-arg
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("PATCH", f"/scan/manifest/{scan_id}", {"progress": []})
+    print(e)
+
+    # OK
+    manifest = await _do_progress(rc, event_id, scan_id, 10)
+
+    #
+    # SEND RESULT
+    #
+
+    # ERROR
+    # # no arg
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("PUT", "/scan/result/")
+    print(e)
+    # # no arg w/ body
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("PUT", "/scan/result/", {"json_dict": {"bb": 22}})
+    print(e)
+    # # empty body
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("PUT", f"/scan/result/{scan_id}", {})
+    print(e)
+    # # empty body-arg
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": {}})
+    print(e)
+    # # bad-type body-arg
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": []})
+    print(e)
+
+    # OK
+    result = await _send_result(rc, scan_id, manifest)
+
+    #
+    # DELETE MANIFEST
+    #
+
+    # ERROR
+    # # no arg
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("DELETE", "/scan/manifest/")
+    print(e.value)
+
+    # OK
+    await _delete_manifest(rc, event_id, scan_id, manifest, result)
+
+    # also OK
+    await _delete_manifest(rc, event_id, scan_id, manifest, result)
 
     #
     # DELETE RESULT
+    #
 
-    # delete result
-    resp = await rc.request("DELETE", f"/scan/result/{scan_id}")
-    assert resp == {
-        "scan_id": scan_id,
-        "is_deleted": True,
-        "json_dict": result,
-    }
+    # # no arg
+    with pytest.raises(requests.exceptions.HTTPError) as e:
+        await rc.request("DELETE", "/scan/result/")
+    print(e.value)
 
-    # query result (fails)
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/result/{scan_id}"
-        ),
-    ):
-        await rc.request("GET", f"/scan/result/{scan_id}")
+    # OK
+    await _delete_result(rc, scan_id, manifest)
+
+    # also OK
+    await _delete_result(rc, scan_id, manifest)
