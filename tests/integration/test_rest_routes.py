@@ -270,6 +270,20 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     #
 
     # ERROR
+    # # no arg
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/scan/"),
+    ) as e:
+        await rc.request("POST", "/scan/")
+    print(e.value)
+    # # no arg w/ body
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/scan/"),
+    ) as e:
+        await rc.request("POST", "/scan/", {"event_id": event_id})
+    print(e.value)
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
@@ -277,7 +291,14 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             f"400 Client Error: `event_id`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan"
         ),
     ) as e:
-        await rc.request("POST", "/scan")
+        await rc.request("POST", "/scan/", {})
+    print(e.value)
+    # # bad-type body-arg
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/scan/"),
+    ) as e:
+        await rc.request("POST", "/scan/", {"event_id": []})
     print(e.value)
 
     # OK
