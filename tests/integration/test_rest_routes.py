@@ -283,7 +283,9 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     for bad_arg in [{}, [], ["a", "b", "c"]]:
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/scan"),
+            match=re.escape(
+                f"400 Client Error: `event_id`: (ValueError) event_id must contain alphanumeric characters and no spaces for url: {rc.address}/scan"
+            ),
         ) as e:
             await rc.request("POST", "/scan", {"event_id": bad_arg})
         print(e.value)
