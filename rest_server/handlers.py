@@ -46,14 +46,6 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
         )
         self.results = database.interface.ResultClient(AsyncIOMotorClient(mongodb_url))
 
-    def prepare(self):
-        # TODO: put this into rest-tools
-        LOGGER.debug(
-            f"{self.request.path} {self.request.method}("
-            f"{self.path_args}, {self.path_kwargs}) [{self.__class__.__name__}]"
-        )
-        super().prepare()
-
 
 # -----------------------------------------------------------------------------
 
@@ -127,10 +119,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
 
 # -----------------------------------------------------------------------------
-def validate_dict_type(val: Any) -> dict:
-    if not isinstance(val, dict):
-        raise TypeError(f"type mismatch: 'dict' (value is '{type(val)}')")
-    return val
 
 
 class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
@@ -159,9 +147,7 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
-
-        # TODO: swap in: type=dict, strict_type=True
-        progress = self.get_argument("progress", type=validate_dict_type)
+        progress = self.get_argument("progress", type=dict, strict_type=True)
 
         manifest = await self.manifests.patch(
             scan_id,
@@ -199,9 +185,7 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's result."""
-
-        # TODO: swap in: type=dict, strict_type=True
-        json_dict = self.get_argument("json_dict", type=validate_dict_type)
+        json_dict = self.get_argument("json_dict", type=dict, strict_type=True)
 
         result = await self.results.put(
             scan_id,
