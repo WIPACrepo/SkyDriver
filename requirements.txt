@@ -111,7 +111,7 @@ wipac-dev-tools==1.6.10
     #   rest-server (setup.py)
     #   wipac-rest-tools
     #   wipac-telemetry
-wipac-rest-tools[telemetry]==1.3.19
+wipac-rest-tools[telemetry]==1.3.20
     # via rest-server (setup.py)
 wipac-telemetry==0.2.5
     # via wipac-rest-tools
