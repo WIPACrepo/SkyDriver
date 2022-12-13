@@ -132,7 +132,7 @@ class ManifestClient(ScanIDCollectionFacade):
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching progress for {scan_id=}")
         if not progress:
-            msg = f"Attempted progress update with an empty object ({progress}) for {scan_id=}"
+            msg = f"Attempted progress update with an empty object ({progress})"
             raise web.HTTPError(
                 422,
                 log_message=msg + f" for {scan_id=}",
