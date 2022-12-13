@@ -2,7 +2,7 @@
 
 import dataclasses as dc
 import uuid
-from typing import Any, AsyncIterator, Type, TypeVar
+from typing import Any, AsyncIterator, Tuple, Type, TypeVar
 
 from dacite import from_dict  # type: ignore[attr-defined]
 from motor.motor_asyncio import (  # type: ignore
@@ -11,6 +11,7 @@ from motor.motor_asyncio import (  # type: ignore
 )
 from pymongo import ReturnDocument
 from tornado import web
+from typeguard import check_type
 
 from ..config import LOGGER
 from . import schema
@@ -73,23 +74,38 @@ class ScanIDCollectionFacade:
         LOGGER.debug(f"found: ({coll=}) doc {scandc}")
         return scandc  # type: ignore[no-any-return]  # mypy internal bug
 
-    async def _upsert(self, coll: str, scandc: S) -> S:
+    async def _upsert(
+        self, coll: str, scan_id: str, replacement: dict[str, Any], scandc_type: Type[S]
+    ) -> S:
         """Insert/update the doc."""
-        LOGGER.debug(f"replacing: ({coll=}) doc with {scandc=}")
-        doc = await self._collections[coll].find_one_and_replace(
-            {"scan_id": scandc.scan_id},
-            dc.asdict(scandc),
+        LOGGER.debug(f"replacing: ({coll=}) doc with {scan_id=} {scandc_type=}")
+
+        # enforce schema
+        fields = {x.name: x for x in dc.fields(scandc_type)}
+        for attr, value in replacement.items():
+            try:
+                check_type(attr, value, fields[attr].type)
+            except (TypeError, KeyError) as e:
+                raise web.HTTPError(
+                    500,
+                    log_message=f"{e} [{coll=}, {scan_id=}]",
+                )
+
+        # upsert
+        doc = await self._collections[coll].find_one_and_update(
+            {"scan_id": scan_id},
+            replacement,
             upsert=True,
             return_document=ReturnDocument.AFTER,
         )
         if not doc:
             raise web.HTTPError(
                 500,
-                log_message=f"Failed to insert/update {coll} document ({scandc.scan_id})",
+                log_message=f"Failed to insert/update {coll} document ({scan_id})",
             )
-        scandc = from_dict(type(scandc), doc)
+        scandc = from_dict(scandc_type, doc)
         LOGGER.debug(f"replaced: ({coll=}) doc {scandc}")
-        return scandc
+        return scandc  # type: ignore[no-any-return]  # mypy internal bug
 
 
 # -----------------------------------------------------------------------------
@@ -98,34 +114,26 @@ class ScanIDCollectionFacade:
 class ManifestClient(ScanIDCollectionFacade):
     """Wraps the attribute for the metadata of a scan."""
 
-    async def find_one(self, scan_id: str, incl_del: bool) -> schema.Manifest:
-        """Find one manifest and return it."""
-        return await self._find_one(
-            _MANIFEST_COLL_NAME, scan_id, schema.Manifest, incl_del
-        )
-
-    async def upsert(self, scandc: schema.Manifest) -> schema.Manifest:
-        """Insert/update manifest and return it."""
-        return await self._upsert(_MANIFEST_COLL_NAME, scandc)
-
-    # ------------------------------------------------------------------
-
     async def get(self, scan_id: str, incl_del: bool) -> schema.Manifest:
         """Get `schema.Manifest` using `scan_id`."""
         LOGGER.debug(f"getting manifest for {scan_id=}")
-        manifest = await self.find_one(scan_id, incl_del)
+        manifest = await self._find_one(
+            _MANIFEST_COLL_NAME, scan_id, schema.Manifest, incl_del
+        )
         return manifest
 
     async def post(self, event_id: str) -> schema.Manifest:
         """Create `schema.Manifest` doc."""
         LOGGER.debug(f"creating manifest for {event_id=}")
-        manifest = schema.Manifest(
+        manifest = schema.Manifest(  # validates data
             uuid.uuid4().hex,
             False,
             event_id,
             # TODO: more args here
         )
-        manifest = await self.upsert(manifest)
+        manifest = await self._upsert(
+            _MANIFEST_COLL_NAME, manifest.scan_id, dc.asdict(manifest), schema.Manifest
+        )
         return manifest
 
     async def patch(self, scan_id: str, progress: dict[str, Any]) -> schema.Manifest:
@@ -138,17 +146,19 @@ class ManifestClient(ScanIDCollectionFacade):
                 log_message=msg + f" for {scan_id=}",
                 reason=msg,
             )
-        manifest = await self.find_one(scan_id, True)
-        manifest.progress = progress
-        manifest = await self.upsert(manifest)
+
+        manifest = await self._upsert(
+            _MANIFEST_COLL_NAME, scan_id, {"progress": progress}, schema.Manifest
+        )
         return manifest
 
     async def mark_as_deleted(self, scan_id: str) -> schema.Manifest:
         """Mark `schema.Manifest` at doc matching `scan_id` as deleted."""
         LOGGER.debug(f"marking manifest as deleted for {scan_id=}")
-        manifest = await self.find_one(scan_id, True)
-        manifest.is_deleted = True
-        manifest = await self.upsert(manifest)
+
+        manifest = await self._upsert(
+            _MANIFEST_COLL_NAME, scan_id, {"is_deleted": True}, schema.Manifest
+        )
         return manifest
 
     async def get_scan_ids(self, event_id: str, incl_del: bool) -> AsyncIterator[str]:
@@ -170,22 +180,12 @@ class ManifestClient(ScanIDCollectionFacade):
 class ResultClient(ScanIDCollectionFacade):
     """Wraps the attribute for the result of a scan."""
 
-    async def find_one(self, scan_id: str, incl_del: bool) -> schema.Result:
-        """Find one result and return it."""
-        return await self._find_one(
-            _RESULTS_COLL_NAME, scan_id, schema.Result, incl_del
-        )
-
-    async def upsert(self, scandc: schema.Result) -> schema.Result:
-        """Insert/update result and return it."""
-        return await self._upsert(_RESULTS_COLL_NAME, scandc)
-
-    # ------------------------------------------------------------------
-
     async def get(self, scan_id: str, incl_del: bool) -> schema.Result | None:
         """Get `schema.Result` using `scan_id`."""
         LOGGER.debug(f"getting result for {scan_id=}")
-        result = await self.find_one(scan_id, incl_del)
+        result = await self._find_one(
+            _RESULTS_COLL_NAME, scan_id, schema.Result, incl_del
+        )
         return result
 
     async def put(self, scan_id: str, json_dict: dict[str, Any]) -> schema.Result:
@@ -198,14 +198,17 @@ class ResultClient(ScanIDCollectionFacade):
                 log_message=msg + f" for {scan_id=}",
                 reason=msg,
             )
-        result = schema.Result(scan_id, False, json_dict)
-        result = await self.upsert(result)
+        result = schema.Result(scan_id, False, json_dict)  # validates data
+        result = await self._upsert(
+            _RESULTS_COLL_NAME, result.scan_id, dc.asdict(result), schema.Result
+        )
         return result
 
     async def mark_as_deleted(self, scan_id: str) -> schema.Result:
         """Mark `schema.Result` at doc matching `scan_id` as deleted."""
         LOGGER.debug(f"marking result as deleted for {scan_id=}")
-        result = await self.find_one(scan_id, True)
-        result.is_deleted = True
-        result = await self.upsert(result)
+
+        result = await self._upsert(
+            _RESULTS_COLL_NAME, scan_id, {"is_deleted": True}, schema.Result
+        )
         return result
