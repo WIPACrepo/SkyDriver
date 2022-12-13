@@ -258,7 +258,10 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     assert not resp["scan_ids"]  # no matches
 
     # bad url
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event/"),
+    ) as e:
         await rc.request("GET", "/event/")
     print(e.value)
 
@@ -267,8 +270,13 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     #
 
     # ERROR
-    # # no arg
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    # # empty body
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"400 Client Error: `event_id`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan"
+        ),
+    ) as e:
         await rc.request("POST", "/scan")
     print(e.value)
 
@@ -281,23 +289,44 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
 
     # ERROR - update progress
     # # no arg
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest/"
+        ),
+    ) as e:
         await rc.request("PATCH", "/scan/manifest/")
     print(e)
     # # no arg w/ body
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest/"
+        ),
+    ) as e:
         await rc.request("PATCH", "/scan/manifest/", {"progress": {"a": 1}})
     print(e)
     # # empty body
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"400 Client Error: `progress`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/manifest/{scan_id}"
+        ),
+    ) as e:
         await rc.request("PATCH", f"/scan/manifest/{scan_id}", {})
     print(e)
     # # empty body-arg
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event/"),
+    ) as e:
         await rc.request("PATCH", f"/scan/manifest/{scan_id}", {"progress": {}})
     print(e)
     # # bad-type body-arg
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event/"),
+    ) as e:
         await rc.request("PATCH", f"/scan/manifest/{scan_id}", {"progress": []})
     print(e)
 
@@ -305,7 +334,12 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     manifest = await _do_progress(rc, event_id, scan_id, 10)
 
     # # no arg
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest/"
+        ),
+    ) as e:
         await rc.request("GET", "/scan/manifest/")
     print(e.value)
 
@@ -315,23 +349,42 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
 
     # ERROR
     # # no arg
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"404 Client Error: Not Found for url: {rc.address}/scan/result/"
+        ),
+    ) as e:
         await rc.request("PUT", "/scan/result/")
     print(e)
     # # no arg w/ body
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"404 Client Error: Not Found for url: {rc.address}/scan/result/"
+        ),
+    ) as e:
         await rc.request("PUT", "/scan/result/", {"json_dict": {"bb": 22}})
     print(e)
     # # empty body
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event/"),
+    ) as e:
         await rc.request("PUT", f"/scan/result/{scan_id}", {})
     print(e)
     # # empty body-arg
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event/"),
+    ) as e:
         await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": {}})
     print(e)
     # # bad-type body-arg
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event/"),
+    ) as e:
         await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": []})
     print(e)
 
@@ -339,7 +392,12 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     result = await _send_result(rc, scan_id, manifest)
 
     # # no arg
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"404 Client Error: Not Found for url: {rc.address}/scan/result/"
+        ),
+    ) as e:
         await rc.request("GET", "/scan/result/")
     print(e.value)
 
@@ -349,7 +407,12 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
 
     # ERROR
     # # no arg
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest/"
+        ),
+    ) as e:
         await rc.request("DELETE", "/scan/manifest/")
     print(e.value)
 
@@ -364,7 +427,12 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     #
 
     # # no arg
-    with pytest.raises(requests.exceptions.HTTPError) as e:
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"404 Client Error: Not Found for url: {rc.address}/scan/result/"
+        ),
+    ) as e:
         await rc.request("DELETE", "/scan/result/")
     print(e.value)
 
