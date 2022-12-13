@@ -131,6 +131,13 @@ class ManifestClient(ScanIDCollectionFacade):
     async def patch(self, scan_id: str, progress: dict[str, Any]) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching progress for {scan_id=}")
+        if not progress:
+            msg = f"Attempted progress update with an empty object ({progress}) for {scan_id=}"
+            raise web.HTTPError(
+                422,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
         manifest = await self.find_one(scan_id, True)
         manifest.progress = progress
         manifest = await self.upsert(manifest)
@@ -184,6 +191,13 @@ class ResultClient(ScanIDCollectionFacade):
     async def put(self, scan_id: str, json_dict: dict[str, Any]) -> schema.Result:
         """Override `schema.Result` at doc matching `scan_id`."""
         LOGGER.debug(f"overriding result for {scan_id=}")
+        if not json_dict:
+            msg = f"Attempted to add result with an empty object ({json_dict})"
+            raise web.HTTPError(
+                422,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
         result = schema.Result(scan_id, False, json_dict)
         result = await self.upsert(result)
         return result

@@ -318,7 +318,9 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # # empty body-arg
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event/"),
+        match=re.escape(
+            f"422 Client Error: Attempted progress update with an empty object ({{}}) for url: {rc.address}/scan/manifest/{scan_id}"
+        ),
     ) as e:
         await rc.request("PATCH", f"/scan/manifest/{scan_id}", {"progress": {}})
     print(e.value)
@@ -376,7 +378,9 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # # empty body-arg
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event/"),
+        match=re.escape(
+            f"422 Client Error: Attempted to add result with an empty object ({{}}) for url: {rc.address}/scan/result/{scan_id}"
+        ),
     ) as e:
         await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": {}})
     print(e.value)
