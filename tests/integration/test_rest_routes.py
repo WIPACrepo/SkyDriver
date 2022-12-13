@@ -338,7 +338,9 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     for bad_arg in ["Done", ["a", "b", "c"]]:
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
+            match=re.escape(
+                f"400 Client Error: `progress`: (ValueError) type mismatch: 'dict' (value is '{type(bad_arg)}') for url: {rc.address}/scan/manifest/{scan_id}"
+            ),
         ) as e:
             await rc.request(
                 "PATCH", f"/scan/manifest/{scan_id}", {"progress": bad_arg}
@@ -401,7 +403,9 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     for bad_arg in ["Done", ["a", "b", "c"]]:
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
+            match=re.escape(
+                f"400 Client Error: `json_dict`: (ValueError) type mismatch: 'dict' (value is '{type(bad_arg)}') for url: {rc.address}/scan/result/{scan_id}"
+            ),
         ) as e:
             await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": bad_arg})
         print(e.value)
