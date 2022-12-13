@@ -103,7 +103,16 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self) -> None:
         """Start a new scan."""
-        event_id = self.get_argument("event_id", type=str)
+
+        def valid_event_id(val: Any) -> str:
+            strd = str(val)
+            if any(x.isspace() for x in val) or not any(x.isalnum() for x in val):
+                raise TypeError(
+                    "event_id must contain alphanumeric characters and no spaces"
+                )
+            return strd
+
+        event_id = self.get_argument("event_id", type=valid_event_id)
         LOGGER.info(f"{event_id=}")
         # TODO: get more args
 
