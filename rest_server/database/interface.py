@@ -2,7 +2,7 @@
 
 import dataclasses as dc
 import uuid
-from typing import Any, AsyncIterator, Tuple, Type, TypeVar
+from typing import Any, AsyncIterator, Type, TypeVar
 
 from dacite import from_dict  # type: ignore[attr-defined]
 from motor.motor_asyncio import (  # type: ignore
