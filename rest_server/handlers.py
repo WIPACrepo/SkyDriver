@@ -108,7 +108,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             val = str(val)
             if any(x.isspace() for x in val) or not any(x.isalnum() for x in val):
                 raise TypeError(
-                    "event_id must contain alphanumeric characters and no spaces"
+                    f"event_id must contain alphanumeric characters and no spaces {val}"
                 )
             return val
 
