@@ -89,15 +89,16 @@ jobs:
       fail-fast: false
       matrix:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
+    services:
+      mongo:
+        image: bitnami/mongodb:4
+        ports:
+        - 27017:27017
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.py3 }}
-
-      - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.8.0
-        # TODO: change port/username/password?
 
       - name: pip install
         run: |
