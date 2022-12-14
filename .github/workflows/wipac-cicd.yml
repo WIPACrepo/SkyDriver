@@ -1,0 +1,132 @@
+name: wipac ci/cd
+
+on: [push]
+
+env:
+  CI_TEST: 'yes'
+
+jobs:
+
+  flake8:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+      - uses: WIPACrepo/wipac-dev-flake8-action@v1
+
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+      - uses: WIPACrepo/wipac-dev-mypy-action@v1.1
+
+  py-setup:
+    runs-on: ubuntu-latest
+    steps:
+      # dependabot can't access normal secrets
+      #   & don't run non-branch triggers (like tags)
+      #   & we don't want to trigger an update on PR's merge to main/master/default (which is a branch)
+      # IOW: only for non-dependabot branches
+      - if: |
+          github.actor != 'dependabot[bot]' &&
+          github.ref_type == 'branch' &&
+          format('refs/heads/{0}', github.event.repository.default_branch) != github.ref
+        name: checkout (only for non-dependabot non-default branches)
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - if: |
+          github.actor != 'dependabot[bot]' &&
+          github.ref_type == 'branch' &&
+          format('refs/heads/{0}', github.event.repository.default_branch) != github.ref
+        name: wipac-dev-py-setup-action (only for non-dependabot non-default branches)
+        uses: WIPACrepo/wipac-dev-py-setup-action@v1.9
+        with:
+          base-keywords: WIPAC IceCube
+
+  py-versions:
+    needs: [py-setup]
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.versions.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: versions
+        uses: WIPACrepo/wipac-dev-py-versions-action@v2
+
+  unit-tests:
+    needs: [py-versions]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.py3 }}
+
+      - name: pip install
+        run: |
+          pip install --upgrade pip wheel setuptools
+          pip install .[tests]
+
+      - name: Test
+        run: |
+          pytest -vvv tests/unit
+
+      - name: Dump logs
+        if: always()
+        run: |
+          cat pytest.logs
+
+  integration-tests:
+    needs: [py-versions]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
+    services:
+      mongo:
+        image: bitnami/mongodb:4
+        ports:
+        - 27017:27017
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.py3 }}
+
+      - name: pip install
+        run: |
+          pip install --upgrade pip wheel setuptools
+          pip install .[tests]
+
+      - name: Test
+        run: |
+          pytest -vvv tests/integration
+
+      - name: Dump logs
+        if: always()
+        run: |
+          cat pytest.logs
+
+  release:
+    # only run on main/master/default
+    if: format('refs/heads/{0}', github.event.repository.default_branch) == github.ref
+    needs: [py-setup, unit-tests, integration-tests]
+    runs-on: ubuntu-latest
+    concurrency: release
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Python Semantic Release
+      uses: relekang/python-semantic-release@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        # repository_username: __token__
+        # repository_password: ${{ secrets.PYPI_TOKEN }}
