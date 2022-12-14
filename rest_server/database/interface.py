@@ -94,7 +94,7 @@ class ScanIDCollectionFacade:
         # upsert
         doc = await self._collections[coll].find_one_and_update(
             {"scan_id": scan_id},
-            replacement,
+            {"$set": replacement},
             upsert=True,
             return_document=ReturnDocument.AFTER,
         )
