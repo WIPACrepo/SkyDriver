@@ -278,14 +278,14 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         await rc.request("POST", "/scan", {})
     print(e.value)
     # # bad-type body-arg
-    for bad_event_id in ["", "  ", "\t"]:
+    for bad_arg in ["", "  ", "\t"]:
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=re.escape(
                 f"400 Client Error: `event_id`: (ValueError) cannot use empty string for url: {rc.address}/scan"
             ),
         ) as e:
-            await rc.request("POST", "/scan", {"event_id": bad_event_id})
+            await rc.request("POST", "/scan", {"event_id": bad_arg})
         print(e.value)
 
     # OK
@@ -333,15 +333,15 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         await rc.request("PATCH", f"/scan/manifest/{scan_id}", {"progress": {}})
     print(e.value)
     # # bad-type body-arg
-    for bad_progress_arg in ["Done", ["a", "b", "c"]]:
+    for bad_arg in ["Done", ["a", "b", "c"]]:
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=re.escape(
-                f"400 Client Error: `progress`: (ValueError) type mismatch: 'dict' (value is '{type(bad_progress_arg)}') for url: {rc.address}/scan/manifest/{scan_id}"
+                f"400 Client Error: `progress`: (ValueError) type mismatch: 'dict' (value is '{type(bad_arg)}') for url: {rc.address}/scan/manifest/{scan_id}"
             ),
         ) as e:
             await rc.request(
-                "PATCH", f"/scan/manifest/{scan_id}", {"progress": bad_progress_arg}
+                "PATCH", f"/scan/manifest/{scan_id}", {"progress": bad_arg}
             )
         print(e.value)
 
@@ -400,16 +400,14 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": {}})
     print(e.value)
     # # bad-type body-arg
-    for bad_event_id in ["Done", ["a", "b", "c"]]:
+    for bad_arg in ["Done", ["a", "b", "c"]]:
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=re.escape(
-                f"400 Client Error: `json_dict`: (ValueError) type mismatch: 'dict' (value is '{type(bad_event_id)}') for url: {rc.address}/scan/result/{scan_id}"
+                f"400 Client Error: `json_dict`: (ValueError) type mismatch: 'dict' (value is '{type(bad_arg)}') for url: {rc.address}/scan/result/{scan_id}"
             ),
         ) as e:
-            await rc.request(
-                "PUT", f"/scan/result/{scan_id}", {"json_dict": bad_event_id}
-            )
+            await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": bad_arg})
         print(e.value)
 
     # OK
