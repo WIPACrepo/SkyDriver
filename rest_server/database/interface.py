@@ -75,14 +75,14 @@ class ScanIDCollectionFacade:
         return scandc  # type: ignore[no-any-return]  # mypy internal bug
 
     async def _upsert(
-        self, coll: str, scan_id: str, replacement: dict[str, Any], scandc_type: Type[S]
+        self, coll: str, scan_id: str, update: dict[str, Any], scandc_type: Type[S]
     ) -> S:
         """Insert/update the doc."""
         LOGGER.debug(f"replacing: ({coll=}) doc with {scan_id=} {scandc_type=}")
 
         # enforce schema
         fields = {x.name: x for x in dc.fields(scandc_type)}
-        for attr, value in replacement.items():
+        for attr, value in update.items():
             try:
                 check_type(attr, value, fields[attr].type)
             except (TypeError, KeyError) as e:
@@ -94,7 +94,7 @@ class ScanIDCollectionFacade:
         # upsert
         doc = await self._collections[coll].find_one_and_update(
             {"scan_id": scan_id},
-            {"$set": replacement},
+            {"$set": update},
             upsert=True,
             return_document=ReturnDocument.AFTER,
         )
