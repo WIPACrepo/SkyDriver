@@ -96,16 +96,24 @@ class ScanIDCollectionFacade:
         LOGGER.debug(f"replacing: ({coll=}) doc with {scan_id=} {scandc_type=}")
 
         if isinstance(update, dict):
-            # enforce schema
-            try:
-                fields = {x.name: x for x in dc.fields(scandc_type)}  # TypeError (None)
-                for attr, value in update.items():
-                    check_type(attr, value, fields[attr].type)  # TypeError, KeyError
-            except (TypeError, KeyError) as e:
-                raise web.HTTPError(
-                    500,
-                    log_message=f"{e} [{coll=}, {scan_id=}]",
+            if not (
+                scandc_type
+                and dc.is_dataclass(scandc_type)
+                and isinstance(scandc_type, type)
+            ):
+                raise TypeError(
+                    "for partial updates (where 'update' is a dict), 'scandc_type' must be a dataclass class/type"
                 )
+            fields = {x.name: x for x in dc.fields(scandc_type)}
+            # enforce schema
+            for attr, value in update.items():
+                try:
+                    check_type(attr, value, fields[attr].type)  # TypeError, KeyError
+                except (TypeError, KeyError) as e:
+                    raise web.HTTPError(
+                        500,
+                        log_message=f"{e} [{coll=}, {scan_id=}]",
+                    )
             update_dict = update
             out_type = scandc_type
         else:
