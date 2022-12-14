@@ -97,12 +97,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Start a new scan."""
 
         def valid_event_id(val: Any) -> str:
-            val = str(val)
-            if any(x.isspace() for x in val) or not any(x.isalnum() for x in val):
-                raise TypeError(
-                    f"must contain no spaces and at least one alphanumeric character '{val}'"
-                )
-            return val
+            out_val = str(val).strip()
+            if not out_val:
+                raise TypeError("cannot use empty string")
+            return out_val
 
         event_id = self.get_argument("event_id", type=valid_event_id)
         LOGGER.info(f"{event_id=}")

@@ -278,11 +278,11 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         await rc.request("POST", "/scan", {})
     print(e.value)
     # # bad-type body-arg
-    for bad_arg in [{}, [], ["a", "b", "c"]]:
+    for bad_arg in ["", "  ", "\t"]:
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=re.escape(
-                f"400 Client Error: `event_id`: (ValueError) must contain no spaces and at least one alphanumeric character '{bad_arg}' for url: {rc.address}/scan"
+                f"400 Client Error: `event_id`: (ValueError) cannot use empty string for url: {rc.address}/scan"
             ),
         ) as e:
             await rc.request("POST", "/scan", {"event_id": bad_arg})
