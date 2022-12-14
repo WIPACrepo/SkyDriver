@@ -50,7 +50,7 @@ async def server(
     mongo_clear: Any,  # pylint:disable=unused-argument
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
-    monkeypatch.setenv("PORT", str(port))
+    # monkeypatch.setenv("PORT", str(port))
 
     rs = await make(debug=True)
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
