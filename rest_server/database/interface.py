@@ -75,26 +75,48 @@ class ScanIDCollectionFacade:
         return scandc  # type: ignore[no-any-return]  # mypy internal bug
 
     async def _upsert(
-        self, coll: str, scan_id: str, update: dict[str, Any], scandc_type: Type[S]
+        self,
+        coll: str,
+        scan_id: str,
+        update: dict[str, Any] | S,
+        scandc_type: Type[S] | None = None,
     ) -> S:
-        """Insert/update the doc."""
+        """Insert/update the doc.
+
+        *For partial updates:* pass `update` as a `dict` along with a
+        `scandc_type` (`ScanIDDataclass` class/type). `scandc_type` is
+        used to validate updates against the document's schema and casts
+        the returned document.
+
+        *For whole inserts:* pass `update` as a `ScanIDDataclass`
+        instance. `scandc_type` is not needed/used in this case. There
+        is no data validation, since `ScanIDDataclass` does its own on
+        initialization.
+        """
         LOGGER.debug(f"replacing: ({coll=}) doc with {scan_id=} {scandc_type=}")
 
-        # enforce schema
-        fields = {x.name: x for x in dc.fields(scandc_type)}
-        for attr, value in update.items():
+        if isinstance(update, dict):
+            # enforce schema
             try:
-                check_type(attr, value, fields[attr].type)
+                fields = {x.name: x for x in dc.fields(scandc_type)}  # TypeError (None)
+                for attr, value in update.items():
+                    check_type(attr, value, fields[attr].type)  # TypeError, KeyError
             except (TypeError, KeyError) as e:
                 raise web.HTTPError(
                     500,
                     log_message=f"{e} [{coll=}, {scan_id=}]",
                 )
+            update_dict = update
+            out_type = scandc_type
+        else:
+            # trust ScanIDDataclass's data validation
+            update_dict = dc.asdict(update)
+            out_type = type(update)
 
         # upsert
         doc = await self._collections[coll].find_one_and_update(
             {"scan_id": scan_id},
-            {"$set": update},
+            {"$set": update_dict},
             upsert=True,
             return_document=ReturnDocument.AFTER,
         )
@@ -103,7 +125,7 @@ class ScanIDCollectionFacade:
                 500,
                 log_message=f"Failed to insert/update {coll} document ({scan_id})",
             )
-        scandc = from_dict(scandc_type, doc)
+        scandc = from_dict(out_type, doc)
         LOGGER.debug(f"replaced: ({coll=}) doc {scandc}")
         return scandc  # type: ignore[no-any-return]  # mypy internal bug
 
@@ -131,9 +153,7 @@ class ManifestClient(ScanIDCollectionFacade):
             event_id,
             # TODO: more args here
         )
-        manifest = await self._upsert(
-            _MANIFEST_COLL_NAME, manifest.scan_id, dc.asdict(manifest), schema.Manifest
-        )
+        manifest = await self._upsert(_MANIFEST_COLL_NAME, manifest.scan_id, manifest)
         return manifest
 
     async def patch(self, scan_id: str, progress: dict[str, Any]) -> schema.Manifest:
@@ -199,9 +219,7 @@ class ResultClient(ScanIDCollectionFacade):
                 reason=msg,
             )
         result = schema.Result(scan_id, False, json_dict)  # validates data
-        result = await self._upsert(
-            _RESULTS_COLL_NAME, result.scan_id, dc.asdict(result), schema.Result
-        )
+        result = await self._upsert(_RESULTS_COLL_NAME, result.scan_id, result)
         return result
 
     async def mark_as_deleted(self, scan_id: str) -> schema.Result:
