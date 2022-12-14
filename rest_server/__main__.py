@@ -1,6 +1,5 @@
 """Start server as application."""
 
-import argparse
 import asyncio
 
 from . import server
@@ -18,11 +17,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-l", "--log", default="DEBUG", help="the output logging level")
-    _args = parser.parse_args()
-
-    config_logging(_args.log)
-
+    config_logging(ENV.LOG_LEVEL)
     asyncio.run(main())
