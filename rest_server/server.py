@@ -5,6 +5,8 @@ import dataclasses as dc
 from typing import Any
 from urllib.parse import quote_plus
 
+import kubernetes.client  # type: ignore[import]
+from kubernetes import config
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.server import RestHandlerSetup, RestServer
 
@@ -41,6 +43,10 @@ async def make(debug: bool = False) -> RestServer:
 
     # Setup DB URL
     args["mongodb_url"] = mongodb_url()
+
+    # Setup K8 configs
+    config.load_kube_config()
+    args["k8s_configuration"] = kubernetes.client.Configuration()
 
     # Configure REST Routes
     rs = RestServer(debug=debug)

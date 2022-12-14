@@ -4,10 +4,11 @@
 import dataclasses as dc
 from typing import Any, cast
 
+import kubernetes.client
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.server import RestHandler, handler
 
-from . import database
+from . import database, k8s
 from .config import LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
 
 if is_testing():
@@ -35,6 +36,7 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
     def initialize(  # type: ignore  # pylint: disable=W0221
         self,
         mongodb_url: str,
+        k8s_configuration: kubernetes.client.Configuration,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -45,6 +47,7 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
             AsyncIOMotorClient(mongodb_url)
         )
         self.results = database.interface.ResultClient(AsyncIOMotorClient(mongodb_url))
+        self.k8s = k8s.Kubernetes(k8s_configuration)
 
 
 # -----------------------------------------------------------------------------
