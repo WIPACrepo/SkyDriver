@@ -39,7 +39,8 @@ def kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:
         api_response = api_instance.get_api_resources()
         LOGGER.info(api_response)
     except ApiException as e:
-        print("Exception when calling API: %s\n" % e)
+        LOGGER.error(e)
+        raise
 
 
 def setup_k8s_client() -> kubernetes.client.BatchV1Api:

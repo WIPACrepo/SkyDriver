@@ -3,13 +3,12 @@
 Based on https://blog.pythian.com/how-to-create-kubernetes-jobs-with-python/
 """
 
-import logging
 from typing import Any
 
 import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
 
-from .config import ENV
+from .config import ENV, LOGGER
 
 
 class KubeAPITools:
@@ -32,31 +31,31 @@ class KubeAPITools:
         # List the pods
         try:
             pods = api_pods.list_namespaced_pod(
-                namespace, include_uninitialized=False, pretty=True, timeout_seconds=60
+                namespace, include_uninitialized=False, timeout_seconds=60
             )
         except ApiException as e:
-            logging.error(
+            LOGGER.error(
                 "Exception when calling CoreV1Api->list_namespaced_pod: %s\n" % e
             )
 
         for pod in pods.items:
-            logging.debug(pod)
+            LOGGER.debug(pod)
             podname = pod.metadata.name
             try:
                 if pod.status.phase == phase:
                     api_response = api_pods.delete_namespaced_pod(
                         podname, namespace, deleteoptions
                     )
-                    logging.info("Pod: {} deleted!".format(podname))
-                    logging.debug(api_response)
+                    LOGGER.info("Pod: {} deleted!".format(podname))
+                    LOGGER.debug(api_response)
                 else:
-                    logging.info(
+                    LOGGER.info(
                         "Pod: {} still not done... Phase: {}".format(
                             podname, pod.status.phase
                         )
                     )
             except ApiException as e:
-                logging.error(
+                LOGGER.error(
                     "Exception when calling CoreV1Api->delete_namespaced_pod: %s\n" % e
                 )
 
@@ -84,21 +83,21 @@ class KubeAPITools:
         deleteoptions = kubernetes.client.V1DeleteOptions()
         try:
             jobs = api_instance.list_namespaced_job(
-                namespace, include_uninitialized=False, pretty=True, timeout_seconds=60
+                namespace, include_uninitialized=False, timeout_seconds=60
             )
-            # print(jobs)
         except ApiException as e:
-            print("Exception when calling BatchV1Api->list_namespaced_job: %s\n" % e)
+            LOGGER.error(e)
+            raise
 
         # Now we have all the jobs, lets clean up
         # We are also logging the jobs we didn't clean up because they either failed or are still running
         for job in jobs.items:
-            logging.debug(job)
+            LOGGER.debug(job)
             jobname = job.metadata.name
             jobstatus = job.status.conditions
             if job.status.succeeded == 1:
                 # Clean up Job
-                logging.info(
+                LOGGER.info(
                     "Cleaning up Job: {}. Finished at: {}".format(
                         jobname, job.status.completion_time
                     )
@@ -113,16 +112,14 @@ class KubeAPITools:
                         grace_period_seconds=0,
                         propagation_policy='Background',
                     )
-                    logging.debug(api_response)
+                    LOGGER.debug(api_response)
                 except ApiException as e:
-                    print(
-                        "Exception when calling BatchV1Api->delete_namespaced_job: %s\n"
-                        % e
-                    )
+                    LOGGER.error(e)
+                    raise
             else:
                 if jobstatus is None and job.status.active == 1:
                     jobstatus = 'active'
-                logging.info(
+                LOGGER.info(
                     "Job: {} not cleaned up. Current status: {}".format(
                         jobname, jobstatus
                     )
@@ -213,15 +210,18 @@ class SkymapScannerJob:
             self.name, [server, client_manager]
         )
 
-    def start(self) -> None:
-        """Start the k8s job."""
+    def start(self) -> Any:
+        """Start the k8s job.
+
+        Returns REST response.
+        """
         try:
-            api_response = self.api_instance.create_namespaced_job(
-                "default", self.job, pretty=True
-            )
-            print(api_response)
+            api_response = self.api_instance.create_namespaced_job("default", self.job)
+            LOGGER.info(api_response)
         except ApiException as e:
-            print("Exception when calling BatchV1Api->create_namespaced_job: %s\n" % e)
+            LOGGER.error(e)
+            raise
+        return api_response
 
 
 # if __name__ == '__main__':
@@ -234,5 +234,5 @@ class SkymapScannerJob:
 #     for i in range(3):
 #         kube_create_job()
 #     # This was to test the use of ENV variables.
-#     logging.info("Finshed! - ENV: {}".format(os.environ["VAR"]))
+#     LOGGER.info("Finshed! - ENV: {}".format(os.environ["VAR"]))
 #     sys.exit(0)
