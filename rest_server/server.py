@@ -7,6 +7,7 @@ from urllib.parse import quote_plus
 
 import kubernetes.client  # type: ignore[import]
 from kubernetes import config
+from kubernetes.client.rest import ApiException  # type: ignore[import]
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.server import RestHandlerSetup, RestServer
 
@@ -26,6 +27,31 @@ def mongodb_url() -> str:
     return url
 
 
+def kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:
+    """Testing function.
+
+    If you get an error on this call don't proceed. Something is wrong on your connectivty to
+    Google API.
+    Check Credentials, permissions, keys, etc.
+    Docs: https://cloud.google.com/docs/authentication/
+    """
+    try:
+        api_response = api_instance.get_api_resources()
+        LOGGER.info(api_response)
+    except ApiException as e:
+        print("Exception when calling API: %s\n" % e)
+
+
+def setup_k8s_client() -> kubernetes.client.BatchV1Api:
+    """Load Kubernetes config, check connection, and return API instance."""
+    config.load_kube_config()
+    k8s_api = kubernetes.client.BatchV1Api(
+        kubernetes.client.ApiClient(kubernetes.client.Configuration())
+    )
+    kube_test_credentials(k8s_api)
+    return k8s_api
+
+
 async def make(debug: bool = False) -> RestServer:
     """Make a SkyDriver REST service (does not start up automatically)."""
     for field in dc.fields(ENV):
@@ -41,12 +67,9 @@ async def make(debug: bool = False) -> RestServer:
         }
     args = RestHandlerSetup(rhs_config)
 
-    # Setup DB URL
-    args["mongodb_url"] = mongodb_url()
-
-    # Setup K8 configs
-    config.load_kube_config()
-    args["k8s_configuration"] = kubernetes.client.Configuration()
+    # Setup clients/apis
+    args["mongo_client"] = AsyncIOMotorClient(mongodb_url())
+    args["k8s_api"] = setup_k8s_client()
 
     # Configure REST Routes
     rs = RestServer(debug=debug)

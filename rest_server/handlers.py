@@ -4,8 +4,7 @@
 import dataclasses as dc
 from typing import Any, cast
 
-import kubernetes.client
-from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
+import kubernetes.client  # type: ignore[import]
 from rest_tools.server import RestHandler, handler
 
 from . import database, k8s
@@ -35,22 +34,20 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
 
     def initialize(  # type: ignore  # pylint: disable=W0221
         self,
-        mongodb_url: str,
-        k8s_configuration: kubernetes.client.Configuration,
+        mongo_client: str,
+        k8s_api: kubernetes.client.BatchV1Api,
         *args: Any,
         **kwargs: Any,
     ) -> None:
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)
         # pylint: disable=W0201
-        self.manifests = database.interface.ManifestClient(
-            AsyncIOMotorClient(mongodb_url)
-        )
-        self.results = database.interface.ResultClient(AsyncIOMotorClient(mongodb_url))
-        self.k8s = k8s.Kubernetes(k8s_configuration)
+        self.manifests = database.interface.ManifestClient(mongo_client)
+        self.results = database.interface.ResultClient(mongo_client)
+        self.k8s_api = k8s_api
 
 
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 
 class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
