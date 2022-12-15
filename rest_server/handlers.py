@@ -108,8 +108,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         manifest = await self.manifests.post(event_id)  # generates ID
 
-        # TODO: call k8s service
-        # self.cluster.launch_scan(manifest)
+        # start k8s job
+        job = k8s.SkymapScannerJob(self.k8s_api, manifest.scan_id)
+        job.start()
 
         # TODO: update db?
 

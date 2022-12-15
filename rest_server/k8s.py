@@ -9,17 +9,15 @@ from typing import Any
 import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
 
+from .config import ENV
 
-class Kubernetes:
-    """A convenience wrapper around `kubernetes.client.BatchV1Api`."""
 
-    def __init__(self, configuration: kubernetes.client.Configuration):
-        self.api_instance = kubernetes.client.BatchV1Api(
-            kubernetes.client.ApiClient(configuration)
-        )
+class KubeAPITools:
+    """A convenience wrapper around `kubernetes.client`."""
 
-    def kube_delete_empty_pods(
-        self, namespace: str = 'default', phase: str = 'Succeeded'
+    @staticmethod
+    def _kube_delete_empty_pods(
+        namespace: str = 'default', phase: str = 'Succeeded'
     ) -> None:
         """Pods are never empty, just completed the lifecycle.
 
@@ -62,7 +60,10 @@ class Kubernetes:
                     "Exception when calling CoreV1Api->delete_namespaced_pod: %s\n" % e
                 )
 
-    def kube_cleanup_finished_jobs(self, namespace: str = 'default') -> None:
+    @staticmethod
+    def kube_cleanup_finished_jobs(
+        api_instance: kubernetes.client.BatchV1Api, namespace: str = 'default'
+    ) -> None:
         """Since the TTL flag (ttl_seconds_after_finished) is still in alpha
         (Kubernetes 1.12) jobs need to be cleanup manually As such this method
         checks for existing Finished Jobs and deletes them.
@@ -82,7 +83,7 @@ class Kubernetes:
         """
         deleteoptions = kubernetes.client.V1DeleteOptions()
         try:
-            jobs = self.api_instance.list_namespaced_job(
+            jobs = api_instance.list_namespaced_job(
                 namespace, include_uninitialized=False, pretty=True, timeout_seconds=60
             )
             # print(jobs)
@@ -105,7 +106,7 @@ class Kubernetes:
                 try:
                     # What is at work here. Setting Grace Period to 0 means delete ASAP. Otherwise it defaults to
                     # some value I can't find anywhere. Propagation policy makes the Garbage cleaning Async
-                    api_response = self.api_instance.delete_namespaced_job(
+                    api_response = api_instance.delete_namespaced_job(
                         jobname,
                         namespace,
                         deleteoptions,
@@ -128,15 +129,13 @@ class Kubernetes:
                 )
 
         # Now that we have the jobs cleaned, let's clean the pods
-        self.kube_delete_empty_pods(namespace)
+        KubeAPITools._kube_delete_empty_pods(namespace)
 
+    @staticmethod
     def kube_create_job_object(
-        self,
         name: str,
-        container_image: str,
+        containers: list[kubernetes.client.V1Container],
         namespace: str = "default",
-        container_name: str = "jobcontainer",
-        env_vars: dict[str, Any] = {},
     ) -> kubernetes.client.V1Job:
         """Create a k8 Job Object Minimum definition of a job object:
 
@@ -174,15 +173,9 @@ class Kubernetes:
         # Now we start with the Template...
         template = kubernetes.client.V1PodTemplate()
         template.template = kubernetes.client.V1PodTemplateSpec()
-        # Passing Arguments in Env:
-        env_list = []
-        for env_name, env_value in env_vars.items():
-            env_list.append(kubernetes.client.V1EnvVar(name=env_name, value=env_value))
-        container = kubernetes.client.V1Container(
-            name=container_name, image=container_image, env=env_list
-        )
+        # Make Pod Spec
         template.template.spec = kubernetes.client.V1PodSpec(
-            containers=[container], restart_policy='Never'
+            containers=containers, restart_policy='Never'
         )
         # And finaly we can create our V1JobSpec!
         body.spec = kubernetes.client.V1JobSpec(
@@ -190,36 +183,45 @@ class Kubernetes:
         )
         return body
 
-    def kube_test_credentials(self) -> None:
-        """Testing function.
-
-        If you get an error on this call don't proceed. Something is wrong on your connectivty to
-        Google API.
-        Check Credentials, permissions, keys, etc.
-        Docs: https://cloud.google.com/docs/authentication/
-        """
-        try:
-            api_response = self.api_instance.get_api_resources()
-            logging.info(api_response)
-        except ApiException as e:
-            print("Exception when calling API: %s\n" % e)
-
-    def kube_create_job(self, name: str) -> None:
-        """Create the job definition."""
-        container_image = (
-            "namespace/k8-test-app:83226641581a1f0971055f972465cb903755fc9a"
+    @staticmethod
+    def create_container(
+        name: str, image: str, env: dict[str, Any]
+    ) -> kubernetes.client.V1Container:
+        """Make a Container instance."""
+        return kubernetes.client.V1Container(
+            name=name,
+            image=image,
+            env=[
+                kubernetes.client.V1EnvVar(name=name, value=value)
+                for name, value in env.items()
+            ],
         )
-        body = self.kube_create_job_object(
-            name, container_image, env_vars={"VAR": "TESTING"}
+
+
+class SkymapScannerJob:
+    """Wraps a Skymap Scanner Kubernetes job with tools to start and manage."""
+
+    def __init__(self, api_instance: kubernetes.client.BatchV1Api, name: str):
+        self.api_instance = api_instance
+        self.name = name
+
+        # TODO: figure env -- from requestor?
+        env = {}  # type: ignore[var-annotated]
+        server = KubeAPITools.create_container(name, ENV.SKYSCAN_IMAGE, env)
+        client_manager = KubeAPITools.create_container(name, ENV.SKYSCAN_IMAGE, env)
+        self.job = KubeAPITools.kube_create_job_object(
+            self.name, [server, client_manager]
         )
+
+    def start(self) -> None:
+        """Start the k8s job."""
         try:
             api_response = self.api_instance.create_namespaced_job(
-                "default", body, pretty=True
+                "default", self.job, pretty=True
             )
             print(api_response)
         except ApiException as e:
             print("Exception when calling BatchV1Api->create_namespaced_job: %s\n" % e)
-        return
 
 
 # if __name__ == '__main__':
