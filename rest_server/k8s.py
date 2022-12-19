@@ -198,7 +198,14 @@ class KubeAPITools:
 class SkymapScannerJob:
     """Wraps a Skymap Scanner Kubernetes job with tools to start and manage."""
 
-    def __init__(self, api_instance: kubernetes.client.BatchV1Api, tag: str, name: str):
+    def __init__(
+        self,
+        api_instance: kubernetes.client.BatchV1Api,
+        tag: str,
+        name: str,
+        report_interval_sec: int,
+        plot_interval_sec: int,
+    ):
         self.api_instance = api_instance
 
         # image
@@ -206,8 +213,11 @@ class SkymapScannerJob:
             tag = 'latest'
         image = f"{ENV.SKYSCAN_IMAGE_NO_TAG}:{tag}"
 
-        # TODO: figure env -- from requestor?
-        env = {}  # type: ignore[var-annotated]
+        # env
+        env = {
+            'SKYSCAN_REPORT_INTERVAL_SEC': report_interval_sec,
+            'SKYSCAN_PLOT_INTERVAL_SEC': plot_interval_sec,
+        }
 
         # job
         server = KubeAPITools.create_container(name, image, env)

@@ -96,20 +96,43 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     async def post(self) -> None:
         """Start a new scan."""
 
-        def valid_event_id(val: Any) -> str:
+        def no_empty_str(val: Any) -> str:
             out_val = str(val).strip()
             if not out_val:
                 raise TypeError("cannot use empty string")
             return out_val
 
-        event_id = self.get_argument("event_id", type=valid_event_id)
-        docker_tag = self.get_argument("docker_tag", type=str, default="latest")
+        event_id = self.get_argument(
+            "event_id",
+            type=no_empty_str,
+        )
+        docker_tag = self.get_argument(
+            "docker_tag",
+            type=str,
+            default="latest",
+        )
+        report_interval_sec = self.get_argument(
+            "report_interval_sec",
+            type=int,
+            default=5 * 60,
+        )
+        plot_interval_sec = self.get_argument(
+            "plot_interval_sec",
+            type=int,
+            default=10 * 60,
+        )
         # TODO: get more args
 
         manifest = await self.manifests.post(event_id)  # generates ID
 
         # start k8s job
-        job = k8s.SkymapScannerJob(self.k8s_api, docker_tag, manifest.scan_id)
+        job = k8s.SkymapScannerJob(
+            self.k8s_api,
+            docker_tag,
+            manifest.scan_id,
+            report_interval_sec,
+            plot_interval_sec,
+        )
         job.start()
 
         # TODO: update db?
