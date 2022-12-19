@@ -27,7 +27,7 @@ class EnvConfig:
     REST_PORT: int = 8080
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
-    SKYSCAN_IMAGE: str = "icecube/skymap_scanner:latest"
+    SKYSCAN_IMAGE_NO_TAG: str = "icecube/skymap_scanner"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen

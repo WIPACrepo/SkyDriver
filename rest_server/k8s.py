@@ -198,17 +198,21 @@ class KubeAPITools:
 class SkymapScannerJob:
     """Wraps a Skymap Scanner Kubernetes job with tools to start and manage."""
 
-    def __init__(self, api_instance: kubernetes.client.BatchV1Api, name: str):
+    def __init__(self, api_instance: kubernetes.client.BatchV1Api, tag: str, name: str):
         self.api_instance = api_instance
-        self.name = name
+
+        # image
+        if not tag:
+            tag = 'latest'
+        image = f"{ENV.SKYSCAN_IMAGE_NO_TAG}:{tag}"
 
         # TODO: figure env -- from requestor?
         env = {}  # type: ignore[var-annotated]
-        server = KubeAPITools.create_container(name, ENV.SKYSCAN_IMAGE, env)
-        client_manager = KubeAPITools.create_container(name, ENV.SKYSCAN_IMAGE, env)
-        self.job = KubeAPITools.kube_create_job_object(
-            self.name, [server, client_manager]
-        )
+
+        # job
+        server = KubeAPITools.create_container(name, image, env)
+        client_manager = KubeAPITools.create_container(name, image, env)
+        self.job = KubeAPITools.kube_create_job_object(name, [server, client_manager])
 
     def start(self) -> Any:
         """Start the k8s job.

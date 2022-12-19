@@ -103,13 +103,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             return out_val
 
         event_id = self.get_argument("event_id", type=valid_event_id)
-        LOGGER.info(f"{event_id=}")
+        docker_tag = self.get_argument("docker_tag", type=str, default="latest")
         # TODO: get more args
 
         manifest = await self.manifests.post(event_id)  # generates ID
 
         # start k8s job
-        job = k8s.SkymapScannerJob(self.k8s_api, manifest.scan_id)
+        job = k8s.SkymapScannerJob(self.k8s_api, docker_tag, manifest.scan_id)
         job.start()
 
         # TODO: update db?
