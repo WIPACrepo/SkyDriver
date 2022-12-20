@@ -3,7 +3,7 @@
 Based on https://blog.pythian.com/how-to-create-kubernetes-jobs-with-python/
 """
 
-from typing import Any
+from typing import Any, List
 
 import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
@@ -182,7 +182,7 @@ class KubeAPITools:
 
     @staticmethod
     def create_container(
-        name: str, image: str, env: dict[str, Any]
+        name: str, image: str, env: dict[str, Any], args: List[str]
     ) -> kubernetes.client.V1Container:
         """Make a Container instance."""
         return kubernetes.client.V1Container(
@@ -192,6 +192,7 @@ class KubeAPITools:
                 kubernetes.client.V1EnvVar(name=name, value=value)
                 for name, value in env.items()
             ],
+            volume_mounts=[kubernetes.client.V1VolumeMount()],
         )
 
 
@@ -205,24 +206,83 @@ class SkymapScannerJob:
         name: str,
         report_interval_sec: int,
         plot_interval_sec: int,
+        reco_algo: str,
+        min_nside: int,
+        max_nside: int,
     ):
         self.api_instance = api_instance
 
         # image
         if not tag:
             tag = 'latest'
-        image = f"{ENV.SKYSCAN_IMAGE_NO_TAG}:{tag}"
+        image = f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{tag}"
+        self.tag = tag
 
         # env
-        env = {
+        self.env = {
             'SKYSCAN_REPORT_INTERVAL_SEC': report_interval_sec,
             'SKYSCAN_PLOT_INTERVAL_SEC': plot_interval_sec,
         }
 
         # job
-        server = KubeAPITools.create_container(name, image, env)
-        client_manager = KubeAPITools.create_container(name, image, env)
+        server = KubeAPITools.create_container(
+            name,
+            image,
+            self.env,
+            self.get_server_args(reco_algo, min_nside, max_nside),
+        )
+        client_manager = KubeAPITools.create_container(
+            name,
+            image,
+            self.env,
+            self.get_client_manager_args(),
+        )
         self.job = KubeAPITools.kube_create_job_object(name, [server, client_manager])
+
+    @staticmethod
+    def get_server_args(reco_algo: str, min_nside: int, max_nside: int) -> List[str]:
+        """Make the server container object's args."""
+        args = (
+            f"python -m skymap_scanner.server "
+            f" --reco-algo {reco_algo}"
+            f" --event-file $REALTIME_EVENTS_DIR/${{ matrix.eventfile }} "
+            f" --cache-dir $SKYSCAN_CACHE_DIR "
+            f" --output-dir $SKYSCAN_OUTPUT_DIR "
+            f" --startup-json-dir . "
+            f" --broker {ENV.SKYSCAN_BROKER_ADDRESS} "
+            f" --log DEBUG "
+            f" --log-third-party INFO "
+            f" --mini-test-variations "
+            f" --min-nside {min_nside} "
+            f" --max-nside {max_nside} "
+        )
+        return args.split()
+
+    @staticmethod
+    def get_client_manager_args(tag: str, njobs: int, memory: str) -> List[str]:
+        """Make the client container object's args."""
+        client_args_dict = {
+            "--startup-json-dir": ".",
+            "--broker": ENV.SKYSCAN_BROKER_ADDRESS,
+            "--log": "DEBUG",
+            "--log-third-party": "INFO",
+            "--debug-directory": "$SKYSCAN_DEBUG_DIR",
+        }
+        client_args = " ".join(
+            f"{k.lstrip('-').strip()}:{v.strip()}" for k, v in client_args_dict.items()
+        )
+
+        singularity_image = f"{ENV.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}:{tag}"
+
+        args = (
+            f"python scripts/condor/spawn_condor_clients.py "
+            f" --jobs {njobs}"
+            f" --memory {memory}"
+            f" --singularity-image {singularity_image}"
+            f" --startup-json {startup_json}"
+            f" --client-args {client_args}"
+        )
+        return args.split()
 
     def start(self) -> Any:
         """Start the k8s job.

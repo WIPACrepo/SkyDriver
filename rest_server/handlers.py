@@ -121,7 +121,19 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=int,
             default=10 * 60,
         )
-        # TODO: get more args
+        # physics args
+        reco_algo = self.get_argument(
+            "reco_algo",
+            type=str,
+        )
+        min_nside = self.get_argument(
+            "min_nside",
+            type=int,
+        )
+        max_nside = self.get_argument(
+            "max_nside",
+            type=int,
+        )
 
         manifest = await self.manifests.post(event_id)  # generates ID
 
@@ -132,6 +144,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             manifest.scan_id,
             report_interval_sec,
             plot_interval_sec,
+            reco_algo,
+            min_nside,
+            max_nside,
         )
         job.start()
 

@@ -27,10 +27,24 @@ class EnvConfig:
     REST_PORT: int = 8080
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
-    SKYSCAN_IMAGE_NO_TAG: str = "icecube/skymap_scanner"
+    SKYSCAN_DOCKER_IMAGE_NO_TAG: str = "icecube/skymap_scanner"
+    SKYSCAN_BROKER_ADDRESS: str = "localhost"
+    SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG: str = (
+        "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner"
+    )
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
+        if (
+            self.SKYSCAN_DOCKER_IMAGE_NO_TAG.split("/")[-1]
+            != self.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG.split("/")[-1]
+        ):
+            raise RuntimeError(
+                f"Image Mismatch: "
+                f"'SKYSCAN_DOCKER_IMAGE_NO_TAG' ({self.SKYSCAN_DOCKER_IMAGE_NO_TAG}) and "
+                f"'SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG' ({self.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}) "
+                f"do not reference the same image"
+            )
 
 
 ENV = from_environment_as_dataclass(EnvConfig)
