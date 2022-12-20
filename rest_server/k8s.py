@@ -3,6 +3,7 @@
 Based on https://blog.pythian.com/how-to-create-kubernetes-jobs-with-python/
 """
 
+from pathlib import Path
 from typing import Any, List
 
 import kubernetes.client  # type: ignore[import]
@@ -132,6 +133,7 @@ class KubeAPITools:
     def kube_create_job_object(
         name: str,
         containers: list[kubernetes.client.V1Container],
+        volumes: list[str],  # volume names
         namespace: str = "default",
     ) -> kubernetes.client.V1Job:
         """Create a k8 Job Object Minimum definition of a job object:
@@ -172,7 +174,14 @@ class KubeAPITools:
         template.template = kubernetes.client.V1PodTemplateSpec()
         # Make Pod Spec
         template.template.spec = kubernetes.client.V1PodSpec(
-            containers=containers, restart_policy='Never'
+            containers=containers,
+            restart_policy='Never',
+            volumes=[
+                kubernetes.client.V1Volume(
+                    name=n, empty_dir=kubernetes.client.V1EmptyDirVolumeSource()
+                )
+                for n in volumes
+            ],
         )
         # And finaly we can create our V1JobSpec!
         body.spec = kubernetes.client.V1JobSpec(
@@ -182,7 +191,11 @@ class KubeAPITools:
 
     @staticmethod
     def create_container(
-        name: str, image: str, env: dict[str, Any], args: List[str]
+        name: str,
+        image: str,
+        env: dict[str, Any],
+        args: List[str],
+        volumes: dict[str, Path],
     ) -> kubernetes.client.V1Container:
         """Make a Container instance."""
         return kubernetes.client.V1Container(
@@ -192,7 +205,11 @@ class KubeAPITools:
                 kubernetes.client.V1EnvVar(name=name, value=value)
                 for name, value in env.items()
             ],
-            volume_mounts=[kubernetes.client.V1VolumeMount()],
+            args=args,
+            volume_mounts=[
+                kubernetes.client.V1VolumeMount(name=vol, mount_path=str(mnt))
+                for vol, mnt in volumes.items()
+            ],
         )
 
 
@@ -209,6 +226,8 @@ class SkymapScannerJob:
         reco_algo: str,
         min_nside: int,
         max_nside: int,
+        njobs: int,
+        memory: str,
     ):
         self.api_instance = api_instance
 
@@ -224,45 +243,57 @@ class SkymapScannerJob:
             'SKYSCAN_PLOT_INTERVAL_SEC': plot_interval_sec,
         }
 
+        volume = 'common-space'
+        volume_path = Path(volume)
+
         # job
         server = KubeAPITools.create_container(
             name,
             image,
             self.env,
-            self.get_server_args(reco_algo, min_nside, max_nside),
+            self.get_server_args(volume_path, reco_algo, min_nside, max_nside),
+            {volume: volume_path},
         )
-        client_manager = KubeAPITools.create_container(
+        condor_client_spawner = KubeAPITools.create_container(
             name,
             image,
             self.env,
-            self.get_client_manager_args(),
+            SkymapScannerJob.get_condor_client_spawner_args(
+                volume_path, tag, njobs, memory
+            ),
+            {volume: volume_path},
         )
-        self.job = KubeAPITools.kube_create_job_object(name, [server, client_manager])
+        self.job = KubeAPITools.kube_create_job_object(
+            name, [server, condor_client_spawner], [volume]
+        )
 
     @staticmethod
-    def get_server_args(reco_algo: str, min_nside: int, max_nside: int) -> List[str]:
+    def get_server_args(
+        volume_path: Path, reco_algo: str, min_nside: int, max_nside: int
+    ) -> List[str]:
         """Make the server container object's args."""
         args = (
             f"python -m skymap_scanner.server "
             f" --reco-algo {reco_algo}"
-            f" --event-file $REALTIME_EVENTS_DIR/${{ matrix.eventfile }} "
-            f" --cache-dir $SKYSCAN_CACHE_DIR "
-            f" --output-dir $SKYSCAN_OUTPUT_DIR "
-            f" --startup-json-dir . "
+            f" --event-file $REALTIME_EVENTS_DIR/${{ matrix.eventfile }} "  # TODO
+            f" --cache-dir {volume_path/'cache'} "
+            f" --output-dir {volume_path/'output'} "
+            f" --startup-json-dir {volume_path/'startup'} "
             f" --broker {ENV.SKYSCAN_BROKER_ADDRESS} "
             f" --log DEBUG "
             f" --log-third-party INFO "
-            f" --mini-test-variations "
+            f" --mini-test-variations "  # TODO
             f" --min-nside {min_nside} "
             f" --max-nside {max_nside} "
         )
         return args.split()
 
     @staticmethod
-    def get_client_manager_args(tag: str, njobs: int, memory: str) -> List[str]:
+    def get_condor_client_spawner_args(
+        volume_path: Path, tag: str, njobs: int, memory: str
+    ) -> List[str]:
         """Make the client container object's args."""
         client_args_dict = {
-            "--startup-json-dir": ".",
             "--broker": ENV.SKYSCAN_BROKER_ADDRESS,
             "--log": "DEBUG",
             "--log-third-party": "INFO",
@@ -279,7 +310,7 @@ class SkymapScannerJob:
             f" --jobs {njobs}"
             f" --memory {memory}"
             f" --singularity-image {singularity_image}"
-            f" --startup-json {startup_json}"
+            f" --startup-json {volume_path/'startup/startup.json'}"
             f" --client-args {client_args}"
         )
         return args.split()
