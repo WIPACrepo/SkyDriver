@@ -224,8 +224,7 @@ class SkymapScannerJob:
         report_interval_sec: int,
         plot_interval_sec: int,
         reco_algo: str,
-        min_nside: int,
-        max_nside: int,
+        nsides: dict[int, int],
         njobs: int,
         memory: str,
     ):
@@ -251,7 +250,7 @@ class SkymapScannerJob:
             name,
             image,
             self.env,
-            self.get_server_args(volume_path, reco_algo, min_nside, max_nside),
+            self.get_server_args(volume_path, reco_algo, nsides),
             {volume: volume_path},
         )
         condor_client_spawner = KubeAPITools.create_container(
@@ -269,7 +268,9 @@ class SkymapScannerJob:
 
     @staticmethod
     def get_server_args(
-        volume_path: Path, reco_algo: str, min_nside: int, max_nside: int
+        volume_path: Path,
+        reco_algo: str,
+        nsides: dict[int, int],
     ) -> List[str]:
         """Make the server container object's args."""
         args = (
@@ -283,8 +284,7 @@ class SkymapScannerJob:
             f" --log DEBUG "
             f" --log-third-party INFO "
             f" --mini-test-variations "  # TODO
-            f" --min-nside {min_nside} "
-            f" --max-nside {max_nside} "
+            f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides)} "
         )
         return args.split()
 

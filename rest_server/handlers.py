@@ -123,8 +123,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         # physics args
         reco_algo = self.get_argument("reco_algo", type=str)
-        min_nside = self.get_argument("min_nside", type=int)
-        max_nside = self.get_argument("max_nside", type=int)
+        nsides = self.get_argument("nsides", type=dict)
         njobs = self.get_argument("njobs", type=int)
         memory = self.get_argument("memory", type=str)
 
@@ -138,8 +137,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             report_interval_sec,
             plot_interval_sec,
             reco_algo,
-            min_nside,
-            max_nside,
+            nsides,  # type: ignore[arg-type]
             njobs,
             memory,
         )
@@ -209,7 +207,6 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Delete a scan's persisted result."""
-
         result = await self.results.mark_as_deleted(scan_id)
 
         self.write(dc.asdict(result))
