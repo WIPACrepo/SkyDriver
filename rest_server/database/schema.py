@@ -21,6 +21,7 @@ class Result(ScanIDDataclass):
     """Encompasses the physics results for a scan."""
 
     json_dict: dict[str, Any]  # actual keys/values are open to requestor
+    is_final: bool  # is this result the final result?
 
     def __repr__(self) -> str:
         dicto = dc.asdict(self)

@@ -122,18 +122,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default=10 * 60,
         )
         # physics args
-        reco_algo = self.get_argument(
-            "reco_algo",
-            type=str,
-        )
-        min_nside = self.get_argument(
-            "min_nside",
-            type=int,
-        )
-        max_nside = self.get_argument(
-            "max_nside",
-            type=int,
-        )
+        reco_algo = self.get_argument("reco_algo", type=str)
+        min_nside = self.get_argument("min_nside", type=int)
+        max_nside = self.get_argument("max_nside", type=int)
+        njobs = self.get_argument("njobs", type=int)
+        memory = self.get_argument("memory", type=str)
 
         manifest = await self.manifests.post(event_id)  # generates ID
 
@@ -147,6 +140,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             reco_algo,
             min_nside,
             max_nside,
+            njobs,
+            memory,
         )
         job.start()
 
@@ -223,10 +218,12 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's result."""
         json_dict = self.get_argument("json_dict", type=dict, strict_type=True)
+        is_final = self.get_argument("is_final", type=bool)
 
         result = await self.results.put(
             scan_id,
             cast(dict[str, Any], json_dict),
+            is_final,
         )
 
         self.write(dc.asdict(result))
