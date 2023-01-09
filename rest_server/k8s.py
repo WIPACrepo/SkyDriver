@@ -9,6 +9,8 @@ from typing import Any, List
 import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
 
+from database import schema
+
 from .config import ENV, LOGGER
 
 
@@ -219,51 +221,69 @@ class SkymapScannerJob:
     def __init__(
         self,
         api_instance: kubernetes.client.BatchV1Api,
-        tag: str,
-        name: str,
-        report_interval_sec: int,
-        plot_interval_sec: int,
-        reco_algo: str,
-        nsides: dict[int, int],
+        # docker args
+        docker_tag: str,
+        # condor args
         njobs: int,
         memory: str,
+        # scanner args
+        progress_interval_sec: int,
+        result_interval_sec: int,
+        manifest: schema.Manifest,
+        eventfile_b64: str,
+        reco_algo: str,
+        gcd_dir: Path | None,
+        nsides: dict[int, int],
     ):
         self.api_instance = api_instance
 
         # image
-        if not tag:
-            tag = 'latest'
-        image = f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{tag}"
-        self.tag = tag
+        if not docker_tag:
+            docker_tag = 'latest'
+        image = f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{docker_tag}"
+        self.docker_tag = docker_tag
 
         # env
         self.env = {
-            'SKYSCAN_REPORT_INTERVAL_SEC': report_interval_sec,
-            'SKYSCAN_PLOT_INTERVAL_SEC': plot_interval_sec,
+            'SKYSCAN_PROGRESS_INTERVAL_SEC': progress_interval_sec,
+            'SKYSCAN_RESULT_INTERVAL_SEC': result_interval_sec,
+            # SKYSCAN_BROKER_AUTH,  # TODO
+            # SKYSCAN_SKYDRIVER_AUTH,  # TODO
+            'SKYSCAN_SKYDRIVER_SCAN_ID': manifest.scan_id,
         }
-
         volume = 'common-space'
         volume_path = Path(volume)
 
         # job
         server = KubeAPITools.create_container(
-            name,
+            manifest.scan_id,
             image,
             self.env,
-            self.get_server_args(volume_path, reco_algo, nsides),
+            self.get_server_args(
+                volume_path,
+                reco_algo,
+                nsides,
+                gcd_dir,
+                eventfile_b64,
+            ),
             {volume: volume_path},
         )
         condor_client_spawner = KubeAPITools.create_container(
-            name,
+            manifest.scan_id,
             image,
             self.env,
             SkymapScannerJob.get_condor_client_spawner_args(
-                volume_path, tag, njobs, memory
+                volume_path,
+                docker_tag,
+                njobs,
+                memory,
             ),
             {volume: volume_path},
         )
         self.job = KubeAPITools.kube_create_job_object(
-            name, [server, condor_client_spawner], [volume]
+            manifest.scan_id,
+            [server, condor_client_spawner],
+            [volume],
         )
 
     @staticmethod
@@ -271,6 +291,8 @@ class SkymapScannerJob:
         volume_path: Path,
         reco_algo: str,
         nsides: dict[int, int],
+        gcd_dir: Path | None,
+        eventfile_b64: str,
     ) -> List[str]:
         """Make the server container object's args."""
         args = (
@@ -283,9 +305,10 @@ class SkymapScannerJob:
             f" --broker {ENV.SKYSCAN_BROKER_ADDRESS} "
             f" --log DEBUG "
             f" --log-third-party INFO "
-            f" --mini-test-variations "  # TODO
-            f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides)} "
+            f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "
         )
+        if gcd_dir:
+            args += f" --gcd-dir {gcd_dir} "  # TODO figure binding
         return args.split()
 
     @staticmethod

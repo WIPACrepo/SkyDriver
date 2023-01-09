@@ -2,6 +2,7 @@
 
 
 import dataclasses as dc
+from pathlib import Path
 from typing import Any, cast
 
 import kubernetes.client  # type: ignore[import]
@@ -102,44 +103,70 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 raise TypeError("cannot use empty string")
             return out_val
 
-        event_id = self.get_argument(
-            "event_id",
-            type=no_empty_str,
-        )
+        # docker args
         docker_tag = self.get_argument(
             "docker_tag",
             type=str,
             default="latest",
         )
-        report_interval_sec = self.get_argument(
-            "report_interval_sec",
+
+        # condor args
+        njobs = self.get_argument(
+            "njobs",
+            type=int,
+        )
+        memory = self.get_argument(
+            "memory",
+            type=str,
+        )
+
+        # scanner args
+        progress_interval_sec = self.get_argument(
+            "progress_interval_sec",
             type=int,
             default=5 * 60,
         )
-        plot_interval_sec = self.get_argument(
-            "plot_interval_sec",
+        result_interval_sec = self.get_argument(
+            "result_interval_sec",
             type=int,
             default=10 * 60,
         )
-        # physics args
-        reco_algo = self.get_argument("reco_algo", type=str)
-        nsides = self.get_argument("nsides", type=dict)
-        njobs = self.get_argument("njobs", type=int)
-        memory = self.get_argument("memory", type=str)
+        reco_algo = self.get_argument(
+            "reco_algo",
+            type=str,
+        )
+        event_id = self.get_argument(
+            "event_id",
+            type=no_empty_str,
+        )
+        gcd_dir = self.get_argument(
+            "gcd_dir",
+            default=None,
+            type=Path,
+        )
+        nsides = self.get_argument(
+            "nsides",
+            type=dict,
+        )
 
         manifest = await self.manifests.post(event_id)  # generates ID
 
         # start k8s job
         job = k8s.SkymapScannerJob(
-            self.k8s_api,
-            docker_tag,
-            manifest.scan_id,
-            report_interval_sec,
-            plot_interval_sec,
-            reco_algo,
-            nsides,  # type: ignore[arg-type]
-            njobs,
-            memory,
+            k8s_api=self.k8s_api,
+            # docker args
+            docker_tag=docker_tag,
+            # condor args
+            njobs=njobs,
+            memory=memory,
+            # scanner args
+            progress_interval_sec=progress_interval_sec,
+            result_interval_sec=result_interval_sec,
+            eventfile_b64=eventfile_b64,
+            manifest=manifest,
+            reco_algo=reco_algo,
+            gcd_dir=gcd_dir,
+            nsides=nsides,  # type: ignore[arg-type]
         )
         job.start()
 
