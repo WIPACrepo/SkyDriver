@@ -241,12 +241,12 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's result."""
-        json_dict = self.get_argument("json_dict", type=dict, strict_type=True)
+        scan_result = self.get_argument("scan_result", type=dict, strict_type=True)
         is_final = self.get_argument("is_final", type=bool)
 
         result = await self.results.put(
             scan_id,
-            cast(dict[str, Any], json_dict),
+            cast(dict[str, Any], scan_result),
             is_final,
         )
 
