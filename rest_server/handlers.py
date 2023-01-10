@@ -149,11 +149,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=dict,
         )
 
-        manifest = await self.manifests.post(event_id)  # generates ID
+        manifest = await self.manifests.post()  # generates scan_id
 
         # start k8s job
         job = k8s.SkymapScannerJob(
-            k8s_api=self.k8s_api,
+            api_instance=self.k8s_api,
             # docker args
             docker_tag=docker_tag,
             # condor args
@@ -163,7 +163,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             progress_interval_sec=progress_interval_sec,
             result_interval_sec=result_interval_sec,
             eventfile_b64=eventfile_b64,
-            manifest=manifest,
+            scan_id=manifest.scan_id,
             reco_algo=reco_algo,
             gcd_dir=gcd_dir,
             nsides=nsides,  # type: ignore[arg-type]

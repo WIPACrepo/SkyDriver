@@ -9,8 +9,6 @@ from typing import Any, List
 import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
 
-from database import schema
-
 from .config import ENV, LOGGER
 
 
@@ -229,7 +227,7 @@ class SkymapScannerJob:
         # scanner args
         progress_interval_sec: int,
         result_interval_sec: int,
-        manifest: schema.Manifest,
+        scan_id: str,
         eventfile_b64: str,
         reco_algo: str,
         gcd_dir: Path | None,
@@ -247,16 +245,16 @@ class SkymapScannerJob:
         self.env = {
             'SKYSCAN_PROGRESS_INTERVAL_SEC': progress_interval_sec,
             'SKYSCAN_RESULT_INTERVAL_SEC': result_interval_sec,
-            # SKYSCAN_BROKER_AUTH,  # TODO
-            # SKYSCAN_SKYDRIVER_AUTH,  # TODO
-            'SKYSCAN_SKYDRIVER_SCAN_ID': manifest.scan_id,
+            # SKYSCAN_BROKER_AUTH,  # TODO: get from requestor?
+            # SKYSCAN_SKYDRIVER_AUTH,  # TODO: get from requestor?
+            'SKYSCAN_SKYDRIVER_SCAN_ID': scan_id,
         }
         volume = 'common-space'
         volume_path = Path(volume)
 
         # job
         server = KubeAPITools.create_container(
-            manifest.scan_id,
+            scan_id,
             image,
             self.env,
             self.get_server_args(
@@ -269,7 +267,7 @@ class SkymapScannerJob:
             {volume: volume_path},
         )
         condor_client_spawner = KubeAPITools.create_container(
-            manifest.scan_id,
+            scan_id,
             image,
             self.env,
             SkymapScannerJob.get_condor_client_spawner_args(
@@ -281,7 +279,7 @@ class SkymapScannerJob:
             {volume: volume_path},
         )
         self.job = KubeAPITools.kube_create_job_object(
-            manifest.scan_id,
+            scan_id,
             [server, condor_client_spawner],
             [volume],
         )

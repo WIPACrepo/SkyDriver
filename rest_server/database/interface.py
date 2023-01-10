@@ -152,17 +152,16 @@ class ManifestClient(ScanIDCollectionFacade):
         )
         return manifest
 
-    async def post(self, event_id: str) -> schema.Manifest:
+    async def post(self) -> str:
         """Create `schema.Manifest` doc."""
-        LOGGER.debug(f"creating manifest for {event_id=}")
+        LOGGER.debug("creating new manifest")
         manifest = schema.Manifest(  # validates data
-            uuid.uuid4().hex,
-            False,
-            event_id,
+            scan_id=uuid.uuid4().hex,
+            is_deleted=False,
             # TODO: more args here
         )
         manifest = await self._upsert(_MANIFEST_COLL_NAME, manifest.scan_id, manifest)
-        return manifest
+        return manifest.scan_id
 
     async def patch(self, scan_id: str, progress: dict[str, Any]) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
@@ -175,8 +174,21 @@ class ManifestClient(ScanIDCollectionFacade):
                 reason=msg,
             )
 
+        # get event_id (found/created during first few seconds of scanning)
+        in_db = await self.get(scan_id, incl_del=True)
+        if in_db.event_id and in_db.event_id != progress["config"]["event_id"]:
+            msg = "Cannot change an existing event id"
+            raise web.HTTPError(
+                400,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+
         manifest = await self._upsert(
-            _MANIFEST_COLL_NAME, scan_id, {"progress": progress}, schema.Manifest
+            _MANIFEST_COLL_NAME,
+            scan_id,
+            {"progress": progress, "event_id": progress["config"]["event_id"]},
+            schema.Manifest,
         )
         return manifest
 
