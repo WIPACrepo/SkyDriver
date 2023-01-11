@@ -225,8 +225,6 @@ class SkymapScannerJob:
         njobs: int,
         memory: str,
         # scanner args
-        progress_interval_sec: int,
-        result_interval_sec: int,
         scan_id: str,
         event_i3live_json_str: str,
         reco_algo: str,
@@ -244,13 +242,13 @@ class SkymapScannerJob:
         # env
         self.env = {
             # interval args
-            'SKYSCAN_PROGRESS_INTERVAL_SEC': progress_interval_sec,
-            'SKYSCAN_RESULT_INTERVAL_SEC': result_interval_sec,
+            'SKYSCAN_PROGRESS_INTERVAL_SEC': ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
+            'SKYSCAN_RESULT_INTERVAL_SEC': ENV.SKYSCAN_RESULT_INTERVAL_SEC,
             #
             # broker/mq vars
-            # SKYSCAN_BROKER_AUTH,  # TODO: get from requestor?
-            # SKYSCAN_MQ_TIMEOUT_TO_CLIENTS: = 60 * 1 # TODO: get from requestor?
-            # SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS: = 60 * 30  # TODO: get from requestor?
+            # 'SKYSCAN_BROKER_AUTH': HERE, # TODO
+            'SKYSCAN_MQ_TIMEOUT_TO_CLIENTS': ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
+            'SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS': ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
             #
             # skydriver vars
             # SKYSCAN_SKYDRIVER_AUTH,  # TODO: get from requestor?
@@ -260,8 +258,8 @@ class SkymapScannerJob:
             # 'SKYSCAN_LOG': "INFO",
             # 'SKYSCAN_LOG_THIRD_PARTY': "WARNING",
         }
-        volume = 'common-space'
-        volume_path = Path(volume)
+        volume_name = 'common-space'
+        volume_path = Path(volume_name)
 
         # job
         server = KubeAPITools.create_container(
@@ -275,7 +273,7 @@ class SkymapScannerJob:
                 gcd_dir,
                 event_i3live_json_str,
             ),
-            {volume: volume_path},
+            {volume_name: volume_path},
         )
         condor_client_spawner = KubeAPITools.create_container(
             scan_id,
@@ -287,12 +285,12 @@ class SkymapScannerJob:
                 njobs,
                 memory,
             ),
-            {volume: volume_path},
+            {volume_name: volume_path},
         )
         self.job = KubeAPITools.kube_create_job_object(
             scan_id,
             [server, condor_client_spawner],
-            [volume],
+            [volume_name],
         )
 
     @staticmethod

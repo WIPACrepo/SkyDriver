@@ -139,16 +139,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
 
         # scanner args
-        progress_interval_sec = self.get_argument(
-            "progress_interval_sec",
-            type=int,
-            default=5 * 60,
-        )
-        result_interval_sec = self.get_argument(
-            "result_interval_sec",
-            type=int,
-            default=10 * 60,
-        )
         reco_algo = self.get_argument(
             "reco_algo",
             type=no_empty_str,
@@ -179,8 +169,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             njobs=njobs,
             memory=memory,
             # scanner args
-            progress_interval_sec=progress_interval_sec,
-            result_interval_sec=result_interval_sec,
             event_i3live_json_str=event_i3live_json_str,
             scan_id=manifest.scan_id,
             reco_algo=reco_algo,

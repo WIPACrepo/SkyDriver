@@ -27,6 +27,7 @@ class EnvConfig:
     REST_PORT: int = 8080
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
+    # skyscan
     SKYSCAN_DOCKER_IMAGE_NO_TAG: str = "icecube/skymap_scanner"
     SKYSCAN_BROKER_ADDRESS: str = "localhost"
     SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG: str = (
