@@ -6,7 +6,7 @@
 #
 backoff==2.2.1
     # via opentelemetry-exporter-otlp-proto-http
-cachetools==5.2.0
+cachetools==5.2.1
     # via
     #   google-auth
     #   wipac-rest-tools
@@ -30,7 +30,7 @@ deprecated==1.2.13
     # via opentelemetry-api
 dnspython==2.2.1
     # via pymongo
-google-auth==2.15.0
+google-auth==2.16.0
     # via kubernetes
 googleapis-common-protos==1.56.2
     # via
