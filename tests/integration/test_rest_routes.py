@@ -107,11 +107,11 @@ async def _send_result(
 ) -> dict[str, Any]:
     # send finished result
     result = {"alpha": (11 + 1) ** 11, "beta": -11}
-    resp = await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": result})
+    resp = await rc.request("PUT", f"/scan/result/{scan_id}", {"scan_result": result})
     assert resp == {
         "scan_id": scan_id,
         "is_deleted": False,
-        "json_dict": result,
+        "scan_result": result,
     }
     result = resp  # keep around
 
@@ -182,7 +182,7 @@ async def _delete_result(
     assert resp == {
         "scan_id": scan_id,
         "is_deleted": True,
-        "json_dict": last_known_result["json_dict"],
+        "scan_result": last_known_result["scan_result"],
     }
     del_resp = resp  # keep around
 
@@ -379,13 +379,13 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             f"404 Client Error: Not Found for url: {rc.address}/scan/result"
         ),
     ) as e:
-        await rc.request("PUT", "/scan/result", {"json_dict": {"bb": 22}})
+        await rc.request("PUT", "/scan/result", {"scan_result": {"bb": 22}})
     print(e.value)
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"400 Client Error: `json_dict`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/result/{scan_id}"
+            f"400 Client Error: `scan_result`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/result/{scan_id}"
         ),
     ) as e:
         await rc.request("PUT", f"/scan/result/{scan_id}", {})
@@ -397,17 +397,17 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             f"422 Client Error: Attempted to add result with an empty object ({{}}) for url: {rc.address}/scan/result/{scan_id}"
         ),
     ) as e:
-        await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": {}})
+        await rc.request("PUT", f"/scan/result/{scan_id}", {"scan_result": {}})
     print(e.value)
     # # bad-type body-arg
     for bad_arg in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=re.escape(
-                f"400 Client Error: `json_dict`: (ValueError) type mismatch: 'dict' (value is '{type(bad_arg)}') for url: {rc.address}/scan/result/{scan_id}"
+                f"400 Client Error: `scan_result`: (ValueError) type mismatch: 'dict' (value is '{type(bad_arg)}') for url: {rc.address}/scan/result/{scan_id}"
             ),
         ) as e:
-            await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": bad_arg})
+            await rc.request("PUT", f"/scan/result/{scan_id}", {"scan_result": bad_arg})
         print(e.value)
 
     # OK

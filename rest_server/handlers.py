@@ -2,12 +2,13 @@
 
 
 import dataclasses as dc
+from pathlib import Path
 from typing import Any, cast
 
-from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
+import kubernetes.client  # type: ignore[import]
 from rest_tools.server import RestHandler, handler
 
-from . import database
+from . import database, k8s
 from .config import LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
 
 if is_testing():
@@ -34,20 +35,20 @@ class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W022
 
     def initialize(  # type: ignore  # pylint: disable=W0221
         self,
-        mongodb_url: str,
+        mongo_client: str,
+        k8s_api: kubernetes.client.BatchV1Api,
         *args: Any,
         **kwargs: Any,
     ) -> None:
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)
         # pylint: disable=W0201
-        self.manifests = database.interface.ManifestClient(
-            AsyncIOMotorClient(mongodb_url)
-        )
-        self.results = database.interface.ResultClient(AsyncIOMotorClient(mongodb_url))
+        self.manifests = database.interface.ManifestClient(mongo_client)
+        self.results = database.interface.ResultClient(mongo_client)
+        self.k8s_api = k8s_api
 
 
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 
 class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
@@ -96,20 +97,78 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     async def post(self) -> None:
         """Start a new scan."""
 
-        def valid_event_id(val: Any) -> str:
+        def no_empty_str(val: Any) -> str:
             out_val = str(val).strip()
             if not out_val:
                 raise TypeError("cannot use empty string")
             return out_val
 
-        event_id = self.get_argument("event_id", type=valid_event_id)
-        LOGGER.info(f"{event_id=}")
-        # TODO: get more args
+        # docker args
+        docker_tag = self.get_argument(
+            "docker_tag",
+            type=str,
+            default="latest",
+        )
 
-        manifest = await self.manifests.post(event_id)  # generates ID
+        # condor args
+        njobs = self.get_argument(
+            "njobs",
+            type=int,
+        )
+        memory = self.get_argument(
+            "memory",
+            type=str,
+        )
 
-        # TODO: call k8s service
-        # self.cluster.launch_scan(manifest)
+        # scanner args
+        progress_interval_sec = self.get_argument(
+            "progress_interval_sec",
+            type=int,
+            default=5 * 60,
+        )
+        result_interval_sec = self.get_argument(
+            "result_interval_sec",
+            type=int,
+            default=10 * 60,
+        )
+        reco_algo = self.get_argument(
+            "reco_algo",
+            type=no_empty_str,
+        )
+        eventfile_b64 = self.get_argument(
+            "eventfile_b64",
+            type=no_empty_str,
+        )
+        gcd_dir = self.get_argument(
+            "gcd_dir",
+            default=None,
+            type=Path,
+        )
+        nsides = self.get_argument(
+            "nsides",
+            type=dict,
+        )
+
+        manifest = await self.manifests.post()  # generates scan_id
+
+        # start k8s job
+        job = k8s.SkymapScannerJob(
+            api_instance=self.k8s_api,
+            # docker args
+            docker_tag=docker_tag,
+            # condor args
+            njobs=njobs,
+            memory=memory,
+            # scanner args
+            progress_interval_sec=progress_interval_sec,
+            result_interval_sec=result_interval_sec,
+            eventfile_b64=eventfile_b64,
+            scan_id=manifest.scan_id,
+            reco_algo=reco_algo,
+            gcd_dir=gcd_dir,
+            nsides=nsides,  # type: ignore[arg-type]
+        )
+        job.start()
 
         # TODO: update db?
 
@@ -175,7 +234,6 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Delete a scan's persisted result."""
-
         result = await self.results.mark_as_deleted(scan_id)
 
         self.write(dc.asdict(result))
@@ -183,11 +241,13 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's result."""
-        json_dict = self.get_argument("json_dict", type=dict, strict_type=True)
+        scan_result = self.get_argument("scan_result", type=dict, strict_type=True)
+        is_final = self.get_argument("is_final", type=bool)
 
         result = await self.results.put(
             scan_id,
-            cast(dict[str, Any], json_dict),
+            cast(dict[str, Any], scan_result),
+            is_final,
         )
 
         self.write(dc.asdict(result))
