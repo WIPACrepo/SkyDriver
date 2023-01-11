@@ -17,6 +17,40 @@ class ScanIDDataclass:
 
 @typechecked(always=True)  # always b/c we want full data validation
 @dc.dataclass
+class ProgressMetadata:
+    """Metadata about the Progress."""
+
+    event: dict
+    scan: dict
+
+
+@typechecked(always=True)  # always b/c we want full data validation
+@dc.dataclass
+class ProgressProcessingStats:
+    """Details about the scan processing."""
+
+    start: dict
+    complete: dict
+    runtime: dict
+    rate: dict
+    end: str = ""
+    finished: bool = False
+    predictions: dict = dc.field(default_factory=dict)  # open to requestor
+
+
+@typechecked(always=True)  # always b/c we want full data validation
+@dc.dataclass
+class Progress:
+    # NOTE: do we want to lock-down schema even further?
+    metadata: ProgressMetadata
+    summary: str
+    epilogue: str
+    tallies: dict
+    processing_stats: ProgressProcessingStats
+
+
+@typechecked(always=True)  # always b/c we want full data validation
+@dc.dataclass
 class Result(ScanIDDataclass):
     """Encompasses the physics results for a scan."""
 
