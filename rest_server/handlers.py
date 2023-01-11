@@ -133,10 +133,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         reco_algo = self.get_argument(
             "reco_algo",
-            type=str,
+            type=no_empty_str,
         )
-        event_id = self.get_argument(
-            "event_id",
+        eventfile_b64 = self.get_argument(
+            "eventfile_b64",
             type=no_empty_str,
         )
         gcd_dir = self.get_argument(

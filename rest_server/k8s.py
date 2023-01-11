@@ -296,7 +296,7 @@ class SkymapScannerJob:
         args = (
             f"python -m skymap_scanner.server "
             f" --reco-algo {reco_algo}"
-            f" --event-file $REALTIME_EVENTS_DIR/${{ matrix.eventfile }} "  # TODO
+            f" --event-file $REALTIME_EVENTS_DIR/${{ matrix.eventfile }} "  # TODO: use eventfile_b64
             f" --cache-dir {volume_path/'cache'} "
             f" --output-dir {volume_path/'output'} "
             f" --startup-json-dir {volume_path/'startup'} "
