@@ -4,7 +4,7 @@ Based on https://blog.pythian.com/how-to-create-kubernetes-jobs-with-python/
 """
 
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
@@ -194,7 +194,7 @@ class KubeAPITools:
         name: str,
         image: str,
         env: dict[str, Any],
-        args: List[str],
+        args: list[str],
         volumes: dict[str, Path],
     ) -> kubernetes.client.V1Container:
         """Make a Container instance."""
@@ -228,7 +228,7 @@ class SkymapScannerJob:
         progress_interval_sec: int,
         result_interval_sec: int,
         scan_id: str,
-        eventfile_b64: str,
+        event_i3live_json_str: str,
         reco_algo: str,
         gcd_dir: Path | None,
         nsides: dict[int, int],
@@ -243,11 +243,22 @@ class SkymapScannerJob:
 
         # env
         self.env = {
+            # interval args
             'SKYSCAN_PROGRESS_INTERVAL_SEC': progress_interval_sec,
             'SKYSCAN_RESULT_INTERVAL_SEC': result_interval_sec,
+            #
+            # broker/mq vars
             # SKYSCAN_BROKER_AUTH,  # TODO: get from requestor?
+            # SKYSCAN_MQ_TIMEOUT_TO_CLIENTS: = 60 * 1 # TODO: get from requestor?
+            # SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS: = 60 * 30  # TODO: get from requestor?
+            #
+            # skydriver vars
             # SKYSCAN_SKYDRIVER_AUTH,  # TODO: get from requestor?
             'SKYSCAN_SKYDRIVER_SCAN_ID': scan_id,
+            #
+            # logging vars
+            # 'SKYSCAN_LOG': "INFO",
+            # 'SKYSCAN_LOG_THIRD_PARTY': "WARNING",
         }
         volume = 'common-space'
         volume_path = Path(volume)
@@ -262,7 +273,7 @@ class SkymapScannerJob:
                 reco_algo,
                 nsides,
                 gcd_dir,
-                eventfile_b64,
+                event_i3live_json_str,
             ),
             {volume: volume_path},
         )
@@ -290,19 +301,17 @@ class SkymapScannerJob:
         reco_algo: str,
         nsides: dict[int, int],
         gcd_dir: Path | None,
-        eventfile_b64: str,
-    ) -> List[str]:
+        event_i3live_json_str: str,
+    ) -> list[str]:
         """Make the server container object's args."""
         args = (
             f"python -m skymap_scanner.server "
             f" --reco-algo {reco_algo}"
-            f" --event-file $REALTIME_EVENTS_DIR/${{ matrix.eventfile }} "  # TODO: use eventfile_b64
+            f" --event-file $REALTIME_EVENTS_DIR/${{ matrix.eventfile }} "  # TODO: use event_i3live_json_str
             f" --cache-dir {volume_path/'cache'} "
             f" --output-dir {volume_path/'output'} "
             f" --startup-json-dir {volume_path/'startup'} "
             f" --broker {ENV.SKYSCAN_BROKER_ADDRESS} "
-            f" --log DEBUG "
-            f" --log-third-party INFO "
             f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "
         )
         if gcd_dir:
@@ -312,7 +321,7 @@ class SkymapScannerJob:
     @staticmethod
     def get_condor_client_spawner_args(
         volume_path: Path, tag: str, njobs: int, memory: str
-    ) -> List[str]:
+    ) -> list[str]:
         """Make the client container object's args."""
         client_args_dict = {
             "--broker": ENV.SKYSCAN_BROKER_ADDRESS,

@@ -2,6 +2,7 @@
 
 
 import dataclasses as dc
+import json
 from pathlib import Path
 from typing import Any, cast
 
@@ -103,6 +104,23 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 raise TypeError("cannot use empty string")
             return out_val
 
+        def json_to_str(val: Any) -> str:
+            # pylint:disable=W0707
+            error = TypeError("must be JSON-string or JSON-friendly dict")
+            match val:
+                case str():
+                    try:
+                        json.loads(val)
+                        return val
+                    except:  # noqa: E722
+                        raise error
+                case dict():
+                    try:
+                        return json.dumps(val)
+                    except:  # noqa: E722
+                        raise error
+            raise error
+
         # docker args
         docker_tag = self.get_argument(
             "docker_tag",
@@ -135,9 +153,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "reco_algo",
             type=no_empty_str,
         )
-        eventfile_b64 = self.get_argument(
-            "eventfile_b64",
-            type=no_empty_str,
+        event_i3live_json_str = self.get_argument(
+            "event_i3live_json",
+            type=json_to_str,  # JSON-string/JSON-friendly dict -> str
         )
         gcd_dir = self.get_argument(
             "gcd_dir",
@@ -147,6 +165,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         nsides = self.get_argument(
             "nsides",
             type=dict,
+            strict_type=True,
         )
 
         manifest = await self.manifests.post()  # generates scan_id
@@ -162,7 +181,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # scanner args
             progress_interval_sec=progress_interval_sec,
             result_interval_sec=result_interval_sec,
-            eventfile_b64=eventfile_b64,
+            event_i3live_json_str=event_i3live_json_str,
             scan_id=manifest.scan_id,
             reco_algo=reco_algo,
             gcd_dir=gcd_dir,
