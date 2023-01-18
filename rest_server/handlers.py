@@ -104,21 +104,26 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 raise TypeError("cannot use empty string")
             return out_val
 
-        def json_to_str(val: Any) -> str:
+        def json_to_dict(val: Any) -> dict:
             # pylint:disable=W0707
             error = TypeError("must be JSON-string or JSON-friendly dict")
-            match val:
-                case str():
-                    try:
-                        json.loads(val)
-                        return val
-                    except:  # noqa: E722
-                        raise error
-                case dict():
-                    try:
-                        return json.dumps(val)
-                    except:  # noqa: E722
-                        raise error
+            # str -> json-dict
+            if isinstance(val, str):
+                try:
+                    obj = json.loads(val)
+                except:  # noqa: E722
+                    raise error
+                if not isinstance(obj, dict):  # loaded object must be dict
+                    raise error
+                return obj
+            # dict -> check if json-friendly
+            elif isinstance(val, dict):
+                try:
+                    json.dumps(val)
+                    return val
+                except:  # noqa: E722
+                    raise error
+            # fall-through
             raise error
 
         # docker args
@@ -143,9 +148,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "reco_algo",
             type=no_empty_str,
         )
-        event_i3live_json_str = self.get_argument(
+        event_i3live_json_dict = self.get_argument(
             "event_i3live_json",
-            type=json_to_str,  # JSON-string/JSON-friendly dict -> str
+            type=json_to_dict,  # JSON-string/JSON-friendly dict -> dict
         )
         gcd_dir = self.get_argument(
             "gcd_dir",
@@ -158,7 +163,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             strict_type=True,
         )
 
-        manifest = await self.manifests.post()  # generates scan_id
+        manifest = await self.manifests.post(event_i3live_json_dict)  # makes scan_id
 
         # start k8s job
         job = k8s.SkymapScannerJob(
@@ -169,7 +174,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             njobs=njobs,
             memory=memory,
             # scanner args
-            event_i3live_json_str=event_i3live_json_str,
             scan_id=manifest.scan_id,
             reco_algo=reco_algo,
             gcd_dir=gcd_dir,

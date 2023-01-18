@@ -71,5 +71,6 @@ class Result(ScanIDDataclass):
 class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
 
+    event_i3live_json_dict: dict[str, Any]
     event_id: str = ""  # found/created during first few seconds of scanning
     progress: dict[str, Any] = dc.field(default_factory=dict)  # open to requestor

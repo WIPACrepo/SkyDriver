@@ -152,16 +152,17 @@ class ManifestClient(ScanIDCollectionFacade):
         )
         return manifest
 
-    async def post(self) -> str:
+    async def post(self, event_i3live_json_dict: dict[str, Any]) -> schema.Manifest:
         """Create `schema.Manifest` doc."""
         LOGGER.debug("creating new manifest")
         manifest = schema.Manifest(  # validates data
             scan_id=uuid.uuid4().hex,
             is_deleted=False,
+            event_i3live_json_dict=event_i3live_json_dict
             # TODO: more args here
         )
         manifest = await self._upsert(_MANIFEST_COLL_NAME, manifest.scan_id, manifest)
-        return manifest.scan_id
+        return manifest
 
     async def patch(self, scan_id: str, progress: dict[str, Any]) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""

@@ -226,7 +226,6 @@ class SkymapScannerJob:
         memory: str,
         # scanner args
         scan_id: str,
-        event_i3live_json_str: str,
         reco_algo: str,
         gcd_dir: Path | None,
         nsides: dict[int, int],
@@ -271,7 +270,6 @@ class SkymapScannerJob:
                 reco_algo,
                 nsides,
                 gcd_dir,
-                event_i3live_json_str,
             ),
             {volume_name: volume_path},
         )
@@ -299,17 +297,14 @@ class SkymapScannerJob:
         reco_algo: str,
         nsides: dict[int, int],
         gcd_dir: Path | None,
-        event_i3live_json_str: str,
     ) -> list[str]:
         """Make the server container object's args."""
         args = (
             f"python -m skymap_scanner.server "
             f" --reco-algo {reco_algo}"
-            f" --event-file $REALTIME_EVENTS_DIR/${{ matrix.eventfile }} "  # TODO: use event_i3live_json_str
             f" --cache-dir {volume_path/'cache'} "
             f" --output-dir {volume_path/'output'} "
             f" --startup-json-dir {volume_path/'startup'} "
-            f" --broker {ENV.SKYSCAN_BROKER_ADDRESS} "
             f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "
         )
         if gcd_dir:
