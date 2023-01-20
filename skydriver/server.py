@@ -11,7 +11,7 @@ from kubernetes.client.rest import ApiException  # type: ignore[import]
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.server import RestHandlerSetup, RestServer
 
-from . import database, handlers
+from . import database, rest_handlers
 from .config import ENV, LOGGER, is_testing
 
 
@@ -76,11 +76,11 @@ async def make(debug: bool = False) -> RestServer:
     rs = RestServer(debug=debug)
 
     for klass in [
-        handlers.EventMappingHandler,
-        handlers.MainHandler,
-        handlers.ManifestHandler,
-        handlers.ResultsHandler,
-        handlers.ScanLauncherHandler,
+        rest_handlers.EventMappingHandler,
+        rest_handlers.MainHandler,
+        rest_handlers.ManifestHandler,
+        rest_handlers.ResultsHandler,
+        rest_handlers.ScanLauncherHandler,
     ]:
         try:
             rs.add_route(getattr(klass, "ROUTE"), klass, args)

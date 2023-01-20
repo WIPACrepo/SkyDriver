@@ -1,4 +1,4 @@
-"""Routes handlers for the SkyDriver REST API server interface."""
+"""Handlers for the SkyDriver REST API server interface."""
 
 
 import dataclasses as dc
