@@ -10,10 +10,10 @@ import pytest
 import pytest_asyncio
 import requests
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
-from rest_server.config import config_logging
-from rest_server.database.interface import drop_collections
-from rest_server.server import make, mongodb_url
 from rest_tools.client import RestClient
+from skydriver.config import config_logging
+from skydriver.database.interface import drop_collections
+from skydriver.server import make, mongodb_url
 
 ########################################################################################
 
