@@ -219,6 +219,7 @@ class SkymapScannerJob:
     def __init__(
         self,
         api_instance: kubernetes.client.BatchV1Api,
+        auth_token: str,
         # docker args
         docker_tag: str,
         # condor args
@@ -242,11 +243,11 @@ class SkymapScannerJob:
         self.env: dict[str, str | int] = {
             # broker/mq vars
             'SKYSCAN_BROKER_ADDRESS': ENV.SKYSCAN_BROKER_ADDRESS,
-            # 'SKYSCAN_BROKER_AUTH': broker, # TODO
+            'SKYSCAN_BROKER_AUTH': auth_token,  # TODO
             #
             # skydriver vars
             # SKYSCAN_SKYDRIVER_ADDRESS: HERE, # TODO
-            # SKYSCAN_SKYDRIVER_AUTH,  # TODO: get from requestor token?
+            'SKYSCAN_SKYDRIVER_AUTH': auth_token,
             'SKYSCAN_SKYDRIVER_SCAN_ID': scan_id,
         }
         prefiltered = {

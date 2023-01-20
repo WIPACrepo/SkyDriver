@@ -168,6 +168,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # start k8s job
         job = k8s.SkymapScannerJob(
             api_instance=self.k8s_api,
+            auth_token=self.auth_key,  # type: ignore[arg-type]
             # docker args
             docker_tag=docker_tag,
             # condor args
