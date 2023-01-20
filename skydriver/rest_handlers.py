@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import kubernetes.client  # type: ignore[import]
-from rest_tools.server import RestHandler, handler
+from rest_tools.server import RestHandler, decorators
 
 from . import database, k8s
 from .config import LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
@@ -25,7 +25,7 @@ if is_testing():
         return make_wrapper
 
 else:
-    service_account_auth = handler.keycloak_role_auth
+    service_account_auth = decorators.keycloak_role_auth
 
 
 # -----------------------------------------------------------------------------
