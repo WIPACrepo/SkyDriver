@@ -8,7 +8,7 @@ attrs==22.2.0
     # via pytest
 backoff==2.2.1
     # via opentelemetry-exporter-otlp-proto-http
-cachetools==5.2.0
+cachetools==5.2.1
     # via
     #   google-auth
     #   wipac-rest-tools
@@ -34,7 +34,7 @@ dnspython==2.2.1
     # via pymongo
 exceptiongroup==1.1.0
     # via pytest
-google-auth==2.15.0
+google-auth==2.16.0
     # via kubernetes
 googleapis-common-protos==1.56.2
     # via
@@ -46,7 +46,7 @@ humanfriendly==10.0
     # via coloredlogs
 idna==3.4
     # via requests
-iniconfig==1.1.1
+iniconfig==2.0.0
     # via pytest
 kubernetes==25.3.0
     # via rest-server (setup.py)
@@ -81,7 +81,7 @@ opentelemetry-sdk==1.15.0
     #   wipac-telemetry
 opentelemetry-semantic-conventions==0.36b0
     # via opentelemetry-sdk
-packaging==22.0
+packaging==23.0
     # via pytest
 pluggy==1.0.0
     # via pytest
