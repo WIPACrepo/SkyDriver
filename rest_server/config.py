@@ -27,12 +27,19 @@ class EnvConfig:
     REST_PORT: int = 8080
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
-    # skyscan
+    # skyscan (meta)
     SKYSCAN_DOCKER_IMAGE_NO_TAG: str = "icecube/skymap_scanner"
     SKYSCAN_BROKER_ADDRESS: str = "localhost"
     SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG: str = (
         "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner"
     )
+    # skyscan (forwarded)
+    SKYSCAN_PROGRESS_INTERVAL_SEC: int | None = None
+    SKYSCAN_RESULT_INTERVAL_SEC: int | None = None
+    SKYSCAN_MQ_TIMEOUT_TO_CLIENTS: int | None = None
+    SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS: int | None = None
+    SKYSCAN_LOG: str | None = None
+    SKYSCAN_LOG_THIRD_PARTY: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen

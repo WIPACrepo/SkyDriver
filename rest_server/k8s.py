@@ -239,24 +239,27 @@ class SkymapScannerJob:
         self.docker_tag = docker_tag
 
         # env
-        self.env = {
-            # interval args
-            'SKYSCAN_PROGRESS_INTERVAL_SEC': ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
-            'SKYSCAN_RESULT_INTERVAL_SEC': ENV.SKYSCAN_RESULT_INTERVAL_SEC,
-            #
+        self.env: dict[str, str | int] = {
             # broker/mq vars
-            # 'SKYSCAN_BROKER_AUTH': HERE, # TODO
-            'SKYSCAN_MQ_TIMEOUT_TO_CLIENTS': ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
-            'SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS': ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
+            'SKYSCAN_BROKER_ADDRESS': ENV.SKYSCAN_BROKER_ADDRESS,
+            # 'SKYSCAN_BROKER_AUTH': broker, # TODO
             #
             # skydriver vars
-            # SKYSCAN_SKYDRIVER_AUTH,  # TODO: get from requestor?
+            # SKYSCAN_SKYDRIVER_ADDRESS: HERE, # TODO
+            # SKYSCAN_SKYDRIVER_AUTH,  # TODO: get from requestor token?
             'SKYSCAN_SKYDRIVER_SCAN_ID': scan_id,
-            #
-            # logging vars
-            # 'SKYSCAN_LOG': "INFO",
-            # 'SKYSCAN_LOG_THIRD_PARTY': "WARNING",
         }
+        prefiltered = {
+            'SKYSCAN_PROGRESS_INTERVAL_SEC': ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
+            'SKYSCAN_RESULT_INTERVAL_SEC': ENV.SKYSCAN_RESULT_INTERVAL_SEC,
+            'SKYSCAN_MQ_TIMEOUT_TO_CLIENTS': ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
+            'SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS': ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
+            'SKYSCAN_LOG': ENV.SKYSCAN_LOG,
+            'SKYSCAN_LOG_THIRD_PARTY': ENV.SKYSCAN_LOG_THIRD_PARTY,
+        }
+        self.env.update({k: v for k, v in prefiltered.items() if v})
+
+        # volume(s)
         volume_name = 'common-space'
         volume_path = Path(volume_name)
 
