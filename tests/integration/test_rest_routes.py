@@ -5,6 +5,7 @@
 import re
 import socket
 from typing import Any, AsyncIterator, Callable
+from unittest.mock import ANY, AsyncMock, Mock, patch, sentinel
 
 import pytest
 import pytest_asyncio
@@ -203,7 +204,8 @@ async def _delete_result(
 ########################################################################################
 
 
-async def test_00(server: Callable[[], RestClient]) -> None:
+@patch("skydriver.server.setup_k8s_client", return_value=Mock())
+async def test_00(_: Mock, server: Callable[[], RestClient]) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
     event_id = "abc123"
@@ -242,7 +244,8 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     await _delete_result(rc, scan_id, result)
 
 
-async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
+@patch("skydriver.server.setup_k8s_client", return_value=Mock())
+async def test_01__bad_data(_: Mock, server: Callable[[], RestClient]) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
     event_id = "abc123"

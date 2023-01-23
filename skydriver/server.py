@@ -27,7 +27,7 @@ def mongodb_url() -> str:
     return url
 
 
-def kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:
+def _kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:
     """Testing function.
 
     If you get an error on this call don't proceed. Something is wrong on your connectivty to
@@ -49,7 +49,7 @@ def setup_k8s_client() -> kubernetes.client.BatchV1Api:
     k8s_api = kubernetes.client.BatchV1Api(
         kubernetes.client.ApiClient(kubernetes.client.Configuration())
     )
-    kube_test_credentials(k8s_api)
+    _kube_test_credentials(k8s_api)
     return k8s_api
 
 
