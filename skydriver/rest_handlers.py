@@ -134,7 +134,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # docker args
         docker_tag = self.get_argument(
             "docker_tag",
-            type=no_empty_str,
+            type=no_empty_str,  # see https://github.com/WIPACrepo/rest-tools/issues/95
             default="latest",
         )
 
@@ -145,13 +145,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         memory = self.get_argument(
             "memory",
-            type=no_empty_str,
+            type=no_empty_str,  # see https://github.com/WIPACrepo/rest-tools/issues/95
         )
 
         # scanner args
         reco_algo = self.get_argument(
             "reco_algo",
-            type=no_empty_str,
+            type=no_empty_str,  # see https://github.com/WIPACrepo/rest-tools/issues/95
         )
         event_i3live_json_dict = self.get_argument(
             "event_i3live_json",
@@ -159,7 +159,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         gcd_dir = self.get_argument(
             "gcd_dir",
-            default=None,
+            default=Path(),  # None, # see https://github.com/WIPACrepo/rest-tools/issues/96
             type=optional_path,
         )
         nsides = self.get_argument(
@@ -183,7 +183,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # scanner args
             scan_id=manifest.scan_id,
             reco_algo=reco_algo,
-            gcd_dir=gcd_dir,
+            gcd_dir=gcd_dir if gcd_dir != Path() else None,
             nsides=nsides,  # type: ignore[arg-type]
         )
         job.start()
