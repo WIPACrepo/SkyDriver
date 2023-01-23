@@ -53,7 +53,8 @@ async def server(
     """Startup server in this process, yield RestClient func, then clean up."""
     # monkeypatch.setenv("PORT", str(port))
 
-    rs = await make(debug=True)
+    with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
+        rs = await make(debug=True)
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:
@@ -204,8 +205,7 @@ async def _delete_result(
 ########################################################################################
 
 
-@patch("skydriver.server.setup_k8s_client", return_value=Mock())
-async def test_00(_: Mock, server: Callable[[], RestClient]) -> None:
+async def test_00(server: Callable[[], RestClient]) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
     event_id = "abc123"
@@ -244,8 +244,7 @@ async def test_00(_: Mock, server: Callable[[], RestClient]) -> None:
     await _delete_result(rc, scan_id, result)
 
 
-@patch("skydriver.server.setup_k8s_client", return_value=Mock())
-async def test_01__bad_data(_: Mock, server: Callable[[], RestClient]) -> None:
+async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
     event_id = "abc123"
