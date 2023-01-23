@@ -295,7 +295,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         ]:
             with pytest.raises(
                 requests.exceptions.HTTPError,
-                match=rf"400 Client Error: `{arg}`: \(ValueError\) .+: {rc.address}/scan",
+                match=rf"400 Client Error: `{arg}`: \(ValueError\) .+ for url: {rc.address}/scan",
             ) as e:
                 await rc.request("POST", "/scan", {**POST_SCAN_BODY, arg: bad_val})
             print(e.value)
