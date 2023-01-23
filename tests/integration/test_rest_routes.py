@@ -77,18 +77,15 @@ POST_SCAN_BODY = {
 }
 
 
-async def _launch_scan(rc: RestClient, event_id: str) -> str:
+async def _launch_scan(rc: RestClient) -> str:
     # launch scan
-    resp = await rc.request("POST", "/scan", {"event_id": event_id})
+    resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
     scan_id = resp["scan_id"]  # keep around
-    # query by event id
-    resp = await rc.request("GET", f"/event/{event_id}")
-    assert [scan_id] == resp["scan_ids"]
     return scan_id  # type: ignore[no-any-return]
 
 
 async def _do_progress(
-    rc: RestClient, event_id: str, scan_id: str, n: int
+    rc: RestClient, event_id: str | None, scan_id: str, n: int
 ) -> dict[str, Any]:
     for i in range(n):
         progress = {"count": i, "double_count": i * 2, "count_pow": i**i}
@@ -99,7 +96,7 @@ async def _do_progress(
         assert resp == {
             "scan_id": scan_id,
             "is_deleted": False,
-            "event_id": event_id,
+            "event_id": event_id if event_id else resp["event_id"],  # check if given
             "progress": progress,
         }
         progress_resp = resp  # keep around
@@ -107,6 +104,21 @@ async def _do_progress(
         resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
         assert progress_resp == resp
     return progress_resp  # type: ignore[no-any-return]
+
+
+async def _server_reply_with_event_id(rc: RestClient, scan_id: str) -> str:
+    # reply as a the scanner server with the newly gathered event id
+    event_id = "abc123"
+
+    # update progress
+    progress = await _do_progress(rc, None, scan_id, 0)
+    event_id = progress["event_id"]
+
+    # query by event id
+    resp = await rc.request("GET", f"/event/{event_id}")
+    assert [scan_id] == resp["scan_ids"]
+
+    return event_id
 
 
 async def _send_result(
@@ -216,20 +228,12 @@ async def _delete_result(
 async def test_00(server: Callable[[], RestClient]) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
-    event_id = "abc123"
-
-    #
-    # PRECHECK EMPTY DB
-    #
-
-    # query by event id
-    resp = await rc.request("GET", f"/event/{event_id}")
-    assert not resp["scan_ids"]  # no matches
 
     #
     # LAUNCH SCAN
     #
-    scan_id = await _launch_scan(rc, event_id)
+    scan_id = await _launch_scan(rc)
+    event_id = await _server_reply_with_event_id(rc, scan_id)
 
     #
     # ADD PROGRESS
@@ -255,15 +259,6 @@ async def test_00(server: Callable[[], RestClient]) -> None:
 async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
-    event_id = "abc123"
-
-    #
-    # PRECHECK EMPTY DB
-    #
-
-    # query by event id
-    resp = await rc.request("GET", f"/event/{event_id}")
-    assert not resp["scan_ids"]  # no matches
 
     # bad url
     with pytest.raises(
@@ -302,13 +297,14 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             print(e.value)
 
     # OK
-    scan_id = await _launch_scan(rc, event_id)
+    scan_id = await _launch_scan(rc)
+    event_id = await _server_reply_with_event_id(rc, scan_id)
 
     #
     # ADD PROGRESS
     #
 
-    # ERROR - update progress
+    # ERROR - update PROGRESS
     # # no arg
     with pytest.raises(
         requests.exceptions.HTTPError,
