@@ -111,7 +111,7 @@ async def _server_reply_with_event_id(rc: RestClient, scan_id: str) -> str:
     event_id = "abc123"
 
     # update progress
-    progress = await _do_progress(rc, None, scan_id, 0)
+    progress = await _do_progress(rc, None, scan_id, 1)
     event_id = progress["event_id"]
 
     # query by event id
