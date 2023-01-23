@@ -293,6 +293,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             "\t",
             1 if not isinstance(POST_SCAN_BODY[arg], int) else None,
         ]:
+            print(f"{arg}: [{bad_val}]")
             with pytest.raises(
                 requests.exceptions.HTTPError,
                 match=rf"400 Client Error: `{arg}`: \(ValueError\) .+ for url: {rc.address}/scan",
