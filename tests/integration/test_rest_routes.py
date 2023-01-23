@@ -68,6 +68,14 @@ async def server(
 
 ########################################################################################
 
+POST_SCAN_BODY = {
+    "njobs": 1,
+    "memory": "20G",
+    "reco_algo": "anything",
+    "event_i3live_json": {"a": 22},
+    "nsides": {1: 2, 3: 4},
+}
+
 
 async def _launch_scan(rc: RestClient, event_id: str) -> str:
     # launch scan
@@ -273,22 +281,24 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=re.escape(
-            f"400 Client Error: `event_id`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan"
-        ),
+        match=rf"400 Client Error: `\w+`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
     ) as e:
         await rc.request("POST", "/scan", {})
     print(e.value)
     # # bad-type body-arg
-    for bad_arg in ["", "  ", "\t"]:
-        with pytest.raises(
-            requests.exceptions.HTTPError,
-            match=re.escape(
-                f"400 Client Error: `event_id`: (ValueError) cannot use empty string for url: {rc.address}/scan"
-            ),
-        ) as e:
-            await rc.request("POST", "/scan", {"event_id": bad_arg})
-        print(e.value)
+    for arg in POST_SCAN_BODY:
+        for bad_val in [
+            "",
+            "  ",
+            "\t",
+            1 if not isinstance(POST_SCAN_BODY[arg], int) else None,
+        ]:
+            with pytest.raises(
+                requests.exceptions.HTTPError,
+                match=rf"400 Client Error: `{arg}`: \(ValueError\) \w+: {rc.address}/scan",
+            ) as e:
+                await rc.request("POST", "/scan", {**POST_SCAN_BODY, arg: bad_val})
+            print(e.value)
 
     # OK
     scan_id = await _launch_scan(rc, event_id)
@@ -335,15 +345,15 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         await rc.request("PATCH", f"/scan/manifest/{scan_id}", {"progress": {}})
     print(e.value)
     # # bad-type body-arg
-    for bad_arg in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
+    for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=re.escape(
-                f"400 Client Error: `progress`: (ValueError) type mismatch: 'dict' (value is '{type(bad_arg)}') for url: {rc.address}/scan/manifest/{scan_id}"
+                f"400 Client Error: `progress`: (ValueError) type mismatch: 'dict' (value is '{type(bad_val)}') for url: {rc.address}/scan/manifest/{scan_id}"
             ),
         ) as e:
             await rc.request(
-                "PATCH", f"/scan/manifest/{scan_id}", {"progress": bad_arg}
+                "PATCH", f"/scan/manifest/{scan_id}", {"progress": bad_val}
             )
         print(e.value)
 
@@ -402,14 +412,14 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         await rc.request("PUT", f"/scan/result/{scan_id}", {"scan_result": {}})
     print(e.value)
     # # bad-type body-arg
-    for bad_arg in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
+    for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=re.escape(
-                f"400 Client Error: `scan_result`: (ValueError) type mismatch: 'dict' (value is '{type(bad_arg)}') for url: {rc.address}/scan/result/{scan_id}"
+                f"400 Client Error: `scan_result`: (ValueError) type mismatch: 'dict' (value is '{type(bad_val)}') for url: {rc.address}/scan/result/{scan_id}"
             ),
         ) as e:
-            await rc.request("PUT", f"/scan/result/{scan_id}", {"scan_result": bad_arg})
+            await rc.request("PUT", f"/scan/result/{scan_id}", {"scan_result": bad_val})
         print(e.value)
 
     # OK

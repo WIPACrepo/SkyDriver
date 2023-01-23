@@ -129,7 +129,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # docker args
         docker_tag = self.get_argument(
             "docker_tag",
-            type=str,
+            type=no_empty_str,
             default="latest",
         )
 
@@ -140,7 +140,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         memory = self.get_argument(
             "memory",
-            type=str,
+            type=no_empty_str,
         )
 
         # scanner args
