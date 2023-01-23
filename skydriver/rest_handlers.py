@@ -126,6 +126,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # fall-through
             raise error
 
+        def optional_path(val: Any) -> Path | None:
+            if val is None:
+                return None
+            return Path(val)
+
         # docker args
         docker_tag = self.get_argument(
             "docker_tag",
@@ -155,7 +160,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         gcd_dir = self.get_argument(
             "gcd_dir",
             default=None,
-            type=Path,
+            type=optional_path,
         )
         nsides = self.get_argument(
             "nsides",
