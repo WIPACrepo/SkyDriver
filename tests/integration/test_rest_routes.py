@@ -85,7 +85,10 @@ async def _launch_scan(rc: RestClient) -> str:
 
 
 async def _do_progress(
-    rc: RestClient, event_id: str | None, scan_id: str, n: int
+    rc: RestClient,
+    runevent: tuple[int, int] | None,
+    scan_id: str,
+    n: int,
 ) -> dict[str, Any]:
     for i in range(n):
         progress = {"count": i, "double_count": i * 2, "count_pow": i**i}
@@ -96,9 +99,12 @@ async def _do_progress(
         assert resp == {
             "scan_id": scan_id,
             "is_deleted": False,
-            "event_id": event_id if event_id else resp["event_id"],  # check if given
+            "runevent": resp["runevent"],  # check below
             "progress": progress,
         }
+        if runevent:
+            assert resp["runevent"]["run_id"] == runevent[0]
+            assert resp["runevent"]["event_id"] == runevent[1]
         progress_resp = resp  # keep around
         # query progress
         resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
@@ -106,24 +112,24 @@ async def _do_progress(
     return progress_resp  # type: ignore[no-any-return]
 
 
-async def _server_reply_with_event_id(rc: RestClient, scan_id: str) -> str:
-    # reply as a the scanner server with the newly gathered event id
-    event_id = "abc123"
+async def _server_reply_with_runevent(rc: RestClient, scan_id: str) -> tuple[int, int]:
+    # reply as a the scanner server with the newly gathered run+event ids
+    event_id = 123
+    run_id = 456
 
     # update progress
     progress = await _do_progress(rc, None, scan_id, 1)
-    event_id = progress["event_id"]
+    run_id, event_id = progress["runevent"]["run_id"], progress["runevent"]["event_id"]
 
     # query by event id
-    resp = await rc.request("GET", f"/event/{event_id}")
+    resp = await rc.request("GET", "/scans", {"run_id": run_id, "event_id": event_id})
     assert [scan_id] == resp["scan_ids"]
 
-    return event_id
+    return run_id, event_id
 
 
 async def _send_result(
     rc: RestClient,
-    # event_id: str,
     scan_id: str,
     last_known_manifest: dict[str, Any],
 ) -> dict[str, Any]:
@@ -150,7 +156,7 @@ async def _send_result(
 
 async def _delete_manifest(
     rc: RestClient,
-    event_id: str,
+    runevent: tuple[int, int],
     scan_id: str,
     last_known_manifest: dict[str, Any],
     last_known_result: dict[str, Any],
@@ -160,9 +166,12 @@ async def _delete_manifest(
     assert resp == {
         "scan_id": scan_id,
         "is_deleted": True,
-        "event_id": event_id,
+        "event_id": resp["event_id"],
         "progress": last_known_manifest["progress"],
     }
+    if runevent:
+        assert resp["runevent"]["run_id"] == runevent[0]
+        assert resp["runevent"]["event_id"] == runevent[1]
     del_resp = resp  # keep around
 
     # query w/ scan id (fails)
@@ -181,11 +190,19 @@ async def _delete_manifest(
     assert del_resp == resp
 
     # query by event id (none)
-    resp = await rc.request("GET", f"/event/{event_id}")
+    resp = await rc.request(
+        "GET",
+        "/scans",
+        {"run_id": runevent[0], "event_id": runevent[1]},
+    )
     assert not resp["scan_ids"]  # no matches
 
     # query by event id w/ incl_del
-    resp = await rc.request("GET", f"/event/{event_id}", {"include_deleted": True})
+    resp = await rc.request(
+        "GET",
+        "/scans",
+        {"run_id": runevent[0], "event_id": runevent[1], "include_deleted": True},
+    )
     assert resp["scan_ids"] == [scan_id]
 
     # query result (still exists)
@@ -195,7 +212,6 @@ async def _delete_manifest(
 
 async def _delete_result(
     rc: RestClient,
-    # event_id: str,
     scan_id: str,
     last_known_result: dict[str, Any],
 ) -> None:
@@ -233,12 +249,12 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     # LAUNCH SCAN
     #
     scan_id = await _launch_scan(rc)
-    event_id = await _server_reply_with_event_id(rc, scan_id)
+    run_id, event_id = await _server_reply_with_runevent(rc, scan_id)
 
     #
     # ADD PROGRESS
     #
-    manifest = await _do_progress(rc, event_id, scan_id, 10)
+    manifest = await _do_progress(rc, (run_id, event_id), scan_id, 10)
 
     #
     # SEND RESULT
@@ -248,7 +264,7 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     #
     # DELETE MANIFEST
     #
-    await _delete_manifest(rc, event_id, scan_id, manifest, result)
+    await _delete_manifest(rc, (run_id, event_id), scan_id, manifest, result)
 
     #
     # DELETE RESULT
@@ -298,7 +314,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
 
     # OK
     scan_id = await _launch_scan(rc)
-    event_id = await _server_reply_with_event_id(rc, scan_id)
+    run_id, event_id = await _server_reply_with_runevent(rc, scan_id)
 
     #
     # ADD PROGRESS
@@ -355,7 +371,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         print(e.value)
 
     # OK
-    manifest = await _do_progress(rc, event_id, scan_id, 10)
+    manifest = await _do_progress(rc, (run_id, event_id), scan_id, 10)
 
     # # no arg
     with pytest.raises(
@@ -448,10 +464,10 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     print(e.value)
 
     # OK
-    await _delete_manifest(rc, event_id, scan_id, manifest, result)
+    await _delete_manifest(rc, (run_id, event_id), scan_id, manifest, result)
 
     # also OK
-    await _delete_manifest(rc, event_id, scan_id, manifest, result)
+    await _delete_manifest(rc, (run_id, event_id), scan_id, manifest, result)
 
     #
     # DELETE RESULT

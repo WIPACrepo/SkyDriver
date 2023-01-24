@@ -211,16 +211,20 @@ class ManifestClient(ScanIDCollectionFacade):
         )
         return manifest
 
-    async def get_scan_ids(self, event_id: str, incl_del: bool) -> AsyncIterator[str]:
-        """Search over scans and find all matching event-id."""
-        LOGGER.debug(f"matching: scan ids for {event_id=} ({incl_del=})")
+    async def find_scan_ids(
+        self,
+        runevent: schema.RunEventIdentity,
+        incl_del: bool,
+    ) -> AsyncIterator[str]:
+        """Search over scans and find all matching runevent."""
+        LOGGER.debug(f"finding: scan ids for {runevent=} ({incl_del=})")
 
         # skip the dataclass-casting b/c we're just returning a str
-        query = {"event_id": event_id}
+        query = dc.asdict(runevent)
         async for doc in self._collections[_MANIFEST_COLL_NAME].find(query):
             if not incl_del and doc["is_deleted"]:
                 continue
-            LOGGER.debug(f"match: {doc['scan_id']=} for {event_id=} ({incl_del=})")
+            LOGGER.debug(f"found: {doc['scan_id']=} for {runevent=} ({incl_del=})")
             yield doc["scan_id"]
 
 

@@ -14,7 +14,7 @@ def test_00__rest_handlers() -> None:
             r"/$",
             ["post"],
         ),
-        rest_handlers.EventMappingHandler: (
+        rest_handlers.RunEventMappingHandler: (
             r"/event/(?P<event_id>\w+)$",
             ["get"],
         ),

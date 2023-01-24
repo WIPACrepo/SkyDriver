@@ -67,17 +67,22 @@ class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class EventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
-    """Handles mapping an event to scan(s)."""
+class RunEventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles mapping a run+event to scan(s)."""
 
-    ROUTE = r"/event/(?P<event_id>\w+)$"
+    ROUTE = r"/scans$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    async def get(self, event_id: str) -> None:
+    async def get(self) -> None:
         """Get matching scan id(s) for the given event id."""
+        run_id = self.get_argument("run_id", type=int)
+        event_id = self.get_argument("event_id", type=int)
+
+        is_real = self.get_argument("is_real", default=True, type=bool)
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
-        scan_ids = [s async for s in self.manifests.get_scan_ids(event_id, incl_del)]
+        runevent = database.schema.RunEventIdentity(run_id, event_id, is_real)
+        scan_ids = [s async for s in self.manifests.find_scan_ids(runevent, incl_del)]
 
         self.write({"event_id": event_id, "scan_ids": scan_ids})
 

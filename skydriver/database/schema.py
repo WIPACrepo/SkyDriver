@@ -5,6 +5,8 @@ from typing import Any
 
 from typeguard import typechecked
 
+StrDict = dict[str, Any]
+
 
 @typechecked(always=True)  # always b/c we want full data validation
 @dc.dataclass
@@ -20,8 +22,8 @@ class ScanIDDataclass:
 class ProgressMetadata:
     """Metadata about the Progress."""
 
-    event: dict
-    scan: dict
+    event: StrDict
+    scan: StrDict
 
 
 @typechecked(always=True)  # always b/c we want full data validation
@@ -29,13 +31,13 @@ class ProgressMetadata:
 class ProgressProcessingStats:
     """Details about the scan processing."""
 
-    start: dict
-    complete: dict
-    runtime: dict
-    rate: dict
+    start: StrDict
+    complete: StrDict
+    runtime: StrDict
+    rate: StrDict
     end: str = ""
     finished: bool = False
-    predictions: dict = dc.field(default_factory=dict)  # open to requestor
+    predictions: StrDict = dc.field(default_factory=dict)  # open to requestor
 
 
 @typechecked(always=True)  # always b/c we want full data validation
@@ -45,7 +47,7 @@ class Progress:
     metadata: ProgressMetadata
     summary: str
     epilogue: str
-    tallies: dict
+    tallies: StrDict
     processing_stats: ProgressProcessingStats
 
 
@@ -54,7 +56,7 @@ class Progress:
 class Result(ScanIDDataclass):
     """Encompasses the physics results for a scan."""
 
-    scan_result: dict[str, Any]  # actual keys/values are open to requestor
+    scan_result: StrDict  # actual keys/values are open to requestor
     is_final: bool  # is this result the final result?
 
     def __repr__(self) -> str:
@@ -68,9 +70,21 @@ class Result(ScanIDDataclass):
 
 @typechecked(always=True)  # always b/c we want full data validation
 @dc.dataclass
+class RunEventIdentity:
+    """Encapsulates the identity of an event."""
+
+    run_id: int
+    event_id: int
+    is_real: bool  # as opposed to simulation
+
+
+@typechecked(always=True)  # always b/c we want full data validation
+@dc.dataclass
 class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
 
-    event_i3live_json_dict: dict[str, Any]
+    event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ checksum/hash?
     progress: Progress
-    event_id: str = ""  # found/created during first few seconds of scanning
+
+    # found/created during first few seconds of scanning
+    runevent: RunEventIdentity | None = None

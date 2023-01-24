@@ -76,7 +76,7 @@ async def make(debug: bool = False) -> RestServer:
     rs = RestServer(debug=debug)
 
     for klass in [
-        rest_handlers.EventMappingHandler,
+        rest_handlers.RunEventMappingHandler,
         rest_handlers.MainHandler,
         rest_handlers.ManifestHandler,
         rest_handlers.ResultsHandler,
