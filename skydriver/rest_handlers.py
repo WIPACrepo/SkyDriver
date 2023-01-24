@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import kubernetes.client  # type: ignore[import]
+from dacite import from_dict  # type: ignore[attr-defined]
 from rest_tools.server import RestHandler, decorators
 
 from . import database, k8s
@@ -222,12 +223,17 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
-        progress = self.get_argument("progress", type=dict, strict_type=True)
-
-        manifest = await self.manifests.patch(
-            scan_id,
-            cast(dict[str, Any], progress),
+        progress = self.get_argument(
+            "progress",
+            type=lambda x: from_dict(database.schema.Progress, x),
         )
+        event_id = self.get_argument(
+            "event_id",
+            type=str,
+            default="",  # None, # see https://github.com/WIPACrepo/rest-tools/issues/96
+        )
+
+        manifest = await self.manifests.patch(scan_id, progress, event_id)
 
         self.write(dc.asdict(manifest))
 

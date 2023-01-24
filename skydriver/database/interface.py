@@ -164,7 +164,9 @@ class ManifestClient(ScanIDCollectionFacade):
         manifest = await self._upsert(_MANIFEST_COLL_NAME, manifest.scan_id, manifest)
         return manifest
 
-    async def patch(self, scan_id: str, progress: dict[str, Any]) -> schema.Manifest:
+    async def patch(
+        self, scan_id: str, progress: schema.Progress, event_id: str | None
+    ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching progress for {scan_id=}")
         if not progress:
@@ -175,20 +177,27 @@ class ManifestClient(ScanIDCollectionFacade):
                 reason=msg,
             )
 
-        # get event_id (found/created during first few seconds of scanning)
-        in_db = await self.get(scan_id, incl_del=True)
-        if in_db.event_id and in_db.event_id != progress["config"]["event_id"]:
-            msg = "Cannot change an existing event id"
-            raise web.HTTPError(
-                400,
-                log_message=msg + f" for {scan_id=}",
-                reason=msg,
-            )
+        # Validate event_id
+        # NOTE: in theory there's a race condition (get+upsert), but it's set-once-only, so it's OK
+        if event_id:
+            # get event_id (found/created during first few seconds of scanning)
+            in_db = await self.get(scan_id, incl_del=True)
+            if in_db.event_id and in_db.event_id != event_id:
+                msg = "Cannot change an existing event id"
+                raise web.HTTPError(
+                    400,
+                    log_message=msg + f" for {scan_id=}",
+                    reason=msg,
+                )
 
+        # put in DB
+        upserting: dict = {"progress": progress}
+        if event_id:
+            upserting["event_id"] = event_id
         manifest = await self._upsert(
             _MANIFEST_COLL_NAME,
             scan_id,
-            {"progress": progress, "event_id": progress["config"]["event_id"]},
+            upserting,
             schema.Manifest,
         )
         return manifest
