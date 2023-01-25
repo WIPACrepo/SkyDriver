@@ -236,13 +236,21 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "progress",
             type=lambda x: from_dict(database.schema.Progress, x),
         )
-        event_id = self.get_argument(
-            "event_id",
-            type=str,
-            default="",  # None, # see https://github.com/WIPACrepo/rest-tools/issues/96
+        event_metadata = self.get_argument(
+            "event_metadata",
+            type=lambda x: from_dict(database.schema.EventMetadata, x),
+        )
+        scan_metadata: database.schema.StrDict = self.get_argument(
+            "scan_metadata",
+            type=dict,
         )
 
-        manifest = await self.manifests.patch(scan_id, progress, event_id)
+        manifest = await self.manifests.patch(
+            scan_id,
+            progress,
+            event_metadata,
+            scan_metadata,
+        )
 
         self.write(dc.asdict(manifest))
 

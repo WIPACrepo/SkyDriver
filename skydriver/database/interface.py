@@ -176,7 +176,11 @@ class ManifestClient(ScanIDCollectionFacade):
         return manifest
 
     async def patch(
-        self, scan_id: str, progress: schema.Progress, event_id: str | None
+        self,
+        scan_id: str,
+        progress: schema.Progress,
+        event_metadata: schema.EventMetadata,
+        scan_metadata: schema.StrDict,
     ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching progress for {scan_id=}")
@@ -188,23 +192,30 @@ class ManifestClient(ScanIDCollectionFacade):
                 reason=msg,
             )
 
-        # Validate event_id
+        # Validate event_metadata & scan_metadata
         # NOTE: in theory there's a race condition (get+upsert), but it's set-once-only, so it's OK
-        if event_id:
-            # get event_id (found/created during first few seconds of scanning)
-            in_db = await self.get(scan_id, incl_del=True)
-            if in_db.event_id and in_db.event_id != event_id:
-                msg = "Cannot change an existing event id"
-                raise web.HTTPError(
-                    400,
-                    log_message=msg + f" for {scan_id=}",
-                    reason=msg,
-                )
+        in_db = await self.get(scan_id, incl_del=True)
+        if in_db.event_metadata and in_db.event_metadata != event_metadata:
+            msg = "Cannot change an existing event_metadata"
+            raise web.HTTPError(
+                400,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+        if in_db.scan_metadata and in_db.scan_metadata != scan_metadata:
+            msg = "Cannot change an existing scan_metadata"
+            raise web.HTTPError(
+                400,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
 
         # put in DB
-        upserting: dict = {"progress": progress}
-        if event_id:
-            upserting["event_id"] = event_id
+        upserting = {
+            "progress": progress,
+            "event_metadata": event_metadata,
+            "scan_metadata": scan_metadata,
+        }
         manifest = await self._upsert(
             _MANIFEST_COLL_NAME,
             scan_id,
