@@ -19,20 +19,10 @@ class ScanIDDataclass:
 
 @typechecked(always=True)  # always b/c we want full data validation
 @dc.dataclass
-class ProgressMetadata:
-    """Metadata about the Progress."""
-
-    event: StrDict
-    scan: StrDict
-
-
-@typechecked(always=True)  # always b/c we want full data validation
-@dc.dataclass
 class ProgressProcessingStats:
     """Details about the scan processing."""
 
     start: StrDict
-    complete: StrDict
     runtime: StrDict
     rate: StrDict
     end: str = ""
@@ -43,8 +33,7 @@ class ProgressProcessingStats:
 @typechecked(always=True)  # always b/c we want full data validation
 @dc.dataclass
 class Progress:
-    # NOTE: do we want to lock-down schema even further?
-    metadata: ProgressMetadata
+
     summary: str
     epilogue: str
     tallies: StrDict
@@ -70,11 +59,13 @@ class Result(ScanIDDataclass):
 
 @typechecked(always=True)  # always b/c we want full data validation
 @dc.dataclass
-class RunEventIdentity:
+class EventMetadata:
     """Encapsulates the identity of an event."""
 
     run_id: int
     event_id: int
+    event_type: str
+    mjd: float
     is_real: bool  # as opposed to simulation
 
 
@@ -86,5 +77,11 @@ class Manifest(ScanIDDataclass):
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ checksum/hash?
     progress: Progress
 
+    # TODO: add server/clientstarter script arguments as strings, verbatim
+
     # found/created during first few seconds of scanning
-    runevent: RunEventIdentity | None = None
+    event_metadata: EventMetadata | None = None
+    scan_metadata: dict | None = None  # open to requestor
+
+    # condor_metadata  # TODO
+    # logs  # TODO

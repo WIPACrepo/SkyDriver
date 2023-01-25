@@ -9,7 +9,7 @@ from motor.motor_asyncio import (  # type: ignore
     AsyncIOMotorClient,
     AsyncIOMotorCollection,
 )
-from pymongo import ReturnDocument
+from pymongo import DESCENDING, ReturnDocument
 from tornado import web
 from typeguard import check_type
 
@@ -30,16 +30,27 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
 
     Call on server startup.
     """
+    # MANIFEST COLL
+    await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].create_index(
+        "scan_id",
+        name="scan_id_index",
+        unique=True,
+    )
+    await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].create_index(
+        [
+            ("event_metadata.event_id", DESCENDING),
+            ("event_metadata.run_id", DESCENDING),
+        ],
+        name="event_run_index",
+        unique=True,
+    )
 
-    async def index_collection(coll: str, indexes: dict[str, bool]) -> None:
-        for index, unique in indexes.items():
-            await motor_client[_DB_NAME][coll].create_index(
-                index, name=f"{index}_index", unique=unique
-            )
-        # LOGGER.debug(motor_client[_DB_NAME][coll].list_indexes())
-
-    await index_collection(_MANIFEST_COLL_NAME, {"scan_id": True})
-    await index_collection(_RESULTS_COLL_NAME, {"scan_id": True})
+    # RESULTS COLL
+    await motor_client[_DB_NAME][_RESULTS_COLL_NAME].create_index(
+        "scan_id",
+        name="scan_id_index",
+        unique=True,
+    )
 
 
 async def drop_collections(motor_client: AsyncIOMotorClient) -> None:
@@ -213,18 +224,29 @@ class ManifestClient(ScanIDCollectionFacade):
 
     async def find_scan_ids(
         self,
-        runevent: schema.RunEventIdentity,
+        run_id: int,
+        event_id: int,
+        is_real: bool,
         incl_del: bool,
     ) -> AsyncIterator[str]:
         """Search over scans and find all matching runevent."""
-        LOGGER.debug(f"finding: scan ids for {runevent=} ({incl_del=})")
+        LOGGER.debug(
+            f"finding: scan ids for {(run_id, event_id, is_real)=} ({incl_del=})"
+        )
 
         # skip the dataclass-casting b/c we're just returning a str
-        query = dc.asdict(runevent)
+        query = {
+            "event_metadata.event_id": event_id,
+            "event_metadata.run_id": run_id,
+            "event_metadata.is_real": is_real,
+            # NOTE: not searching for mjd
+        }
         async for doc in self._collections[_MANIFEST_COLL_NAME].find(query):
             if not incl_del and doc["is_deleted"]:
                 continue
-            LOGGER.debug(f"found: {doc['scan_id']=} for {runevent=} ({incl_del=})")
+            LOGGER.debug(
+                f"found: {doc['scan_id']=} for {(run_id, event_id, is_real)=} ({incl_del=})"
+            )
             yield doc["scan_id"]
 
 
