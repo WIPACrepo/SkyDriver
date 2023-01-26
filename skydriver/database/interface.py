@@ -237,26 +237,26 @@ class ManifestClient(ScanIDCollectionFacade):
         self,
         run_id: int,
         event_id: int,
-        is_real: bool,
+        is_real_event: bool,
         incl_del: bool,
     ) -> AsyncIterator[str]:
         """Search over scans and find all matching runevent."""
         LOGGER.debug(
-            f"finding: scan ids for {(run_id, event_id, is_real)=} ({incl_del=})"
+            f"finding: scan ids for {(run_id, event_id, is_real_event)=} ({incl_del=})"
         )
 
         # skip the dataclass-casting b/c we're just returning a str
         query = {
             "event_metadata.event_id": event_id,
             "event_metadata.run_id": run_id,
-            "event_metadata.is_real": is_real,
+            "event_metadata.is_real_event": is_real_event,
             # NOTE: not searching for mjd
         }
         async for doc in self._collections[_MANIFEST_COLL_NAME].find(query):
             if not incl_del and doc["is_deleted"]:
                 continue
             LOGGER.debug(
-                f"found: {doc['scan_id']=} for {(run_id, event_id, is_real)=} ({incl_del=})"
+                f"found: {doc['scan_id']=} for {(run_id, event_id, is_real_event)=} ({incl_del=})"
             )
             yield doc["scan_id"]
 

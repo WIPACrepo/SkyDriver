@@ -78,14 +78,14 @@ class RunEventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Get matching scan id(s) for the given event id."""
         run_id = self.get_argument("run_id", type=int)
         event_id = self.get_argument("event_id", type=int)
-        is_real = self.get_argument("is_real", type=bool)
+        is_real_event = self.get_argument("is_real_event", type=bool)
 
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
         scan_ids = [
             s
             async for s in self.manifests.find_scan_ids(
-                run_id, event_id, is_real, incl_del
+                run_id, event_id, is_real_event, incl_del
             )
         ]
 
