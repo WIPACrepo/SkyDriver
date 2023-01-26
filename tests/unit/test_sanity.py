@@ -15,7 +15,7 @@ def test_00__rest_handlers() -> None:
             ["post"],
         ),
         rest_handlers.RunEventMappingHandler: (
-            r"/event/(?P<event_id>\w+)$",
+            r"/scans$",
             ["get"],
         ),
         rest_handlers.ScanLauncherHandler: (
