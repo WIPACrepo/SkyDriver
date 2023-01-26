@@ -312,6 +312,17 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             ) as e:
                 await rc.request("POST", "/scan", {**POST_SCAN_BODY, arg: bad_val})
             print(e.value)
+    # # missing arg
+    for arg in POST_SCAN_BODY:
+        with pytest.raises(
+            requests.exceptions.HTTPError,
+            match=rf"400 Client Error: `{arg}`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
+        ) as e:
+            # remove arg from body
+            await rc.request(
+                "POST", "/scan", {k: v for k, v in POST_SCAN_BODY.items() if k != arg}
+            )
+        print(e.value)
 
     # OK
     scan_id = await _launch_scan(rc)
