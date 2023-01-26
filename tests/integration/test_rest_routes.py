@@ -74,6 +74,7 @@ POST_SCAN_BODY = {
     "reco_algo": "anything",
     "event_i3live_json": {"a": 22},
     "nsides": {1: 2, 3: 4},
+    "real_or_simulated_event": "real",
 }
 
 

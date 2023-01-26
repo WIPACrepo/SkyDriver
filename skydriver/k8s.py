@@ -231,6 +231,7 @@ class SkymapScannerJob:
         reco_algo: str,
         gcd_dir: Path | None,
         nsides: dict[int, int],
+        is_real_event: bool,
     ):
         self.api_instance = api_instance
 
@@ -271,10 +272,7 @@ class SkymapScannerJob:
             image,
             self.env,
             self.get_server_args(
-                volume_path,
-                reco_algo,
-                nsides,
-                gcd_dir,
+                volume_path, reco_algo, nsides, gcd_dir, is_real_event
             ),
             {volume_name: volume_path},
         )
@@ -302,6 +300,7 @@ class SkymapScannerJob:
         reco_algo: str,
         nsides: dict[int, int],
         gcd_dir: Path | None,
+        is_real_event: bool,
     ) -> list[str]:
         """Make the server container object's args."""
         args = (
@@ -310,7 +309,8 @@ class SkymapScannerJob:
             f" --cache-dir {volume_path/'cache'} "
             f" --output-dir {volume_path/'output'} "
             f" --startup-json-dir {volume_path/'startup'} "
-            f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "
+            f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "  # k1:v1 k2:v2
+            f" {'--real-event' if is_real_event else '--simulated-event'} "
         )
         if gcd_dir:
             args += f" --gcd-dir {gcd_dir} "  # TODO figure binding

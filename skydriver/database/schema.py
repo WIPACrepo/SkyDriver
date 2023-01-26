@@ -66,7 +66,7 @@ class EventMetadata:
     event_id: int
     event_type: str
     mjd: float
-    is_real: bool  # as opposed to simulation
+    is_real_event: bool  # as opposed to simulation
 
 
 @typechecked(always=True)  # always b/c we want full data validation

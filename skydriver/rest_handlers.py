@@ -178,6 +178,17 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             strict_type=True,
         )
 
+        real_choices = ["real", "real_event"]
+        sim_choices = ["sim", "simulated", "simulated_event"]
+        is_real_event = (
+            self.get_argument(
+                "real_or_simulated_event",  # as opposed to simulation
+                type=str,
+                choices=real_choices + sim_choices,
+            )
+            in real_choices
+        )
+
         manifest = await self.manifests.post(event_i3live_json_dict)  # makes scan_id
 
         # start k8s job
@@ -195,6 +206,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             reco_algo=reco_algo,
             gcd_dir=gcd_dir if gcd_dir != Path() else None,
             nsides=nsides,  # type: ignore[arg-type]
+            is_real_event=is_real_event,
         )
         job.start()
 
