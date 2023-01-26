@@ -303,7 +303,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             "",
             "  ",
             "\t",
-            1 if not isinstance(POST_SCAN_BODY[arg], int) else None,
+            "string" if not isinstance(POST_SCAN_BODY[arg], str) else None,
         ]:
             print(f"{arg}: [{bad_val}]")
             with pytest.raises(
