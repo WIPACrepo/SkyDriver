@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 from typing import Any, Type, TypeVar, cast
 
-import dacite.exceptions.MissingValueError  # type: ignore[import]
 import kubernetes.client  # type: ignore[import]
 from dacite import from_dict  # type: ignore[attr-defined]
+from dacite.exceptions import DaciteError  # type: ignore[import]
 from rest_tools.server import RestHandler, decorators
 
 from . import database, k8s
@@ -251,7 +251,7 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         def from_dict_wrapper(data_class: Type[T], val: Any) -> T:
             try:
                 return from_dict(data_class, val)  # type: ignore[no-any-return]
-            except dacite.exceptions.MissingValueError as e:
+            except DaciteError as e:
                 raise ValueError(str(e))
 
         progress = self.get_argument(
