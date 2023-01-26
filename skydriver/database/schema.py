@@ -75,13 +75,15 @@ class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
 
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ checksum/hash?
-    progress: Progress
 
     # TODO: add server/clientstarter script arguments as strings, verbatim
 
     # found/created during first few seconds of scanning
     event_metadata: EventMetadata | None = None
     scan_metadata: dict | None = None  # open to requestor
+
+    # updated during scanning, multiple times
+    progress: Progress | None = None
 
     # condor_metadata  # TODO
     # logs  # TODO
