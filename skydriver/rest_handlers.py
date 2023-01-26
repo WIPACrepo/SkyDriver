@@ -4,8 +4,9 @@
 import dataclasses as dc
 import json
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Type, TypeVar, cast
 
+import dacite.exceptions.MissingValueError  # type: ignore[import]
 import kubernetes.client  # type: ignore[import]
 from dacite import from_dict  # type: ignore[attr-defined]
 from rest_tools.server import RestHandler, decorators
@@ -244,13 +245,22 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
+
+        T = TypeVar("T")
+
+        def from_dict_wrapper(data_class: Type[T], val: Any) -> T:
+            try:
+                return from_dict(data_class, val)  # type: ignore[no-any-return]
+            except dacite.exceptions.MissingValueError as e:
+                raise ValueError(str(e))
+
         progress = self.get_argument(
             "progress",
-            type=lambda x: from_dict(database.schema.Progress, x),
+            type=lambda x: from_dict_wrapper(database.schema.Progress, x),
         )
         event_metadata = self.get_argument(
             "event_metadata",
-            type=lambda x: from_dict(database.schema.EventMetadata, x),
+            type=lambda x: from_dict_wrapper(database.schema.EventMetadata, x),
         )
         scan_metadata: database.schema.StrDict = self.get_argument(
             "scan_metadata",
