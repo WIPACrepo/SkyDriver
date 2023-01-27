@@ -90,7 +90,7 @@ class ScanIDCollectionFacade:
         coll: str,
         scan_id: str,
         update: dict[str, Any] | S,
-        scandc_type: Type[S] | None = None,
+        dclass: Type[S] | None = None,
     ) -> S:
         """Insert/update the doc.
 
@@ -104,41 +104,46 @@ class ScanIDCollectionFacade:
         is no data validation, since `ScanIDDataclass` does its own on
         initialization.
         """
-        LOGGER.debug(f"replacing: ({coll=}) doc with {scan_id=} {scandc_type=}")
+        LOGGER.debug(f"replacing: ({coll=}) doc with {scan_id=} {dclass=}")
 
+        async def find_one_and_update(update_dict: schema.StrDict) -> schema.StrDict:
+            return await self._collections[coll].find_one_and_update(  # type: ignore[no-any-return]
+                {"scan_id": scan_id},
+                {"$set": update_dict},
+                upsert=True,
+                return_document=ReturnDocument.AFTER,
+            )
+
+        # PARTIAL UPDATE
         if isinstance(update, dict):
-            if not (
-                scandc_type
-                and dc.is_dataclass(scandc_type)
-                and isinstance(scandc_type, type)
-            ):
+            if not (dclass and dc.is_dataclass(dclass) and isinstance(dclass, type)):
                 raise TypeError(
-                    "for partial updates (where 'update' is a dict), 'scandc_type' must be a dataclass class/type"
+                    "for partial updates (where 'update' is a dict), 'dclass' must be a dataclass class/type"
                 )
-            fields = {x.name: x for x in dc.fields(scandc_type)}
+            fields = {x.name: x for x in dc.fields(dclass)}
             # enforce schema
-            for attr, value in update.items():
+            for key, value in update.items():
                 try:
-                    check_type(attr, value, fields[attr].type)  # TypeError, KeyError
+                    check_type(key, value, fields[key].type)  # TypeError, KeyError
                 except (TypeError, KeyError) as e:
                     raise web.HTTPError(
                         500,
                         log_message=f"{e} [{coll=}, {scan_id=}]",
                     )
-            update_dict = update
-            out_type = scandc_type
+            doc = await find_one_and_update(
+                {
+                    # convert any nested dataclasses
+                    k: dc.asdict(v) if dc.is_dataclass(v) else v
+                    for k, v in update.items()
+                }
+            )
+            out_type = dclass
+        # WHOLE UPDATE
         else:
-            # trust ScanIDDataclass's data validation
-            update_dict = dc.asdict(update)
+            doc = await find_one_and_update(dc.asdict(update))  # validate via dataclass
             out_type = type(update)
 
         # upsert
-        doc = await self._collections[coll].find_one_and_update(
-            {"scan_id": scan_id},
-            {"$set": update_dict},
-            upsert=True,
-            return_document=ReturnDocument.AFTER,
-        )
         if not doc:
             raise web.HTTPError(
                 500,
