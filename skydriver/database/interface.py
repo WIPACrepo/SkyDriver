@@ -199,7 +199,10 @@ class ManifestClient(ScanIDCollectionFacade):
         # Store/validate: event_metadata & scan_metadata
         # NOTE: in theory there's a race condition (get+upsert), but it's set-once-only, so it's OK
         in_db = await self.get(scan_id, incl_del=True)
-        if not in_db.event_metadata:
+        # event_metadata
+        if not event_metadata:
+            pass  # don't put in DB
+        elif not in_db.event_metadata:
             upserting["event_metadata"] = event_metadata
         elif in_db.event_metadata != event_metadata:
             msg = "Cannot change an existing event_metadata"
@@ -208,7 +211,10 @@ class ManifestClient(ScanIDCollectionFacade):
                 log_message=msg + f" for {scan_id=}",
                 reason=msg,
             )
-        if not in_db.scan_metadata:
+        # scan_metadata
+        if not scan_metadata:
+            pass  # don't put in DB
+        elif not in_db.scan_metadata:
             upserting["scan_metadata"] = scan_metadata
         elif in_db.scan_metadata != scan_metadata:
             msg = "Cannot change an existing scan_metadata"
