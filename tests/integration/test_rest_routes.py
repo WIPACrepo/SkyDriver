@@ -112,7 +112,7 @@ async def _do_patch(
             event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
             event_metadata=event_metadata if event_metadata else resp["event_metadata"],
             scan_metadata=resp["scan_metadata"],  # not checking
-            progress=progress,
+            progress={**progress, "end": "", "finished": False, "predictions": {}},
             # TODO: check more fields in future
         )
         progress_resp = resp  # keep around
@@ -133,6 +133,7 @@ async def _do_patch(
                 start={"the_beginning": 0.01},
                 runtime={"from_the_beginning": 13.7 + i},
                 rate={"hanks/hour": 1.5 / (i + 1)},
+                # NOTE: these args below aren't needed but they'll be auto-filled in response
                 # end: str = ""
                 # finished: bool = False
                 # predictions: StrDict = dc.field(default_factory=dict)  # open to requestor)
