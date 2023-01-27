@@ -127,11 +127,11 @@ async def _do_patch(
             ),
             # TODO: check more fields in future
         )
-        progress_resp = resp  # keep around
+        manifest = resp  # keep around
         # query progress
         resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
-        assert progress_resp == resp
-        return progress_resp  # type: ignore[no-any-return]
+        assert manifest == resp
+        return manifest  # type: ignore[no-any-return]
 
     # make request(s)
     if not n:
@@ -152,8 +152,8 @@ async def _do_patch(
             ),
         )
         # update progress
-        progress_resp = await _do(progress)
-    return progress_resp
+        manifest = await _do(progress)
+    return manifest
 
 
 async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> StrDict:
@@ -228,14 +228,15 @@ async def _delete_manifest(
 ) -> None:
     # delete manifest
     resp = await rc.request("DELETE", f"/scan/manifest/{scan_id}")
-    assert resp == {
-        "scan_id": scan_id,
-        "is_deleted": True,
-        "event_id": resp["event_id"],
-        "progress": last_known_manifest["progress"],
-    }
-    if event_metadata:
-        assert resp["event_metadata"] == event_metadata
+    assert resp == dict(
+        scan_id=scan_id,
+        is_deleted=True,
+        event_metadata=resp["event_metadata"],
+        progress=last_known_manifest["progress"],
+        event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
+        scan_metadata=resp["scan_metadata"],  # not checking
+        # TODO: check more fields in future
+    )
     del_resp = resp  # keep around
 
     # query w/ scan id (fails)
