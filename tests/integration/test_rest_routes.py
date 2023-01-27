@@ -100,7 +100,7 @@ async def _do_patch(
 
     async def _do(progress: StrDict | None = None) -> StrDict:
         body = {}
-        if event_metadata:
+        if progress:
             body["progress"] = progress
         if event_metadata:
             body["event_metadata"] = event_metadata
