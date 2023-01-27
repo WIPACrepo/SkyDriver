@@ -191,14 +191,20 @@ async def _send_result(
     rc: RestClient,
     scan_id: str,
     last_known_manifest: StrDict,
+    is_final: bool,
 ) -> StrDict:
     # send finished result
     result = {"alpha": (11 + 1) ** 11, "beta": -11}
-    resp = await rc.request("PUT", f"/scan/result/{scan_id}", {"scan_result": result})
+    if is_final:
+        result["gamma"] = 5
+    resp = await rc.request(
+        "PUT", f"/scan/result/{scan_id}", {"scan_result": result, "is_final": is_final}
+    )
     assert resp == {
         "scan_id": scan_id,
         "is_deleted": False,
         "scan_result": result,
+        "is_final": is_final,
     }
     result = resp  # keep around
 
@@ -319,9 +325,15 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     manifest = await _do_patch(rc, event_metadata, scan_id, 10)
 
     #
-    # SEND RESULT
+    # SEND INTERMEDIATES
     #
-    result = await _send_result(rc, scan_id, manifest)
+    result = await _send_result(rc, scan_id, manifest, False)
+    manifest = await _do_patch(rc, None, scan_id, 10)
+
+    #
+    # SEND RESULT(s)
+    #
+    result = await _send_result(rc, scan_id, manifest, True)
 
     #
     # DELETE MANIFEST
@@ -500,7 +512,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         print(e.value)
 
     # OK
-    result = await _send_result(rc, scan_id, manifest)
+    result = await _send_result(rc, scan_id, manifest, True)
 
     # # no arg
     with pytest.raises(
