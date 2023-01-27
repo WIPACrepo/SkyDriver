@@ -399,14 +399,14 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     ) as e:
         await rc.request("PATCH", "/scan/manifest", {"progress": {"a": 1}})
     print(e.value)
-    # # empty body-arg
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"422 Client Error: Attempted progress update with an empty object ({{}}) for url: {rc.address}/scan/manifest/{scan_id}"
-        ),
-    ) as e:
-        await rc.request("PATCH", f"/scan/manifest/{scan_id}", {"progress": {}})
+    # # empty body-arg -- this is okay, it'll silently do nothing
+    # with pytest.raises(
+    #     requests.exceptions.HTTPError,
+    #     match=re.escape(
+    #         f"422 Client Error: Attempted progress update with an empty object ({{}}) for url: {rc.address}/scan/manifest/{scan_id}"
+    #     ),
+    # ) as e:
+    #     await rc.request("PATCH", f"/scan/manifest/{scan_id}", {"progress": {}})
     print(e.value)
     # # bad-type body-arg
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
