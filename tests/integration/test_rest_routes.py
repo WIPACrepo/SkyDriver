@@ -124,7 +124,7 @@ async def _do_patch(
     # make request(s)
     if not n:
         return await _do()
-    for i in range(n):
+    for i in range(1, n):
         progress = dict(
             summary="it's a summary",
             epilogue="and that's all folks",
