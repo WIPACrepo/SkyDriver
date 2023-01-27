@@ -112,7 +112,11 @@ async def _do_patch(
             event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
             event_metadata=event_metadata if event_metadata else resp["event_metadata"],
             scan_metadata=resp["scan_metadata"],  # not checking
-            progress={**progress, "end": "", "finished": False, "predictions": {}},
+            progress=(
+                {**progress, "end": "", "finished": False, "predictions": {}}
+                if progress
+                else None
+            ),
             # TODO: check more fields in future
         )
         progress_resp = resp  # keep around
