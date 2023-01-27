@@ -124,7 +124,7 @@ async def _do_patch(
     # make request(s)
     if not n:
         return await _do()
-    for i in range(1, n):
+    for i in range(n):
         progress = dict(
             summary="it's a summary",
             epilogue="and that's all folks",
@@ -132,7 +132,7 @@ async def _do_patch(
             processing_stats=dict(
                 start={"the_beginning": 0.01},
                 runtime={"from_the_beginning": 13.7 + i},
-                rate={"hanks/hour": 1.5 / i},
+                rate={"hanks/hour": 1.5 / (i + 1)},
                 # end: str = ""
                 # finished: bool = False
                 # predictions: StrDict = dc.field(default_factory=dict)  # open to requestor)
