@@ -437,9 +437,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=re.escape(
-                f"400 Client Error: `progress`: (ValueError) type mismatch: 'dict' (value is '{type(bad_val)}') for url: {rc.address}/scan/manifest/{scan_id}"
-            ),
+            match=rf"400 Client Error: `progress`: \(ValueError\) missing value for field .* for url: {rc.address}/scan/manifest/{scan_id}",
         ) as e:
             await rc.request(
                 "PATCH", f"/scan/manifest/{scan_id}", {"progress": bad_val}
