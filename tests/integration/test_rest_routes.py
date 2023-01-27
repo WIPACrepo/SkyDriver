@@ -5,7 +5,7 @@
 import re
 import socket
 from typing import Any, AsyncIterator, Callable
-from unittest.mock import ANY, AsyncMock, Mock, patch, sentinel
+from unittest.mock import Mock, patch
 
 import pytest
 import pytest_asyncio
@@ -17,6 +17,8 @@ from skydriver.database.interface import drop_collections
 from skydriver.server import make, mongodb_url
 
 config_logging("debug")
+
+StrDict = dict[str, Any]
 
 ########################################################################################
 
@@ -88,47 +90,57 @@ async def _launch_scan(rc: RestClient) -> str:
     return scan_id  # type: ignore[no-any-return]
 
 
-async def _do_progress(
+async def _do_patch(
     rc: RestClient,
-    event_metadata: tuple[int, int] | None,
+    event_metadata: StrDict | None,
     scan_id: str,
-    n: int,
-) -> dict[str, Any]:
+    n: int = 0,
+) -> StrDict:
+    # do PATCH @ /scan/manifest
+
+    async def _do(progress: StrDict | None = None) -> StrDict:
+        body = {}
+        if event_metadata:
+            body["progress"] = progress
+        if event_metadata:
+            body["event_metadata"] = event_metadata
+        # TODO: future handle scan_metadata
+        resp = await rc.request("PATCH", f"/scan/manifest/{scan_id}", body)
+        assert resp == dict(
+            scan_id=scan_id,
+            is_deleted=False,
+            event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
+            event_metadata=event_metadata if event_metadata else resp["event_metadata"],
+            scan_metadata=resp["scan_metadata"],  # not checking
+            progress=progress,
+            # TODO: check more fields in future
+        )
+        progress_resp = resp  # keep around
+        # query progress
+        resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
+        assert progress_resp == resp
+        return progress_resp  # type: ignore[no-any-return]
+
+    # make request(s)
+    if not n:
+        return await _do()
     for i in range(n):
         progress = dict(
             summary="it's a summary",
             epilogue="and that's all folks",
-            tallies={"edgar": 1, "tombo": 2},
+            tallies={"edgar": i, "tombo": 2 * i},
             processing_stats=dict(
-                start={"the_begining": 0.01},
-                runtime={"from_the_begining": 13.7},
-                rate={"hanks/hour": 1.5},
+                start={"the_beginning": 0.01},
+                runtime={"from_the_beginning": 13.7 + i},
+                rate={"hanks/hour": 1.5 / i},
                 # end: str = ""
                 # finished: bool = False
                 # predictions: StrDict = dc.field(default_factory=dict)  # open to requestor)
             ),
         )
         # update progress
-        resp = await rc.request(
-            "PATCH", f"/scan/manifest/{scan_id}", {"progress": progress}
-        )
-        assert resp == dict(
-            scan_id=scan_id,
-            is_deleted=False,
-            event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
-            event_metadata=resp["event_metadata"],  # not checking
-            scan_metadata=resp["scan_metadata"],  # not checking
-            progress=progress,
-            # TODO: check more fields in future
-        )
-        if event_metadata:
-            assert resp["event_metadata"]["run_id"] == event_metadata[0]
-            assert resp["event_metadata"]["event_id"] == event_metadata[1]
-        progress_resp = resp  # keep around
-        # query progress
-        resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
-        assert progress_resp == resp
-    return progress_resp  # type: ignore[no-any-return]
+        progress_resp = await _do(progress)
+    return progress_resp
 
 
 async def _server_reply_with_event_metadata(
@@ -138,10 +150,16 @@ async def _server_reply_with_event_metadata(
     event_id = 123
     run_id = 456
 
+    event_metadata = dict(
+        run_id=run_id,
+        event_id=event_id,
+        event_type="groovy",
+        mjd=9876543.21,
+        is_real_event=IS_REAL_EVENT,
+    )
+
     # update progress
-    progress = await _do_progress(rc, None, scan_id, 1)
-    run_id = progress["event_metadata"]["run_id"]
-    event_id = progress["event_metadata"]["event_id"]
+    await _do_patch(rc, event_metadata, scan_id)
 
     # query by event id
     resp = await rc.request(
@@ -161,8 +179,8 @@ async def _server_reply_with_event_metadata(
 async def _send_result(
     rc: RestClient,
     scan_id: str,
-    last_known_manifest: dict[str, Any],
-) -> dict[str, Any]:
+    last_known_manifest: StrDict,
+) -> StrDict:
     # send finished result
     result = {"alpha": (11 + 1) ** 11, "beta": -11}
     resp = await rc.request("PUT", f"/scan/result/{scan_id}", {"scan_result": result})
@@ -188,8 +206,8 @@ async def _delete_manifest(
     rc: RestClient,
     event_metadata: tuple[int, int],
     scan_id: str,
-    last_known_manifest: dict[str, Any],
-    last_known_result: dict[str, Any],
+    last_known_manifest: StrDict,
+    last_known_result: StrDict,
 ) -> None:
     # delete manifest
     resp = await rc.request("DELETE", f"/scan/manifest/{scan_id}")
@@ -247,7 +265,7 @@ async def _delete_manifest(
 async def _delete_result(
     rc: RestClient,
     scan_id: str,
-    last_known_result: dict[str, Any],
+    last_known_result: StrDict,
 ) -> None:
     # delete result
     resp = await rc.request("DELETE", f"/scan/result/{scan_id}")
@@ -288,7 +306,7 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     #
     # ADD PROGRESS
     #
-    manifest = await _do_progress(rc, (run_id, event_id), scan_id, 10)
+    manifest = await _do_patch(rc, (run_id, event_id), scan_id, 10)
 
     #
     # SEND RESULT
@@ -416,7 +434,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         print(e.value)
 
     # OK
-    manifest = await _do_progress(rc, (run_id, event_id), scan_id, 10)
+    manifest = await _do_patch(rc, (run_id, event_id), scan_id, 10)
 
     # # no arg
     with pytest.raises(
