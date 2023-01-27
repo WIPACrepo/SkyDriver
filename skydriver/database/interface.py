@@ -9,7 +9,7 @@ from motor.motor_asyncio import (  # type: ignore
     AsyncIOMotorClient,
     AsyncIOMotorCollection,
 )
-from pymongo import ReturnDocument
+from pymongo import DESCENDING, ReturnDocument
 from tornado import web
 from typeguard import check_type
 
@@ -30,16 +30,27 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
 
     Call on server startup.
     """
+    # MANIFEST COLL
+    await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].create_index(
+        "scan_id",
+        name="scan_id_index",
+        unique=True,
+    )
+    await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].create_index(
+        [
+            ("event_metadata.event_id", DESCENDING),
+            ("event_metadata.run_id", DESCENDING),
+        ],
+        name="event_run_index",
+        unique=True,
+    )
 
-    async def index_collection(coll: str, indexes: dict[str, bool]) -> None:
-        for index, unique in indexes.items():
-            await motor_client[_DB_NAME][coll].create_index(
-                index, name=f"{index}_index", unique=unique
-            )
-        # LOGGER.debug(motor_client[_DB_NAME][coll].list_indexes())
-
-    await index_collection(_MANIFEST_COLL_NAME, {"scan_id": True})
-    await index_collection(_RESULTS_COLL_NAME, {"scan_id": True})
+    # RESULTS COLL
+    await motor_client[_DB_NAME][_RESULTS_COLL_NAME].create_index(
+        "scan_id",
+        name="scan_id_index",
+        unique=True,
+    )
 
 
 async def drop_collections(motor_client: AsyncIOMotorClient) -> None:
@@ -79,7 +90,7 @@ class ScanIDCollectionFacade:
         coll: str,
         scan_id: str,
         update: dict[str, Any] | S,
-        scandc_type: Type[S] | None = None,
+        dclass: Type[S] | None = None,
     ) -> S:
         """Insert/update the doc.
 
@@ -93,41 +104,46 @@ class ScanIDCollectionFacade:
         is no data validation, since `ScanIDDataclass` does its own on
         initialization.
         """
-        LOGGER.debug(f"replacing: ({coll=}) doc with {scan_id=} {scandc_type=}")
+        LOGGER.debug(f"replacing: ({coll=}) doc with {scan_id=} {dclass=}")
 
+        async def find_one_and_update(update_dict: schema.StrDict) -> schema.StrDict:
+            return await self._collections[coll].find_one_and_update(  # type: ignore[no-any-return]
+                {"scan_id": scan_id},
+                {"$set": update_dict},
+                upsert=True,
+                return_document=ReturnDocument.AFTER,
+            )
+
+        # PARTIAL UPDATE
         if isinstance(update, dict):
-            if not (
-                scandc_type
-                and dc.is_dataclass(scandc_type)
-                and isinstance(scandc_type, type)
-            ):
+            if not (dclass and dc.is_dataclass(dclass) and isinstance(dclass, type)):
                 raise TypeError(
-                    "for partial updates (where 'update' is a dict), 'scandc_type' must be a dataclass class/type"
+                    "for partial updates (where 'update' is a dict), 'dclass' must be a dataclass class/type"
                 )
-            fields = {x.name: x for x in dc.fields(scandc_type)}
+            fields = {x.name: x for x in dc.fields(dclass)}
             # enforce schema
-            for attr, value in update.items():
+            for key, value in update.items():
                 try:
-                    check_type(attr, value, fields[attr].type)  # TypeError, KeyError
+                    check_type(key, value, fields[key].type)  # TypeError, KeyError
                 except (TypeError, KeyError) as e:
                     raise web.HTTPError(
                         500,
                         log_message=f"{e} [{coll=}, {scan_id=}]",
                     )
-            update_dict = update
-            out_type = scandc_type
+            doc = await find_one_and_update(
+                {
+                    # convert any nested dataclasses
+                    k: dc.asdict(v) if dc.is_dataclass(v) else v
+                    for k, v in update.items()
+                }
+            )
+            out_type = dclass
+        # WHOLE UPDATE
         else:
-            # trust ScanIDDataclass's data validation
-            update_dict = dc.asdict(update)
+            doc = await find_one_and_update(dc.asdict(update))  # validate via dataclass
             out_type = type(update)
 
         # upsert
-        doc = await self._collections[coll].find_one_and_update(
-            {"scan_id": scan_id},
-            {"$set": update_dict},
-            upsert=True,
-            return_document=ReturnDocument.AFTER,
-        )
         if not doc:
             raise web.HTTPError(
                 500,
@@ -152,31 +168,74 @@ class ManifestClient(ScanIDCollectionFacade):
         )
         return manifest
 
-    async def post(self, event_id: str) -> schema.Manifest:
+    async def post(self, event_i3live_json_dict: dict[str, Any]) -> schema.Manifest:
         """Create `schema.Manifest` doc."""
-        LOGGER.debug(f"creating manifest for {event_id=}")
+        LOGGER.debug("creating new manifest")
         manifest = schema.Manifest(  # validates data
-            uuid.uuid4().hex,
-            False,
-            event_id,
+            scan_id=uuid.uuid4().hex,
+            is_deleted=False,
+            event_i3live_json_dict=event_i3live_json_dict
             # TODO: more args here
         )
         manifest = await self._upsert(_MANIFEST_COLL_NAME, manifest.scan_id, manifest)
         return manifest
 
-    async def patch(self, scan_id: str, progress: dict[str, Any]) -> schema.Manifest:
+    async def patch(
+        self,
+        scan_id: str,
+        progress: schema.Progress | None,
+        event_metadata: schema.EventMetadata | None,
+        scan_metadata: schema.StrDict | None,
+    ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
-        LOGGER.debug(f"patching progress for {scan_id=}")
-        if not progress:
-            msg = f"Attempted progress update with an empty object ({progress})"
+        LOGGER.debug(f"patching manifest for {scan_id=}")
+
+        if all(not x for x in [progress, event_metadata, scan_metadata]):
+            LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
+            return await self.get(scan_id, incl_del=True)
+
+        upserting: schema.StrDict = {}
+
+        # Store/validate: event_metadata & scan_metadata
+        # NOTE: in theory there's a race condition (get+upsert), but it's set-once-only, so it's OK
+        in_db = await self.get(scan_id, incl_del=True)
+        # event_metadata
+        if not event_metadata:
+            pass  # don't put in DB
+        elif not in_db.event_metadata:
+            upserting["event_metadata"] = event_metadata
+        elif in_db.event_metadata != event_metadata:
+            msg = "Cannot change an existing event_metadata"
             raise web.HTTPError(
-                422,
+                400,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+        # scan_metadata
+        if not scan_metadata:
+            pass  # don't put in DB
+        elif not in_db.scan_metadata:
+            upserting["scan_metadata"] = scan_metadata
+        elif in_db.scan_metadata != scan_metadata:
+            msg = "Cannot change an existing scan_metadata"
+            raise web.HTTPError(
+                400,
                 log_message=msg + f" for {scan_id=}",
                 reason=msg,
             )
 
+        if progress:
+            upserting["progress"] = progress
+
+        # put in DB
+        if not upserting:  # did we actually update anything?
+            LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
+            return in_db
         manifest = await self._upsert(
-            _MANIFEST_COLL_NAME, scan_id, {"progress": progress}, schema.Manifest
+            _MANIFEST_COLL_NAME,
+            scan_id,
+            upserting,
+            schema.Manifest,
         )
         return manifest
 
@@ -189,16 +248,31 @@ class ManifestClient(ScanIDCollectionFacade):
         )
         return manifest
 
-    async def get_scan_ids(self, event_id: str, incl_del: bool) -> AsyncIterator[str]:
-        """Search over scans and find all matching event-id."""
-        LOGGER.debug(f"matching: scan ids for {event_id=} ({incl_del=})")
+    async def find_scan_ids(
+        self,
+        run_id: int,
+        event_id: int,
+        is_real_event: bool,
+        incl_del: bool,
+    ) -> AsyncIterator[str]:
+        """Search over scans and find all matching runevent."""
+        LOGGER.debug(
+            f"finding: scan ids for {(run_id, event_id, is_real_event)=} ({incl_del=})"
+        )
 
         # skip the dataclass-casting b/c we're just returning a str
-        query = {"event_id": event_id}
+        query = {
+            "event_metadata.event_id": event_id,
+            "event_metadata.run_id": run_id,
+            "event_metadata.is_real_event": is_real_event,
+            # NOTE: not searching for mjd
+        }
         async for doc in self._collections[_MANIFEST_COLL_NAME].find(query):
             if not incl_del and doc["is_deleted"]:
                 continue
-            LOGGER.debug(f"match: {doc['scan_id']=} for {event_id=} ({incl_del=})")
+            LOGGER.debug(
+                f"found: {doc['scan_id']=} for {(run_id, event_id, is_real_event)=} ({incl_del=})"
+            )
             yield doc["scan_id"]
 
 
@@ -216,17 +290,19 @@ class ResultClient(ScanIDCollectionFacade):
         )
         return result
 
-    async def put(self, scan_id: str, json_dict: dict[str, Any]) -> schema.Result:
+    async def put(
+        self, scan_id: str, scan_result: dict[str, Any], is_final: bool
+    ) -> schema.Result:
         """Override `schema.Result` at doc matching `scan_id`."""
-        LOGGER.debug(f"overriding result for {scan_id=}")
-        if not json_dict:
-            msg = f"Attempted to add result with an empty object ({json_dict})"
+        LOGGER.debug(f"overriding result for {scan_id=} {is_final=}")
+        if not scan_result:
+            msg = f"Attempted to add result with an empty object ({scan_result})"
             raise web.HTTPError(
                 422,
                 log_message=msg + f" for {scan_id=}",
                 reason=msg,
             )
-        result = schema.Result(scan_id, False, json_dict)  # validates data
+        result = schema.Result(scan_id, False, scan_result, is_final)  # validates data
         result = await self._upsert(_RESULTS_COLL_NAME, result.scan_id, result)
         return result
 

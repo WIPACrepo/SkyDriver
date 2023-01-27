@@ -5,19 +5,25 @@
 import re
 import socket
 from typing import Any, AsyncIterator, Callable
+from unittest.mock import Mock, patch
 
 import pytest
 import pytest_asyncio
 import requests
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
-from rest_server.config import config_logging
-from rest_server.database.interface import drop_collections
-from rest_server.server import make, mongodb_url
 from rest_tools.client import RestClient
+from skydriver.config import config_logging
+from skydriver.database.interface import drop_collections
+from skydriver.server import make, mongodb_url
+
+config_logging("debug")
+
+StrDict = dict[str, Any]
 
 ########################################################################################
 
-config_logging("debug")
+
+IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 
 
 @pytest.fixture
@@ -52,7 +58,8 @@ async def server(
     """Startup server in this process, yield RestClient func, then clean up."""
     # monkeypatch.setenv("PORT", str(port))
 
-    rs = await make(debug=True)
+    with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
+        rs = await make(debug=True)
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:
@@ -66,52 +73,138 @@ async def server(
 
 ########################################################################################
 
+POST_SCAN_BODY = {
+    "njobs": 1,
+    "memory": "20G",
+    "reco_algo": "anything",
+    "event_i3live_json": {"a": 22},
+    "nsides": {1: 2, 3: 4},
+    "real_or_simulated_event": "real",
+}
 
-async def _launch_scan(rc: RestClient, event_id: str) -> str:
+
+async def _launch_scan(rc: RestClient) -> str:
     # launch scan
-    resp = await rc.request("POST", "/scan", {"event_id": event_id})
+    resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
     scan_id = resp["scan_id"]  # keep around
-    # query by event id
-    resp = await rc.request("GET", f"/event/{event_id}")
-    assert [scan_id] == resp["scan_ids"]
     return scan_id  # type: ignore[no-any-return]
 
 
-async def _do_progress(
-    rc: RestClient, event_id: str, scan_id: str, n: int
-) -> dict[str, Any]:
-    for i in range(n):
-        progress = {"count": i, "double_count": i * 2, "count_pow": i**i}
-        # update progress
-        resp = await rc.request(
-            "PATCH", f"/scan/manifest/{scan_id}", {"progress": progress}
+async def _do_patch(
+    rc: RestClient,
+    event_metadata: StrDict | None,
+    scan_id: str,
+    n: int = 0,
+) -> StrDict:
+    # do PATCH @ /scan/manifest
+
+    async def _do(progress: StrDict | None = None) -> StrDict:
+        body = {}
+        if progress:
+            body["progress"] = progress
+        if event_metadata:
+            body["event_metadata"] = event_metadata
+        # TODO: future handle scan_metadata
+        resp = await rc.request("PATCH", f"/scan/manifest/{scan_id}", body)
+        assert resp == dict(
+            scan_id=scan_id,
+            is_deleted=False,
+            event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
+            event_metadata=event_metadata if event_metadata else resp["event_metadata"],
+            scan_metadata=resp["scan_metadata"],  # not checking
+            progress=(
+                {  # inject the auto-filled args
+                    **progress,
+                    "processing_stats": {
+                        **progress["processing_stats"],
+                        "end": "",
+                        "finished": False,
+                        "predictions": {},
+                    },
+                }
+                if progress
+                else None
+            ),
+            # TODO: check more fields in future
         )
-        assert resp == {
-            "scan_id": scan_id,
-            "is_deleted": False,
-            "event_id": event_id,
-            "progress": progress,
-        }
-        progress_resp = resp  # keep around
+        manifest = resp  # keep around
         # query progress
         resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
-        assert progress_resp == resp
-    return progress_resp  # type: ignore[no-any-return]
+        assert manifest == resp
+        return manifest  # type: ignore[no-any-return]
+
+    # make request(s)
+    if not n:
+        return await _do()
+    for i in range(n):
+        progress = dict(
+            summary="it's a summary",
+            epilogue="and that's all folks",
+            tallies={"edgar": i, "tombo": 2 * i},
+            processing_stats=dict(
+                start={"the_beginning": 0.01},
+                runtime={"from_the_beginning": 13.7 + i},
+                rate={"hanks/hour": 1.5 / (i + 1)},
+                # NOTE: these args below aren't needed but they'll be auto-filled in response
+                # end: str = ""
+                # finished: bool = False
+                # predictions: StrDict = dc.field(default_factory=dict)  # open to requestor)
+            ),
+        )
+        # update progress
+        manifest = await _do(progress)
+    return manifest
+
+
+async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> StrDict:
+    # reply as the scanner server with the newly gathered run+event ids
+    event_id = 123
+    run_id = 456
+
+    event_metadata = dict(
+        run_id=run_id,
+        event_id=event_id,
+        event_type="groovy",
+        mjd=9876543.21,
+        is_real_event=IS_REAL_EVENT,
+    )
+
+    # update progress
+    await _do_patch(rc, event_metadata, scan_id)
+
+    # query by event id
+    resp = await rc.request(
+        "GET",
+        "/scans",
+        {
+            "run_id": run_id,
+            "event_id": event_id,
+            "is_real_event": IS_REAL_EVENT,
+        },
+    )
+    assert [scan_id] == resp["scan_ids"]
+
+    return event_metadata
 
 
 async def _send_result(
     rc: RestClient,
-    # event_id: str,
     scan_id: str,
-    last_known_manifest: dict[str, Any],
-) -> dict[str, Any]:
+    last_known_manifest: StrDict,
+    is_final: bool,
+) -> StrDict:
     # send finished result
     result = {"alpha": (11 + 1) ** 11, "beta": -11}
-    resp = await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": result})
+    if is_final:
+        result["gamma"] = 5
+    resp = await rc.request(
+        "PUT", f"/scan/result/{scan_id}", {"scan_result": result, "is_final": is_final}
+    )
     assert resp == {
         "scan_id": scan_id,
         "is_deleted": False,
-        "json_dict": result,
+        "scan_result": result,
+        "is_final": is_final,
     }
     result = resp  # keep around
 
@@ -128,19 +221,22 @@ async def _send_result(
 
 async def _delete_manifest(
     rc: RestClient,
-    event_id: str,
+    event_metadata: StrDict,
     scan_id: str,
-    last_known_manifest: dict[str, Any],
-    last_known_result: dict[str, Any],
+    last_known_manifest: StrDict,
+    last_known_result: StrDict,
 ) -> None:
     # delete manifest
     resp = await rc.request("DELETE", f"/scan/manifest/{scan_id}")
-    assert resp == {
-        "scan_id": scan_id,
-        "is_deleted": True,
-        "event_id": event_id,
-        "progress": last_known_manifest["progress"],
-    }
+    assert resp == dict(
+        scan_id=scan_id,
+        is_deleted=True,
+        event_metadata=resp["event_metadata"],
+        progress=last_known_manifest["progress"],
+        event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
+        scan_metadata=resp["scan_metadata"],  # not checking
+        # TODO: check more fields in future
+    )
     del_resp = resp  # keep around
 
     # query w/ scan id (fails)
@@ -159,11 +255,28 @@ async def _delete_manifest(
     assert del_resp == resp
 
     # query by event id (none)
-    resp = await rc.request("GET", f"/event/{event_id}")
+    resp = await rc.request(
+        "GET",
+        "/scans",
+        {
+            "run_id": event_metadata["run_id"],
+            "event_id": event_metadata["event_id"],
+            "is_real_event": IS_REAL_EVENT,
+        },
+    )
     assert not resp["scan_ids"]  # no matches
 
     # query by event id w/ incl_del
-    resp = await rc.request("GET", f"/event/{event_id}", {"include_deleted": True})
+    resp = await rc.request(
+        "GET",
+        "/scans",
+        {
+            "run_id": event_metadata["run_id"],
+            "event_id": event_metadata["event_id"],
+            "include_deleted": True,
+            "is_real_event": IS_REAL_EVENT,
+        },
+    )
     assert resp["scan_ids"] == [scan_id]
 
     # query result (still exists)
@@ -173,16 +286,17 @@ async def _delete_manifest(
 
 async def _delete_result(
     rc: RestClient,
-    # event_id: str,
     scan_id: str,
-    last_known_result: dict[str, Any],
+    last_known_result: StrDict,
+    is_final: bool,
 ) -> None:
     # delete result
     resp = await rc.request("DELETE", f"/scan/result/{scan_id}")
     assert resp == {
         "scan_id": scan_id,
         "is_deleted": True,
-        "json_dict": last_known_result["json_dict"],
+        "is_final": is_final,
+        "scan_result": last_known_result["scan_result"],
     }
     del_resp = resp  # keep around
 
@@ -206,54 +320,43 @@ async def _delete_result(
 async def test_00(server: Callable[[], RestClient]) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
-    event_id = "abc123"
-
-    #
-    # PRECHECK EMPTY DB
-    #
-
-    # query by event id
-    resp = await rc.request("GET", f"/event/{event_id}")
-    assert not resp["scan_ids"]  # no matches
 
     #
     # LAUNCH SCAN
     #
-    scan_id = await _launch_scan(rc, event_id)
+    scan_id = await _launch_scan(rc)
+    event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
 
     #
     # ADD PROGRESS
     #
-    manifest = await _do_progress(rc, event_id, scan_id, 10)
+    manifest = await _do_patch(rc, event_metadata, scan_id, 10)
 
     #
-    # SEND RESULT
+    # SEND INTERMEDIATES
     #
-    result = await _send_result(rc, scan_id, manifest)
+    result = await _send_result(rc, scan_id, manifest, False)
+    manifest = await _do_patch(rc, None, scan_id, 10)
+
+    #
+    # SEND RESULT(s)
+    #
+    result = await _send_result(rc, scan_id, manifest, True)
 
     #
     # DELETE MANIFEST
     #
-    await _delete_manifest(rc, event_id, scan_id, manifest, result)
+    await _delete_manifest(rc, event_metadata, scan_id, manifest, result)
 
     #
     # DELETE RESULT
     #
-    await _delete_result(rc, scan_id, result)
+    await _delete_result(rc, scan_id, result, True)
 
 
 async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
-    event_id = "abc123"
-
-    #
-    # PRECHECK EMPTY DB
-    #
-
-    # query by event id
-    resp = await rc.request("GET", f"/event/{event_id}")
-    assert not resp["scan_ids"]  # no matches
 
     # bad url
     with pytest.raises(
@@ -271,31 +374,46 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=re.escape(
-            f"400 Client Error: `event_id`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan"
-        ),
+        match=rf"400 Client Error: `\w+`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
     ) as e:
         await rc.request("POST", "/scan", {})
     print(e.value)
     # # bad-type body-arg
-    for bad_arg in ["", "  ", "\t"]:
+    for arg in POST_SCAN_BODY:
+        for bad_val in [
+            "",
+            "  ",
+            "\t",
+            "string" if not isinstance(POST_SCAN_BODY[arg], str) else None,
+        ]:
+            print(f"{arg}: [{bad_val}]")
+            with pytest.raises(
+                requests.exceptions.HTTPError,
+                match=rf"400 Client Error: `{arg}`: \(ValueError\) .+ for url: {rc.address}/scan",
+            ) as e:
+                await rc.request("POST", "/scan", {**POST_SCAN_BODY, arg: bad_val})
+            print(e.value)
+    # # missing arg
+    for arg in POST_SCAN_BODY:
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=re.escape(
-                f"400 Client Error: `event_id`: (ValueError) cannot use empty string for url: {rc.address}/scan"
-            ),
+            match=rf"400 Client Error: `{arg}`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
         ) as e:
-            await rc.request("POST", "/scan", {"event_id": bad_arg})
+            # remove arg from body
+            await rc.request(
+                "POST", "/scan", {k: v for k, v in POST_SCAN_BODY.items() if k != arg}
+            )
         print(e.value)
 
     # OK
-    scan_id = await _launch_scan(rc, event_id)
+    scan_id = await _launch_scan(rc)
+    event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
 
     #
     # ADD PROGRESS
     #
 
-    # ERROR - update progress
+    # ERROR - update PROGRESS
     # # no arg
     with pytest.raises(
         requests.exceptions.HTTPError,
@@ -314,39 +432,28 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     ) as e:
         await rc.request("PATCH", "/scan/manifest", {"progress": {"a": 1}})
     print(e.value)
-    # # empty body
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"400 Client Error: `progress`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/manifest/{scan_id}"
-        ),
-    ) as e:
-        await rc.request("PATCH", f"/scan/manifest/{scan_id}", {})
-    print(e.value)
-    # # empty body-arg
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"422 Client Error: Attempted progress update with an empty object ({{}}) for url: {rc.address}/scan/manifest/{scan_id}"
-        ),
-    ) as e:
-        await rc.request("PATCH", f"/scan/manifest/{scan_id}", {"progress": {}})
+    # # empty body-arg -- this is okay, it'll silently do nothing
+    # with pytest.raises(
+    #     requests.exceptions.HTTPError,
+    #     match=re.escape(
+    #         f"422 Client Error: Attempted progress update with an empty object ({{}}) for url: {rc.address}/scan/manifest/{scan_id}"
+    #     ),
+    # ) as e:
+    #     await rc.request("PATCH", f"/scan/manifest/{scan_id}", {"progress": {}})
     print(e.value)
     # # bad-type body-arg
-    for bad_arg in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
+    for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=re.escape(
-                f"400 Client Error: `progress`: (ValueError) type mismatch: 'dict' (value is '{type(bad_arg)}') for url: {rc.address}/scan/manifest/{scan_id}"
-            ),
+            match=rf"400 Client Error: `progress`: \(ValueError\) missing value for field .* for url: {rc.address}/scan/manifest/{scan_id}",
         ) as e:
             await rc.request(
-                "PATCH", f"/scan/manifest/{scan_id}", {"progress": bad_arg}
+                "PATCH", f"/scan/manifest/{scan_id}", {"progress": bad_val}
             )
         print(e.value)
 
     # OK
-    manifest = await _do_progress(rc, event_id, scan_id, 10)
+    manifest = await _do_patch(rc, event_metadata, scan_id, 10)
 
     # # no arg
     with pytest.raises(
@@ -379,13 +486,13 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             f"404 Client Error: Not Found for url: {rc.address}/scan/result"
         ),
     ) as e:
-        await rc.request("PUT", "/scan/result", {"json_dict": {"bb": 22}})
+        await rc.request("PUT", "/scan/result", {"scan_result": {"bb": 22}})
     print(e.value)
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"400 Client Error: `json_dict`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/result/{scan_id}"
+            f"400 Client Error: `scan_result`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/result/{scan_id}"
         ),
     ) as e:
         await rc.request("PUT", f"/scan/result/{scan_id}", {})
@@ -397,21 +504,27 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             f"422 Client Error: Attempted to add result with an empty object ({{}}) for url: {rc.address}/scan/result/{scan_id}"
         ),
     ) as e:
-        await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": {}})
+        await rc.request(
+            "PUT", f"/scan/result/{scan_id}", {"scan_result": {}, "is_final": True}
+        )
     print(e.value)
     # # bad-type body-arg
-    for bad_arg in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
+    for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=re.escape(
-                f"400 Client Error: `json_dict`: (ValueError) type mismatch: 'dict' (value is '{type(bad_arg)}') for url: {rc.address}/scan/result/{scan_id}"
+                f"400 Client Error: `scan_result`: (ValueError) type mismatch: 'dict' (value is '{type(bad_val)}') for url: {rc.address}/scan/result/{scan_id}"
             ),
         ) as e:
-            await rc.request("PUT", f"/scan/result/{scan_id}", {"json_dict": bad_arg})
+            await rc.request(
+                "PUT",
+                f"/scan/result/{scan_id}",
+                {"scan_result": bad_val, "is_final": True},
+            )
         print(e.value)
 
     # OK
-    result = await _send_result(rc, scan_id, manifest)
+    result = await _send_result(rc, scan_id, manifest, True)
 
     # # no arg
     with pytest.raises(
@@ -439,10 +552,10 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     print(e.value)
 
     # OK
-    await _delete_manifest(rc, event_id, scan_id, manifest, result)
+    await _delete_manifest(rc, event_metadata, scan_id, manifest, result)
 
     # also OK
-    await _delete_manifest(rc, event_id, scan_id, manifest, result)
+    await _delete_manifest(rc, event_metadata, scan_id, manifest, result)
 
     #
     # DELETE RESULT
@@ -459,7 +572,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     print(e.value)
 
     # OK
-    await _delete_result(rc, scan_id, result)
+    await _delete_result(rc, scan_id, result, True)
 
     # also OK
-    await _delete_result(rc, scan_id, result)
+    await _delete_result(rc, scan_id, result, True)

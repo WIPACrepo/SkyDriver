@@ -5,10 +5,13 @@ import dataclasses as dc
 from typing import Any
 from urllib.parse import quote_plus
 
+import kubernetes.client  # type: ignore[import]
+from kubernetes import config
+from kubernetes.client.rest import ApiException  # type: ignore[import]
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.server import RestHandlerSetup, RestServer
 
-from . import database, handlers
+from . import database, rest_handlers
 from .config import ENV, LOGGER, is_testing
 
 
@@ -22,6 +25,32 @@ def mongodb_url() -> str:
         url = f"mongodb://{auth_user}:{auth_pass}@{ENV.MONGODB_HOST}:{ENV.MONGODB_PORT}"
 
     return url
+
+
+def _kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:
+    """Testing function.
+
+    If you get an error on this call don't proceed. Something is wrong on your connectivty to
+    Google API.
+    Check Credentials, permissions, keys, etc.
+    Docs: https://cloud.google.com/docs/authentication/
+    """
+    try:
+        api_response = api_instance.get_api_resources()
+        LOGGER.info(api_response)
+    except ApiException as e:
+        LOGGER.error(e)
+        raise
+
+
+def setup_k8s_client() -> kubernetes.client.BatchV1Api:
+    """Load Kubernetes config, check connection, and return API instance."""
+    config.load_kube_config()
+    k8s_api = kubernetes.client.BatchV1Api(
+        kubernetes.client.ApiClient(kubernetes.client.Configuration())
+    )
+    _kube_test_credentials(k8s_api)
+    return k8s_api
 
 
 async def make(debug: bool = False) -> RestServer:
@@ -39,18 +68,19 @@ async def make(debug: bool = False) -> RestServer:
         }
     args = RestHandlerSetup(rhs_config)
 
-    # Setup DB URL
-    args["mongodb_url"] = mongodb_url()
+    # Setup clients/apis
+    args["mongo_client"] = AsyncIOMotorClient(mongodb_url())
+    args["k8s_api"] = setup_k8s_client()
 
     # Configure REST Routes
     rs = RestServer(debug=debug)
 
     for klass in [
-        handlers.EventMappingHandler,
-        handlers.MainHandler,
-        handlers.ManifestHandler,
-        handlers.ResultsHandler,
-        handlers.ScanLauncherHandler,
+        rest_handlers.RunEventMappingHandler,
+        rest_handlers.MainHandler,
+        rest_handlers.ManifestHandler,
+        rest_handlers.ResultsHandler,
+        rest_handlers.ScanLauncherHandler,
     ]:
         try:
             rs.add_route(getattr(klass, "ROUTE"), klass, args)
@@ -58,5 +88,5 @@ async def make(debug: bool = False) -> RestServer:
         except AttributeError:
             continue
 
-    await database.interface.ensure_indexes(AsyncIOMotorClient(args["mongodb_url"]))
+    await database.interface.ensure_indexes(args["mongo_client"])
     return rs

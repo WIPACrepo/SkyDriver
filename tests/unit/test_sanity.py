@@ -2,31 +2,31 @@
 
 import inspect
 
-from rest_server import handlers
 from rest_tools.server import RestHandler
+from skydriver import rest_handlers
 
 
 def test_00__rest_handlers() -> None:
     """Dir-check all the REST handlers."""
 
     known_handlers = {
-        handlers.MainHandler: (
+        rest_handlers.MainHandler: (
             r"/$",
             ["post"],
         ),
-        handlers.EventMappingHandler: (
-            r"/event/(?P<event_id>\w+)$",
+        rest_handlers.RunEventMappingHandler: (
+            r"/scans$",
             ["get"],
         ),
-        handlers.ScanLauncherHandler: (
+        rest_handlers.ScanLauncherHandler: (
             r"/scan$",
             ["post"],
         ),
-        handlers.ManifestHandler: (
+        rest_handlers.ManifestHandler: (
             r"/scan/manifest/(?P<scan_id>\w+)$",
             ["get", "delete", "patch"],
         ),
-        handlers.ResultsHandler: (
+        rest_handlers.ResultsHandler: (
             r"/scan/result/(?P<scan_id>\w+)$",
             ["get", "delete", "put"],
         ),
@@ -39,9 +39,9 @@ def test_00__rest_handlers() -> None:
 
     # find
     for _, klass in inspect.getmembers(
-        handlers,
+        rest_handlers,
         predicate=lambda x: (
             inspect.isclass(x) and issubclass(x, RestHandler) and x != RestHandler
         ),
     ):
-        assert klass in known_handlers or klass == handlers.BaseSkyDriverHandler
+        assert klass in known_handlers or klass == rest_handlers.BaseSkyDriverHandler
