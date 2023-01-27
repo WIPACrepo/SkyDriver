@@ -134,7 +134,7 @@ async def _do_progress(
 async def _server_reply_with_event_metadata(
     rc: RestClient, scan_id: str
 ) -> tuple[int, int]:
-    # reply as a the scanner server with the newly gathered run+event ids
+    # reply as the scanner server with the newly gathered run+event ids
     event_id = 123
     run_id = 456
 

@@ -178,31 +178,34 @@ class ManifestClient(ScanIDCollectionFacade):
     async def patch(
         self,
         scan_id: str,
-        progress: schema.Progress,
-        event_metadata: schema.EventMetadata,
-        scan_metadata: schema.StrDict,
+        progress: schema.Progress | None,
+        event_metadata: schema.EventMetadata | None,
+        scan_metadata: schema.StrDict | None,
     ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
-        LOGGER.debug(f"patching progress for {scan_id=}")
-        if not progress:
-            msg = f"Attempted progress update with an empty object ({progress})"
-            raise web.HTTPError(
-                422,
-                log_message=msg + f" for {scan_id=}",
-                reason=msg,
-            )
+        LOGGER.debug(f"patching manifest for {scan_id=}")
 
-        # Validate event_metadata & scan_metadata
+        if all(not x for x in [progress, event_metadata, scan_metadata]):
+            LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
+            return await self.get(scan_id, incl_del=True)
+
+        upserting: schema.StrDict = {}
+
+        # Store/validate: event_metadata & scan_metadata
         # NOTE: in theory there's a race condition (get+upsert), but it's set-once-only, so it's OK
         in_db = await self.get(scan_id, incl_del=True)
-        if in_db.event_metadata and in_db.event_metadata != event_metadata:
+        if not in_db.event_metadata:
+            upserting["event_metadata"] = event_metadata
+        elif in_db.event_metadata != event_metadata:
             msg = "Cannot change an existing event_metadata"
             raise web.HTTPError(
                 400,
                 log_message=msg + f" for {scan_id=}",
                 reason=msg,
             )
-        if in_db.scan_metadata and in_db.scan_metadata != scan_metadata:
+        if not in_db.scan_metadata:
+            upserting["scan_metadata"] = scan_metadata
+        elif in_db.scan_metadata != scan_metadata:
             msg = "Cannot change an existing scan_metadata"
             raise web.HTTPError(
                 400,
@@ -210,12 +213,13 @@ class ManifestClient(ScanIDCollectionFacade):
                 reason=msg,
             )
 
+        if progress:
+            upserting["progress"] = progress
+
         # put in DB
-        upserting = {
-            "progress": progress,
-            "event_metadata": event_metadata,
-            "scan_metadata": scan_metadata,
-        }
+        if not upserting:  # did we actually update anything?
+            LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
+            return in_db
         manifest = await self._upsert(
             _MANIFEST_COLL_NAME,
             scan_id,

@@ -248,7 +248,10 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         T = TypeVar("T")
 
-        def from_dict_wrapper(data_class: Type[T], val: Any) -> T:
+        def from_dict_wrapper_or_none(data_class: Type[T], val: Any) -> T | None:
+            if not val:
+                # TODO: remove when https://github.com/WIPACrepo/rest-tools/issues/96
+                return None
             try:
                 return from_dict(data_class, val)  # type: ignore[no-any-return]
             except DaciteError as e:
@@ -256,15 +259,18 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         progress = self.get_argument(
             "progress",
-            type=lambda x: from_dict_wrapper(database.schema.Progress, x),
+            type=lambda x: from_dict_wrapper_or_none(database.schema.Progress, x),
+            default=None,
         )
         event_metadata = self.get_argument(
             "event_metadata",
-            type=lambda x: from_dict_wrapper(database.schema.EventMetadata, x),
+            type=lambda x: from_dict_wrapper_or_none(database.schema.EventMetadata, x),
+            default=None,
         )
         scan_metadata: database.schema.StrDict = self.get_argument(
             "scan_metadata",
             type=dict,
+            default={},
         )
 
         manifest = await self.manifests.patch(
