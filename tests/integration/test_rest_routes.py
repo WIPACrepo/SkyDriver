@@ -288,12 +288,14 @@ async def _delete_result(
     rc: RestClient,
     scan_id: str,
     last_known_result: StrDict,
+    is_final: bool,
 ) -> None:
     # delete result
     resp = await rc.request("DELETE", f"/scan/result/{scan_id}")
     assert resp == {
         "scan_id": scan_id,
         "is_deleted": True,
+        "is_final": is_final,
         "scan_result": last_known_result["scan_result"],
     }
     del_resp = resp  # keep around
@@ -349,7 +351,7 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     #
     # DELETE RESULT
     #
-    await _delete_result(rc, scan_id, result)
+    await _delete_result(rc, scan_id, result, True)
 
 
 async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
@@ -570,7 +572,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     print(e.value)
 
     # OK
-    await _delete_result(rc, scan_id, result)
+    await _delete_result(rc, scan_id, result, True)
 
     # also OK
-    await _delete_result(rc, scan_id, result)
+    await _delete_result(rc, scan_id, result, True)
