@@ -258,7 +258,11 @@ async def _delete_manifest(
     resp = await rc.request(
         "GET",
         "/scans",
-        {"run_id": event_metadata["run_id"], "event_id": event_metadata["event_id"]},
+        {
+            "run_id": event_metadata["run_id"],
+            "event_id": event_metadata["event_id"],
+            "is_real_event": IS_REAL_EVENT,
+        },
     )
     assert not resp["scan_ids"]  # no matches
 
@@ -270,6 +274,7 @@ async def _delete_manifest(
             "run_id": event_metadata["run_id"],
             "event_id": event_metadata["event_id"],
             "include_deleted": True,
+            "is_real_event": IS_REAL_EVENT,
         },
     )
     assert resp["scan_ids"] == [scan_id]
