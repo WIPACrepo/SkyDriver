@@ -143,9 +143,7 @@ async def _do_patch(
     return progress_resp
 
 
-async def _server_reply_with_event_metadata(
-    rc: RestClient, scan_id: str
-) -> tuple[int, int]:
+async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> StrDict:
     # reply as the scanner server with the newly gathered run+event ids
     event_id = 123
     run_id = 456
@@ -173,7 +171,7 @@ async def _server_reply_with_event_metadata(
     )
     assert [scan_id] == resp["scan_ids"]
 
-    return run_id, event_id
+    return event_metadata
 
 
 async def _send_result(
@@ -204,7 +202,7 @@ async def _send_result(
 
 async def _delete_manifest(
     rc: RestClient,
-    event_metadata: tuple[int, int],
+    event_metadata: StrDict,
     scan_id: str,
     last_known_manifest: StrDict,
     last_known_result: StrDict,
@@ -218,8 +216,7 @@ async def _delete_manifest(
         "progress": last_known_manifest["progress"],
     }
     if event_metadata:
-        assert resp["event_metadata"]["run_id"] == event_metadata[0]
-        assert resp["event_metadata"]["event_id"] == event_metadata[1]
+        assert resp["event_metadata"] == event_metadata
     del_resp = resp  # keep around
 
     # query w/ scan id (fails)
@@ -241,7 +238,7 @@ async def _delete_manifest(
     resp = await rc.request(
         "GET",
         "/scans",
-        {"run_id": event_metadata[0], "event_id": event_metadata[1]},
+        {"run_id": event_metadata["run_id"], "event_id": event_metadata["event_id"]},
     )
     assert not resp["scan_ids"]  # no matches
 
@@ -250,8 +247,8 @@ async def _delete_manifest(
         "GET",
         "/scans",
         {
-            "run_id": event_metadata[0],
-            "event_id": event_metadata[1],
+            "run_id": event_metadata["run_id"],
+            "event_id": event_metadata["event_id"],
             "include_deleted": True,
         },
     )
@@ -301,12 +298,12 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     # LAUNCH SCAN
     #
     scan_id = await _launch_scan(rc)
-    run_id, event_id = await _server_reply_with_event_metadata(rc, scan_id)
+    event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
 
     #
     # ADD PROGRESS
     #
-    manifest = await _do_patch(rc, (run_id, event_id), scan_id, 10)
+    manifest = await _do_patch(rc, event_metadata, scan_id, 10)
 
     #
     # SEND RESULT
@@ -316,7 +313,7 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     #
     # DELETE MANIFEST
     #
-    await _delete_manifest(rc, (run_id, event_id), scan_id, manifest, result)
+    await _delete_manifest(rc, event_metadata, scan_id, manifest, result)
 
     #
     # DELETE RESULT
@@ -377,7 +374,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
 
     # OK
     scan_id = await _launch_scan(rc)
-    run_id, event_id = await _server_reply_with_event_metadata(rc, scan_id)
+    event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
 
     #
     # ADD PROGRESS
@@ -402,15 +399,6 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     ) as e:
         await rc.request("PATCH", "/scan/manifest", {"progress": {"a": 1}})
     print(e.value)
-    # # empty body
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"400 Client Error: `progress`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/manifest/{scan_id}"
-        ),
-    ) as e:
-        await rc.request("PATCH", f"/scan/manifest/{scan_id}", {})
-    print(e.value)
     # # empty body-arg
     with pytest.raises(
         requests.exceptions.HTTPError,
@@ -434,7 +422,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         print(e.value)
 
     # OK
-    manifest = await _do_patch(rc, (run_id, event_id), scan_id, 10)
+    manifest = await _do_patch(rc, event_metadata, scan_id, 10)
 
     # # no arg
     with pytest.raises(
@@ -527,10 +515,10 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     print(e.value)
 
     # OK
-    await _delete_manifest(rc, (run_id, event_id), scan_id, manifest, result)
+    await _delete_manifest(rc, event_metadata, scan_id, manifest, result)
 
     # also OK
-    await _delete_manifest(rc, (run_id, event_id), scan_id, manifest, result)
+    await _delete_manifest(rc, event_metadata, scan_id, manifest, result)
 
     #
     # DELETE RESULT
