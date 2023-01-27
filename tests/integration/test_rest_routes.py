@@ -496,7 +496,9 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             f"422 Client Error: Attempted to add result with an empty object ({{}}) for url: {rc.address}/scan/result/{scan_id}"
         ),
     ) as e:
-        await rc.request("PUT", f"/scan/result/{scan_id}", {"scan_result": {}})
+        await rc.request(
+            "PUT", f"/scan/result/{scan_id}", {"scan_result": {}, "is_final": True}
+        )
     print(e.value)
     # # bad-type body-arg
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
@@ -506,7 +508,11 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
                 f"400 Client Error: `scan_result`: (ValueError) type mismatch: 'dict' (value is '{type(bad_val)}') for url: {rc.address}/scan/result/{scan_id}"
             ),
         ) as e:
-            await rc.request("PUT", f"/scan/result/{scan_id}", {"scan_result": bad_val})
+            await rc.request(
+                "PUT",
+                f"/scan/result/{scan_id}",
+                {"scan_result": bad_val, "is_final": True},
+            )
         print(e.value)
 
     # OK
