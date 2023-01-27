@@ -145,7 +145,7 @@ wipac-dev-tools==1.6.10
     #   skydriver (setup.py)
     #   wipac-rest-tools
     #   wipac-telemetry
-wipac-rest-tools[telemetry]==1.4.2
+wipac-rest-tools[telemetry]==1.4.4
     # via skydriver (setup.py)
 wipac-telemetry==0.2.5
     # via wipac-rest-tools
