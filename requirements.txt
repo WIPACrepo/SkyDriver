@@ -92,11 +92,13 @@ pymongo==4.3.3
     # via
     #   motor
     #   skydriver (setup.py)
+pypng==0.20220715.0
+    # via qrcode
 python-dateutil==2.8.2
     # via kubernetes
 pyyaml==6.0
     # via kubernetes
-qrcode==7.3.1
+qrcode==7.4
     # via wipac-rest-tools
 requests==2.28.2
     # via
@@ -132,6 +134,7 @@ types-cryptography==3.3.23.2
 typing-extensions==4.4.0
     # via
     #   opentelemetry-sdk
+    #   qrcode
     #   wipac-dev-tools
     #   wipac-telemetry
 urllib3==1.26.14
@@ -145,7 +148,7 @@ wipac-dev-tools==1.6.10
     #   skydriver (setup.py)
     #   wipac-rest-tools
     #   wipac-telemetry
-wipac-rest-tools[telemetry]==1.4.4
+wipac-rest-tools[telemetry]==1.4.5
     # via skydriver (setup.py)
 wipac-telemetry==0.2.5
     # via wipac-rest-tools
