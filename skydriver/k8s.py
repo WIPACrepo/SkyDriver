@@ -288,19 +288,9 @@ class SkymapScannerJob:
     ) -> str:
         """Make the clientmanager container args.
 
-        This also includes most of the client args--others are
-        added/modified by the clientmanager.
+        This also includes any client args not added by the
+        clientmanager.
         """
-        client_args_dict = {
-            "--broker": ENV.SKYSCAN_BROKER_ADDRESS,
-            "--log": "DEBUG",
-            "--log-third-party": "INFO",
-            # "--debug-directory": "$SKYSCAN_DEBUG_DIR",  # enable if we want to get individual pixel files
-        }
-        client_args = " ".join(  # ex: {'--k0':'v0', '--k2':'v2'} -> "k0:v0 k2:v2"
-            f"{k.strip().lstrip('-')}:{v.strip()}" for k, v in client_args_dict.items()
-        )
-
         args = (
             f"python resources/client_starter.py "
             # f" --dryrun"
@@ -312,7 +302,7 @@ class SkymapScannerJob:
             f" --memory {memory} "
             f" --singularity-image {singularity_image} "
             f" --startup-json {volume_path/'startup/startup.json'} "
-            f" --client-args {client_args} "
+            # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
 
         if collector_address:
