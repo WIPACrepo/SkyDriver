@@ -187,7 +187,7 @@ async def _do_patch(
                 },
             }
             if progress
-            else resp["progress"],  # not checking
+            else resp["progress"]  # not checking
         ),
         server_args=resp["server_args"],  # not checking
         clientmanager_args=resp["clientmanager_args"],  # not checking
