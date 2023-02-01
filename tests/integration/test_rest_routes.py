@@ -86,8 +86,55 @@ POST_SCAN_BODY = {
 async def _launch_scan(rc: RestClient) -> str:
     # launch scan
     resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
-    scan_id = resp["scan_id"]  # keep around
-    return scan_id  # type: ignore[no-any-return]
+
+    server_args = (
+        f"python -m skymap_scanner.server "
+        f"--reco-algo {POST_SCAN_BODY['reco_algo']} "
+        f"--cache-dir common-space/cache "
+        f"--output-dir common-space/output "
+        f"--startup-json-dir common-space/startup "
+        f"--nsides {' '.join(f'{k}:{v}' for k,v in POST_SCAN_BODY['nsides'].items())} "  # type: ignore[attr-defined]
+        f"--{POST_SCAN_BODY['real_or_simulated_event']}-event"
+    )
+
+    clientmanager_args = (
+        f"python resources/client_starter.py "
+        f" --logs-directory common-space "
+        f" --jobs {POST_SCAN_BODY['njobs']} "
+        f" --memory {POST_SCAN_BODY['memory']} "
+        f" --singularity-image /cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:latest "
+        f" --startup-json common-space/startup/startup.json "
+    )
+
+    assert resp == dict(
+        scan_id=resp["scan_id"],
+        is_deleted=False,
+        event_i3live_json_dict=POST_SCAN_BODY["event_i3live_json"],
+        event_metadata=None,
+        scan_metadata=None,
+        condor_clusters=None,
+        progress=None,
+        server_args=re.sub(server_args, r"\s+", " "),  # condense whitespace to ' '
+        clientmanager_args=re.sub(clientmanager_args, r"\s+", " "),  # ^^^
+        env_vars=resp["env_vars"],  # see below
+        # TODO: check more fields in future
+    )
+
+    # check env vars
+    assert set(resp["env_vars"].keys()) == {
+        "SKYSCAN_BROKER_ADDRESS",
+        "SKYSCAN_BROKER_AUTH",
+        "SKYSCAN_SKYDRIVER_ADDRESS",
+        "SKYSCAN_SKYDRIVER_AUTH",
+        "SKYSCAN_SKYDRIVER_SCAN_ID",
+    }
+    assert resp["env_vars"]["SKYSCAN_BROKER_ADDRESS"] == "localhost"
+    assert resp["env_vars"]["SKYSCAN_SKYDRIVER_ADDRESS"] == "http://localhost:43249"
+    assert len(resp["env_vars"]["SKYSCAN_SKYDRIVER_SCAN_ID"]) == 32
+
+    # get scan_id
+    assert resp["scan_id"]
+    return resp["scan_id"]  # type: ignore[no-any-return]
 
 
 async def _do_patch(
