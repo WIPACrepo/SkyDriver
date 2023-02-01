@@ -85,8 +85,9 @@ class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
 
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ checksum/hash?
-
-    # TODO: add server/clientstarter script arguments as strings, verbatim
+    server_args: str
+    clientstarter_args: str
+    env_vars: StrDict
 
     condor_clusters: list[CondorClutser] = dc.field(default_factory=list)
 

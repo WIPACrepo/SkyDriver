@@ -12,7 +12,7 @@ from dacite.exceptions import DaciteError  # type: ignore[import]
 from rest_tools.server import RestHandler, decorators
 
 from . import database, k8s
-from .config import LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
+from .config import ENV, LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
 
 if is_testing():
 
@@ -181,26 +181,41 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         manifest = await self.manifests.post(event_i3live_json_dict)  # makes scan_id
 
-        # start k8s job
-        job = k8s.SkymapScannerJob(
-            api_instance=self.k8s_api,
-            rest_address=self.request.full_url().rstrip(self.request.uri),
-            auth_token=self.auth_key,  # type: ignore[arg-type]
-            # docker args
-            docker_tag=docker_tag,
-            # condor args
-            njobs=njobs,
-            memory=memory,
-            # scanner args
-            scan_id=manifest.scan_id,
+        # get the container info ready
+        volume_path = k8s.SkymapScannerJob.get_volume_path()
+        server_args = k8s.SkymapScannerJob.get_server_args(
+            volume_path=volume_path,
             reco_algo=reco_algo,
-            gcd_dir=gcd_dir,
             nsides=nsides,  # type: ignore[arg-type]
+            gcd_dir=gcd_dir,
             is_real_event=real_or_simulated_event in real_choices,
         )
-        job.start()
+        clientstarter_args = k8s.SkymapScannerJob.get_clientstarter_args(
+            volume_path=volume_path,
+            singularity_image=f"{ENV.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}:{docker_tag}",
+            njobs=njobs,
+            memory=memory,
+        )
+        env_vars = k8s.SkymapScannerJob.get_env_vars(
+            rest_address=self.request.full_url().rstrip(self.request.uri),
+            auth_token=self.auth_key,  # type: ignore[arg-type]
+            scan_id=manifest.scan_id,
+        )
+        job = k8s.SkymapScannerJob(
+            api_instance=self.k8s_api,
+            docker_image=f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{docker_tag}",
+            server_args=server_args,
+            clientstarter_args=clientstarter_args,
+            env_vars=env_vars,
+            scan_id=manifest.scan_id,
+            volume_path=volume_path,
+        )
 
-        # TODO: update db?
+        # update db (do before k8s start so if k8s fail, we can debug using db's info)
+        # TODO
+
+        # start k8s job
+        job.start()
 
         self.write(dc.asdict(manifest))
 
