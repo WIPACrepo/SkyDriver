@@ -134,7 +134,9 @@ async def _launch_scan(rc: RestClient) -> str:
         "SKYSCAN_SKYDRIVER_SCAN_ID",
     }
     assert resp["env_vars"]["SKYSCAN_BROKER_ADDRESS"] == "localhost"
-    assert resp["env_vars"]["SKYSCAN_SKYDRIVER_ADDRESS"] == "http://localhost:43249"
+    assert re.match(
+        r"http://localhost:[0-9]+", resp["env_vars"]["SKYSCAN_SKYDRIVER_ADDRESS"]
+    )
     assert len(resp["env_vars"]["SKYSCAN_SKYDRIVER_SCAN_ID"]) == 32
 
     # get scan_id
