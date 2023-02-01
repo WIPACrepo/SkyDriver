@@ -126,6 +126,9 @@ async def _do_patch(
                 if progress
                 else None
             ),
+            server_args=resp["server_args"],  # not checking
+            clientmanager_args=resp["clientmanager_args"],  # not checking
+            env_vars=resp["env_vars"],  # not checking
             # TODO: check more fields in future
         )
         manifest = resp  # keep around
@@ -237,6 +240,9 @@ async def _delete_manifest(
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         scan_metadata=resp["scan_metadata"],  # not checking
         condor_clusters=resp["condor_clusters"],  # not checking
+        server_args=resp["server_args"],  # not checking
+        clientmanager_args=resp["clientmanager_args"],  # not checking
+        env_vars=resp["env_vars"],  # not checking
         # TODO: check more fields in future
     )
     del_resp = resp  # keep around
