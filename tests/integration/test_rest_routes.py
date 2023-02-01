@@ -113,7 +113,7 @@ async def _launch_scan(rc: RestClient) -> str:
         event_i3live_json_dict=POST_SCAN_BODY["event_i3live_json"],
         event_metadata=None,
         scan_metadata=None,
-        condor_clusters=None,
+        condor_clusters=[],
         progress=None,
         server_args=resp["server_args"],  # see below
         clientmanager_args=resp["clientmanager_args"],  # see below
