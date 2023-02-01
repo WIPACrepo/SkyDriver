@@ -2,6 +2,7 @@
 
 # pylint: disable=redefined-outer-name
 
+import random
 import re
 import socket
 from typing import Any, AsyncIterator, Callable
@@ -139,54 +140,67 @@ async def _launch_scan(rc: RestClient) -> str:
 
 async def _do_patch(
     rc: RestClient,
-    event_metadata: StrDict | None,
     scan_id: str,
-    n: int = 0,
+    progress: StrDict | None = None,
+    event_metadata: StrDict | None = None,
+    condor_cluster: StrDict | None = None,
+    previous_clusters: list[StrDict] | None = None,
 ) -> StrDict:
-    # do PATCH @ /scan/manifest
+    # do PATCH @ /scan/manifest, assert response
+    body = {}
+    if progress:
+        body["progress"] = progress
+    if event_metadata:
+        body["event_metadata"] = event_metadata
+    if condor_cluster:
+        body["condor_cluster"] = condor_cluster
+        assert isinstance(previous_clusters, list)  # gotta include this one too
+    assert body
 
-    async def _do(progress: StrDict | None = None) -> StrDict:
-        body = {}
-        if progress:
-            body["progress"] = progress
-        if event_metadata:
-            body["event_metadata"] = event_metadata
-        # TODO: future handle scan_metadata
-        resp = await rc.request("PATCH", f"/scan/manifest/{scan_id}", body)
-        assert resp == dict(
-            scan_id=scan_id,
-            is_deleted=False,
-            event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
-            event_metadata=event_metadata if event_metadata else resp["event_metadata"],
-            scan_metadata=resp["scan_metadata"],  # not checking
-            condor_clusters=resp["condor_clusters"],  # not checking
-            progress=(
-                {  # inject the auto-filled args
-                    **progress,
-                    "processing_stats": {
-                        **progress["processing_stats"],
-                        "end": "",
-                        "finished": False,
-                        "predictions": {},
-                    },
-                }
-                if progress
-                else None
-            ),
-            server_args=resp["server_args"],  # not checking
-            clientmanager_args=resp["clientmanager_args"],  # not checking
-            env_vars=resp["env_vars"],  # not checking
-            # TODO: check more fields in future
-        )
-        manifest = resp  # keep around
-        # query progress
-        resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
-        assert manifest == resp
-        return manifest  # type: ignore[no-any-return]
+    # TODO: future handle scan_metadata
+    resp = await rc.request("PATCH", f"/scan/manifest/{scan_id}", body)
+    assert resp == dict(
+        scan_id=scan_id,
+        is_deleted=False,
+        event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
+        event_metadata=event_metadata if event_metadata else resp["event_metadata"],
+        scan_metadata=resp["scan_metadata"],  # not checking
+        condor_clusters=(
+            [condor_cluster] + previous_clusters  # type: ignore[operator]  # see assert ^^^^
+            if condor_cluster
+            else resp["condor_cluster"]
+        ),
+        progress=(
+            {  # inject the auto-filled args
+                **progress,
+                "processing_stats": {
+                    **progress["processing_stats"],
+                    "end": "",
+                    "finished": False,
+                    "predictions": {},
+                },
+            }
+            if progress
+            else None
+        ),
+        server_args=resp["server_args"],  # not checking
+        clientmanager_args=resp["clientmanager_args"],  # not checking
+        env_vars=resp["env_vars"],  # not checking
+        # TODO: check more fields in future
+    )
+    manifest = resp  # keep around
+    # query progress
+    resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
+    assert manifest == resp
+    return manifest  # type: ignore[no-any-return]
 
-    # make request(s)
-    if not n:
-        return await _do()
+
+async def _patch_progress(
+    rc: RestClient,
+    scan_id: str,
+    n: int,
+) -> StrDict:
+    # send progress updates
     for i in range(n):
         progress = dict(
             summary="it's a summary",
@@ -203,7 +217,7 @@ async def _do_patch(
             ),
         )
         # update progress
-        manifest = await _do(progress)
+        manifest = await _do_patch(rc, scan_id, progress=progress)
     return manifest
 
 
@@ -221,7 +235,7 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
     )
 
     # update progress
-    await _do_patch(rc, event_metadata, scan_id)
+    await _do_patch(rc, scan_id, event_metadata=event_metadata)
 
     # query by event id
     resp = await rc.request(
@@ -236,6 +250,28 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
     assert [scan_id] == resp["scan_ids"]
 
     return event_metadata
+
+
+async def _clientmanager_reply(
+    rc: RestClient, scan_id: str, previous_clusters: list[StrDict]
+) -> list[StrDict]:
+    # reply as the clientmanager with a new condor cluster
+    condor_cluster = dict(
+        cluster_id=random.randint(1, 10000),
+        jobs=random.randint(1, 10000),
+        cluster_ad={
+            "some": random.choice(["things", "stuff", "data", "fun"]),
+            "other": random.choice(["things", "stuff", "data", "fun"]),
+        },
+    )
+
+    manifest = await _do_patch(
+        rc,
+        scan_id,
+        condor_cluster=condor_cluster,
+        previous_clusters=previous_clusters,
+    )
+    return manifest["condor_clusters"]  # type: ignore[no-any-return]
 
 
 async def _send_result(
@@ -381,17 +417,24 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     #
     scan_id = await _launch_scan(rc)
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
+    condor_clusters = await _clientmanager_reply(rc, scan_id, [])
 
     #
     # ADD PROGRESS
     #
-    manifest = await _do_patch(rc, event_metadata, scan_id, 10)
+    manifest = await _patch_progress(rc, scan_id, 10)
 
     #
-    # SEND INTERMEDIATES
+    # SEND INTERMEDIATES (these can happen in any order, or even async)
     #
+    # FIRST, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
-    manifest = await _do_patch(rc, None, scan_id, 10)
+    manifest = await _patch_progress(rc, scan_id, 10)
+    # NEXT, spun up more workers in condor
+    condor_clusters = await _clientmanager_reply(rc, scan_id, condor_clusters)
+    # THEN, clients send updates
+    result = await _send_result(rc, scan_id, manifest, False)
+    manifest = await _patch_progress(rc, scan_id, 10)
 
     #
     # SEND RESULT(s)
@@ -463,6 +506,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # OK
     scan_id = await _launch_scan(rc)
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
+    condor_clusters = await _clientmanager_reply(rc, scan_id, [])
 
     #
     # ADD PROGRESS
@@ -508,7 +552,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         print(e.value)
 
     # OK
-    manifest = await _do_patch(rc, event_metadata, scan_id, 10)
+    manifest = await _patch_progress(rc, event_metadata, scan_id, 10)
 
     # # no arg
     with pytest.raises(
