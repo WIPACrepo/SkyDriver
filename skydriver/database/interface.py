@@ -16,15 +16,21 @@ from ..config import LOGGER
 from . import schema
 
 
-def friendly_asdict(value: Any) -> Any:
-    """Convert dataclass to dict if applicable.
+def friendly_nested_asdict(value: Any) -> Any:
+    """Convert any founded nested dataclass to dict if applicable.
 
-    Like `dc.asdict()` but safe for any type and list-friendly.
+    Like `dc.asdict()` but safe for any type and list- and dict-
+    friendly.
     """
+    if isinstance(value, dict):
+        return {k: friendly_nested_asdict(v) for k, v in value.items()}
+
     if isinstance(value, list):
-        return [friendly_asdict(v) for v in value]
+        return [friendly_nested_asdict(v) for v in value]
+
     if not dc.is_dataclass(value):
         return value
+
     return dc.asdict(value)
 
 
@@ -143,9 +149,7 @@ class ScanIDCollectionFacade:
                         log_message=f"{e} [{coll=}, {scan_id=}]",
                     )
             # at this point we know all data is type checked, so transform & put in DB
-            doc = await find_one_and_update(
-                {k: friendly_asdict(v) for k, v in update.items()}
-            )
+            doc = await find_one_and_update(friendly_nested_asdict(update))
             out_type = dclass
         # WHOLE UPDATE
         else:
