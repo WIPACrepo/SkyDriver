@@ -1,7 +1,7 @@
 """Database interface for persisted scan data."""
 
 import dataclasses as dc
-from typing import AsyncIterator, Type, TypeVar
+from typing import Any, AsyncIterator, Type, TypeVar
 
 from dacite import from_dict  # type: ignore[attr-defined]
 from motor.motor_asyncio import (  # type: ignore
@@ -14,6 +14,19 @@ from typeguard import check_type
 
 from ..config import LOGGER
 from . import schema
+
+
+def friendly_asdict(value: Any) -> Any:
+    """Convert dataclass to dict if applicable.
+
+    Like `dc.asdict()` but safe for any type and list-friendly.
+    """
+    if isinstance(value, list):
+        return [friendly_asdict(v) for v in value]
+    if not dc.is_dataclass(value):
+        return value
+    return dc.asdict(value)
+
 
 # -----------------------------------------------------------------------------
 
@@ -129,12 +142,9 @@ class ScanIDCollectionFacade:
                         500,
                         log_message=f"{e} [{coll=}, {scan_id=}]",
                     )
+            # at this point we know all data is type checked, so transform & put in DB
             doc = await find_one_and_update(
-                {
-                    # convert any nested dataclasses
-                    k: dc.asdict(v) if dc.is_dataclass(v) else v
-                    for k, v in update.items()
-                }
+                {k: friendly_asdict(v) for k, v in update.items()}
             )
             out_type = dclass
         # WHOLE UPDATE
