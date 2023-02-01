@@ -199,7 +199,7 @@ class ManifestClient(ScanIDCollectionFacade):
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching manifest for {scan_id=}")
 
-        if all(not x for x in [progress, event_metadata, scan_metadata]):
+        if not (progress or event_metadata or scan_metadata or condor_cluster):
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
             return await self.get(scan_id, incl_del=True)
 
@@ -247,6 +247,7 @@ class ManifestClient(ScanIDCollectionFacade):
         if not upserting:  # did we actually update anything?
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
             return in_db
+        LOGGER.debug(f"patching manifest for {scan_id=} with {upserting=}")
         manifest = await self._upsert(
             _MANIFEST_COLL_NAME,
             scan_id,
