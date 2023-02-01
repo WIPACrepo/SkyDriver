@@ -172,7 +172,7 @@ async def _do_patch(
         event_metadata=event_metadata if event_metadata else resp["event_metadata"],
         scan_metadata=resp["scan_metadata"],  # not checking
         condor_clusters=(
-            [condor_cluster] + previous_clusters  # type: ignore[operator]  # see assert ^^^^
+            previous_clusters + [condor_cluster]  # type: ignore[operator]  # see assert ^^^^
             if condor_cluster
             else resp["condor_clusters"]  # not checking
         ),
