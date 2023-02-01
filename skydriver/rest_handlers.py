@@ -260,12 +260,18 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=dict,
             default={},
         )
+        condor_cluster = self.get_argument(
+            "condor_cluster",
+            type=lambda x: from_dict_wrapper_or_none(database.schema.CondorClutser, x),
+            default=None,
+        )
 
         manifest = await self.manifests.patch(
             scan_id,
             progress,
             event_metadata,
             scan_metadata,
+            condor_cluster,
         )
 
         self.write(dc.asdict(manifest))

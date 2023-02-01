@@ -186,6 +186,7 @@ class ManifestClient(ScanIDCollectionFacade):
         progress: schema.Progress | None,
         event_metadata: schema.EventMetadata | None,
         scan_metadata: schema.StrDict | None,
+        condor_cluster: schema.CondorClutser | None,
     ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching manifest for {scan_id=}")
@@ -224,6 +225,15 @@ class ManifestClient(ScanIDCollectionFacade):
                 reason=msg,
             )
 
+        # condor_cluster / condor_clusters
+        if not condor_cluster:
+            pass  # don't put in DB
+        elif not in_db.condor_clusters:
+            upserting["condor_clusters"] = [condor_cluster]
+        else:
+            upserting["condor_clusters"].append(condor_cluster)
+
+        # progress
         if progress:
             upserting["progress"] = progress
 

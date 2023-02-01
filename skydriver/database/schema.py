@@ -71,12 +71,24 @@ class EventMetadata:
 
 @typechecked(always=True)  # always b/c we want full data validation
 @dc.dataclass
+class CondorClutser:
+    """Stores information provided by HTCondor."""
+
+    cluster_id: int
+    jobs: int
+    cluster_ad: StrDict
+
+
+@typechecked(always=True)  # always b/c we want full data validation
+@dc.dataclass
 class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
 
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ checksum/hash?
 
     # TODO: add server/clientstarter script arguments as strings, verbatim
+
+    condor_clusters: list[CondorClutser] = dc.field(default_factory=list)
 
     # found/created during first few seconds of scanning
     event_metadata: EventMetadata | None = None
@@ -85,5 +97,4 @@ class Manifest(ScanIDDataclass):
     # updated during scanning, multiple times
     progress: Progress | None = None
 
-    # condor_metadata  # TODO
     # logs  # TODO
