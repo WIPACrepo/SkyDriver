@@ -283,26 +283,43 @@ class SkymapScannerJob:
         singularity_image: str,
         njobs: int,
         memory: str,
+        collector_address: str,
+        schedd_name: str,
     ) -> str:
-        """Make the clientmanager container args."""
+        """Make the clientmanager container args.
+
+        This also includes most of the client args--others are
+        added/modified by the clientmanager.
+        """
         client_args_dict = {
             "--broker": ENV.SKYSCAN_BROKER_ADDRESS,
             "--log": "DEBUG",
             "--log-third-party": "INFO",
-            "--debug-directory": "$SKYSCAN_DEBUG_DIR",
+            # "--debug-directory": "$SKYSCAN_DEBUG_DIR",  # enable if we want to get individual pixel files
         }
-        client_args = " ".join(
-            f"{k.lstrip('-').strip()}:{v.strip()}" for k, v in client_args_dict.items()
+        client_args = " ".join(  # ex: {'--k0':'v0', '--k2':'v2'} -> "k0:v0 k2:v2"
+            f"{k.strip().lstrip('-')}:{v.strip()}" for k, v in client_args_dict.items()
         )
 
         args = (
-            f"python scripts/condor/spawn_condor_clients.py "
-            f" --jobs {njobs}"
-            f" --memory {memory}"
-            f" --singularity-image {singularity_image}"
-            f" --startup-json {volume_path/'startup/startup.json'}"
-            f" --client-args {client_args}"
+            f"python resources/client_starter.py "
+            # f" --dryrun"
+            f" --logs-directory {volume_path} "
+            # --collector-address  # see below
+            # --schedd-name  # see below
+            # f" --accounting-group "
+            f" --jobs {njobs} "
+            f" --memory {memory} "
+            f" --singularity-image {singularity_image} "
+            f" --startup-json {volume_path/'startup/startup.json'} "
+            f" --client-args {client_args} "
         )
+
+        if collector_address:
+            args += f" --collector-address {collector_address} "
+        if schedd_name:
+            args += f" --schedd-name {schedd_name} "
+
         return args
 
     @staticmethod
@@ -347,17 +364,3 @@ class SkymapScannerJob:
             LOGGER.error(e)
             raise
         return api_response
-
-
-# if __name__ == '__main__':
-#     # Testing Credentials
-#     kube_test_credentials()
-#     # We try to cleanup dead jobs (READ THE FUNCTION CODE!)
-#     kube_cleanup_finished_jobs()
-#     kube_delete_empty_pods()
-#     # Create a couple of jobs
-#     for i in range(3):
-#         kube_create_job()
-#     # This was to test the use of ENV variables.
-#     LOGGER.info("Finshed! - ENV: {}".format(os.environ["VAR"]))
-#     sys.exit(0)

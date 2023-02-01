@@ -34,6 +34,13 @@ else:
 # -----------------------------------------------------------------------------
 
 
+REAL_CHOICES = ["real", "real_event"]
+SIM_CHOICES = ["sim", "simulated", "simulated_event"]
+
+
+# -----------------------------------------------------------------------------
+
+
 class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W0223
     """BaseSkyDriverHandler is a RestHandler for all SkyDriver routes."""
 
@@ -150,6 +157,16 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=str,
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
+        collector_address = self.get_argument(
+            "collector_address",
+            type=str,
+            default="",
+        )
+        schedd_name = self.get_argument(
+            "schedd_name",
+            type=str,
+            default="",
+        )
 
         # scanner args
         reco_algo = self.get_argument(
@@ -171,13 +188,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=dict,
             strict_type=True,
         )
-
-        real_choices = ["real", "real_event"]
-        sim_choices = ["sim", "simulated", "simulated_event"]
         real_or_simulated_event = self.get_argument(
             "real_or_simulated_event",  # as opposed to simulation
             type=str,
-            choices=real_choices + sim_choices,
+            choices=REAL_CHOICES + SIM_CHOICES,
         )
 
         # generate unique scan_id
@@ -190,13 +204,15 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             reco_algo=reco_algo,
             nsides=nsides,  # type: ignore[arg-type]
             gcd_dir=gcd_dir,
-            is_real_event=real_or_simulated_event in real_choices,
+            is_real_event=real_or_simulated_event in REAL_CHOICES,
         )
         clientmanager_args = k8s.SkymapScannerJob.get_clientmanager_args(
             volume_path=volume_path,
             singularity_image=f"{ENV.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}:{docker_tag}",
             njobs=njobs,
             memory=memory,
+            collector_address=collector_address,
+            schedd_name=schedd_name,
         )
         env_vars = k8s.SkymapScannerJob.get_env_vars(
             rest_address=self.request.full_url().rstrip(self.request.uri),
