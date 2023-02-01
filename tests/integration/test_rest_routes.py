@@ -556,7 +556,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         print(e.value)
 
     # OK
-    manifest = await _patch_progress(rc, event_metadata, scan_id, 10)
+    manifest = await _patch_progress(rc, scan_id, 10)
 
     # # no arg
     with pytest.raises(
