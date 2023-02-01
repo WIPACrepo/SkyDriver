@@ -174,7 +174,7 @@ async def _do_patch(
         condor_clusters=(
             [condor_cluster] + previous_clusters  # type: ignore[operator]  # see assert ^^^^
             if condor_cluster
-            else resp["condor_cluster"]
+            else resp["condor_clusters"]
         ),
         progress=(
             {  # inject the auto-filled args
