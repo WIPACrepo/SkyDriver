@@ -112,6 +112,7 @@ async def _do_patch(
             event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
             event_metadata=event_metadata if event_metadata else resp["event_metadata"],
             scan_metadata=resp["scan_metadata"],  # not checking
+            condor_clusters=resp["condor_clusters"],  # not checking
             progress=(
                 {  # inject the auto-filled args
                     **progress,
@@ -235,6 +236,7 @@ async def _delete_manifest(
         progress=last_known_manifest["progress"],
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         scan_metadata=resp["scan_metadata"],  # not checking
+        condor_clusters=resp["condor_clusters"],  # not checking
         # TODO: check more fields in future
     )
     del_resp = resp  # keep around
