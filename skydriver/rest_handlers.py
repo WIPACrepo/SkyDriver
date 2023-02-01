@@ -192,7 +192,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             gcd_dir=gcd_dir,
             is_real_event=real_or_simulated_event in real_choices,
         )
-        clientstarter_args = k8s.SkymapScannerJob.get_clientstarter_args(
+        clientmanager_args = k8s.SkymapScannerJob.get_clientmanager_args(
             volume_path=volume_path,
             singularity_image=f"{ENV.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}:{docker_tag}",
             njobs=njobs,
@@ -207,7 +207,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             api_instance=self.k8s_api,
             docker_image=f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{docker_tag}",
             server_args=server_args,
-            clientstarter_args=clientstarter_args,
+            clientmanager_args=clientmanager_args,
             env_vars=env_vars,
             scan_id=scan_id,
             volume_path=volume_path,
@@ -218,7 +218,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             event_i3live_json_dict,
             scan_id,
             server_args,
-            clientstarter_args,
+            clientmanager_args,
             env_vars,
         )
 

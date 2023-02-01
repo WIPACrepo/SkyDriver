@@ -222,7 +222,7 @@ class SkymapScannerJob:
         api_instance: kubernetes.client.BatchV1Api,
         docker_image: str,
         server_args: str,
-        clientstarter_args: str,
+        clientmanager_args: str,
         env_vars: schema.StrDict,
         scan_id: str,
         volume_path: Path,
@@ -237,16 +237,16 @@ class SkymapScannerJob:
             server_args.split(),
             {volume_path.name: volume_path},
         )
-        condor_clientstarter = KubeAPITools.create_container(
+        condor_clientmanager = KubeAPITools.create_container(
             scan_id,
             docker_image,
             env_vars,
-            clientstarter_args.split(),
+            clientmanager_args.split(),
             {volume_path.name: volume_path},
         )
         self.job = KubeAPITools.kube_create_job_object(
             scan_id,
-            [server, condor_clientstarter],
+            [server, condor_clientmanager],
             [volume_path.name],
         )
 
@@ -278,13 +278,13 @@ class SkymapScannerJob:
         return args
 
     @staticmethod
-    def get_clientstarter_args(
+    def get_clientmanager_args(
         volume_path: Path,
         singularity_image: str,
         njobs: int,
         memory: str,
     ) -> str:
-        """Make the clientstarter container args."""
+        """Make the clientmanager container args."""
         client_args_dict = {
             "--broker": ENV.SKYSCAN_BROKER_ADDRESS,
             "--log": "DEBUG",
