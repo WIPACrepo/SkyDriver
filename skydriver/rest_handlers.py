@@ -194,7 +194,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # scanner args
             scan_id=manifest.scan_id,
             reco_algo=reco_algo,
-            gcd_dir=gcd_dir if gcd_dir != Path() else None,
+            gcd_dir=gcd_dir,
             nsides=nsides,  # type: ignore[arg-type]
             is_real_event=real_or_simulated_event in real_choices,
         )
@@ -225,7 +225,7 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
-        # TODO - call to k8s
+        # TODO - call to k8s / kill condor_rm cluster(s)
 
         manifest = await self.manifests.mark_as_deleted(scan_id)
 
