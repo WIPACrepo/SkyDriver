@@ -115,11 +115,15 @@ async def _launch_scan(rc: RestClient) -> str:
         scan_metadata=None,
         condor_clusters=None,
         progress=None,
-        server_args=re.sub(r"\s+", " ", server_args),  # condense whitespace to ' '
-        clientmanager_args=re.sub(r"\s+", " ", clientmanager_args),  # ^^^
+        server_args=resp["server_args"],  # see below
+        clientmanager_args=resp["clientmanager_args"],  # see below
         env_vars=resp["env_vars"],  # see below
         # TODO: check more fields in future
     )
+
+    # check args (avoid whitespace headaches...)
+    assert resp["server_args"].split() == server_args.split()
+    assert resp["clientmanager_args"].split() == clientmanager_args.split()
 
     # check env vars
     assert set(resp["env_vars"].keys()) == {
