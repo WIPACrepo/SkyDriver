@@ -3,12 +3,13 @@
 
 import dataclasses as dc
 import json
+import uuid
 from pathlib import Path
 from typing import Any, Type, TypeVar, cast
 
 import kubernetes.client  # type: ignore[import]
 from dacite import from_dict  # type: ignore[attr-defined]
-from dacite.exceptions import DaciteError  # type: ignore[import]
+from dacite.exceptions import DaciteError
 from rest_tools.server import RestHandler, decorators
 
 from . import database, k8s
@@ -179,7 +180,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             choices=real_choices + sim_choices,
         )
 
-        manifest = await self.manifests.post(event_i3live_json_dict)  # makes scan_id
+        # generate unique scan_id
+        scan_id = uuid.uuid4().hex
 
         # get the container info ready
         volume_path = k8s.SkymapScannerJob.get_volume_path()
@@ -199,7 +201,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         env_vars = k8s.SkymapScannerJob.get_env_vars(
             rest_address=self.request.full_url().rstrip(self.request.uri),
             auth_token=self.auth_key,  # type: ignore[arg-type]
-            scan_id=manifest.scan_id,
+            scan_id=scan_id,
         )
         job = k8s.SkymapScannerJob(
             api_instance=self.k8s_api,
@@ -207,12 +209,18 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             server_args=server_args,
             clientstarter_args=clientstarter_args,
             env_vars=env_vars,
-            scan_id=manifest.scan_id,
+            scan_id=scan_id,
             volume_path=volume_path,
         )
 
-        # update db (do before k8s start so if k8s fail, we can debug using db's info)
-        # TODO
+        # put in db (do before k8s start so if k8s fail, we can debug using db's info)
+        manifest = await self.manifests.post(
+            event_i3live_json_dict,
+            scan_id,
+            server_args,
+            clientstarter_args,
+            env_vars,
+        )
 
         # start k8s job
         job.start()
