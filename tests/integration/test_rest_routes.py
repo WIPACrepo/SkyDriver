@@ -506,7 +506,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # OK
     scan_id = await _launch_scan(rc)
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    condor_clusters = await _clientmanager_reply(rc, scan_id, [])
+    _ = await _clientmanager_reply(rc, scan_id, [])
 
     #
     # ADD PROGRESS
