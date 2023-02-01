@@ -236,10 +236,8 @@ class ManifestClient(ScanIDCollectionFacade):
         # condor_cluster / condor_clusters
         if not condor_cluster:
             pass  # don't put in DB
-        elif not in_db.condor_clusters:
-            upserting["condor_clusters"] = [condor_cluster]
         else:
-            upserting["condor_clusters"].append(condor_cluster)
+            upserting["condor_clusters"] = in_db.condor_clusters + [condor_cluster]
 
         # progress
         if progress:
