@@ -115,8 +115,8 @@ async def _launch_scan(rc: RestClient) -> str:
         scan_metadata=None,
         condor_clusters=None,
         progress=None,
-        server_args=re.sub(server_args, r"\s+", " "),  # condense whitespace to ' '
-        clientmanager_args=re.sub(clientmanager_args, r"\s+", " "),  # ^^^
+        server_args=re.sub(r"\s+", " ", server_args),  # condense whitespace to ' '
+        clientmanager_args=re.sub(r"\s+", " ", clientmanager_args),  # ^^^
         env_vars=resp["env_vars"],  # see below
         # TODO: check more fields in future
     )
