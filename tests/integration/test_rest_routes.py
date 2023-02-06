@@ -272,12 +272,10 @@ async def _clientmanager_reply(
 ) -> StrDict:
     # reply as the clientmanager with a new condor cluster
     condor_cluster = dict(
+        collector="https://le-collector.edu",
+        schedd="https://un-schedd.edu",
         cluster_id=random.randint(1, 10000),
         jobs=random.randint(1, 10000),
-        cluster_ad={
-            "some": random.choice(["things", "stuff", "data", "fun"]),
-            "other": random.choice(["things", "stuff", "data", "fun"]),
-        },
     )
 
     manifest = await _do_patch(

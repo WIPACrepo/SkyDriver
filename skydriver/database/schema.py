@@ -74,9 +74,10 @@ class EventMetadata:
 class CondorClutser:
     """Stores information provided by HTCondor."""
 
+    collector: str
+    schedd: str
     cluster_id: int
     jobs: int
-    cluster_ad: StrDict
 
 
 @typechecked(always=True)  # always b/c we want full data validation
