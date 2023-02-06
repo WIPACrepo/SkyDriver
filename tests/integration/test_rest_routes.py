@@ -149,6 +149,7 @@ async def _do_patch(
     scan_id: str,
     progress: StrDict | None = None,
     event_metadata: StrDict | None = None,
+    scan_metadata: StrDict | None = None,
     condor_cluster: StrDict | None = None,
     previous_clusters: list[StrDict] | None = None,
 ) -> StrDict:
@@ -158,19 +159,20 @@ async def _do_patch(
         body["progress"] = progress
     if event_metadata:
         body["event_metadata"] = event_metadata
+    if scan_metadata:
+        body["scan_metadata"] = scan_metadata
     if condor_cluster:
         body["condor_cluster"] = condor_cluster
         assert isinstance(previous_clusters, list)  # gotta include this one too
     assert body
 
-    # TODO: future handle scan_metadata
     resp = await rc.request("PATCH", f"/scan/manifest/{scan_id}", body)
     assert resp == dict(
         scan_id=scan_id,
         is_deleted=False,
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         event_metadata=event_metadata if event_metadata else resp["event_metadata"],
-        scan_metadata=resp["scan_metadata"],  # not checking
+        scan_metadata=scan_metadata if scan_metadata else resp["scan_metadata"],
         condor_clusters=(
             previous_clusters + [condor_cluster]  # type: ignore[operator]  # see assert ^^^^
             if condor_cluster
@@ -222,8 +224,16 @@ async def _patch_progress(
                 # predictions: StrDict = dc.field(default_factory=dict)  # open to requestor)
             ),
         )
-        # update progress
-        manifest = await _do_patch(rc, scan_id, progress=progress)
+        # update progress (update `scan_metadata` sometimes--not as important)
+        if not i % 2:
+            manifest = await _do_patch(rc, scan_id, progress=progress)
+        else:
+            manifest = await _do_patch(
+                rc,
+                scan_id,
+                progress=progress,
+                scan_metadata={"scan_id": scan_id, "foo": bar},
+            )
     return manifest
 
 
