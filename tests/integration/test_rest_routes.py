@@ -203,7 +203,7 @@ async def _do_patch(
     return manifest  # type: ignore[no-any-return]
 
 
-async def _patch_progress(
+async def _patch_progress_and_scan_metadata(
     rc: RestClient,
     scan_id: str,
     n: int,
@@ -225,9 +225,9 @@ async def _patch_progress(
             ),
         )
         # update progress (update `scan_metadata` sometimes--not as important)
-        if not i % 2:
+        if i % 2:  # odd
             manifest = await _do_patch(rc, scan_id, progress=progress)
-        else:
+        else:  # even
             manifest = await _do_patch(
                 rc,
                 scan_id,
@@ -250,7 +250,6 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
         is_real_event=IS_REAL_EVENT,
     )
 
-    # update progress
     await _do_patch(rc, scan_id, event_metadata=event_metadata)
 
     # query by event id
@@ -438,19 +437,19 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     #
     # ADD PROGRESS
     #
-    manifest = await _patch_progress(rc, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
 
     #
     # SEND INTERMEDIATES (these can happen in any order, or even async)
     #
     # FIRST, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
-    manifest = await _patch_progress(rc, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
     # NEXT, spun up more workers in condor
     manifest = await _clientmanager_reply(rc, scan_id, manifest["condor_clusters"])
     # THEN, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
-    manifest = await _patch_progress(rc, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
 
     #
     # SEND RESULT(s)
@@ -524,6 +523,25 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
     manifest = await _clientmanager_reply(rc, scan_id, [])
 
+    # ATTEMPT OVERWRITE
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"400 Client Error: Cannot change an existing event_metadata for url: {rc.address}/scan/manifest"
+        ),
+    ) as e:
+        await _do_patch(
+            rc,
+            scan_id,
+            event_metadata=dict(
+                run_id=run_id,
+                event_id=event_id,
+                event_type="funky",
+                mjd=23423432.3,
+                is_real_event=IS_REAL_EVENT,
+            ),
+        )
+
     #
     # ADD PROGRESS
     #
@@ -568,7 +586,16 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         print(e.value)
 
     # OK
-    manifest = await _patch_progress(rc, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
+
+    # ATTEMPT OVERWRITE
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"400 Client Error: Cannot change an existing scan_metadata for url: {rc.address}/scan/manifest"
+        ),
+    ) as e:
+        await _do_patch(rc, scan_id, scan_metadata={"boo": "baz", "bot": "fox"})
 
     # # no arg
     with pytest.raises(
