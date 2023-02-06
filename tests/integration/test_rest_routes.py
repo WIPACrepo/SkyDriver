@@ -197,7 +197,7 @@ async def _do_patch(
     manifest = resp  # keep around
     # query progress
     resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
-    assert manifest == resp
+    assert resp == manifest
     return manifest  # type: ignore[no-any-return]
 
 
@@ -253,7 +253,7 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
             "is_real_event": IS_REAL_EVENT,
         },
     )
-    assert [scan_id] == resp["scan_ids"]
+    assert resp["scan_ids"] == [scan_id]
 
     return event_metadata
 
@@ -303,11 +303,11 @@ async def _send_result(
 
     # query progress
     resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
-    assert last_known_manifest == resp
+    assert resp == last_known_manifest
 
     # query result
     resp = await rc.request("GET", f"/scan/result/{scan_id}")
-    assert result == resp
+    assert resp == result
 
     return result
 
@@ -349,7 +349,7 @@ async def _delete_manifest(
     resp = await rc.request(
         "GET", f"/scan/manifest/{scan_id}", {"include_deleted": True}
     )
-    assert del_resp == resp
+    assert resp == del_resp
 
     # query by event id (none)
     resp = await rc.request(
@@ -378,7 +378,7 @@ async def _delete_manifest(
 
     # query result (still exists)
     resp = await rc.request("GET", f"/scan/result/{scan_id}")
-    assert last_known_result == resp
+    assert resp == last_known_result
 
 
 async def _delete_result(
@@ -408,7 +408,7 @@ async def _delete_result(
 
     # query w/ incl_del
     resp = await rc.request("GET", f"/scan/result/{scan_id}", {"include_deleted": True})
-    assert del_resp == resp
+    assert resp == del_resp
 
 
 ########################################################################################
