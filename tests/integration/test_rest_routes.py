@@ -232,7 +232,7 @@ async def _patch_progress(
                 rc,
                 scan_id,
                 progress=progress,
-                scan_metadata={"scan_id": scan_id, "foo": bar},
+                scan_metadata={"scan_id": scan_id, "foo": "bar"},
             )
     return manifest
 
