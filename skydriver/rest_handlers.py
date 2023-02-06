@@ -3,16 +3,17 @@
 
 import dataclasses as dc
 import json
+import uuid
 from pathlib import Path
 from typing import Any, Type, TypeVar, cast
 
 import kubernetes.client  # type: ignore[import]
 from dacite import from_dict  # type: ignore[attr-defined]
-from dacite.exceptions import DaciteError  # type: ignore[import]
+from dacite.exceptions import DaciteError
 from rest_tools.server import RestHandler, decorators
 
 from . import database, k8s
-from .config import LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
+from .config import ENV, LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
 
 if is_testing():
 
@@ -28,6 +29,13 @@ if is_testing():
 
 else:
     service_account_auth = decorators.keycloak_role_auth
+
+
+# -----------------------------------------------------------------------------
+
+
+REAL_CHOICES = ["real", "real_event"]
+SIM_CHOICES = ["sim", "simulated", "simulated_event"]
 
 
 # -----------------------------------------------------------------------------
@@ -149,6 +157,16 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=str,
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
+        collector = self.get_argument(
+            "collector",
+            type=str,
+            default="",
+        )
+        schedd = self.get_argument(
+            "schedd",
+            type=str,
+            default="",
+        )
 
         # scanner args
         reco_algo = self.get_argument(
@@ -170,37 +188,58 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=dict,
             strict_type=True,
         )
-
-        real_choices = ["real", "real_event"]
-        sim_choices = ["sim", "simulated", "simulated_event"]
         real_or_simulated_event = self.get_argument(
             "real_or_simulated_event",  # as opposed to simulation
             type=str,
-            choices=real_choices + sim_choices,
+            choices=REAL_CHOICES + SIM_CHOICES,
         )
 
-        manifest = await self.manifests.post(event_i3live_json_dict)  # makes scan_id
+        # generate unique scan_id
+        scan_id = uuid.uuid4().hex
 
-        # start k8s job
-        job = k8s.SkymapScannerJob(
-            api_instance=self.k8s_api,
-            rest_address=self.request.full_url().rstrip(self.request.uri),
-            auth_token=self.auth_key,  # type: ignore[arg-type]
-            # docker args
-            docker_tag=docker_tag,
-            # condor args
+        # get the container info ready
+        volume_path = k8s.SkymapScannerJob.get_volume_path()
+        server_args = k8s.SkymapScannerJob.get_server_args(
+            volume_path=volume_path,
+            reco_algo=reco_algo,
+            nsides=nsides,  # type: ignore[arg-type]
+            gcd_dir=gcd_dir,
+            is_real_event=real_or_simulated_event in REAL_CHOICES,
+        )
+        clientmanager_args = k8s.SkymapScannerJob.get_clientmanager_args(
+            volume_path=volume_path,
+            singularity_image=f"{ENV.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}:{docker_tag}",
             njobs=njobs,
             memory=memory,
-            # scanner args
-            scan_id=manifest.scan_id,
-            reco_algo=reco_algo,
-            gcd_dir=gcd_dir if gcd_dir != Path() else None,
-            nsides=nsides,  # type: ignore[arg-type]
-            is_real_event=real_or_simulated_event in real_choices,
+            collector=collector,
+            schedd=schedd,
         )
-        job.start()
+        env_vars = k8s.SkymapScannerJob.get_env_vars(
+            rest_address=self.request.full_url().rstrip(self.request.uri),
+            auth_token=self.auth_key,  # type: ignore[arg-type]
+            scan_id=scan_id,
+        )
+        job = k8s.SkymapScannerJob(
+            api_instance=self.k8s_api,
+            docker_image=f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{docker_tag}",
+            server_args=server_args,
+            clientmanager_args=clientmanager_args,
+            env_vars=env_vars,
+            scan_id=scan_id,
+            volume_path=volume_path,
+        )
 
-        # TODO: update db?
+        # put in db (do before k8s start so if k8s fail, we can debug using db's info)
+        manifest = await self.manifests.post(
+            event_i3live_json_dict,
+            scan_id,
+            server_args,
+            clientmanager_args,
+            env_vars,
+        )
+
+        # start k8s job
+        job.start()
 
         self.write(dc.asdict(manifest))
 
@@ -225,7 +264,7 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
-        # TODO - call to k8s
+        # TODO - call to k8s / kill condor_rm cluster(s)
 
         manifest = await self.manifests.mark_as_deleted(scan_id)
 
@@ -260,12 +299,18 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=dict,
             default={},
         )
+        condor_cluster = self.get_argument(
+            "condor_cluster",
+            type=lambda x: from_dict_wrapper_or_none(database.schema.CondorClutser, x),
+            default=None,
+        )
 
         manifest = await self.manifests.patch(
             scan_id,
             progress,
             event_metadata,
             scan_metadata,
+            condor_cluster,
         )
 
         self.write(dc.asdict(manifest))

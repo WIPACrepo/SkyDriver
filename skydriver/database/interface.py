@@ -1,7 +1,6 @@
 """Database interface for persisted scan data."""
 
 import dataclasses as dc
-import uuid
 from typing import Any, AsyncIterator, Type, TypeVar
 
 from dacite import from_dict  # type: ignore[attr-defined]
@@ -15,6 +14,25 @@ from typeguard import check_type
 
 from ..config import LOGGER
 from . import schema
+
+
+def friendly_nested_asdict(value: Any) -> Any:
+    """Convert any founded nested dataclass to dict if applicable.
+
+    Like `dc.asdict()` but safe for any type and list- and dict-
+    friendly.
+    """
+    if isinstance(value, dict):
+        return {k: friendly_nested_asdict(v) for k, v in value.items()}
+
+    if isinstance(value, list):
+        return [friendly_nested_asdict(v) for v in value]
+
+    if not dc.is_dataclass(value):
+        return value
+
+    return dc.asdict(value)
+
 
 # -----------------------------------------------------------------------------
 
@@ -89,7 +107,7 @@ class ScanIDCollectionFacade:
         self,
         coll: str,
         scan_id: str,
-        update: dict[str, Any] | S,
+        update: schema.StrDict | S,
         dclass: Type[S] | None = None,
     ) -> S:
         """Insert/update the doc.
@@ -130,13 +148,8 @@ class ScanIDCollectionFacade:
                         500,
                         log_message=f"{e} [{coll=}, {scan_id=}]",
                     )
-            doc = await find_one_and_update(
-                {
-                    # convert any nested dataclasses
-                    k: dc.asdict(v) if dc.is_dataclass(v) else v
-                    for k, v in update.items()
-                }
-            )
+            # at this point we know all data is type checked, so transform & put in DB
+            doc = await find_one_and_update(friendly_nested_asdict(update))
             out_type = dclass
         # WHOLE UPDATE
         else:
@@ -168,14 +181,23 @@ class ManifestClient(ScanIDCollectionFacade):
         )
         return manifest
 
-    async def post(self, event_i3live_json_dict: dict[str, Any]) -> schema.Manifest:
+    async def post(
+        self,
+        event_i3live_json_dict: schema.StrDict,
+        scan_id: str,
+        server_args: str,
+        clientmanager_args: str,
+        env_vars: schema.StrDict,
+    ) -> schema.Manifest:
         """Create `schema.Manifest` doc."""
         LOGGER.debug("creating new manifest")
         manifest = schema.Manifest(  # validates data
-            scan_id=uuid.uuid4().hex,
+            scan_id=scan_id,
             is_deleted=False,
-            event_i3live_json_dict=event_i3live_json_dict
-            # TODO: more args here
+            event_i3live_json_dict=event_i3live_json_dict,
+            server_args=server_args,
+            clientmanager_args=clientmanager_args,
+            env_vars=env_vars,
         )
         manifest = await self._upsert(_MANIFEST_COLL_NAME, manifest.scan_id, manifest)
         return manifest
@@ -186,11 +208,12 @@ class ManifestClient(ScanIDCollectionFacade):
         progress: schema.Progress | None,
         event_metadata: schema.EventMetadata | None,
         scan_metadata: schema.StrDict | None,
+        condor_cluster: schema.CondorClutser | None,
     ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching manifest for {scan_id=}")
 
-        if all(not x for x in [progress, event_metadata, scan_metadata]):
+        if not (progress or event_metadata or scan_metadata or condor_cluster):
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
             return await self.get(scan_id, incl_del=True)
 
@@ -224,6 +247,13 @@ class ManifestClient(ScanIDCollectionFacade):
                 reason=msg,
             )
 
+        # condor_cluster / condor_clusters
+        if not condor_cluster:
+            pass  # don't put in DB
+        else:
+            upserting["condor_clusters"] = in_db.condor_clusters + [condor_cluster]
+
+        # progress
         if progress:
             upserting["progress"] = progress
 
@@ -231,6 +261,7 @@ class ManifestClient(ScanIDCollectionFacade):
         if not upserting:  # did we actually update anything?
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
             return in_db
+        LOGGER.debug(f"patching manifest for {scan_id=} with {upserting=}")
         manifest = await self._upsert(
             _MANIFEST_COLL_NAME,
             scan_id,
@@ -291,7 +322,7 @@ class ResultClient(ScanIDCollectionFacade):
         return result
 
     async def put(
-        self, scan_id: str, scan_result: dict[str, Any], is_final: bool
+        self, scan_id: str, scan_result: schema.StrDict, is_final: bool
     ) -> schema.Result:
         """Override `schema.Result` at doc matching `scan_id`."""
         LOGGER.debug(f"overriding result for {scan_id=} {is_final=}")

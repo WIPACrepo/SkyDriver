@@ -10,6 +10,7 @@ import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
 
 from .config import ENV, LOGGER
+from .database import schema
 
 
 class KubeAPITools:
@@ -17,7 +18,7 @@ class KubeAPITools:
 
     @staticmethod
     def _kube_delete_empty_pods(
-        namespace: str = 'default', phase: str = 'Succeeded'
+        namespace: str = "default", phase: str = "Succeeded"
     ) -> None:
         """Pods are never empty, just completed the lifecycle.
 
@@ -62,7 +63,7 @@ class KubeAPITools:
 
     @staticmethod
     def kube_cleanup_finished_jobs(
-        api_instance: kubernetes.client.BatchV1Api, namespace: str = 'default'
+        api_instance: kubernetes.client.BatchV1Api, namespace: str = "default"
     ) -> None:
         """Since the TTL flag (ttl_seconds_after_finished) is still in alpha
         (Kubernetes 1.12) jobs need to be cleanup manually As such this method
@@ -111,7 +112,7 @@ class KubeAPITools:
                         namespace,
                         deleteoptions,
                         grace_period_seconds=0,
-                        propagation_policy='Background',
+                        propagation_policy="Background",
                     )
                     LOGGER.debug(api_response)
                 except ApiException as e:
@@ -119,7 +120,7 @@ class KubeAPITools:
                     raise
             else:
                 if jobstatus is None and job.status.active == 1:
-                    jobstatus = 'active'
+                    jobstatus = "active"
                 LOGGER.info(
                     "Job: {} not cleaned up. Current status: {}".format(
                         jobname, jobstatus
@@ -175,7 +176,7 @@ class KubeAPITools:
         # Make Pod Spec
         template.template.spec = kubernetes.client.V1PodSpec(
             containers=containers,
-            restart_policy='Never',
+            restart_policy="Never",
             volumes=[
                 kubernetes.client.V1Volume(
                     name=n, empty_dir=kubernetes.client.V1EmptyDirVolumeSource()
@@ -219,80 +220,40 @@ class SkymapScannerJob:
     def __init__(
         self,
         api_instance: kubernetes.client.BatchV1Api,
-        rest_address: str,
-        auth_token: str,
-        # docker args
-        docker_tag: str,
-        # condor args
-        njobs: int,
-        memory: str,
-        # scanner args
+        docker_image: str,
+        server_args: str,
+        clientmanager_args: str,
+        env_vars: schema.StrDict,
         scan_id: str,
-        reco_algo: str,
-        gcd_dir: Path | None,
-        nsides: dict[int, int],
-        is_real_event: bool,
+        volume_path: Path,
     ):
         self.api_instance = api_instance
-
-        # image
-        if not docker_tag:
-            docker_tag = 'latest'
-        image = f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{docker_tag}"
-        self.docker_tag = docker_tag
-
-        # env
-        self.env: dict[str, str | int] = {
-            # broker/mq vars
-            'SKYSCAN_BROKER_ADDRESS': ENV.SKYSCAN_BROKER_ADDRESS,
-            'SKYSCAN_BROKER_AUTH': auth_token,
-            #
-            # skydriver vars
-            'SKYSCAN_SKYDRIVER_ADDRESS': rest_address,
-            'SKYSCAN_SKYDRIVER_AUTH': auth_token,
-            'SKYSCAN_SKYDRIVER_SCAN_ID': scan_id,
-        }
-        prefiltered = {
-            'SKYSCAN_PROGRESS_INTERVAL_SEC': ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
-            'SKYSCAN_RESULT_INTERVAL_SEC': ENV.SKYSCAN_RESULT_INTERVAL_SEC,
-            'SKYSCAN_MQ_TIMEOUT_TO_CLIENTS': ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
-            'SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS': ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
-            'SKYSCAN_LOG': ENV.SKYSCAN_LOG,
-            'SKYSCAN_LOG_THIRD_PARTY': ENV.SKYSCAN_LOG_THIRD_PARTY,
-        }
-        self.env.update({k: v for k, v in prefiltered.items() if v})
-
-        # volume(s)
-        volume_name = 'common-space'
-        volume_path = Path(volume_name)
 
         # job
         server = KubeAPITools.create_container(
             scan_id,
-            image,
-            self.env,
-            self.get_server_args(
-                volume_path, reco_algo, nsides, gcd_dir, is_real_event
-            ),
-            {volume_name: volume_path},
+            docker_image,
+            env_vars,
+            server_args.split(),
+            {volume_path.name: volume_path},
         )
-        condor_client_spawner = KubeAPITools.create_container(
+        condor_clientmanager = KubeAPITools.create_container(
             scan_id,
-            image,
-            self.env,
-            SkymapScannerJob.get_condor_client_spawner_args(
-                volume_path,
-                docker_tag,
-                njobs,
-                memory,
-            ),
-            {volume_name: volume_path},
+            docker_image,
+            env_vars,
+            clientmanager_args.split(),
+            {volume_path.name: volume_path},
         )
         self.job = KubeAPITools.kube_create_job_object(
             scan_id,
-            [server, condor_client_spawner],
-            [volume_name],
+            [server, condor_clientmanager],
+            [volume_path.name],
         )
+
+    @staticmethod
+    def get_volume_path() -> Path:
+        """Get a shared volume path."""
+        return Path("common-space")
 
     @staticmethod
     def get_server_args(
@@ -301,8 +262,8 @@ class SkymapScannerJob:
         nsides: dict[int, int],
         gcd_dir: Path | None,
         is_real_event: bool,
-    ) -> list[str]:
-        """Make the server container object's args."""
+    ) -> str:
+        """Make the server container args."""
         args = (
             f"python -m skymap_scanner.server "
             f" --reco-algo {reco_algo}"
@@ -314,34 +275,72 @@ class SkymapScannerJob:
         )
         if gcd_dir:
             args += f" --gcd-dir {gcd_dir} "  # TODO figure binding
-        return args.split()
+        return args
 
     @staticmethod
-    def get_condor_client_spawner_args(
-        volume_path: Path, tag: str, njobs: int, memory: str
-    ) -> list[str]:
-        """Make the client container object's args."""
-        client_args_dict = {
-            "--broker": ENV.SKYSCAN_BROKER_ADDRESS,
-            "--log": "DEBUG",
-            "--log-third-party": "INFO",
-            "--debug-directory": "$SKYSCAN_DEBUG_DIR",
-        }
-        client_args = " ".join(
-            f"{k.lstrip('-').strip()}:{v.strip()}" for k, v in client_args_dict.items()
-        )
+    def get_clientmanager_args(
+        volume_path: Path,
+        singularity_image: str,
+        njobs: int,
+        memory: str,
+        collector: str,
+        schedd: str,
+    ) -> str:
+        """Make the clientmanager container args.
 
-        singularity_image = f"{ENV.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}:{tag}"
-
+        This also includes any client args not added by the
+        clientmanager.
+        """
         args = (
-            f"python scripts/condor/spawn_condor_clients.py "
-            f" --jobs {njobs}"
-            f" --memory {memory}"
-            f" --singularity-image {singularity_image}"
-            f" --startup-json {volume_path/'startup/startup.json'}"
-            f" --client-args {client_args}"
+            f"python resources/client_starter.py "
+            # f" --dryrun"
+            f" --logs-directory {volume_path} "
+            # --collector-address  # see below
+            # --schedd-name  # see below
+            # f" --accounting-group "
+            f" --jobs {njobs} "
+            f" --memory {memory} "
+            f" --singularity-image {singularity_image} "
+            f" --startup-json {volume_path/'startup/startup.json'} "
+            # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
-        return args.split()
+
+        if collector:
+            args += f" --collector {collector} "
+        if schedd:
+            args += f" --schedd {schedd} "
+
+        return args
+
+    @staticmethod
+    def get_env_vars(
+        rest_address: str,
+        auth_token: str,
+        scan_id: str,
+    ) -> schema.StrDict:
+        """Get the environment variables provided to all containers."""
+        env: schema.StrDict = {
+            # broker/mq vars
+            "SKYSCAN_BROKER_ADDRESS": ENV.SKYSCAN_BROKER_ADDRESS,
+            "SKYSCAN_BROKER_AUTH": auth_token,
+            #
+            # skydriver vars
+            "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
+            "SKYSCAN_SKYDRIVER_AUTH": auth_token,
+            "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
+        }
+
+        prefiltered = {
+            "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
+            "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
+            "SKYSCAN_MQ_TIMEOUT_TO_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
+            "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
+            "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
+            "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
+        }
+        env.update({k: v for k, v in prefiltered.items() if v})
+
+        return env
 
     def start(self) -> Any:
         """Start the k8s job.
@@ -355,17 +354,3 @@ class SkymapScannerJob:
             LOGGER.error(e)
             raise
         return api_response
-
-
-# if __name__ == '__main__':
-#     # Testing Credentials
-#     kube_test_credentials()
-#     # We try to cleanup dead jobs (READ THE FUNCTION CODE!)
-#     kube_cleanup_finished_jobs()
-#     kube_delete_empty_pods()
-#     # Create a couple of jobs
-#     for i in range(3):
-#         kube_create_job()
-#     # This was to test the use of ENV variables.
-#     LOGGER.info("Finshed! - ENV: {}".format(os.environ["VAR"]))
-#     sys.exit(0)

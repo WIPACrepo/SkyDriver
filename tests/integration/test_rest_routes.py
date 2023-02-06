@@ -2,6 +2,7 @@
 
 # pylint: disable=redefined-outer-name
 
+import random
 import re
 import socket
 from typing import Any, AsyncIterator, Callable
@@ -86,56 +87,128 @@ POST_SCAN_BODY = {
 async def _launch_scan(rc: RestClient) -> str:
     # launch scan
     resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
-    scan_id = resp["scan_id"]  # keep around
-    return scan_id  # type: ignore[no-any-return]
+
+    server_args = (
+        f"python -m skymap_scanner.server "
+        f"--reco-algo {POST_SCAN_BODY['reco_algo']} "
+        f"--cache-dir common-space/cache "
+        f"--output-dir common-space/output "
+        f"--startup-json-dir common-space/startup "
+        f"--nsides {' '.join(f'{k}:{v}' for k,v in POST_SCAN_BODY['nsides'].items())} "  # type: ignore[attr-defined]
+        f"--{POST_SCAN_BODY['real_or_simulated_event']}-event"
+    )
+
+    clientmanager_args = (
+        f"python resources/client_starter.py "
+        f" --logs-directory common-space "
+        f" --jobs {POST_SCAN_BODY['njobs']} "
+        f" --memory {POST_SCAN_BODY['memory']} "
+        f" --singularity-image /cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:latest "
+        f" --startup-json common-space/startup/startup.json "
+    )
+
+    assert resp == dict(
+        scan_id=resp["scan_id"],
+        is_deleted=False,
+        event_i3live_json_dict=POST_SCAN_BODY["event_i3live_json"],
+        event_metadata=None,
+        scan_metadata=None,
+        condor_clusters=[],
+        progress=None,
+        server_args=resp["server_args"],  # see below
+        clientmanager_args=resp["clientmanager_args"],  # see below
+        env_vars=resp["env_vars"],  # see below
+        # TODO: check more fields in future
+    )
+
+    # check args (avoid whitespace headaches...)
+    assert resp["server_args"].split() == server_args.split()
+    assert resp["clientmanager_args"].split() == clientmanager_args.split()
+
+    # check env vars
+    assert set(resp["env_vars"].keys()) == {
+        "SKYSCAN_BROKER_ADDRESS",
+        "SKYSCAN_BROKER_AUTH",
+        "SKYSCAN_SKYDRIVER_ADDRESS",
+        "SKYSCAN_SKYDRIVER_AUTH",
+        "SKYSCAN_SKYDRIVER_SCAN_ID",
+    }
+    assert resp["env_vars"]["SKYSCAN_BROKER_ADDRESS"] == "localhost"
+    assert re.match(
+        r"http://localhost:[0-9]+", resp["env_vars"]["SKYSCAN_SKYDRIVER_ADDRESS"]
+    )
+    assert len(resp["env_vars"]["SKYSCAN_SKYDRIVER_SCAN_ID"]) == 32
+
+    # get scan_id
+    assert resp["scan_id"]
+    return resp["scan_id"]  # type: ignore[no-any-return]
 
 
 async def _do_patch(
     rc: RestClient,
-    event_metadata: StrDict | None,
     scan_id: str,
-    n: int = 0,
+    progress: StrDict | None = None,
+    event_metadata: StrDict | None = None,
+    scan_metadata: StrDict | None = None,
+    condor_cluster: StrDict | None = None,
+    previous_clusters: list[StrDict] | None = None,
 ) -> StrDict:
-    # do PATCH @ /scan/manifest
+    # do PATCH @ /scan/manifest, assert response
+    body = {}
+    if progress:
+        body["progress"] = progress
+    if event_metadata:
+        body["event_metadata"] = event_metadata
+    if scan_metadata:
+        body["scan_metadata"] = scan_metadata
+    if condor_cluster:
+        body["condor_cluster"] = condor_cluster
+        assert isinstance(previous_clusters, list)  # gotta include this one too
+    assert body
 
-    async def _do(progress: StrDict | None = None) -> StrDict:
-        body = {}
-        if progress:
-            body["progress"] = progress
-        if event_metadata:
-            body["event_metadata"] = event_metadata
-        # TODO: future handle scan_metadata
-        resp = await rc.request("PATCH", f"/scan/manifest/{scan_id}", body)
-        assert resp == dict(
-            scan_id=scan_id,
-            is_deleted=False,
-            event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
-            event_metadata=event_metadata if event_metadata else resp["event_metadata"],
-            scan_metadata=resp["scan_metadata"],  # not checking
-            progress=(
-                {  # inject the auto-filled args
-                    **progress,
-                    "processing_stats": {
-                        **progress["processing_stats"],
-                        "end": "",
-                        "finished": False,
-                        "predictions": {},
-                    },
-                }
-                if progress
-                else None
-            ),
-            # TODO: check more fields in future
-        )
-        manifest = resp  # keep around
-        # query progress
-        resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
-        assert manifest == resp
-        return manifest  # type: ignore[no-any-return]
+    resp = await rc.request("PATCH", f"/scan/manifest/{scan_id}", body)
+    assert resp == dict(
+        scan_id=scan_id,
+        is_deleted=False,
+        event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
+        event_metadata=event_metadata if event_metadata else resp["event_metadata"],
+        scan_metadata=scan_metadata if scan_metadata else resp["scan_metadata"],
+        condor_clusters=(
+            previous_clusters + [condor_cluster]  # type: ignore[operator]  # see assert ^^^^
+            if condor_cluster
+            else resp["condor_clusters"]  # not checking
+        ),
+        progress=(
+            {  # inject the auto-filled args
+                **progress,
+                "processing_stats": {
+                    **progress["processing_stats"],
+                    "end": "",
+                    "finished": False,
+                    "predictions": {},
+                },
+            }
+            if progress
+            else resp["progress"]  # not checking
+        ),
+        server_args=resp["server_args"],  # not checking
+        clientmanager_args=resp["clientmanager_args"],  # not checking
+        env_vars=resp["env_vars"],  # not checking
+        # TODO: check more fields in future
+    )
+    manifest = resp  # keep around
+    # query progress
+    resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
+    assert resp == manifest
+    return manifest  # type: ignore[no-any-return]
 
-    # make request(s)
-    if not n:
-        return await _do()
+
+async def _patch_progress_and_scan_metadata(
+    rc: RestClient,
+    scan_id: str,
+    n: int,
+) -> StrDict:
+    # send progress updates
     for i in range(n):
         progress = dict(
             summary="it's a summary",
@@ -151,8 +224,16 @@ async def _do_patch(
                 # predictions: StrDict = dc.field(default_factory=dict)  # open to requestor)
             ),
         )
-        # update progress
-        manifest = await _do(progress)
+        # update progress (update `scan_metadata` sometimes--not as important)
+        if i % 2:  # odd
+            manifest = await _do_patch(rc, scan_id, progress=progress)
+        else:  # even
+            manifest = await _do_patch(
+                rc,
+                scan_id,
+                progress=progress,
+                scan_metadata={"scan_id": scan_id, "foo": "bar"},
+            )
     return manifest
 
 
@@ -169,8 +250,7 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
         is_real_event=IS_REAL_EVENT,
     )
 
-    # update progress
-    await _do_patch(rc, event_metadata, scan_id)
+    await _do_patch(rc, scan_id, event_metadata=event_metadata)
 
     # query by event id
     resp = await rc.request(
@@ -182,9 +262,29 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
             "is_real_event": IS_REAL_EVENT,
         },
     )
-    assert [scan_id] == resp["scan_ids"]
+    assert resp["scan_ids"] == [scan_id]
 
     return event_metadata
+
+
+async def _clientmanager_reply(
+    rc: RestClient, scan_id: str, previous_clusters: list[StrDict]
+) -> StrDict:
+    # reply as the clientmanager with a new condor cluster
+    condor_cluster = dict(
+        collector="https://le-collector.edu",
+        schedd="https://un-schedd.edu",
+        cluster_id=random.randint(1, 10000),
+        jobs=random.randint(1, 10000),
+    )
+
+    manifest = await _do_patch(
+        rc,
+        scan_id,
+        condor_cluster=condor_cluster,
+        previous_clusters=previous_clusters,
+    )
+    return manifest
 
 
 async def _send_result(
@@ -210,11 +310,11 @@ async def _send_result(
 
     # query progress
     resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
-    assert last_known_manifest == resp
+    assert resp == last_known_manifest
 
     # query result
     resp = await rc.request("GET", f"/scan/result/{scan_id}")
-    assert result == resp
+    assert resp == result
 
     return result
 
@@ -235,6 +335,10 @@ async def _delete_manifest(
         progress=last_known_manifest["progress"],
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         scan_metadata=resp["scan_metadata"],  # not checking
+        condor_clusters=resp["condor_clusters"],  # not checking
+        server_args=resp["server_args"],  # not checking
+        clientmanager_args=resp["clientmanager_args"],  # not checking
+        env_vars=resp["env_vars"],  # not checking
         # TODO: check more fields in future
     )
     del_resp = resp  # keep around
@@ -252,7 +356,7 @@ async def _delete_manifest(
     resp = await rc.request(
         "GET", f"/scan/manifest/{scan_id}", {"include_deleted": True}
     )
-    assert del_resp == resp
+    assert resp == del_resp
 
     # query by event id (none)
     resp = await rc.request(
@@ -281,7 +385,7 @@ async def _delete_manifest(
 
     # query result (still exists)
     resp = await rc.request("GET", f"/scan/result/{scan_id}")
-    assert last_known_result == resp
+    assert resp == last_known_result
 
 
 async def _delete_result(
@@ -311,7 +415,7 @@ async def _delete_result(
 
     # query w/ incl_del
     resp = await rc.request("GET", f"/scan/result/{scan_id}", {"include_deleted": True})
-    assert del_resp == resp
+    assert resp == del_resp
 
 
 ########################################################################################
@@ -326,17 +430,24 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     #
     scan_id = await _launch_scan(rc)
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
+    manifest = await _clientmanager_reply(rc, scan_id, [])
 
     #
     # ADD PROGRESS
     #
-    manifest = await _do_patch(rc, event_metadata, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
 
     #
-    # SEND INTERMEDIATES
+    # SEND INTERMEDIATES (these can happen in any order, or even async)
     #
+    # FIRST, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
-    manifest = await _do_patch(rc, None, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
+    # NEXT, spun up more workers in condor
+    manifest = await _clientmanager_reply(rc, scan_id, manifest["condor_clusters"])
+    # THEN, clients send updates
+    result = await _send_result(rc, scan_id, manifest, False)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
 
     #
     # SEND RESULT(s)
@@ -408,6 +519,26 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # OK
     scan_id = await _launch_scan(rc)
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
+    manifest = await _clientmanager_reply(rc, scan_id, [])
+
+    # ATTEMPT OVERWRITE
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"400 Client Error: Cannot change an existing event_metadata for url: {rc.address}/scan/manifest"
+        ),
+    ) as e:
+        await _do_patch(
+            rc,
+            scan_id,
+            event_metadata=dict(
+                run_id=event_metadata["run_id"],
+                event_id=event_metadata["event_id"],
+                event_type="funky",
+                mjd=23423432.3,
+                is_real_event=IS_REAL_EVENT,
+            ),
+        )
 
     #
     # ADD PROGRESS
@@ -453,7 +584,16 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         print(e.value)
 
     # OK
-    manifest = await _do_patch(rc, event_metadata, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
+
+    # ATTEMPT OVERWRITE
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"400 Client Error: Cannot change an existing scan_metadata for url: {rc.address}/scan/manifest"
+        ),
+    ) as e:
+        await _do_patch(rc, scan_id, scan_metadata={"boo": "baz", "bot": "fox"})
 
     # # no arg
     with pytest.raises(
