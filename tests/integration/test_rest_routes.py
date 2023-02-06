@@ -260,7 +260,7 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
 
 async def _clientmanager_reply(
     rc: RestClient, scan_id: str, previous_clusters: list[StrDict]
-) -> list[StrDict]:
+) -> StrDict:
     # reply as the clientmanager with a new condor cluster
     condor_cluster = dict(
         cluster_id=random.randint(1, 10000),
@@ -277,7 +277,7 @@ async def _clientmanager_reply(
         condor_cluster=condor_cluster,
         previous_clusters=previous_clusters,
     )
-    return manifest["condor_clusters"]  # type: ignore[no-any-return]
+    return manifest
 
 
 async def _send_result(
@@ -423,7 +423,7 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     #
     scan_id = await _launch_scan(rc)
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    condor_clusters = await _clientmanager_reply(rc, scan_id, [])
+    manifest = await _clientmanager_reply(rc, scan_id, [])
 
     #
     # ADD PROGRESS
@@ -437,7 +437,7 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     result = await _send_result(rc, scan_id, manifest, False)
     manifest = await _patch_progress(rc, scan_id, 10)
     # NEXT, spun up more workers in condor
-    condor_clusters = await _clientmanager_reply(rc, scan_id, condor_clusters)
+    manifest = await _clientmanager_reply(rc, scan_id, manifest["condor_clusters"])
     # THEN, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
     manifest = await _patch_progress(rc, scan_id, 10)
@@ -512,7 +512,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # OK
     scan_id = await _launch_scan(rc)
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    _ = await _clientmanager_reply(rc, scan_id, [])
+    manifest = await _clientmanager_reply(rc, scan_id, [])
 
     #
     # ADD PROGRESS
