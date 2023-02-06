@@ -157,13 +157,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=str,
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
-        collector_address = self.get_argument(
-            "collector_address",
+        collector = self.get_argument(
+            "collector",
             type=str,
             default="",
         )
-        schedd_name = self.get_argument(
-            "schedd_name",
+        schedd = self.get_argument(
+            "schedd",
             type=str,
             default="",
         )
@@ -211,8 +211,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             singularity_image=f"{ENV.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}:{docker_tag}",
             njobs=njobs,
             memory=memory,
-            collector_address=collector_address,
-            schedd_name=schedd_name,
+            collector=collector,
+            schedd=schedd,
         )
         env_vars = k8s.SkymapScannerJob.get_env_vars(
             rest_address=self.request.full_url().rstrip(self.request.uri),

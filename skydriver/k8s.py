@@ -283,8 +283,8 @@ class SkymapScannerJob:
         singularity_image: str,
         njobs: int,
         memory: str,
-        collector_address: str,
-        schedd_name: str,
+        collector: str,
+        schedd: str,
     ) -> str:
         """Make the clientmanager container args.
 
@@ -305,10 +305,10 @@ class SkymapScannerJob:
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
 
-        if collector_address:
-            args += f" --collector-address {collector_address} "
-        if schedd_name:
-            args += f" --schedd-name {schedd_name} "
+        if collector:
+            args += f" --collector {collector} "
+        if schedd:
+            args += f" --schedd {schedd} "
 
         return args
 
