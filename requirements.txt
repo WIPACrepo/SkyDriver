@@ -22,7 +22,7 @@ coloredlogs==15.0.1
     # via
     #   skydriver (setup.py)
     #   wipac-telemetry
-cryptography==39.0.0
+cryptography==39.0.1
     # via pyjwt
 dacite==1.8.0
     # via skydriver (setup.py)
@@ -148,7 +148,7 @@ wipac-dev-tools==1.6.10
     #   skydriver (setup.py)
     #   wipac-rest-tools
     #   wipac-telemetry
-wipac-rest-tools[telemetry]==1.4.7
+wipac-rest-tools[telemetry]==1.4.8
     # via skydriver (setup.py)
 wipac-telemetry==0.2.5
     # via wipac-rest-tools
