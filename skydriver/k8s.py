@@ -194,7 +194,7 @@ class KubeAPITools:
     def create_container(
         name: str,
         image: str,
-        env: dict[str, Any],
+        env: list[kubernetes.client.V1EnvVar],
         args: list[str],
         volumes: dict[str, Path],
     ) -> kubernetes.client.V1Container:
@@ -202,10 +202,7 @@ class KubeAPITools:
         return kubernetes.client.V1Container(
             name=name,
             image=image,
-            env=[
-                kubernetes.client.V1EnvVar(name=name, value=value)
-                for name, value in env.items()
-            ],
+            env=env,
             args=args,
             volume_mounts=[
                 kubernetes.client.V1VolumeMount(name=vol, mount_path=str(mnt))
@@ -223,7 +220,7 @@ class SkymapScannerJob:
         docker_image: str,
         server_args: str,
         clientmanager_args: str,
-        env_vars: schema.StrDict,
+        env: list[kubernetes.client.V1EnvVar],
         scan_id: str,
         volume_path: Path,
     ):
@@ -233,14 +230,14 @@ class SkymapScannerJob:
         server = KubeAPITools.create_container(
             scan_id,
             docker_image,
-            env_vars,
+            env,
             server_args.split(),
             {volume_path.name: volume_path},
         )
         condor_clientmanager = KubeAPITools.create_container(
             scan_id,
             docker_image,
-            env_vars,
+            env,
             clientmanager_args.split(),
             {volume_path.name: volume_path},
         )
@@ -317,19 +314,36 @@ class SkymapScannerJob:
         rest_address: str,
         auth_token: str,
         scan_id: str,
-    ) -> schema.StrDict:
+    ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to all containers."""
-        env: schema.StrDict = {
-            # broker/mq vars
-            "SKYSCAN_BROKER_ADDRESS": ENV.SKYSCAN_BROKER_ADDRESS,
-            "SKYSCAN_BROKER_AUTH": auth_token,
-            #
-            # skydriver vars
-            "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
-            "SKYSCAN_SKYDRIVER_AUTH": auth_token,
-            "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
-        }
 
+        # required env vars
+        env = [
+            # broker/mq vars
+            kubernetes.client.V1EnvVar(
+                name="SKYSCAN_BROKER_ADDRESS",
+                value=ENV.SKYSCAN_BROKER_ADDRESS,
+            ),
+            kubernetes.client.V1EnvVar(
+                name="SKYSCAN_BROKER_AUTH",
+                value=auth_token,
+            ),
+            # skydriver vars
+            kubernetes.client.V1EnvVar(
+                name="SKYSCAN_SKYDRIVER_ADDRESS",
+                value=rest_address,
+            ),
+            kubernetes.client.V1EnvVar(
+                name="SKYSCAN_SKYDRIVER_AUTH",
+                value=auth_token,
+            ),
+            kubernetes.client.V1EnvVar(
+                name="SKYSCAN_SKYDRIVER_SCAN_ID",
+                value=scan_id,
+            ),
+        ]
+
+        # extra env vars
         prefiltered = {
             "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
             "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
@@ -338,7 +352,13 @@ class SkymapScannerJob:
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
         }
-        env.update({k: v for k, v in prefiltered.items() if v})
+        env.append(
+            [
+                kubernetes.client.V1EnvVar(name=k, value=v)
+                for k, v in prefiltered.items()
+                if v  # skip any env vars that are Falsy
+            ]
+        )
 
         return env
 
