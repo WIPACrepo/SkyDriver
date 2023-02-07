@@ -11,6 +11,8 @@ from kubernetes.client.rest import ApiException  # type: ignore[import]
 
 from .config import ENV, LOGGER
 
+SKYDRIVER_SECRETS_NAME = "skydriver-secrets"
+
 
 class KubeAPITools:
     """A convenience wrapper around `kubernetes.client`."""
@@ -324,7 +326,12 @@ class SkymapScannerJob:
             ),
             kubernetes.client.V1EnvVar(
                 name="SKYSCAN_BROKER_AUTH",
-                value_from="blah",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name=SKYDRIVER_SECRETS_NAME,
+                        key="broker_auth",
+                    )
+                ),
             ),
             # skydriver vars
             kubernetes.client.V1EnvVar(
@@ -333,7 +340,12 @@ class SkymapScannerJob:
             ),
             kubernetes.client.V1EnvVar(
                 name="SKYSCAN_SKYDRIVER_AUTH",
-                value_from="plop",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name=SKYDRIVER_SECRETS_NAME,
+                        key="skydriver_auth",
+                    )
+                ),
             ),
             kubernetes.client.V1EnvVar(
                 name="SKYSCAN_SKYDRIVER_SCAN_ID",
