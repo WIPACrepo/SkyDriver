@@ -235,7 +235,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             scan_id,
             server_args,
             clientmanager_args,
-            {e.name: e.to_dict() for e in env},
+            {  # promote `e.name` to a key of a dict (instead of an attr in list element)
+                e.name: {k: v for k, v in e.to_dict().items() if k != "name"}
+                for e in env
+            },
         )
 
         # start k8s job

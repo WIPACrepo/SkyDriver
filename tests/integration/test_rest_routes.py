@@ -133,11 +133,31 @@ async def _launch_scan(rc: RestClient) -> str:
         "SKYSCAN_SKYDRIVER_AUTH",
         "SKYSCAN_SKYDRIVER_SCAN_ID",
     }
-    assert resp["env_vars"]["SKYSCAN_BROKER_ADDRESS"] == "localhost"
-    assert re.match(
-        r"http://localhost:[0-9]+", resp["env_vars"]["SKYSCAN_SKYDRIVER_ADDRESS"]
+    # check env vars, more closely
+    assert all(  # these have `value`s
+        resp["env_vars"][e]["value"] and not resp["env_vars"][e]["value_from"]
+        for e in [
+            "SKYSCAN_BROKER_ADDRESS",
+            "SKYSCAN_BROKER_AUTH",  # TODO: look at `value_from`
+            "SKYSCAN_SKYDRIVER_ADDRESS",
+            "SKYSCAN_SKYDRIVER_AUTH",  # TODO: look at `value_from`
+            "SKYSCAN_SKYDRIVER_SCAN_ID",
+        ]
     )
-    assert len(resp["env_vars"]["SKYSCAN_SKYDRIVER_SCAN_ID"]) == 32
+    # assert all(  # these have `value_from`s
+    #     not resp["env_vars"][e]["value"] and resp["env_vars"][e]["value_from"]
+    #     for e in [
+    #         "SKYSCAN_BROKER_AUTH",
+    #         "SKYSCAN_SKYDRIVER_AUTH",
+    #     ]
+    # )
+    # check env vars, even MORE closely
+    assert resp["env_vars"]["SKYSCAN_BROKER_ADDRESS"]["value"] == "localhost"
+    assert re.match(
+        r"http://localhost:[0-9]+",
+        resp["env_vars"]["SKYSCAN_SKYDRIVER_ADDRESS"]["value"],
+    )
+    assert len(resp["env_vars"]["SKYSCAN_SKYDRIVER_SCAN_ID"]["value"]) == 32
 
     # get scan_id
     assert resp["scan_id"]
