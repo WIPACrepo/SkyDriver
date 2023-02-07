@@ -134,23 +134,19 @@ async def _launch_scan(rc: RestClient) -> str:
         "SKYSCAN_SKYDRIVER_SCAN_ID",
     }
     # check env vars, more closely
-    assert all(  # these have `value`s
-        resp["env_vars"][e]["value"] and not resp["env_vars"][e]["value_from"]
-        for e in [
-            "SKYSCAN_BROKER_ADDRESS",
-            "SKYSCAN_BROKER_AUTH",  # TODO: look at `value_from`
-            "SKYSCAN_SKYDRIVER_ADDRESS",
-            "SKYSCAN_SKYDRIVER_AUTH",  # TODO: look at `value_from`
-            "SKYSCAN_SKYDRIVER_SCAN_ID",
-        ]
-    )
-    # assert all(  # these have `value_from`s
-    #     not resp["env_vars"][e]["value"] and resp["env_vars"][e]["value_from"]
-    #     for e in [
-    #         "SKYSCAN_BROKER_AUTH",
-    #         "SKYSCAN_SKYDRIVER_AUTH",
-    #     ]
-    # )
+    for e in [  # these have `value`s
+        "SKYSCAN_BROKER_ADDRESS",
+        "SKYSCAN_BROKER_AUTH",  # TODO: look at `value_from`
+        "SKYSCAN_SKYDRIVER_ADDRESS",
+        "SKYSCAN_SKYDRIVER_AUTH",  # TODO: look at `value_from`
+        "SKYSCAN_SKYDRIVER_SCAN_ID",
+    ]:
+        assert resp["env_vars"][e]["value"] and not resp["env_vars"][e]["value_from"]
+    # for e in [  # these have `value_from`s
+    #     "SKYSCAN_BROKER_AUTH",
+    #     "SKYSCAN_SKYDRIVER_AUTH",
+    # ]:
+    #     assert not resp["env_vars"][e]["value"] and resp["env_vars"][e]["value_from"]
     # check env vars, even MORE closely
     assert resp["env_vars"]["SKYSCAN_BROKER_ADDRESS"]["value"] == "localhost"
     assert re.match(
