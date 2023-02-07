@@ -311,7 +311,6 @@ class SkymapScannerJob:
     @staticmethod
     def get_env(
         rest_address: str,
-        auth_token: str,
         scan_id: str,
     ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to all containers."""
@@ -325,7 +324,7 @@ class SkymapScannerJob:
             ),
             kubernetes.client.V1EnvVar(
                 name="SKYSCAN_BROKER_AUTH",
-                value=auth_token,
+                value_from="blah",
             ),
             # skydriver vars
             kubernetes.client.V1EnvVar(
@@ -334,7 +333,7 @@ class SkymapScannerJob:
             ),
             kubernetes.client.V1EnvVar(
                 name="SKYSCAN_SKYDRIVER_AUTH",
-                value=auth_token,
+                value_from="plop",
             ),
             kubernetes.client.V1EnvVar(
                 name="SKYSCAN_SKYDRIVER_SCAN_ID",

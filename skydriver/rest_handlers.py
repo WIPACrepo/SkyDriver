@@ -216,7 +216,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         env = k8s.SkymapScannerJob.get_env(
             rest_address=self.request.full_url().rstrip(self.request.uri),
-            auth_token=self.auth_key,  # type: ignore[arg-type]
             scan_id=scan_id,
         )
         job = k8s.SkymapScannerJob(
