@@ -351,7 +351,7 @@ class SkymapScannerJob:
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
         }
-        env.append(
+        env.extend(
             [
                 kubernetes.client.V1EnvVar(name=k, value=v)
                 for k, v in prefiltered.items()
