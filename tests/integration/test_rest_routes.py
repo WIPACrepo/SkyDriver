@@ -126,6 +126,7 @@ async def _launch_scan(rc: RestClient) -> str:
     assert resp["clientmanager_args"].split() == clientmanager_args.split()
 
     # check env vars
+    print(resp["env_vars"])
     assert set(resp["env_vars"].keys()) == {
         "SKYSCAN_BROKER_ADDRESS",
         "SKYSCAN_BROKER_AUTH",
