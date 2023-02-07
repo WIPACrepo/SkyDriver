@@ -309,7 +309,7 @@ class SkymapScannerJob:
         return args
 
     @staticmethod
-    def get_env_vars(
+    def get_env(
         rest_address: str,
         auth_token: str,
         scan_id: str,

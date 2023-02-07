@@ -214,7 +214,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             collector=collector,
             schedd=schedd,
         )
-        env_vars = k8s.SkymapScannerJob.get_env_vars(
+        env = k8s.SkymapScannerJob.get_env(
             rest_address=self.request.full_url().rstrip(self.request.uri),
             auth_token=self.auth_key,  # type: ignore[arg-type]
             scan_id=scan_id,
@@ -224,7 +224,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             docker_image=f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{docker_tag}",
             server_args=server_args,
             clientmanager_args=clientmanager_args,
-            env_vars=env_vars,
+            env=env,
             scan_id=scan_id,
             volume_path=volume_path,
         )
@@ -235,7 +235,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             scan_id,
             server_args,
             clientmanager_args,
-            env_vars,
+            {e.name: e.to_dict() for e in env},
         )
 
         # start k8s job
