@@ -10,7 +10,6 @@ import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
 
 from .config import ENV, LOGGER
-from .database import schema
 
 
 class KubeAPITools:
