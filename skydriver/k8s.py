@@ -10,8 +10,7 @@ import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
 
 from .config import ENV, LOGGER
-
-SKYSCAN_K8S_SECRETS_NAME = "skyscan-secrets"
+from .database import schema
 
 
 class KubeAPITools:
@@ -233,31 +232,32 @@ class SkymapScannerJob:
     ):
         self.api_instance = api_instance
         self.namespace = f"skyscan-k8s-{scan_id}"
-        volume_path = Path("common-space")
+        self.skyscan_k8s_secrets_name = f"{self.namespace}-secrets"
+        common_space_volume_path = Path("common-space")
 
         # store some data for public access
         self.server_args = self.get_server_args(
-            volume_path=volume_path,
+            common_space_volume_path=common_space_volume_path,
             reco_algo=reco_algo,
             nsides=nsides,
             gcd_dir=gcd_dir,
             is_real_event=is_real_event,
         )
         self.clientmanager_args = self.get_clientmanager_args(
-            volume_path=volume_path,
+            common_space_volume_path=common_space_volume_path,
             singularity_image=f"{ENV.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}:{docker_tag}",
             njobs=njobs,
             memory=memory,
             collector=collector,
             schedd=schedd,
         )
-        self.env = self.get_env(
+        env, encoded_secret_data = self.get_env(
             rest_address=rest_address,
             scan_id=scan_id,
+            skyscan_k8s_secrets_name=self.skyscan_k8s_secrets_name,
         )
         self.env_dict = {  # promote `e.name` to a key of a dict (instead of an attr in list element)
-            e.name: {k: v for k, v in e.to_dict().items() if k != "name"}
-            for e in self.env
+            e.name: {k: v for k, v in e.to_dict().items() if k != "name"} for e in env
         }
 
         # job
@@ -265,32 +265,31 @@ class SkymapScannerJob:
         server = KubeAPITools.create_container(
             scan_id,
             docker_image,
-            self.env,
+            env,
             self.server_args.split(),
-            {volume_path.name: volume_path},
+            {common_space_volume_path.name: common_space_volume_path},
         )
         condor_clientmanager = KubeAPITools.create_container(
             scan_id,
             docker_image,
-            self.env,
+            env,
             self.clientmanager_args.split(),
-            {volume_path.name: volume_path},
+            {common_space_volume_path.name: common_space_volume_path},
         )
-        self.job = KubeAPITools.kube_create_job_object(
+        self.job_obj = KubeAPITools.kube_create_job_object(
             scan_id,
             [server, condor_clientmanager],
-            [volume_path.name],
+            [common_space_volume_path.name],
             namespace=self.namespace,
         )
         self.patch_or_create_namespaced_secret(
-            scan_id,
             "Opaque",
-            unencoded_data,
+            encoded_secret_data,
         )
 
     @staticmethod
     def get_server_args(
-        volume_path: Path,
+        common_space_volume_path: Path,
         reco_algo: str,
         nsides: dict[int, int],
         gcd_dir: Path | None,
@@ -300,9 +299,9 @@ class SkymapScannerJob:
         args = (
             f"python -m skymap_scanner.server "
             f" --reco-algo {reco_algo}"
-            f" --cache-dir {volume_path/'cache'} "
-            f" --output-dir {volume_path/'output'} "
-            f" --startup-json-dir {volume_path/'startup'} "
+            f" --cache-dir {common_space_volume_path/'cache'} "
+            f" --output-dir {common_space_volume_path/'output'} "
+            f" --startup-json-dir {common_space_volume_path/'startup'} "
             f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "  # k1:v1 k2:v2
             f" {'--real-event' if is_real_event else '--simulated-event'} "
         )
@@ -312,7 +311,7 @@ class SkymapScannerJob:
 
     @staticmethod
     def get_clientmanager_args(
-        volume_path: Path,
+        common_space_volume_path: Path,
         singularity_image: str,
         njobs: int,
         memory: str,
@@ -327,14 +326,14 @@ class SkymapScannerJob:
         args = (
             f"python resources/client_starter.py "
             # f" --dryrun"
-            f" --logs-directory {volume_path} "
+            f" --logs-directory {common_space_volume_path} "
             # --collector-address  # see below
             # --schedd-name  # see below
             # f" --accounting-group "
             f" --jobs {njobs} "
             f" --memory {memory} "
             f" --singularity-image {singularity_image} "
-            f" --startup-json {volume_path/'startup/startup.json'} "
+            f" --startup-json {common_space_volume_path/'startup/startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
 
@@ -349,46 +348,55 @@ class SkymapScannerJob:
     def get_env(
         rest_address: str,
         scan_id: str,
-    ) -> list[kubernetes.client.V1EnvVar]:
-        """Get the environment variables provided to all containers."""
+        skyscan_k8s_secrets_name: str,
+    ) -> tuple[list[kubernetes.client.V1EnvVar], schema.StrDict]:
+        """Get the environment variables provided to all containers.
 
-        # required env vars
-        env = [
-            # broker/mq vars
-            kubernetes.client.V1EnvVar(
-                name="SKYSCAN_BROKER_ADDRESS",
-                value=ENV.SKYSCAN_BROKER_ADDRESS,
-            ),
-            kubernetes.client.V1EnvVar(
-                name="SKYSCAN_BROKER_AUTH",
-                value_from=kubernetes.client.V1EnvVarSource(
-                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                        name=SKYSCAN_K8S_SECRETS_NAME,
-                        key="broker_auth",
-                    )
-                ),
-            ),
-            # skydriver vars
-            kubernetes.client.V1EnvVar(
-                name="SKYSCAN_SKYDRIVER_ADDRESS",
-                value=rest_address,
-            ),
-            kubernetes.client.V1EnvVar(
-                name="SKYSCAN_SKYDRIVER_AUTH",
-                value_from=kubernetes.client.V1EnvVarSource(
-                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                        name=SKYSCAN_K8S_SECRETS_NAME,
-                        key="skydriver_auth",
-                    )
-                ),
-            ),
-            kubernetes.client.V1EnvVar(
-                name="SKYSCAN_SKYDRIVER_SCAN_ID",
-                value=scan_id,
-            ),
+        Also, get the secrets' keys & their values.
+        """
+        env = []
+
+        # 1. start w/ secrets
+        secrets = [
+            {
+                "dest": "SKYSCAN_BROKER_AUTH",
+                "key": "broker_auth",
+                "value": "XXXXXXXX",  # TODO: encode
+            },
+            {
+                "dest": "SKYSCAN_SKYDRIVER_AUTH",
+                "key": "skydriver_auth",
+                "value": "YYYYYYYYYYY",  # TODO: encode
+            },
         ]
+        env.extend(
+            [
+                kubernetes.client.V1EnvVar(
+                    name=s["dest"],
+                    value_from=kubernetes.client.V1EnvVarSource(
+                        secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                            name=skyscan_k8s_secrets_name,
+                            key=s["key"],
+                        )
+                    ),
+                )
+                for s in secrets
+            ]
+        )
 
-        # extra env vars
+        # 2. add required env vars
+        required = {
+            # broker/mq vars
+            "SKYSCAN_BROKER_ADDRESS": ENV.SKYSCAN_BROKER_ADDRESS,
+            # skydriver vars
+            "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
+            "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
+        }
+        env.extend(
+            [kubernetes.client.V1EnvVar(name=k, value=v) for k, v in required.items()]
+        )
+
+        # 3. add extra env vars, if present
         prefiltered = {
             "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
             "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
@@ -405,29 +413,29 @@ class SkymapScannerJob:
             ]
         )
 
-        return env
+        return env, {s["key"]: s["value"] for s in secrets}
 
     def patch_or_create_namespaced_secret(
         self,
         secret_type: str,
-        unencoded_data: dict,
+        encoded_secret_data: schema.StrDict,
     ) -> bool:
         """Patch secret and if not exist create."""
         # Instantiate the Secret object
         body = kubernetes.client.V1Secret(
-            data=unencoded_data,  # TODO: encode values
+            data=encoded_secret_data,
             type=secret_type,
-            metadata=kubernetes.client.V1ObjectMeta(name=SKYSCAN_K8S_SECRETS_NAME),
+            metadata=kubernetes.client.V1ObjectMeta(name=self.skyscan_k8s_secrets_name),
         )
 
         # try to patch first
         try:
             self.api_instance.patch_namespaced_secret(
-                SKYSCAN_K8S_SECRETS_NAME, self.namespace, body
+                self.skyscan_k8s_secrets_name, self.namespace, body
             )
             LOGGER.info(
                 "Secret  {} in namespace {} has been patched".format(
-                    SKYSCAN_K8S_SECRETS_NAME, self.namespace
+                    self.skyscan_k8s_secrets_name, self.namespace
                 )
             )
             return True
@@ -440,7 +448,7 @@ class SkymapScannerJob:
                     )
                     LOGGER.info(
                         "Created secret {} of type {} in namespace {}".format(
-                            SKYSCAN_K8S_SECRETS_NAME, secret_type, self.namespace
+                            self.skyscan_k8s_secrets_name, secret_type, self.namespace
                         )
                     )
                     return True
@@ -457,7 +465,7 @@ class SkymapScannerJob:
         """
         try:
             api_response = self.api_instance.create_namespaced_job(
-                self.namespace, self.job
+                self.namespace, self.job_obj
             )
             LOGGER.info(api_response)
         except ApiException as e:
