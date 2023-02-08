@@ -11,16 +11,14 @@ from kubernetes.client.rest import ApiException  # type: ignore[import]
 
 from .config import ENV, LOGGER
 
-SKYDRIVER_SECRETS_NAME = "skydriver-secrets"
+SKYSCAN_K8S_SECRETS_NAME = "skyscan-secrets"
 
 
 class KubeAPITools:
     """A convenience wrapper around `kubernetes.client`."""
 
     @staticmethod
-    def _kube_delete_empty_pods(
-        namespace: str = "default", phase: str = "Succeeded"
-    ) -> None:
+    def _kube_delete_empty_pods(namespace: str, phase: str = "Succeeded") -> None:
         """Pods are never empty, just completed the lifecycle.
 
         As such they can be deleted. Pods can be without any running
@@ -64,7 +62,7 @@ class KubeAPITools:
 
     @staticmethod
     def kube_cleanup_finished_jobs(
-        api_instance: kubernetes.client.BatchV1Api, namespace: str = "default"
+        api_instance: kubernetes.client.BatchV1Api, namespace: str
     ) -> None:
         """Since the TTL flag (ttl_seconds_after_finished) is still in alpha
         (Kubernetes 1.12) jobs need to be cleanup manually As such this method
@@ -136,7 +134,7 @@ class KubeAPITools:
         name: str,
         containers: list[kubernetes.client.V1Container],
         volumes: list[str],  # volume names
-        namespace: str = "default",
+        namespace: str,
     ) -> kubernetes.client.V1Job:
         """Create a k8 Job Object Minimum definition of a job object:
 
@@ -226,6 +224,7 @@ class SkymapScannerJob:
         volume_path: Path,
     ):
         self.api_instance = api_instance
+        self.namespace = f"skyscan-k8s-{scan_id}"
 
         # job
         server = KubeAPITools.create_container(
@@ -246,6 +245,12 @@ class SkymapScannerJob:
             scan_id,
             [server, condor_clientmanager],
             [volume_path.name],
+            namespace=self.namespace,
+        )
+        self.patch_or_create_namespaced_secret(
+            scan_id,
+            "Opaque",
+            unencoded_data,
         )
 
     @staticmethod
@@ -328,7 +333,7 @@ class SkymapScannerJob:
                 name="SKYSCAN_BROKER_AUTH",
                 value_from=kubernetes.client.V1EnvVarSource(
                     secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                        name=SKYDRIVER_SECRETS_NAME,
+                        name=SKYSCAN_K8S_SECRETS_NAME,
                         key="broker_auth",
                     )
                 ),
@@ -342,7 +347,7 @@ class SkymapScannerJob:
                 name="SKYSCAN_SKYDRIVER_AUTH",
                 value_from=kubernetes.client.V1EnvVarSource(
                     secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                        name=SKYDRIVER_SECRETS_NAME,
+                        name=SKYSCAN_K8S_SECRETS_NAME,
                         key="skydriver_auth",
                     )
                 ),
@@ -372,15 +377,60 @@ class SkymapScannerJob:
 
         return env
 
+    def patch_or_create_namespaced_secret(
+        self,
+        secret_type: str,
+        unencoded_data: dict,
+    ) -> bool:
+        """Patch secret and if not exist create."""
+        # Instantiate the Secret object
+        body = kubernetes.client.V1Secret(
+            data=unencoded_data,  # TODO: encode values
+            type=secret_type,
+            metadata=kubernetes.client.V1ObjectMeta(name=SKYSCAN_K8S_SECRETS_NAME),
+        )
+
+        # try to patch first
+        try:
+            self.api_instance.patch_namespaced_secret(
+                SKYSCAN_K8S_SECRETS_NAME, self.namespace, body
+            )
+            LOGGER.info(
+                "Secret  {} in namespace {} has been patched".format(
+                    SKYSCAN_K8S_SECRETS_NAME, self.namespace
+                )
+            )
+            return True
+        except ApiException as e:
+            # create if patch failed
+            if e.status == 404 or not e.status:
+                try:
+                    self.api_instance.create_namespaced_secret(
+                        namespace=self.namespace, body=body
+                    )
+                    LOGGER.info(
+                        "Created secret {} of type {} in namespace {}".format(
+                            SKYSCAN_K8S_SECRETS_NAME, secret_type, self.namespace
+                        )
+                    )
+                    return True
+                except ApiException as e2:
+                    LOGGER.exception(e2)
+                    return False
+            LOGGER.exception(e)
+            return False
+
     def start(self) -> Any:
         """Start the k8s job.
 
         Returns REST response.
         """
         try:
-            api_response = self.api_instance.create_namespaced_job("default", self.job)
+            api_response = self.api_instance.create_namespaced_job(
+                self.namespace, self.job
+            )
             LOGGER.info(api_response)
         except ApiException as e:
             LOGGER.error(e)
             raise
-        return api_response
+            return api_response
