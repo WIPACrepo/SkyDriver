@@ -13,7 +13,7 @@ from dacite.exceptions import DaciteError
 from rest_tools.server import RestHandler, decorators
 
 from . import database, k8s
-from .config import ENV, LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
+from .config import LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
 
 if is_testing():
 
