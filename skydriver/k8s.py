@@ -3,6 +3,7 @@
 Based on https://blog.pythian.com/how-to-create-kubernetes-jobs-with-python/
 """
 
+import base64
 from pathlib import Path
 from typing import Any
 
@@ -409,12 +410,12 @@ class SkymapScannerJob:
             {
                 "dest": "SKYSCAN_BROKER_AUTH",
                 "key": "broker_auth",
-                "value": "XXXXXXXX",  # TODO: encode
+                "value": base64.b64encode(ENV.SKYSCAN_BROKER_AUTH),
             },
             {
                 "dest": "SKYSCAN_SKYDRIVER_AUTH",
                 "key": "skydriver_auth",
-                "value": "YYYYYYYYYYY",  # TODO: encode
+                "value": base64.b64encode(ENV.SKYSCAN_SKYDRIVER_AUTH),
             },
         ]
         env.extend(
