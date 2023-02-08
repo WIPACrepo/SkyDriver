@@ -216,29 +216,64 @@ class SkymapScannerJob:
     def __init__(
         self,
         api_instance: kubernetes.client.BatchV1Api,
-        docker_image: str,
-        server_args: str,
-        clientmanager_args: str,
-        env: list[kubernetes.client.V1EnvVar],
+        docker_tag: str,
         scan_id: str,
-        volume_path: Path,
+        # server
+        reco_algo: str,
+        nsides: dict[int, int],
+        gcd_dir: Path | None,
+        is_real_event: bool,
+        # clientmanager
+        njobs: int,
+        memory: str,
+        collector: str,
+        schedd: str,
+        # env
+        rest_address: str,
     ):
         self.api_instance = api_instance
         self.namespace = f"skyscan-k8s-{scan_id}"
+        volume_path = Path("common-space")
+
+        # store some data for public access
+        self.server_args = self.get_server_args(
+            volume_path=volume_path,
+            reco_algo=reco_algo,
+            nsides=nsides,
+            gcd_dir=gcd_dir,
+            is_real_event=is_real_event,
+        )
+        self.clientmanager_args = self.get_clientmanager_args(
+            volume_path=volume_path,
+            singularity_image=f"{ENV.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}:{docker_tag}",
+            njobs=njobs,
+            memory=memory,
+            collector=collector,
+            schedd=schedd,
+        )
+        self.env = self.get_env(
+            rest_address=rest_address,
+            scan_id=scan_id,
+        )
+        self.env_dict = {  # promote `e.name` to a key of a dict (instead of an attr in list element)
+            e.name: {k: v for k, v in e.to_dict().items() if k != "name"}
+            for e in self.env
+        }
 
         # job
+        docker_image = f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{docker_tag}"
         server = KubeAPITools.create_container(
             scan_id,
             docker_image,
-            env,
-            server_args.split(),
+            self.env,
+            self.server_args.split(),
             {volume_path.name: volume_path},
         )
         condor_clientmanager = KubeAPITools.create_container(
             scan_id,
             docker_image,
-            env,
-            clientmanager_args.split(),
+            self.env,
+            self.clientmanager_args.split(),
             {volume_path.name: volume_path},
         )
         self.job = KubeAPITools.kube_create_job_object(
@@ -252,11 +287,6 @@ class SkymapScannerJob:
             "Opaque",
             unencoded_data,
         )
-
-    @staticmethod
-    def get_volume_path() -> Path:
-        """Get a shared volume path."""
-        return Path("common-space")
 
     @staticmethod
     def get_server_args(

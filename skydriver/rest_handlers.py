@@ -198,46 +198,31 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scan_id = uuid.uuid4().hex
 
         # get the container info ready
-        volume_path = k8s.SkymapScannerJob.get_volume_path()
-        server_args = k8s.SkymapScannerJob.get_server_args(
-            volume_path=volume_path,
+        job = k8s.SkymapScannerJob(
+            api_instance=self.k8s_api,
+            docker_tag=docker_tag,
+            scan_id=scan_id,
+            # server
             reco_algo=reco_algo,
             nsides=nsides,  # type: ignore[arg-type]
             gcd_dir=gcd_dir,
             is_real_event=real_or_simulated_event in REAL_CHOICES,
-        )
-        clientmanager_args = k8s.SkymapScannerJob.get_clientmanager_args(
-            volume_path=volume_path,
-            singularity_image=f"{ENV.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}:{docker_tag}",
+            # clientmanager
             njobs=njobs,
             memory=memory,
             collector=collector,
             schedd=schedd,
-        )
-        env = k8s.SkymapScannerJob.get_env(
+            # env
             rest_address=self.request.full_url().rstrip(self.request.uri),
-            scan_id=scan_id,
-        )
-        job = k8s.SkymapScannerJob(
-            api_instance=self.k8s_api,
-            docker_image=f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{docker_tag}",
-            server_args=server_args,
-            clientmanager_args=clientmanager_args,
-            env=env,
-            scan_id=scan_id,
-            volume_path=volume_path,
         )
 
         # put in db (do before k8s start so if k8s fail, we can debug using db's info)
         manifest = await self.manifests.post(
             event_i3live_json_dict,
             scan_id,
-            server_args,
-            clientmanager_args,
-            {  # promote `e.name` to a key of a dict (instead of an attr in list element)
-                e.name: {k: v for k, v in e.to_dict().items() if k != "name"}
-                for e in env
-            },
+            job.server_args,
+            job.clientmanager_args,
+            job.env_dict,
         )
 
         # start k8s job
