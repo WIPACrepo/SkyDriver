@@ -1,6 +1,6 @@
 """An interface to the Kubernetes cluster."""
 
-import base64
+
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +18,7 @@ class KubeAPITools:
     def patch_or_create_namespaced_secret(
         api_instance: kubernetes.client.BatchV1Api,
         namespace: str,
-        skyscan_k8s_secrets_name: str,
+        secret_name: str,
         secret_type: str,
         encoded_secret_data: schema.StrDict,
     ) -> None:
@@ -27,17 +27,15 @@ class KubeAPITools:
         body = kubernetes.client.V1Secret(
             data=encoded_secret_data,
             type=secret_type,
-            metadata=kubernetes.client.V1ObjectMeta(name=skyscan_k8s_secrets_name),
+            metadata=kubernetes.client.V1ObjectMeta(name=secret_name),
         )
 
         # try to patch first
         try:
-            api_instance.patch_namespaced_secret(
-                skyscan_k8s_secrets_name, namespace, body
-            )
+            api_instance.patch_namespaced_secret(secret_name, namespace, body)
             LOGGER.info(
                 "Secret  {} in namespace {} has been patched".format(
-                    skyscan_k8s_secrets_name, namespace
+                    secret_name, namespace
                 )
             )
         except ApiException as e:
@@ -51,7 +49,7 @@ class KubeAPITools:
             api_instance.create_namespaced_secret(namespace=namespace, body=body)
             LOGGER.info(
                 "Created secret {} of type {} in namespace {}".format(
-                    skyscan_k8s_secrets_name, secret_type, namespace
+                    secret_name, secret_type, namespace
                 )
             )
         except ApiException as e:
@@ -163,8 +161,6 @@ class SkymapScannerJob:
         rest_address: str,
     ):
         self.api_instance = api_instance
-        self.namespace = f"skyscan-k8s-{scan_id}"
-        self.skyscan_k8s_secrets_name = f"{self.namespace}-secrets"
         common_space_volume_path = Path("common-space")
 
         # store some data for public access
@@ -182,10 +178,10 @@ class SkymapScannerJob:
             collector=collector,
             schedd=schedd,
         )
-        env, encoded_secret_data = self.get_env(
+        env = self.get_env(
             rest_address=rest_address,
             scan_id=scan_id,
-            skyscan_k8s_secrets_name=self.skyscan_k8s_secrets_name,
+            secret_name=ENV.K8S_SECRET_NAME,
         )
         self.env_dict = {  # promote `e.name` to a key of a dict (instead of an attr in list element)
             e.name: {k: v for k, v in e.to_dict().items() if k != "name"} for e in env
@@ -211,14 +207,7 @@ class SkymapScannerJob:
             scan_id,
             [server, condor_clientmanager],
             [common_space_volume_path.name],
-            namespace=self.namespace,
-        )
-        KubeAPITools.patch_or_create_namespaced_secret(
-            self.api_instance,
-            self.namespace,
-            self.skyscan_k8s_secrets_name,
-            "Opaque",
-            encoded_secret_data,
+            namespace=ENV.K8S_NAMESPACE,
         )
 
     @staticmethod
@@ -279,29 +268,26 @@ class SkymapScannerJob:
     def get_env(
         rest_address: str,
         scan_id: str,
-        skyscan_k8s_secrets_name: str,
-    ) -> tuple[list[kubernetes.client.V1EnvVar], schema.StrDict]:
+        secret_name: str,
+    ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to all containers.
 
         Also, get the secrets' keys & their values.
         """
         env = []
 
-        def _encode(val: str) -> str:
-            bval = val.encode("ascii")  # -> bytes
-            return base64.b64encode(bval).decode("utf-8")  # -> str
-
         # 1. start w/ secrets
+        # NOTE: the values come from an existing secret in the current namespace
         secrets = [
             {
                 "dest": "SKYSCAN_BROKER_AUTH",
                 "key": "broker_auth",
-                "value": _encode(ENV.SKYSCAN_BROKER_AUTH),
+                # "value": _encode(ENV.SKYSCAN_BROKER_AUTH),
             },
             {
                 "dest": "SKYSCAN_SKYDRIVER_AUTH",
                 "key": "skydriver_auth",
-                "value": _encode(ENV.SKYSCAN_SKYDRIVER_AUTH),
+                # "value": _encode(ENV.SKYSCAN_SKYDRIVER_AUTH),
             },
         ]
         env.extend(
@@ -310,7 +296,7 @@ class SkymapScannerJob:
                     name=s["dest"],
                     value_from=kubernetes.client.V1EnvVarSource(
                         secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                            name=skyscan_k8s_secrets_name,
+                            name=secret_name,
                             key=s["key"],
                         )
                     ),
@@ -348,7 +334,7 @@ class SkymapScannerJob:
             ]
         )
 
-        return env, {s["key"]: s["value"] for s in secrets}
+        return env
 
     def start(self) -> Any:
         """Start the k8s job.
@@ -357,7 +343,7 @@ class SkymapScannerJob:
         """
         try:
             api_response = self.api_instance.create_namespaced_job(
-                self.namespace, self.job_obj
+                ENV.K8S_NAMESPACE, self.job_obj
             )
             LOGGER.info(api_response)
         except ApiException as e:

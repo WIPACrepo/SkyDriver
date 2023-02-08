@@ -33,10 +33,10 @@ class EnvConfig:
     SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG: str = (
         "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner"
     )
+    K8S_NAMESPACE: str = ""
+    K8S_SECRET_NAME: str = ""
     # skyscan (forwarded)
     SKYSCAN_BROKER_ADDRESS: str = "localhost"
-    SKYSCAN_BROKER_AUTH: str = ""
-    SKYSCAN_SKYDRIVER_AUTH: str = ""
     SKYSCAN_PROGRESS_INTERVAL_SEC: int | None = None
     SKYSCAN_RESULT_INTERVAL_SEC: int | None = None
     SKYSCAN_MQ_TIMEOUT_TO_CLIENTS: int | None = None
