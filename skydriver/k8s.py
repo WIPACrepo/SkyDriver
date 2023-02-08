@@ -136,7 +136,7 @@ class KubeAPITools:
         skyscan_k8s_secrets_name: str,
         secret_type: str,
         encoded_secret_data: schema.StrDict,
-    ) -> bool:
+    ) -> None:
         """Patch secret and if not exist create."""
         # Instantiate the Secret object
         body = kubernetes.client.V1Secret(
@@ -155,25 +155,23 @@ class KubeAPITools:
                     skyscan_k8s_secrets_name, namespace
                 )
             )
-            return True
         except ApiException as e:
-            # create if patch failed
-            if e.status == 404 or not e.status:
-                try:
-                    api_instance.create_namespaced_secret(
-                        namespace=namespace, body=body
-                    )
-                    LOGGER.info(
-                        "Created secret {} of type {} in namespace {}".format(
-                            skyscan_k8s_secrets_name, secret_type, namespace
-                        )
-                    )
-                    return True
-                except ApiException as e2:
-                    LOGGER.exception(e2)
-                    return False
+            # a (None or 404) means we can create secret instead, see below
+            if e.status and e.status != 404:
+                LOGGER.exception(e)
+                raise
+
+        # create if patch failed
+        try:
+            api_instance.create_namespaced_secret(namespace=namespace, body=body)
+            LOGGER.info(
+                "Created secret {} of type {} in namespace {}".format(
+                    skyscan_k8s_secrets_name, secret_type, namespace
+                )
+            )
+        except ApiException as e:
             LOGGER.exception(e)
-            return False
+            raise
 
     @staticmethod
     def kube_create_job_object(
@@ -478,4 +476,4 @@ class SkymapScannerJob:
         except ApiException as e:
             LOGGER.error(e)
             raise
-            return api_response
+        return api_response
