@@ -405,17 +405,21 @@ class SkymapScannerJob:
         """
         env = []
 
+        def _encode(val: str) -> str:
+            bval = val.encode("ascii")  # -> bytes
+            return base64.b64encode(bval).decode("utf-8")  # -> str
+
         # 1. start w/ secrets
         secrets = [
             {
                 "dest": "SKYSCAN_BROKER_AUTH",
                 "key": "broker_auth",
-                "value": base64.b64encode(ENV.SKYSCAN_BROKER_AUTH),
+                "value": _encode(ENV.SKYSCAN_BROKER_AUTH),
             },
             {
                 "dest": "SKYSCAN_SKYDRIVER_AUTH",
                 "key": "skydriver_auth",
-                "value": base64.b64encode(ENV.SKYSCAN_SKYDRIVER_AUTH),
+                "value": _encode(ENV.SKYSCAN_SKYDRIVER_AUTH),
             },
         ]
         env.extend(
