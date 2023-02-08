@@ -153,7 +153,6 @@ class SkymapScannerJob:
         # server
         reco_algo: str,
         nsides: dict[int, int],
-        gcd_dir: Path | None,
         is_real_event: bool,
         # clientmanager
         njobs: int,
@@ -173,7 +172,6 @@ class SkymapScannerJob:
             common_space_volume_path=common_space_volume_path,
             reco_algo=reco_algo,
             nsides=nsides,
-            gcd_dir=gcd_dir,
             is_real_event=is_real_event,
         )
         self.clientmanager_args = self.get_clientmanager_args(
@@ -228,7 +226,6 @@ class SkymapScannerJob:
         common_space_volume_path: Path,
         reco_algo: str,
         nsides: dict[int, int],
-        gcd_dir: Path | None,
         is_real_event: bool,
     ) -> str:
         """Make the server container args."""
@@ -241,8 +238,6 @@ class SkymapScannerJob:
             f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "  # k1:v1 k2:v2
             f" {'--real-event' if is_real_event else '--simulated-event'} "
         )
-        if gcd_dir:
-            args += f" --gcd-dir {gcd_dir} "  # TODO figure binding
         return args
 
     @staticmethod

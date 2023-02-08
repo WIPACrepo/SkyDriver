@@ -4,7 +4,6 @@
 import dataclasses as dc
 import json
 import uuid
-from pathlib import Path
 from typing import Any, Type, TypeVar, cast
 
 import kubernetes.client  # type: ignore[import]
@@ -178,11 +177,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "event_i3live_json",
             type=json_to_dict,  # JSON-string/JSON-friendly dict -> dict
         )
-        gcd_dir = self.get_argument(
-            "gcd_dir",
-            default=None,
-            type=lambda x: Path(x) if x else None,
-        )
         nsides = self.get_argument(
             "nsides",
             type=dict,
@@ -205,7 +199,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # server
             reco_algo=reco_algo,
             nsides=nsides,  # type: ignore[arg-type]
-            gcd_dir=gcd_dir,
             is_real_event=real_or_simulated_event in REAL_CHOICES,
             # clientmanager
             njobs=njobs,
