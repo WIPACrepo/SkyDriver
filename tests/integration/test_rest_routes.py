@@ -104,7 +104,7 @@ async def _launch_scan(rc: RestClient) -> str:
         f" --jobs {POST_SCAN_BODY['njobs']} "
         f" --memory {POST_SCAN_BODY['memory']} "
         f" --singularity-image /cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:latest "
-        f" --startup-json common-space/startup/startup.json "
+        f" --startup-json-file common-space/startup.json "
     )
 
     assert resp == dict(
