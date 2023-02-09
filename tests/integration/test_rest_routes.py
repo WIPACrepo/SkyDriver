@@ -93,7 +93,7 @@ async def _launch_scan(rc: RestClient) -> str:
         f"--reco-algo {POST_SCAN_BODY['reco_algo']} "
         f"--cache-dir common-space/cache "
         f"--output-dir common-space/output "
-        f"--startup-json-dir common-space/startup "
+        f"--startup-json-file common-space/startup.json "
         f"--nsides {' '.join(f'{k}:{v}' for k,v in POST_SCAN_BODY['nsides'].items())} "  # type: ignore[attr-defined]
         f"--{POST_SCAN_BODY['real_or_simulated_event']}-event"
     )
