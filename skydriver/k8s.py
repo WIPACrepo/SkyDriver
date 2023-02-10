@@ -223,7 +223,7 @@ class SkymapScannerJob:
             f" --reco-algo {reco_algo}"
             f" --cache-dir {common_space_volume_path/'cache'} "
             f" --output-dir {common_space_volume_path/'output'} "
-            f" --startup-json-file {common_space_volume_path/'startup.json'} "
+            f" --client-startup-json {common_space_volume_path/'startup.json'} "
             f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "  # k1:v1 k2:v2
             f" {'--real-event' if is_real_event else '--simulated-event'} "
         )
@@ -253,7 +253,7 @@ class SkymapScannerJob:
             f" --jobs {njobs} "
             f" --memory {memory} "
             f" --singularity-image {singularity_image} "
-            f" --startup-json-file {common_space_volume_path/'startup.json'} "
+            f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
 
