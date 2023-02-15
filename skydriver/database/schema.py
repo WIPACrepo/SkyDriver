@@ -88,7 +88,7 @@ class Manifest(ScanIDDataclass):
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ checksum/hash?
     server_args: str
     clientmanager_args: str
-    env_vars: StrDict
+    env_vars: dict[str, StrDict]
 
     condor_clusters: list[CondorClutser] = dc.field(default_factory=list)
 

@@ -4,7 +4,6 @@
 import dataclasses as dc
 import json
 import uuid
-from pathlib import Path
 from typing import Any, Type, TypeVar, cast
 
 import kubernetes.client  # type: ignore[import]
@@ -13,7 +12,7 @@ from dacite.exceptions import DaciteError
 from rest_tools.server import RestHandler, decorators
 
 from . import database, k8s
-from .config import ENV, LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
+from .config import LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
 
 if is_testing():
 
@@ -178,11 +177,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "event_i3live_json",
             type=json_to_dict,  # JSON-string/JSON-friendly dict -> dict
         )
-        gcd_dir = self.get_argument(
-            "gcd_dir",
-            default=None,
-            type=lambda x: Path(x) if x else None,
-        )
         nsides = self.get_argument(
             "nsides",
             type=dict,
@@ -198,44 +192,30 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scan_id = uuid.uuid4().hex
 
         # get the container info ready
-        volume_path = k8s.SkymapScannerJob.get_volume_path()
-        server_args = k8s.SkymapScannerJob.get_server_args(
-            volume_path=volume_path,
+        job = k8s.SkymapScannerJob(
+            api_instance=self.k8s_api,
+            docker_tag=docker_tag,
+            scan_id=scan_id,
+            # server
             reco_algo=reco_algo,
             nsides=nsides,  # type: ignore[arg-type]
-            gcd_dir=gcd_dir,
             is_real_event=real_or_simulated_event in REAL_CHOICES,
-        )
-        clientmanager_args = k8s.SkymapScannerJob.get_clientmanager_args(
-            volume_path=volume_path,
-            singularity_image=f"{ENV.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}:{docker_tag}",
+            # clientmanager
             njobs=njobs,
             memory=memory,
             collector=collector,
             schedd=schedd,
-        )
-        env_vars = k8s.SkymapScannerJob.get_env_vars(
+            # env
             rest_address=self.request.full_url().rstrip(self.request.uri),
-            auth_token=self.auth_key,  # type: ignore[arg-type]
-            scan_id=scan_id,
-        )
-        job = k8s.SkymapScannerJob(
-            api_instance=self.k8s_api,
-            docker_image=f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{docker_tag}",
-            server_args=server_args,
-            clientmanager_args=clientmanager_args,
-            env_vars=env_vars,
-            scan_id=scan_id,
-            volume_path=volume_path,
         )
 
         # put in db (do before k8s start so if k8s fail, we can debug using db's info)
         manifest = await self.manifests.post(
             event_i3live_json_dict,
             scan_id,
-            server_args,
-            clientmanager_args,
-            env_vars,
+            job.server_args,
+            job.clientmanager_args,
+            job.env_dict,
         )
 
         # start k8s job

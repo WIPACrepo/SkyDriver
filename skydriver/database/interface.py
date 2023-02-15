@@ -187,7 +187,7 @@ class ManifestClient(ScanIDCollectionFacade):
         scan_id: str,
         server_args: str,
         clientmanager_args: str,
-        env_vars: schema.StrDict,
+        env_vars: dict[str, schema.StrDict],
     ) -> schema.Manifest:
         """Create `schema.Manifest` doc."""
         LOGGER.debug("creating new manifest")

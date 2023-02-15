@@ -27,13 +27,16 @@ class EnvConfig:
     REST_PORT: int = 8080
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
+    K8S_TTL_SECONDS_AFTER_FINISHED: int = 600
     # skyscan (meta)
     SKYSCAN_DOCKER_IMAGE_NO_TAG: str = "icecube/skymap_scanner"
-    SKYSCAN_BROKER_ADDRESS: str = "localhost"
     SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG: str = (
         "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner"
     )
+    K8S_NAMESPACE: str = ""
+    K8S_SECRET_NAME: str = ""
     # skyscan (forwarded)
+    SKYSCAN_BROKER_ADDRESS: str = "localhost"
     SKYSCAN_PROGRESS_INTERVAL_SEC: int | None = None
     SKYSCAN_RESULT_INTERVAL_SEC: int | None = None
     SKYSCAN_MQ_TIMEOUT_TO_CLIENTS: int | None = None

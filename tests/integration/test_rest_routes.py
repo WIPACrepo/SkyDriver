@@ -93,7 +93,7 @@ async def _launch_scan(rc: RestClient) -> str:
         f"--reco-algo {POST_SCAN_BODY['reco_algo']} "
         f"--cache-dir common-space/cache "
         f"--output-dir common-space/output "
-        f"--startup-json-dir common-space/startup "
+        f"--client-startup-json common-space/startup.json "
         f"--nsides {' '.join(f'{k}:{v}' for k,v in POST_SCAN_BODY['nsides'].items())} "  # type: ignore[attr-defined]
         f"--{POST_SCAN_BODY['real_or_simulated_event']}-event"
     )
@@ -104,7 +104,7 @@ async def _launch_scan(rc: RestClient) -> str:
         f" --jobs {POST_SCAN_BODY['njobs']} "
         f" --memory {POST_SCAN_BODY['memory']} "
         f" --singularity-image /cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:latest "
-        f" --startup-json common-space/startup/startup.json "
+        f" --client-startup-json common-space/startup.json "
     )
 
     assert resp == dict(
@@ -126,6 +126,7 @@ async def _launch_scan(rc: RestClient) -> str:
     assert resp["clientmanager_args"].split() == clientmanager_args.split()
 
     # check env vars
+    print(resp["env_vars"])
     assert set(resp["env_vars"].keys()) == {
         "SKYSCAN_BROKER_ADDRESS",
         "SKYSCAN_BROKER_AUTH",
@@ -133,11 +134,27 @@ async def _launch_scan(rc: RestClient) -> str:
         "SKYSCAN_SKYDRIVER_AUTH",
         "SKYSCAN_SKYDRIVER_SCAN_ID",
     }
-    assert resp["env_vars"]["SKYSCAN_BROKER_ADDRESS"] == "localhost"
+    # check env vars, more closely
+    assert set(  # these have `value`s
+        k for k, v in resp["env_vars"].items() if v["value"] and not v["value_from"]
+    ) == {
+        "SKYSCAN_BROKER_ADDRESS",
+        "SKYSCAN_SKYDRIVER_ADDRESS",
+        "SKYSCAN_SKYDRIVER_SCAN_ID",
+    }
+    assert set(  # these have `value_from`s
+        k for k, v in resp["env_vars"].items() if v["value_from"] and not v["value"]
+    ) == {
+        "SKYSCAN_BROKER_AUTH",
+        "SKYSCAN_SKYDRIVER_AUTH",
+    }
+    # check env vars, even MORE closely
+    assert resp["env_vars"]["SKYSCAN_BROKER_ADDRESS"]["value"] == "localhost"
     assert re.match(
-        r"http://localhost:[0-9]+", resp["env_vars"]["SKYSCAN_SKYDRIVER_ADDRESS"]
+        r"http://localhost:[0-9]+",
+        resp["env_vars"]["SKYSCAN_SKYDRIVER_ADDRESS"]["value"],
     )
-    assert len(resp["env_vars"]["SKYSCAN_SKYDRIVER_SCAN_ID"]) == 32
+    assert len(resp["env_vars"]["SKYSCAN_SKYDRIVER_SCAN_ID"]["value"]) == 32
 
     # get scan_id
     assert resp["scan_id"]
