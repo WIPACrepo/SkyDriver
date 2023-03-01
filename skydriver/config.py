@@ -27,14 +27,25 @@ class EnvConfig:
     REST_PORT: int = 8080
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
+
+    # k8s
     K8S_TTL_SECONDS_AFTER_FINISHED: int = 600
+    K8S_NAMESPACE: str = ""
+    K8S_SECRET_NAME: str = ""
+
+    # keycloak
+    KEYCLOAK_OIDC_URL: str = ""
+    KEYCLOAK_CLIENT_ID_BROKER: str = ""
+    KEYCLOAK_CLIENT_SECRET_BROKER: str = ""
+    KEYCLOAK_CLIENT_ID_SKYDRIVER_REST: str = ""
+    KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST: str = ""
+
     # skyscan (meta)
     SKYSCAN_DOCKER_IMAGE_NO_TAG: str = "icecube/skymap_scanner"
     SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG: str = (
         "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner"
     )
-    K8S_NAMESPACE: str = ""
-    K8S_SECRET_NAME: str = ""
+
     # skyscan (forwarded)
     SKYSCAN_BROKER_ADDRESS: str = "localhost"
     SKYSCAN_PROGRESS_INTERVAL_SEC: int | None = None

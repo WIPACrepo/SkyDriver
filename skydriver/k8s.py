@@ -6,6 +6,7 @@ from typing import Any
 
 import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
+from rest_tools.client import ClientCredentialsAuth
 
 from .config import ENV, LOGGER
 from .database import schema
@@ -265,6 +266,23 @@ class SkymapScannerJob:
         return args
 
     @staticmethod
+    def _get_token_from_keycloak(
+        token_url: str,
+        client_id: str,
+        client_secret: str,
+    ) -> str:
+        if not token_url:  # would only be falsy in test
+            return ""
+        cca = ClientCredentialsAuth(
+            "",
+            token_url=token_url,
+            client_id=client_id,
+            client_secret=client_secret,
+        )
+        token = cca.make_access_token()
+        return token
+
+    @staticmethod
     def get_env(
         rest_address: str,
         scan_id: str,
@@ -276,34 +294,28 @@ class SkymapScannerJob:
         """
         env = []
 
-        # 1. start w/ secrets
+        # 1. start w/ secrets # NOTE: save this code for future
         # NOTE: the values come from an existing secret in the current namespace
-        secrets = [
-            {
-                "dest": "SKYSCAN_BROKER_AUTH",
-                "key": "broker_auth",
-                # "value": _encode(ENV.SKYSCAN_BROKER_AUTH),
-            },
-            {
-                "dest": "SKYSCAN_SKYDRIVER_AUTH",
-                "key": "skydriver_auth",
-                # "value": _encode(ENV.SKYSCAN_SKYDRIVER_AUTH),
-            },
-        ]
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(
-                    name=s["dest"],
-                    value_from=kubernetes.client.V1EnvVarSource(
-                        secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                            name=secret_name,
-                            key=s["key"],
-                        )
-                    ),
-                )
-                for s in secrets
-            ]
-        )
+        # secrets = [
+        #     {
+        #         "dest": "XXXX",
+        #         "key": "xxxx",
+        #     },
+        # ]
+        # env.extend(
+        #     [
+        #         kubernetes.client.V1EnvVar(
+        #             name=s["dest"],
+        #             value_from=kubernetes.client.V1EnvVarSource(
+        #                 secret_key_ref=kubernetes.client.V1SecretKeySelector(
+        #                     name=secret_name,
+        #                     key=s["key"],
+        #                 )
+        #             ),
+        #         )
+        #         for s in secrets
+        #     ]
+        # )
 
         # 2. add required env vars
         required = {
@@ -332,6 +344,23 @@ class SkymapScannerJob:
                 for k, v in prefiltered.items()
                 if v  # skip any env vars that are Falsy
             ]
+        )
+
+        # 4. generate & add auth tokens
+        tokens = {
+            "SKYSCAN_BROKER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+                ENV.KEYCLOAK_OIDC_URL,
+                ENV.KEYCLOAK_CLIENT_ID_BROKER,
+                ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
+            ),
+            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+                ENV.KEYCLOAK_OIDC_URL,
+                ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
+                ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
+            ),
+        }
+        env.extend(
+            [kubernetes.client.V1EnvVar(name=k, value=v) for k, v in tokens.items()]
         )
 
         return env

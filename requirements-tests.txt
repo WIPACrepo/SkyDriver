@@ -34,13 +34,13 @@ dnspython==2.3.0
     # via pymongo
 exceptiongroup==1.1.0
     # via pytest
-google-auth==2.16.0
+google-auth==2.16.1
     # via kubernetes
 googleapis-common-protos==1.56.2
     # via
     #   opentelemetry-exporter-jaeger-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
-grpcio==1.51.1
+grpcio==1.51.3
     # via opentelemetry-exporter-jaeger-proto-grpc
 humanfriendly==10.0
     # via coloredlogs
@@ -48,7 +48,7 @@ idna==3.4
     # via requests
 iniconfig==2.0.0
     # via pytest
-kubernetes==25.3.0
+kubernetes==26.1.0
     # via skydriver (setup.py)
 motor==3.1.1
     # via skydriver (setup.py)
@@ -56,30 +56,30 @@ nest-asyncio==1.5.6
     # via skydriver (setup.py)
 oauthlib==3.2.2
     # via requests-oauthlib
-opentelemetry-api==1.15.0
+opentelemetry-api==1.16.0
     # via
     #   opentelemetry-exporter-jaeger-proto-grpc
     #   opentelemetry-exporter-jaeger-thrift
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-sdk
     #   wipac-telemetry
-opentelemetry-exporter-jaeger==1.15.0
+opentelemetry-exporter-jaeger==1.16.0
     # via wipac-telemetry
-opentelemetry-exporter-jaeger-proto-grpc==1.15.0
+opentelemetry-exporter-jaeger-proto-grpc==1.16.0
     # via opentelemetry-exporter-jaeger
-opentelemetry-exporter-jaeger-thrift==1.15.0
+opentelemetry-exporter-jaeger-thrift==1.16.0
     # via opentelemetry-exporter-jaeger
-opentelemetry-exporter-otlp-proto-http==1.15.0
+opentelemetry-exporter-otlp-proto-http==1.16.0
     # via wipac-telemetry
-opentelemetry-proto==1.15.0
+opentelemetry-proto==1.16.0
     # via opentelemetry-exporter-otlp-proto-http
-opentelemetry-sdk==1.15.0
+opentelemetry-sdk==1.16.0
     # via
     #   opentelemetry-exporter-jaeger-proto-grpc
     #   opentelemetry-exporter-jaeger-thrift
     #   opentelemetry-exporter-otlp-proto-http
     #   wipac-telemetry
-opentelemetry-semantic-conventions==0.36b0
+opentelemetry-semantic-conventions==0.37b0
     # via opentelemetry-sdk
 packaging==23.0
     # via pytest
@@ -154,7 +154,7 @@ typeguard==2.13.3
     # via skydriver (setup.py)
 types-cryptography==3.3.23.2
     # via pyjwt
-typing-extensions==4.4.0
+typing-extensions==4.5.0
     # via
     #   opentelemetry-sdk
     #   qrcode
@@ -166,16 +166,16 @@ urllib3==1.26.14
     #   requests
 websocket-client==1.5.1
     # via kubernetes
-wipac-dev-tools==1.6.10
+wipac-dev-tools==1.6.12
     # via
     #   skydriver (setup.py)
     #   wipac-rest-tools
     #   wipac-telemetry
-wipac-rest-tools[telemetry]==1.4.8
+wipac-rest-tools[telemetry]==1.4.12
     # via skydriver (setup.py)
 wipac-telemetry==0.2.5
     # via wipac-rest-tools
-wrapt==1.14.1
+wrapt==1.15.0
     # via deprecated
 
 # The following packages are considered to be unsafe in a requirements file:
