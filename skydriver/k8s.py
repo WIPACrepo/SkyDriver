@@ -345,7 +345,7 @@ class SkymapScannerJob:
         )
 
         # 4. generate & add auth tokens
-        required = {
+        tokens = {
             "SKYSCAN_BROKER_AUTH": SkymapScannerJob._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_BROKER,
@@ -358,7 +358,7 @@ class SkymapScannerJob:
             ),
         }
         env.extend(
-            [kubernetes.client.V1EnvVar(name=k, value=v) for k, v in required.items()]
+            [kubernetes.client.V1EnvVar(name=k, value=v) for k, v in tokens.items()]
         )
 
         return env
