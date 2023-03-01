@@ -345,22 +345,21 @@ class SkymapScannerJob:
         )
 
         # 4. generate & add auth tokens
-        if ENV.KEYCLOAK_OIDC_URL:  # would only be falsy in test
-            tokens = {
-                "SKYSCAN_BROKER_AUTH": SkymapScannerJob._get_token_from_keycloak(
-                    ENV.KEYCLOAK_OIDC_URL,
-                    ENV.KEYCLOAK_CLIENT_ID_BROKER,
-                    ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
-                ),
-                "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerJob._get_token_from_keycloak(
-                    ENV.KEYCLOAK_OIDC_URL,
-                    ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
-                    ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
-                ),
-            }
-            env.extend(
-                [kubernetes.client.V1EnvVar(name=k, value=v) for k, v in tokens.items()]
-            )
+        tokens = {
+            "SKYSCAN_BROKER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+                ENV.KEYCLOAK_OIDC_URL,
+                ENV.KEYCLOAK_CLIENT_ID_BROKER,
+                ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
+            ),
+            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+                ENV.KEYCLOAK_OIDC_URL,
+                ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
+                ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
+            ),
+        }
+        env.extend(
+            [kubernetes.client.V1EnvVar(name=k, value=v) for k, v in tokens.items()]
+        )
 
         return env
 
