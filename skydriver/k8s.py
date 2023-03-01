@@ -271,6 +271,8 @@ class SkymapScannerJob:
         client_id: str,
         client_secret: str,
     ) -> str:
+        if not token_url:  # would only be falsy in test
+            return ""
         cca = ClientCredentialsAuth(
             "",
             token_url=token_url,
