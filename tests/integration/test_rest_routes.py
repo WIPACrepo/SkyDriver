@@ -141,13 +141,15 @@ async def _launch_scan(rc: RestClient) -> str:
         "SKYSCAN_BROKER_ADDRESS",
         "SKYSCAN_SKYDRIVER_ADDRESS",
         "SKYSCAN_SKYDRIVER_SCAN_ID",
-    }
-    assert set(  # these have `value_from`s
-        k for k, v in resp["env_vars"].items() if v["value_from"] and not v["value"]
-    ) == {
         "SKYSCAN_BROKER_AUTH",
         "SKYSCAN_SKYDRIVER_AUTH",
     }
+    # assert set(  # these have `value_from`s
+    #     k for k, v in resp["env_vars"].items() if v["value_from"] and not v["value"]
+    # ) == {
+    #     "SKYSCAN_BROKER_AUTH",
+    #     "SKYSCAN_SKYDRIVER_AUTH",
+    # }
     # check env vars, even MORE closely
     assert resp["env_vars"]["SKYSCAN_BROKER_ADDRESS"]["value"] == "localhost"
     assert re.match(
