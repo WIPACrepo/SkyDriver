@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.8 (2023-03-06)
+### Other
+* Use `PERSONAL_ACCESS_TOKEN` for bot pt-2 ([`1c5fc65`](https://github.com/WIPACrepo/SkyDriver/commit/1c5fc65c4598613defe263b74c1d5942f1950cd7))
+
 ## v0.0.7 (2023-03-06)
 ### Other
 * Use `PERSONAL_ACCESS_TOKEN` for bot ([`26822fa`](https://github.com/WIPACrepo/SkyDriver/commit/26822fa4ee60a706bbfb26e887e1c92c00a06e76))
