@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.6 (2023-03-06)
+### Other
+* Add Dockerfile & Publishing ([#11](https://github.com/WIPACrepo/SkyDriver/issues/11)) ([`eb6a122`](https://github.com/WIPACrepo/SkyDriver/commit/eb6a122a6ba24beae28b080c9a6784b379feb079))
+
 ## v0.0.5 (2023-03-01)
 ### Other
 * Auth Part 2 ([#9](https://github.com/WIPACrepo/SkyDriver/issues/9)) ([`d8cde67`](https://github.com/WIPACrepo/SkyDriver/commit/d8cde67f295209651b10bc62fb00e9de7dc880e0))
