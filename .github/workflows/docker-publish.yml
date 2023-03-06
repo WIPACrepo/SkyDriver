@@ -7,48 +7,36 @@ on:
     tags:
       - '**'
   workflow_dispatch:
-    inputs:
-      platform:
-        description: 'Platform'
-        default: 'linux/amd64'
-        required: false
 
 jobs:
   docker:
     name: "Docker Image"
     runs-on: ubuntu-latest
     steps:
-
     - name: Checkout Project
       uses: actions/checkout@v3
-
     - name: Docker meta
       id: docker_meta
-      uses: docker/metadata-action@v4
+      uses: docker/metadata-action@v3
       with:
         images: |
-          wipac/skydriver
+          ghcr.io/WIPACRepo/SkyDriver
         tags: |
-            # release tags
-            type=semver,pattern={{major}},enable=${{ github.ref_type == 'tag' }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ github.ref_type == 'tag' }}
-            type=semver,pattern={{major}}.{{minor}}.{{patch}},enable=${{ github.ref_type == 'tag' }}
-
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
+            type=ref,event=branch
+            type=semver,pattern={{major}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}.{{minor}}.{{patch}}
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
       if: ${{ github.event_name != 'pull_request' }}
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Push Docker Image X86_64
-      uses: docker/build-push-action@v3
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Push Docker Image
+      uses: docker/build-push-action@v2
       with:
         context: .
-        platforms: ${{ github.event.inputs.platform || 'linux/amd64' }}
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.docker_meta.outputs.tags }}
         labels: ${{ steps.docker_meta.outputs.labels }}
