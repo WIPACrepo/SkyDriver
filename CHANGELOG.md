@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.7 (2023-03-06)
+### Other
+* Use `PERSONAL_ACCESS_TOKEN` for bot ([`26822fa`](https://github.com/WIPACrepo/SkyDriver/commit/26822fa4ee60a706bbfb26e887e1c92c00a06e76))
+
 ## v0.0.6 (2023-03-06)
 ### Other
 * Add Dockerfile & Publishing ([#11](https://github.com/WIPACrepo/SkyDriver/issues/11)) ([`eb6a122`](https://github.com/WIPACrepo/SkyDriver/commit/eb6a122a6ba24beae28b080c9a6784b379feb079))
