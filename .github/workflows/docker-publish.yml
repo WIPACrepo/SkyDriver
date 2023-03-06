@@ -27,7 +27,7 @@ jobs:
       uses: docker/metadata-action@v4
       with:
         images: |
-          icecube/skymap_scanner
+          wipac/skydriver
         tags: |
             # release tags
             type=semver,pattern={{major}},enable=${{ github.ref_type == 'tag' }}
