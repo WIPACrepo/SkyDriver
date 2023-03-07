@@ -35,9 +35,10 @@ def _kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:
     Check Credentials, permissions, keys, etc.
     Docs: https://cloud.google.com/docs/authentication/
     """
+    LOGGER.debug("testing k8s credentials")
     try:
         api_response = api_instance.get_api_resources()
-        LOGGER.info(api_response)
+        LOGGER.debug(api_response)
     except ApiException as e:
         LOGGER.error(e)
         raise
@@ -45,6 +46,7 @@ def _kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:
 
 def setup_k8s_client() -> kubernetes.client.BatchV1Api:
     """Load Kubernetes config, check connection, and return API instance."""
+    LOGGER.debug("loading k8s api")
 
     # Load settings into "default configuration" (it's a global)
     config.load_incluster_config()  # uses pod's service account
@@ -73,9 +75,16 @@ async def make(debug: bool = False) -> RestServer:
         }
     args = RestHandlerSetup(rhs_config)
 
+    #
     # Setup clients/apis
+
+    LOGGER.info("Setting up Mongo client...")
     args["mongo_client"] = AsyncIOMotorClient(mongodb_url())
+    LOGGER.info("Mongo client connected.")
+
+    LOGGER.info("Setting up k8s client...")
     args["k8s_api"] = setup_k8s_client()
+    LOGGER.info("K8s client connected.")
 
     # Configure REST Routes
     rs = RestServer(debug=debug)
