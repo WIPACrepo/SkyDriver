@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.12 (2023-03-07)
+### Other
+* Merge remote-tracking branch 'origin/main' ([`001aed3`](https://github.com/WIPACrepo/SkyDriver/commit/001aed3ce553ada10ae9adb86a642c4a75ec9434))
+* Add More Logging ([`aad73c5`](https://github.com/WIPACrepo/SkyDriver/commit/aad73c53dc809e86487979aa82aa8c859b9c7020))
+
 ## v0.0.11 (2023-03-07)
 ### Other
 * Merge remote-tracking branch 'origin/main' ([`0ca8014`](https://github.com/WIPACrepo/SkyDriver/commit/0ca8014b8cbfcd0238081d101d1979b3f0970e25))
