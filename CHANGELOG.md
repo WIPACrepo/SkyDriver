@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.9 (2023-03-07)
+### Other
+* Env Var Quick Fix ([`daa2e1b`](https://github.com/WIPACrepo/SkyDriver/commit/daa2e1ba45b0b7ac3d2af74501b30993cf1f1f98))
+
 ## v0.0.8 (2023-03-06)
 ### Other
 * Use `PERSONAL_ACCESS_TOKEN` for bot pt-2 ([`1c5fc65`](https://github.com/WIPACrepo/SkyDriver/commit/1c5fc65c4598613defe263b74c1d5942f1950cd7))
