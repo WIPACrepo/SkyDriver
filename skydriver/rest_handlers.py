@@ -9,6 +9,7 @@ from typing import Any, Type, TypeVar, cast
 import kubernetes.client  # type: ignore[import]
 from dacite import from_dict  # type: ignore[attr-defined]
 from dacite.exceptions import DaciteError
+from motor.motor_asyncio import AsyncIOMotorClient
 from rest_tools.server import RestHandler, decorators
 
 from . import database, k8s
@@ -40,12 +41,12 @@ SIM_CHOICES = ["sim", "simulated", "simulated_event"]
 # -----------------------------------------------------------------------------
 
 
-class BaseSkyDriverHandler(RestHandler):  # type: ignore  # pylint: disable=W0223
+class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
     """BaseSkyDriverHandler is a RestHandler for all SkyDriver routes."""
 
     def initialize(  # type: ignore  # pylint: disable=W0221
         self,
-        mongo_client: str,
+        mongo_client: AsyncIOMotorClient,
         k8s_api: kubernetes.client.BatchV1Api,
         *args: Any,
         **kwargs: Any,
