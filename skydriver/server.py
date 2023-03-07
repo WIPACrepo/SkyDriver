@@ -30,7 +30,7 @@ def mongodb_url() -> str:
 def _kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:
     """Testing function.
 
-    If you get an error on this call don't proceed. Something is wrong on your connectivty to
+    If you get an error on this call don't proceed. Something is wrong on your connectivity to
     Google API.
     Check Credentials, permissions, keys, etc.
     Docs: https://cloud.google.com/docs/authentication/
@@ -45,7 +45,8 @@ def _kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:
 
 def setup_k8s_client() -> kubernetes.client.BatchV1Api:
     """Load Kubernetes config, check connection, and return API instance."""
-    config.load_kube_config()
+    # config.load_kube_config()  # looks for 'KUBECONFIG' or '~/.kube/config'
+    config.load_incluster_config()  # uses pod's service account
     k8s_api = kubernetes.client.BatchV1Api(
         kubernetes.client.ApiClient(kubernetes.client.Configuration())
     )
