@@ -48,15 +48,14 @@ def setup_k8s_client() -> kubernetes.client.BatchV1Api:
     """Load Kubernetes config, check connection, and return API instance."""
     LOGGER.debug("loading k8s api")
 
-    # Load settings into "default configuration" (it's a global)
-    config.load_incluster_config()  # uses pod's service account
+    configuration = kubernetes.client.Configuration()
+
+    config.load_incluster_config(configuration)  # uses pod's service account
     # config.load_kube_config()  # looks for 'KUBECONFIG' or '~/.kube/config'
 
-    k8s_api = kubernetes.client.BatchV1Api()
-    # NOTE: the docs will show `k8s_api = BatchV1Api(ApiClient(Configuration()))`
-    # but we're using the "default configuration", so we can use BatchV1Api's defaults
-
+    k8s_api = kubernetes.client.BatchV1Api(kubernetes.client.ApiClient(configuration))
     _kube_test_credentials(k8s_api)
+
     return k8s_api
 
 
