@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.13 (2023-03-07)
+### Other
+* Kube API Non-Default Configuration ([`26b7d96`](https://github.com/WIPACrepo/SkyDriver/commit/26b7d9605084bf5059b005dd79d97c3f33fb6c92))
+
 ## v0.0.12 (2023-03-07)
 ### Other
 * Merge remote-tracking branch 'origin/main' ([`001aed3`](https://github.com/WIPACrepo/SkyDriver/commit/001aed3ce553ada10ae9adb86a642c4a75ec9434))
