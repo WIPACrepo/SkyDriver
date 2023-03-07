@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.14 (2023-03-07)
+### Other
+* Update type hinting ([`9b4f318`](https://github.com/WIPACrepo/SkyDriver/commit/9b4f3188517b7f81ec69979ca585271a4ab9f5fe))
+* Remove manual env var logging ([`89e9270`](https://github.com/WIPACrepo/SkyDriver/commit/89e927013f67fc675dae9dad02e6320f9ec256c9))
+* CI `concurrency`: don't cancel on main/master/default ([`438a5d5`](https://github.com/WIPACrepo/SkyDriver/commit/438a5d557e15c03f7fd51f0fd67b1e2d5c202680))
+
 ## v0.0.13 (2023-03-07)
 ### Other
 * Kube API Non-Default Configuration ([`26b7d96`](https://github.com/WIPACrepo/SkyDriver/commit/26b7d9605084bf5059b005dd79d97c3f33fb6c92))
