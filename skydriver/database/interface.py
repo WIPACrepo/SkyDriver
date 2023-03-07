@@ -313,7 +313,7 @@ class ManifestClient(ScanIDCollectionFacade):
 class ResultClient(ScanIDCollectionFacade):
     """Wraps the attribute for the result of a scan."""
 
-    async def get(self, scan_id: str, incl_del: bool) -> schema.Result | None:
+    async def get(self, scan_id: str, incl_del: bool) -> schema.Result:
         """Get `schema.Result` using `scan_id`."""
         LOGGER.debug(f"getting result for {scan_id=}")
         result = await self._find_one(
