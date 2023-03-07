@@ -1,7 +1,6 @@
 """Root python script for SkyDriver REST API server interface."""
 
 
-import dataclasses as dc
 from typing import Any
 from urllib.parse import quote_plus
 
@@ -61,11 +60,6 @@ def setup_k8s_client() -> kubernetes.client.BatchV1Api:
 
 async def make(debug: bool = False) -> RestServer:
     """Make a SkyDriver REST service (does not start up automatically)."""
-    for field in dc.fields(ENV):
-        LOGGER.info(
-            f"{field.name}\t{getattr(ENV, field.name)}\t({type(getattr(ENV, field.name)).__name__})"
-        )
-
     rhs_config: dict[str, Any] = {"debug": debug or is_testing()}
     if ENV.AUTH_OPENID_URL:
         rhs_config["auth"] = {
