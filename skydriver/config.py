@@ -2,6 +2,7 @@
 
 import dataclasses as dc
 import logging
+from typing import Optional
 
 import coloredlogs  # type: ignore[import]
 from wipac_dev_tools import from_environment_as_dataclass
@@ -48,12 +49,13 @@ class EnvConfig:
 
     # skyscan (forwarded)
     SKYSCAN_BROKER_ADDRESS: str = "localhost"
-    SKYSCAN_PROGRESS_INTERVAL_SEC: int | None = None
-    SKYSCAN_RESULT_INTERVAL_SEC: int | None = None
-    SKYSCAN_MQ_TIMEOUT_TO_CLIENTS: int | None = None
-    SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS: int | None = None
-    SKYSCAN_LOG: str | None = None
-    SKYSCAN_LOG_THIRD_PARTY: str | None = None
+    # TODO: see https://github.com/WIPACrepo/wipac-dev-tools/pull/69
+    SKYSCAN_PROGRESS_INTERVAL_SEC: Optional[int] = None
+    SKYSCAN_RESULT_INTERVAL_SEC: Optional[int] = None
+    SKYSCAN_MQ_TIMEOUT_TO_CLIENTS: Optional[int] = None
+    SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS: Optional[int] = None
+    SKYSCAN_LOG: Optional[str] = None
+    SKYSCAN_LOG_THIRD_PARTY: Optional[str] = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
