@@ -9,7 +9,7 @@ from typing import Any, Type, TypeVar, cast
 import kubernetes.client  # type: ignore[import]
 from dacite import from_dict  # type: ignore[attr-defined]
 from dacite.exceptions import DaciteError
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore[import]
 from rest_tools.server import RestHandler, decorators
 
 from . import database, k8s
