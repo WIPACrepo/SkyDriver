@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.10 (2023-03-07)
+### Other
+* Kube API Quick Fix ([`8fbb662`](https://github.com/WIPACrepo/SkyDriver/commit/8fbb662c8996eb9b1e3cfcfc647aeb193636dbac))
+
 ## v0.0.9 (2023-03-07)
 ### Other
 * Env Var Quick Fix ([`daa2e1b`](https://github.com/WIPACrepo/SkyDriver/commit/daa2e1ba45b0b7ac3d2af74501b30993cf1f1f98))
