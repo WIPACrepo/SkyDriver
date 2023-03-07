@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.11 (2023-03-07)
+### Other
+* Merge remote-tracking branch 'origin/main' ([`0ca8014`](https://github.com/WIPACrepo/SkyDriver/commit/0ca8014b8cbfcd0238081d101d1979b3f0970e25))
+* Kube API Default Configuration ([`5230e62`](https://github.com/WIPACrepo/SkyDriver/commit/5230e624e2634f164faa6e6b7d12ff40cce9d307))
+* Mypy ([`4a2703d`](https://github.com/WIPACrepo/SkyDriver/commit/4a2703d8c09d6db0a6ea732f0edc0c8a5b3b722e))
+
 ## v0.0.10 (2023-03-07)
 ### Other
 * Kube API Quick Fix ([`8fbb662`](https://github.com/WIPACrepo/SkyDriver/commit/8fbb662c8996eb9b1e3cfcfc647aeb193636dbac))
