@@ -11,6 +11,7 @@ from dacite import from_dict  # type: ignore[attr-defined]
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore[import]
 from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
+from tornado import web
 
 from . import database, k8s
 from .config import LOGGER, is_testing
@@ -234,7 +235,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
 
         # start k8s job
-        job.start()
+        try:
+            job.start()
+        except kubernetes.client.exceptions.ApiException as e:
+            LOGGER.error(e)
+            raise web.HTTPError(
+                500,
+                log_message="Failed to launch Kubernetes job for Scanner instance",
+            )
 
         self.write(dc.asdict(manifest))
 
