@@ -63,6 +63,7 @@ class KubeAPITools:
         containers: list[kubernetes.client.V1Container],
         volumes: list[str],  # volume names
         namespace: str,
+        labels: dict[str, str],
     ) -> kubernetes.client.V1Job:
         """Create a k8 Job Object Minimum definition of a job object.
 
@@ -96,7 +97,11 @@ class KubeAPITools:
         body = kubernetes.client.V1Job(api_version="batch/v1", kind="Job")
         # Body needs Metadata
         # Attention: Each JOB must have a different name!
-        body.metadata = kubernetes.client.V1ObjectMeta(namespace=namespace, name=name)
+        body.metadata = kubernetes.client.V1ObjectMeta(
+            namespace=namespace,
+            name=name,
+            labels=labels,
+        )
         # And a Status
         body.status = kubernetes.client.V1JobStatus()
         # Now we start with the Template...
@@ -209,6 +214,8 @@ class SkymapScannerJob:
             [server, condor_clientmanager],
             [common_space_volume_path.name],
             namespace=ENV.K8S_NAMESPACE,
+            # https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/
+            labels={"app.kubernetes.io/instance": ENV.K8S_APPLICATION_NAME},
         )
 
     @staticmethod

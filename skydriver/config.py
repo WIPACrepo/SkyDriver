@@ -30,9 +30,10 @@ class EnvConfig:
     LOG_LEVEL: str = "DEBUG"
 
     # k8s
-    K8S_TTL_SECONDS_AFTER_FINISHED: int = 600
     K8S_NAMESPACE: str = ""
     K8S_SECRET_NAME: str = ""
+    K8S_APPLICATION_NAME: str = ""
+    K8S_TTL_SECONDS_AFTER_FINISHED: int = 600
 
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""
