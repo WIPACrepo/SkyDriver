@@ -60,7 +60,6 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
             ("event_metadata.run_id", DESCENDING),
         ],
         name="event_run_index",
-        unique=True,
     )
 
     # RESULTS COLL
