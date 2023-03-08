@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.17 (2023-03-08)
+### Other
+* Make k8s job containers' names unique ([`4b86551`](https://github.com/WIPACrepo/SkyDriver/commit/4b865512db62aa5c411e0a044b7ea16ce89d0f7d))
+
 ## v0.0.16 (2023-03-08)
 ### Other
 * Send 500 error if scanner k8s job fails to launch ([`4ab57ad`](https://github.com/WIPACrepo/SkyDriver/commit/4ab57ad4249860a1b2ee733abea75c0c3df747b2))
