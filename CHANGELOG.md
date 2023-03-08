@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.19 (2023-03-08)
+### Other
+* Don't let ArgoCD prune dynamic jobs ([`8989bd1`](https://github.com/WIPACrepo/SkyDriver/commit/8989bd1f4506963654a076f55210729f2cb25b22))
+
 ## v0.0.18 (2023-03-08)
 ### Other
 * Add labels for k8s resource tracking ([`8596c7a`](https://github.com/WIPACrepo/SkyDriver/commit/8596c7a58a2a4b3cc37d67bd931ddc1a89a9eefe))
