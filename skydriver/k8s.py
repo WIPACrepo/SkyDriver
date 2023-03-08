@@ -213,7 +213,7 @@ class SkymapScannerJob:
             {common_space_volume_path.name: common_space_volume_path},
         )
         self.job_obj = KubeAPITools.kube_create_job_object(
-            scan_id,
+            f"skyscan-{scan_id}",
             [server, condor_clientmanager],
             [common_space_volume_path.name],
             namespace=ENV.K8S_NAMESPACE,
