@@ -101,6 +101,9 @@ class KubeAPITools:
             namespace=namespace,
             name=name,
             labels=labels,
+            annotations={
+                "argocd.argoproj.io/sync-options": "Prune=false"  # don't want argocd to prune this job
+            },
         )
         # And a Status
         body.status = kubernetes.client.V1JobStatus()
