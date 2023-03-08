@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.16 (2023-03-08)
+### Other
+* Send 500 error if scanner k8s job fails to launch ([`4ab57ad`](https://github.com/WIPACrepo/SkyDriver/commit/4ab57ad4249860a1b2ee733abea75c0c3df747b2))
+* Make index `event_run_index` non-unique ([`354da27`](https://github.com/WIPACrepo/SkyDriver/commit/354da2773665cc3acc9fc8ec46620f46f63becde))
+
 ## v0.0.15 (2023-03-08)
 ### Other
 * Update Requestor Auth ([`6c208b2`](https://github.com/WIPACrepo/SkyDriver/commit/6c208b2d1102e628149d23baa3418123c3ed470e))
