@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.18 (2023-03-08)
+### Other
+* Add labels for k8s resource tracking ([`8596c7a`](https://github.com/WIPACrepo/SkyDriver/commit/8596c7a58a2a4b3cc37d67bd931ddc1a89a9eefe))
+
 ## v0.0.17 (2023-03-08)
 ### Other
 * Make k8s job containers' names unique ([`4b86551`](https://github.com/WIPACrepo/SkyDriver/commit/4b865512db62aa5c411e0a044b7ea16ce89d0f7d))
