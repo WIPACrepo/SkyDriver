@@ -32,6 +32,7 @@ class EnvConfig:
     # k8s
     K8S_NAMESPACE: str = ""
     K8S_SECRET_NAME: str = ""
+    K8S_BACKOFF_LIMIT: int = 1
     K8S_APPLICATION_NAME: str = ""
     K8S_TTL_SECONDS_AFTER_FINISHED: int = 600
 

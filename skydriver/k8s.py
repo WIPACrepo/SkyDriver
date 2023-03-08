@@ -125,6 +125,7 @@ class KubeAPITools:
         body.spec = kubernetes.client.V1JobSpec(
             ttl_seconds_after_finished=ENV.K8S_TTL_SECONDS_AFTER_FINISHED,
             template=template.template,
+            backoff_limit=ENV.K8S_BACKOFF_LIMIT,
         )
         return body
 
