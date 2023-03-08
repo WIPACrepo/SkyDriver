@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.15 (2023-03-08)
+### Other
+* Update Requestor Auth ([`6c208b2`](https://github.com/WIPACrepo/SkyDriver/commit/6c208b2d1102e628149d23baa3418123c3ed470e))
+* Merge remote-tracking branch 'origin/main' ([`51f911b`](https://github.com/WIPACrepo/SkyDriver/commit/51f911b37f7ba09ccd5cbe19bf2374dfe3ed1c78))
+* Appease mypy ([`929d164`](https://github.com/WIPACrepo/SkyDriver/commit/929d164769114224c2d4ee0523846a0127944919))
+
 ## v0.0.14 (2023-03-07)
 ### Other
 * Update type hinting ([`9b4f318`](https://github.com/WIPACrepo/SkyDriver/commit/9b4f3188517b7f81ec69979ca585271a4ab9f5fe))
