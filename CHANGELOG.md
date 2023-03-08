@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.20 (2023-03-08)
+### Other
+* Set backoff limit to 1 to stop pod restarts ([`f18d771`](https://github.com/WIPACrepo/SkyDriver/commit/f18d7716ab804ae24c0e861dfb9d170c7da78ccd))
+* Name each job "skyscan-{scan_id}" ([`28f93fe`](https://github.com/WIPACrepo/SkyDriver/commit/28f93feb17e6e225f8235ddd74422d38022b700e))
+
 ## v0.0.19 (2023-03-08)
 ### Other
 * Don't let ArgoCD prune dynamic jobs ([`8989bd1`](https://github.com/WIPACrepo/SkyDriver/commit/8989bd1f4506963654a076f55210729f2cb25b22))
