@@ -10,10 +10,17 @@ import kubernetes.client  # type: ignore[import]
 from dacite import from_dict  # type: ignore[attr-defined]
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore[import]
-from rest_tools.server import RestHandler, decorators
+from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
 
 from . import database, k8s
-from .config import LOGGER, SKYMAP_SCANNER_ACCT, USER_ACCT, is_testing
+from .config import LOGGER, is_testing
+
+# -----------------------------------------------------------------------------
+# REST requestor auth
+
+
+USER_ACCT = "user"
+SKYMAP_SCANNER_ACCT = "system"
 
 if is_testing():
 
@@ -28,10 +35,16 @@ if is_testing():
         return make_wrapper
 
 else:
-    service_account_auth = decorators.keycloak_role_auth
+    service_account_auth = token_attribute_role_mapping_auth(
+        role_attrs={
+            USER_ACCT: ["groups=/institutions/IceCube.*"],
+            SKYMAP_SCANNER_ACCT: ["skydriver_role=system"],
+        }
+    )
 
 
 # -----------------------------------------------------------------------------
+# misc constants
 
 
 REAL_CHOICES = ["real", "real_event"]
@@ -39,6 +52,7 @@ SIM_CHOICES = ["sim", "simulated", "simulated_event"]
 
 
 # -----------------------------------------------------------------------------
+# handlers
 
 
 class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223

@@ -74,10 +74,6 @@ class EnvConfig:
 ENV = from_environment_as_dataclass(EnvConfig)
 
 
-USER_ACCT = "skydriver-service-account"
-SKYMAP_SCANNER_ACCT = "skymap-scanner-service-account"
-
-
 def is_testing() -> bool:
     """Return true if this is the test environment.
 
