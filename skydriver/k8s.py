@@ -204,17 +204,16 @@ class SkymapScannerJob:
         }
 
         # job
-        docker_image = f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{docker_tag}"
         server = KubeAPITools.create_container(
             f"server-{scan_id}",
-            docker_image,
+            f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{docker_tag}",
             env,
             self.server_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
         )
         condor_clientmanager = KubeAPITools.create_container(
             f"clientmanager-{scan_id}",
-            docker_image,
+            ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
             env,
             self.clientmanager_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
@@ -262,7 +261,7 @@ class SkymapScannerJob:
         clientmanager.
         """
         args = (
-            f"python resources/client_starter.py "
+            f"python clientmanager/client_starter.py "
             # f" --dryrun"
             f" --logs-directory {common_space_volume_path} "
             # --collector-address  # see below

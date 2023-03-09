@@ -29,6 +29,9 @@ class EnvConfig:
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
 
+    # clientmanager
+    CLIENTMANAGER_IMAGE_WITH_TAG: str = "ghcr.io/wipacrepo/skydriver:latest"
+
     # k8s
     K8S_NAMESPACE: str = ""
     K8S_SECRET_NAME: str = ""
