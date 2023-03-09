@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.25 (2023-03-09)
+### Other
+* Add `spec.template.metadata.labels.app = scanner-instance` ([`8b84f1e`](https://github.com/WIPACrepo/SkyDriver/commit/8b84f1e9eadf46d985e2dd6e00e7fb2380105232))
+
 ## v0.0.24 (2023-03-09)
 ### Other
 * Make `processing_stats.rate` optional ([`f7b3c24`](https://github.com/WIPACrepo/SkyDriver/commit/f7b3c244b9b2e1be577c348c424525b5f81bfc69))
