@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.26 (2023-03-09)
+### Other
+* Fix tests ([`cbca980`](https://github.com/WIPACrepo/SkyDriver/commit/cbca980b97ff2813ac5d991d2f7cd52e75cbf0c5))
+* Point to `ghcr.io/wipacrepo/skydriver:latest` for clientmanager ([`9580f83`](https://github.com/WIPACrepo/SkyDriver/commit/9580f836681ea59a94a6e80b314a666201842608))
+* ClientManager / `client_starter.py` ([#14](https://github.com/WIPACrepo/SkyDriver/issues/14)) ([`bbb2cb1`](https://github.com/WIPACrepo/SkyDriver/commit/bbb2cb13a1de699bb8ac340ffd353d2bf5585c9e))
+
 ## v0.0.25 (2023-03-09)
 ### Other
 * Add `spec.template.metadata.labels.app = scanner-instance` ([`8b84f1e`](https://github.com/WIPACrepo/SkyDriver/commit/8b84f1e9eadf46d985e2dd6e00e7fb2380105232))
