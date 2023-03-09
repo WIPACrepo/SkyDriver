@@ -99,7 +99,7 @@ async def _launch_scan(rc: RestClient) -> str:
     )
 
     clientmanager_args = (
-        f"python resources/client_starter.py "
+        f"python clientmanager/client_starter.py "
         f" --logs-directory /common-space "
         f" --jobs {POST_SCAN_BODY['njobs']} "
         f" --memory {POST_SCAN_BODY['memory']} "
