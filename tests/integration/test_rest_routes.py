@@ -91,8 +91,8 @@ async def _launch_scan(rc: RestClient) -> str:
     server_args = (
         f"python -m skymap_scanner.server "
         f"--reco-algo {POST_SCAN_BODY['reco_algo']} "
-        f"--cache-dir common-space/cache "
-        f"--output-dir common-space/output "
+        f"--cache-dir common-space "
+        f"--output-dir common-space "
         f"--client-startup-json common-space/startup.json "
         f"--nsides {' '.join(f'{k}:{v}' for k,v in POST_SCAN_BODY['nsides'].items())} "  # type: ignore[attr-defined]
         f"--{POST_SCAN_BODY['real_or_simulated_event']}-event"
