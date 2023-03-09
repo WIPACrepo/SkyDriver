@@ -24,7 +24,7 @@ class ProgressProcessingStats:
 
     start: StrDict
     runtime: StrDict
-    rate: StrDict
+    rate: StrDict = dc.field(default_factory=dict)
     end: str = ""
     finished: bool = False
     predictions: StrDict = dc.field(default_factory=dict)  # open to requestor
