@@ -233,8 +233,8 @@ class SkymapScannerJob:
         args = (
             f"python -m skymap_scanner.server "
             f" --reco-algo {reco_algo}"
-            f" --cache-dir {common_space_volume_path/'cache'} "
-            f" --output-dir {common_space_volume_path/'output'} "
+            f" --cache-dir {common_space_volume_path} "
+            f" --output-dir {common_space_volume_path} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "  # k1:v1 k2:v2
             f" {'--real-event' if is_real_event else '--simulated-event'} "
