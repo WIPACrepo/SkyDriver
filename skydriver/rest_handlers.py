@@ -255,7 +255,7 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/scan/manifest/(?P<scan_id>\w+)$"
 
-    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
