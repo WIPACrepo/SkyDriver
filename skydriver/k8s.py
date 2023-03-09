@@ -109,7 +109,13 @@ class KubeAPITools:
         body.status = kubernetes.client.V1JobStatus()
         # Now we start with the Template...
         template = kubernetes.client.V1PodTemplate()
-        template.template = kubernetes.client.V1PodTemplateSpec()
+        template.template = kubernetes.client.V1PodTemplateSpec(
+            metadata=kubernetes.client.V1ObjectMeta(
+                labels={
+                    "app": "scanner-instance",
+                },
+            ),
+        )
         # Make Pod Spec
         template.template.spec = kubernetes.client.V1PodSpec(
             containers=containers,
