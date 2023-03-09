@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.23 (2023-03-09)
+### Other
+* Allow scanner account to GET @ `/scan/manifest/<scan-id>` ([`17d0bd3`](https://github.com/WIPACrepo/SkyDriver/commit/17d0bd37fd8c3008b18938fd9596ad5169ec8eca))
+
 ## v0.0.22 (2023-03-09)
 ### Other
 * Fix tests ([`98d60fc`](https://github.com/WIPACrepo/SkyDriver/commit/98d60fc8fff31a45c30eed38c13887109eefe4f7))
