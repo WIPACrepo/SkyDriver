@@ -45,14 +45,14 @@ class Progress:
 class Result(ScanIDDataclass):
     """Encompasses the physics results for a scan."""
 
-    scan_result: StrDict  # actual keys/values are open to requestor
+    skyscan_result: StrDict  # actual keys/values are open to requestor
     is_final: bool  # is this result the final result?
 
     def __repr__(self) -> str:
         dicto = dc.asdict(self)
-        dicto.pop("scan_result")
+        dicto.pop("skyscan_result")
         # shorten b/c this can be a LARGE dict
-        dicto["scan_result_HASH"] = hash(str(self.scan_result))
+        dicto["skyscan_result_HASH"] = hash(str(self.skyscan_result))
         rep = f"{self.__class__.__name__}{dicto}"
         return rep
 

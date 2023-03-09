@@ -321,18 +321,20 @@ class ResultClient(ScanIDCollectionFacade):
         return result
 
     async def put(
-        self, scan_id: str, scan_result: schema.StrDict, is_final: bool
+        self, scan_id: str, skyscan_result: schema.StrDict, is_final: bool
     ) -> schema.Result:
         """Override `schema.Result` at doc matching `scan_id`."""
         LOGGER.debug(f"overriding result for {scan_id=} {is_final=}")
-        if not scan_result:
-            msg = f"Attempted to add result with an empty object ({scan_result})"
+        if not skyscan_result:
+            msg = f"Attempted to add result with an empty object ({skyscan_result})"
             raise web.HTTPError(
                 422,
                 log_message=msg + f" for {scan_id=}",
                 reason=msg,
             )
-        result = schema.Result(scan_id, False, scan_result, is_final)  # validates data
+        result = schema.Result(
+            scan_id, False, skyscan_result, is_final
+        )  # validates data
         result = await self._upsert(_RESULTS_COLL_NAME, result.scan_id, result)
         return result
 

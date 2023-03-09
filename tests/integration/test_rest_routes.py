@@ -319,12 +319,14 @@ async def _send_result(
     if is_final:
         result["gamma"] = 5
     resp = await rc.request(
-        "PUT", f"/scan/result/{scan_id}", {"scan_result": result, "is_final": is_final}
+        "PUT",
+        f"/scan/result/{scan_id}",
+        {"skyscan_result": result, "is_final": is_final},
     )
     assert resp == {
         "scan_id": scan_id,
         "is_deleted": False,
-        "scan_result": result,
+        "skyscan_result": result,
         "is_final": is_final,
     }
     result = resp  # keep around
@@ -421,7 +423,7 @@ async def _delete_result(
         "scan_id": scan_id,
         "is_deleted": True,
         "is_final": is_final,
-        "scan_result": last_known_result["scan_result"],
+        "skyscan_result": last_known_result["skyscan_result"],
     }
     del_resp = resp  # keep around
 
@@ -647,13 +649,13 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             f"404 Client Error: Not Found for url: {rc.address}/scan/result"
         ),
     ) as e:
-        await rc.request("PUT", "/scan/result", {"scan_result": {"bb": 22}})
+        await rc.request("PUT", "/scan/result", {"skyscan_result": {"bb": 22}})
     print(e.value)
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"400 Client Error: `scan_result`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/result/{scan_id}"
+            f"400 Client Error: `skyscan_result`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/result/{scan_id}"
         ),
     ) as e:
         await rc.request("PUT", f"/scan/result/{scan_id}", {})
@@ -666,7 +668,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         ),
     ) as e:
         await rc.request(
-            "PUT", f"/scan/result/{scan_id}", {"scan_result": {}, "is_final": True}
+            "PUT", f"/scan/result/{scan_id}", {"skyscan_result": {}, "is_final": True}
         )
     print(e.value)
     # # bad-type body-arg
@@ -674,13 +676,13 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=re.escape(
-                f"400 Client Error: `scan_result`: (ValueError) type mismatch: 'dict' (value is '{type(bad_val)}') for url: {rc.address}/scan/result/{scan_id}"
+                f"400 Client Error: `skyscan_result`: (ValueError) type mismatch: 'dict' (value is '{type(bad_val)}') for url: {rc.address}/scan/result/{scan_id}"
             ),
         ) as e:
             await rc.request(
                 "PUT",
                 f"/scan/result/{scan_id}",
-                {"scan_result": bad_val, "is_final": True},
+                {"skyscan_result": bad_val, "is_final": True},
             )
         print(e.value)
 
