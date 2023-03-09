@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.21 (2023-03-09)
+### Other
+* Fix tests ([`08074f6`](https://github.com/WIPACrepo/SkyDriver/commit/08074f698a27a18c53a28c19b02189905fd78a36))
+* Use one directory for the shared volume ([`a54a20c`](https://github.com/WIPACrepo/SkyDriver/commit/a54a20cad3f806cf4f05f7281292d581bb4d93df))
+
 ## v0.0.20 (2023-03-08)
 ### Other
 * Set backoff limit to 1 to stop pod restarts ([`f18d771`](https://github.com/WIPACrepo/SkyDriver/commit/f18d7716ab804ae24c0e861dfb9d170c7da78ccd))
