@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.22 (2023-03-09)
+### Other
+* Fix tests ([`98d60fc`](https://github.com/WIPACrepo/SkyDriver/commit/98d60fc8fff31a45c30eed38c13887109eefe4f7))
+* Fix volume mount (`/common-space`) ([`e3306cb`](https://github.com/WIPACrepo/SkyDriver/commit/e3306cb03b7549db8aa7d1d16ec1e7ae23348131))
+
 ## v0.0.21 (2023-03-09)
 ### Other
 * Fix tests ([`08074f6`](https://github.com/WIPACrepo/SkyDriver/commit/08074f698a27a18c53a28c19b02189905fd78a36))
