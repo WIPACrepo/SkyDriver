@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.24 (2023-03-09)
+### Other
+* Make `processing_stats.rate` optional ([`f7b3c24`](https://github.com/WIPACrepo/SkyDriver/commit/f7b3c244b9b2e1be577c348c424525b5f81bfc69))
+
 ## v0.0.23 (2023-03-09)
 ### Other
 * Allow scanner account to GET @ `/scan/manifest/<scan-id>` ([`17d0bd3`](https://github.com/WIPACrepo/SkyDriver/commit/17d0bd37fd8c3008b18938fd9596ad5169ec8eca))
