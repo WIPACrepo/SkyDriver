@@ -7,7 +7,7 @@ USER app
 
 COPY --chown=app:app . .
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir .[clientmanager]
 ENV PYTHONPATH=/home/app
 
 CMD ["python", "-m", "skydriver"]
