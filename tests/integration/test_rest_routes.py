@@ -91,20 +91,20 @@ async def _launch_scan(rc: RestClient) -> str:
     server_args = (
         f"python -m skymap_scanner.server "
         f"--reco-algo {POST_SCAN_BODY['reco_algo']} "
-        f"--cache-dir common-space "
-        f"--output-dir common-space "
-        f"--client-startup-json common-space/startup.json "
+        f"--cache-dir /common-space "
+        f"--output-dir /common-space "
+        f"--client-startup-json /common-space/startup.json "
         f"--nsides {' '.join(f'{k}:{v}' for k,v in POST_SCAN_BODY['nsides'].items())} "  # type: ignore[attr-defined]
         f"--{POST_SCAN_BODY['real_or_simulated_event']}-event"
     )
 
     clientmanager_args = (
         f"python resources/client_starter.py "
-        f" --logs-directory common-space "
+        f" --logs-directory /common-space "
         f" --jobs {POST_SCAN_BODY['njobs']} "
         f" --memory {POST_SCAN_BODY['memory']} "
         f" --singularity-image /cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:latest "
-        f" --client-startup-json common-space/startup.json "
+        f" --client-startup-json /common-space/startup.json "
     )
 
     assert resp == dict(
