@@ -171,7 +171,7 @@ class SkymapScannerJob:
         rest_address: str,
     ):
         self.api_instance = api_instance
-        common_space_volume_path = Path("common-space")
+        common_space_volume_path = Path("/common-space")
 
         # store some data for public access
         self.server_args = self.get_server_args(
