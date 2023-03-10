@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.27 (2023-03-10)
+### Other
+* Clientmanager: fix scanid retrieval ([`0891275`](https://github.com/WIPACrepo/SkyDriver/commit/08912759330a83f46039fc08e938839de370e68d))
+* Fix tests ([`4811bf9`](https://github.com/WIPACrepo/SkyDriver/commit/4811bf976f0c0ce56ad58615f26a9f5038481576))
+* Re-key as `skyscan_result` ([`3e6b360`](https://github.com/WIPACrepo/SkyDriver/commit/3e6b360848ecbf259447025550874b7c0ec60c0d))
+
 ## v0.0.26 (2023-03-09)
 ### Other
 * Fix tests ([`cbca980`](https://github.com/WIPACrepo/SkyDriver/commit/cbca980b97ff2813ac5d991d2f7cd52e75cbf0c5))
