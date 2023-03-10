@@ -307,6 +307,7 @@ def main() -> None:
         spool=True,  # for transfer_input_files
     )
     LOGGER.info(submit_result)
+    schedd_obj.spool([submit_result.clusterad()])
 
     # report to SkyDriver
     if skydriver_rc:
