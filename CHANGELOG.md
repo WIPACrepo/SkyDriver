@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.29 (2023-03-10)
+### Other
+* Update tests ([`84fdef4`](https://github.com/WIPACrepo/SkyDriver/commit/84fdef423c3b5d89c0537d3c1dd6cbf9276b8ca3))
+* Forward `condor_token`/`CONDOR_TOKEN` to client starter ([`ebd6e47`](https://github.com/WIPACrepo/SkyDriver/commit/ebd6e474a5b1057c25505439abe474b9a9aa9d4b))
+
 ## v0.0.28 (2023-03-10)
 ### Other
 * Fix test; mypy ([`17d358b`](https://github.com/WIPACrepo/SkyDriver/commit/17d358b888bcff7ebca4023e7d4b91eabbdd8b7b))
