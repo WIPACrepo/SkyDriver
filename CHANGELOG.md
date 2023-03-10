@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.31 (2023-03-10)
+### Other
+* Add quotes to condor submit ([`bc0b538`](https://github.com/WIPACrepo/SkyDriver/commit/bc0b538356ac104a89bbb79446e848892f5881b9))
+
 ## v0.0.30 (2023-03-10)
 ### Other
 * Create `~/.condor/tokens.d/` if needed ([`de17c11`](https://github.com/WIPACrepo/SkyDriver/commit/de17c1196e15e49f64996f9f8f82d0737903c0d6))
