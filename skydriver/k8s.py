@@ -197,7 +197,6 @@ class SkymapScannerJob:
         env = self.get_env(
             rest_address=rest_address,
             scan_id=scan_id,
-            secret_name=ENV.K8S_SECRET_NAME,
         )
         self.env_dict = {  # promote `e.name` to a key of a dict (instead of an attr in list element)
             e.name: {k: v for k, v in e.to_dict().items() if k != "name"} for e in env
@@ -302,7 +301,6 @@ class SkymapScannerJob:
     def get_env(
         rest_address: str,
         scan_id: str,
-        secret_name: str,
     ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to all containers.
 
@@ -310,28 +308,28 @@ class SkymapScannerJob:
         """
         env = []
 
-        # 1. start w/ secrets # NOTE: save this code for future
+        # 1. start w/ secrets
         # NOTE: the values come from an existing secret in the current namespace
-        # secrets = [
-        #     {
-        #         "dest": "XXXX",
-        #         "key": "xxxx",
-        #     },
-        # ]
-        # env.extend(
-        #     [
-        #         kubernetes.client.V1EnvVar(
-        #             name=s["dest"],
-        #             value_from=kubernetes.client.V1EnvVarSource(
-        #                 secret_key_ref=kubernetes.client.V1SecretKeySelector(
-        #                     name=secret_name,
-        #                     key=s["key"],
-        #                 )
-        #             ),
-        #         )
-        #         for s in secrets
-        #     ]
-        # )
+        secrets = [
+            {
+                "dest": "CONDOR_TOKEN",
+                "key": "condor_token",
+            },
+        ]
+        env.extend(
+            [
+                kubernetes.client.V1EnvVar(
+                    name=s["dest"],
+                    value_from=kubernetes.client.V1EnvVarSource(
+                        secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                            name=ENV.K8S_SECRET_NAME,
+                            key=s["key"],
+                        )
+                    ),
+                )
+                for s in secrets
+            ]
+        )
 
         # 2. add required env vars
         required = {

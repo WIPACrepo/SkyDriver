@@ -271,6 +271,11 @@ def main() -> None:
                 "This needs to be given to this script explicitly ('--client-startup-json')."
             )
 
+    # write condor token file (before any condor calls)
+    if token := os.getenv("CONDOR_TOKEN"):
+        with open(os.path.expanduser("~/.condor/tokens.d/token1"), "w") as f:
+            f.write(token)
+
     # make condor job description
     job_description = make_condor_job_description(
         logs_subdir,
