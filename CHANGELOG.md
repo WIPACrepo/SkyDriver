@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.34 (2023-03-10)
+### Other
+* Cast to list ([`923189c`](https://github.com/WIPACrepo/SkyDriver/commit/923189c2ff8ead25574a9b099ef9a25dc627304f))
+
 ## v0.0.33 (2023-03-10)
 ### Other
 * Add `job_description.jobs()` ([`542e1fc`](https://github.com/WIPACrepo/SkyDriver/commit/542e1fccc734ae99b662826da37395a0c51b5e15))
