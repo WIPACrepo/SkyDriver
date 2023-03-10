@@ -351,13 +351,16 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         is_final = self.get_argument("is_final", type=bool)
 
-        skyscan_result = await self.results.put(
+        if not skyscan_result:
+            self.write({})
+            return
+
+        result_dc = await self.results.put(
             scan_id,
             cast(dict[str, Any], skyscan_result),
             is_final,
         )
-
-        self.write(dc.asdict(skyscan_result))
+        self.write(dc.asdict(result_dc))
 
 
 # -----------------------------------------------------------------------------
