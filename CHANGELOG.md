@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.32 (2023-03-10)
+### Other
+* Add `spool()` call ([`1a61cfd`](https://github.com/WIPACrepo/SkyDriver/commit/1a61cfda2e41cd5c5d75762ad92dabecb4447de3))
+* Use `spool=True` ([`20265cf`](https://github.com/WIPACrepo/SkyDriver/commit/20265cfd93e182e4631ec0a60deb13431bc8c7b4))
+
 ## v0.0.31 (2023-03-10)
 ### Other
 * Add quotes to condor submit ([`bc0b538`](https://github.com/WIPACrepo/SkyDriver/commit/bc0b538356ac104a89bbb79446e848892f5881b9))
