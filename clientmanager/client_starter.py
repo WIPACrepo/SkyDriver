@@ -109,7 +109,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     return htcondor.Submit(submit_dict)
 
 
-def connect_to_skydriver() -> Tuple[Optional[RestClient], int]:
+def connect_to_skydriver() -> Tuple[Optional[RestClient], str]:
     """Connect to SkyDriver REST server, if the needed env vars are present.
 
     Also return the scan id.
@@ -117,7 +117,7 @@ def connect_to_skydriver() -> Tuple[Optional[RestClient], int]:
     address = os.getenv("SKYSCAN_SKYDRIVER_ADDRESS")
     if not address:
         LOGGER.warning("Not connecting to SkyDriver")
-        return None, -1
+        return None, ""
 
     scan_id = os.getenv("SKYSCAN_SKYDRIVER_SCAN_ID")
     if not scan_id:
@@ -128,7 +128,7 @@ def connect_to_skydriver() -> Tuple[Optional[RestClient], int]:
     skydriver_rc = RestClient(address, token=os.getenv("SKYSCAN_SKYDRIVER_AUTH"))
     LOGGER.info("Connected to SkyDriver")
 
-    return skydriver_rc, int(scan_id)
+    return skydriver_rc, scan_id
 
 
 def update_skydriver(
