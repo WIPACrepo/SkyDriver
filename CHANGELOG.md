@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.33 (2023-03-10)
+### Other
+* Add `job_description.jobs()` ([`542e1fc`](https://github.com/WIPACrepo/SkyDriver/commit/542e1fccc734ae99b662826da37395a0c51b5e15))
+
 ## v0.0.32 (2023-03-10)
 ### Other
 * Add `spool()` call ([`1a61cfd`](https://github.com/WIPACrepo/SkyDriver/commit/1a61cfda2e41cd5c5d75762ad92dabecb4447de3))
