@@ -273,7 +273,9 @@ def main() -> None:
 
     # write condor token file (before any condor calls)
     if token := os.getenv("CONDOR_TOKEN"):
-        with open(os.path.expanduser("~/.condor/tokens.d/token1"), "w") as f:
+        condor_tokens_dpath = Path("~/.condor/tokens.d/").expanduser()
+        condor_tokens_dpath.mkdir(parents=True, exist_ok=True)
+        with open(condor_tokens_dpath / "token1", "w") as f:
             f.write(token)
 
     # make condor job description
