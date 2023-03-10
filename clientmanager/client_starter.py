@@ -308,7 +308,7 @@ def main() -> None:
     )
     LOGGER.info(submit_result)
     job_ads = job_description.jobs(count=args.jobs, clusterid=submit_result.cluster())
-    schedd_obj.spool(job_ads)
+    schedd_obj.spool(list(job_ads))
 
     # report to SkyDriver
     if skydriver_rc:
