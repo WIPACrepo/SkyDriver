@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.28 (2023-03-10)
+### Other
+* Fix test; mypy ([`17d358b`](https://github.com/WIPACrepo/SkyDriver/commit/17d358b888bcff7ebca4023e7d4b91eabbdd8b7b))
+* If requestor attempts empty result, just ignore it ([`e8c8d2d`](https://github.com/WIPACrepo/SkyDriver/commit/e8c8d2d263012001aaa25ca5cf517e0091a2552c))
+
 ## v0.0.27 (2023-03-10)
 ### Other
 * Clientmanager: fix scanid retrieval ([`0891275`](https://github.com/WIPACrepo/SkyDriver/commit/08912759330a83f46039fc08e938839de370e68d))
