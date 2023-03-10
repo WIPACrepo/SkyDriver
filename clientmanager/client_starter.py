@@ -301,7 +301,11 @@ def main() -> None:
     schedd_obj = get_schedd_obj(args.collector, args.schedd)
 
     # submit
-    submit_result = schedd_obj.submit(job_description, count=args.jobs)  # submit N jobs
+    submit_result = schedd_obj.submit(
+        job_description,
+        count=args.jobs,  # submit N jobs
+        spool=True,  # for transfer_input_files
+    )
     LOGGER.info(submit_result)
 
     # report to SkyDriver
