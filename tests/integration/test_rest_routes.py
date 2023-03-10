@@ -660,16 +660,11 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     ) as e:
         await rc.request("PUT", f"/scan/result/{scan_id}", {})
     print(e.value)
-    # # empty body-arg
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"422 Client Error: Attempted to add result with an empty object ({{}}) for url: {rc.address}/scan/result/{scan_id}"
-        ),
-    ) as e:
-        await rc.request(
-            "PUT", f"/scan/result/{scan_id}", {"skyscan_result": {}, "is_final": True}
-        )
+    # # empty body-arg -- no error, doesn't do anything but return {}
+    ret = await rc.request(
+        "PUT", f"/scan/result/{scan_id}", {"skyscan_result": {}, "is_final": True}
+    )
+    assert ret == {}
     print(e.value)
     # # bad-type body-arg
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]

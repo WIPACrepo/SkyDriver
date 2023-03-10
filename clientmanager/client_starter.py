@@ -133,7 +133,7 @@ def connect_to_skydriver() -> Tuple[Optional[RestClient], str]:
 
 def update_skydriver(
     skydriver_rc: RestClient,
-    scan_id: int,
+    scan_id: str,
     submit_result: htcondor.SubmitResult,
     collector: str,
     schedd: str,
