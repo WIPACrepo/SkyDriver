@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.30 (2023-03-10)
+### Other
+* Create `~/.condor/tokens.d/` if needed ([`de17c11`](https://github.com/WIPACrepo/SkyDriver/commit/de17c1196e15e49f64996f9f8f82d0737903c0d6))
+
 ## v0.0.29 (2023-03-10)
 ### Other
 * Update tests ([`84fdef4`](https://github.com/WIPACrepo/SkyDriver/commit/84fdef423c3b5d89c0537d3c1dd6cbf9276b8ca3))
