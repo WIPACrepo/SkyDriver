@@ -13,7 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore[import]
 from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
 from tornado import web
 
-from . import database, k8s
+from . import database, images, k8s
 from .config import LOGGER, is_testing
 
 # -----------------------------------------------------------------------------
@@ -157,7 +157,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # docker args
         docker_tag = self.get_argument(
             "docker_tag",
-            type=str,
+            type=images.resolve_docker_tag,
             forbiddens=[r"\s*"],  # no empty string / whitespace
             default="latest",
         )

@@ -6,6 +6,12 @@ from typing import Iterator
 
 import requests
 
+from .config import LOGGER
+
+# ---------------------------------------------------------------------------------------
+# constants
+
+
 _IMAGE = "skymap_scanner"
 SKYSCAN_DOCKER_IMAGE_NO_TAG = f"icecube/{_IMAGE}"
 
@@ -18,19 +24,27 @@ SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH = Path(
 VERSION_REGEX = re.compile(r"\d+\.\d+\.\d+")
 
 
+# ---------------------------------------------------------------------------------------
+# utils
+
+
 def resolve_latest() -> str:
     """Get the most recent version-tag on Docker Hub.
 
     This is needed because 'latest' doesn't exist in CVMFS.
     """
     # gives 10 most recent tags by default
-    images = requests.get(DOCKERHUB_API_URL).json()["results"]
+    try:
+        images = requests.get(DOCKERHUB_API_URL).json()["results"]
+    except Exception as e:
+        LOGGER.error(e)
+        ValueError("Image tag 'latest' failed to resolve to a version")
 
     def latest_sha() -> str:
         for img in images:
             if img["name"] == "latest":
                 return img["digest"]  # type: ignore[no-any-return]
-        raise RuntimeError("Image tag 'latest' not found on Docker Hub")
+        raise ValueError("Image tag 'latest' not found on Docker Hub")
 
     def matching_sha(sha: str) -> Iterator[str]:
         for img in images:
@@ -40,7 +54,7 @@ def resolve_latest() -> str:
     for tag in matching_sha(latest_sha()):
         if VERSION_REGEX.fullmatch(tag):
             return tag
-    raise RuntimeError("Image tag 'latest' could not resolve to a version")
+    raise ValueError("Image tag 'latest' could not resolve to a version")
 
 
 def get_all_cvmfs_image_tags() -> Iterator[str]:
@@ -63,4 +77,4 @@ def resolve_docker_tag(docker_tag: str) -> str:
     # in CVMFS?
     if docker_tag in get_all_cvmfs_image_tags():
         return docker_tag
-    raise Exception("Tag not in CVMFS")
+    raise ValueError("Tag not in CVMFS")
