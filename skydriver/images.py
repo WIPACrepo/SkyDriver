@@ -13,21 +13,35 @@ from .config import LOGGER
 
 
 _IMAGE = "skymap_scanner"
-SKYSCAN_DOCKER_IMAGE_NO_TAG = f"icecube/{_IMAGE}"
+_SKYSCAN_DOCKER_IMAGE_NO_TAG = f"icecube/{_IMAGE}"
 
-DOCKERHUB_API_URL = "https://hub.docker.com/v2/repositories/icecube/skymap_scanner/tags"
+DOCKERHUB_API_URL = (
+    f"https://hub.docker.com/v2/repositories/{_SKYSCAN_DOCKER_IMAGE_NO_TAG}/tags"
+)
 
 # cvmfs singularity
-SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH = Path(
+_SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH = Path(
     "/cvmfs/icecube.opensciencegrid.org/containers/realtime/"
 )
 VERSION_REGEX = re.compile(r"\d+\.\d+\.\d+")
 
 
 # ---------------------------------------------------------------------------------------
+# getters
+
+
+def get_skyscan_cvmfs_singularity_image(tag: str) -> str:
+    """Get the singularity image path for 'tag' (assumes it exists)."""
+    return f"{_SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH}{_IMAGE}:{tag}"
+
+
+def get_skyscan_docker_image(tag: str) -> str:
+    """Get the docker image + tag for 'tag' (assumes it exists)."""
+    return f"{_SKYSCAN_DOCKER_IMAGE_NO_TAG}:{tag}"
+
+
+# ---------------------------------------------------------------------------------------
 # utils
-
-
 def resolve_latest() -> str:
     """Get the most recent version-tag on Docker Hub.
 
@@ -59,7 +73,7 @@ def resolve_latest() -> str:
 
 def get_all_cvmfs_image_tags() -> Iterator[str]:
     """Get all the skymap scanner image tags in CVMFS."""
-    for fpath in SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH.iterdir():
+    for fpath in _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH.iterdir():
         image, tag = fpath.name.split(":", maxsplit=1)  # ex: skymap_scannner:3.6.9
         if image == _IMAGE:
             yield tag
