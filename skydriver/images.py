@@ -25,6 +25,9 @@ _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH = Path(
 )
 VERSION_REGEX = re.compile(r"\d+\.\d+\.\d+")
 
+# clientmanager
+CLIENTMANAGER_IMAGE_WITH_TAG = "ghcr.io/wipacrepo/skydriver:latest"
+
 
 # ---------------------------------------------------------------------------------------
 # getters
