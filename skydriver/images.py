@@ -42,6 +42,8 @@ def get_skyscan_docker_image(tag: str) -> str:
 
 # ---------------------------------------------------------------------------------------
 # utils
+
+
 def resolve_latest() -> str:
     """Get the most recent version-tag on Docker Hub.
 
