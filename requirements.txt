@@ -137,7 +137,7 @@ typing-extensions==4.5.0
     #   qrcode
     #   wipac-dev-tools
     #   wipac-telemetry
-urllib3==1.26.14
+urllib3==1.26.15
     # via
     #   kubernetes
     #   requests
