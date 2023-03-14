@@ -32,7 +32,7 @@ deprecated==1.2.13
     # via opentelemetry-api
 dnspython==2.3.0
     # via pymongo
-exceptiongroup==1.1.0
+exceptiongroup==1.1.1
     # via pytest
 google-auth==2.16.2
     # via kubernetes
@@ -160,7 +160,7 @@ typing-extensions==4.5.0
     #   qrcode
     #   wipac-dev-tools
     #   wipac-telemetry
-urllib3==1.26.14
+urllib3==1.26.15
     # via
     #   kubernetes
     #   requests
