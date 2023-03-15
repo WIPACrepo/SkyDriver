@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 import pytest
 import pytest_asyncio
 import requests
-import skydriver.images
+import skydriver.images  # noqa: F401
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.client import RestClient
 from skydriver.config import config_logging
