@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 import pytest
 import pytest_asyncio
 import requests
+import skydriver.images
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.client import RestClient
 from skydriver.config import config_logging
@@ -446,6 +447,10 @@ async def _delete_result(
 ########################################################################################
 
 
+@patch(
+    "skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH",
+    "tests/resources/mock-cvmfs-images",
+)
 async def test_00(server: Callable[[], RestClient]) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
@@ -490,6 +495,10 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     await _delete_result(rc, scan_id, result, True)
 
 
+@patch(
+    "skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH",
+    "tests/resources/mock-cvmfs-images",
+)
 async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
