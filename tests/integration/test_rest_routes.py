@@ -112,7 +112,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict) -> str:
         f" --logs-directory /common-space "
         f" --jobs {post_scan_body['njobs']} "
         f" --memory {post_scan_body['memory']} "
-        # rely on _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH mocking & CI env var
+        # rely on CI env var
         f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{tag} "
         f" --client-startup-json /common-space/startup.json "
     )
@@ -456,10 +456,6 @@ async def _delete_result(
 ########################################################################################
 
 
-@patch(
-    "skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH",
-    Path("tests/resources/mock-cvmfs-images"),
-)
 @pytest.mark.parametrize("docker_tag", ["latest", "3.0.74"])
 async def test_00(docker_tag: str, server: Callable[[], RestClient]) -> None:
     """Test normal scan creation and retrieval."""
@@ -505,10 +501,6 @@ async def test_00(docker_tag: str, server: Callable[[], RestClient]) -> None:
     await _delete_result(rc, scan_id, result, True)
 
 
-@patch(
-    "skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH",
-    Path("tests/resources/mock-cvmfs-images"),
-)
 async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()

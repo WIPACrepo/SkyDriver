@@ -1,6 +1,7 @@
 """Utilities for dealing with docker/cvmfs/singularity images."""
 
 import re
+import urllib.parse
 from pathlib import Path
 from typing import Iterator
 
@@ -78,22 +79,23 @@ def resolve_latest_docker_hub() -> str:
     raise ValueError("Image tag 'latest' could not resolve to a version")
 
 
-def get_all_cvmfs_image_tags() -> Iterator[str]:
-    """Get all the skymap scanner image tags in CVMFS."""
-    for fpath in _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH.iterdir():
-        image, tag = fpath.name.split(":", maxsplit=1)  # ex: skymap_scannner:3.6.9
-        if image == _IMAGE:
-            yield tag
+@cachetools.func.lru_cache()
+def tag_exists_on_docker_hub(docker_tag: str) -> bool:
+    """Return whether the tag exists on Docker Hub."""
+    api_url = urllib.parse.urljoin(DOCKERHUB_API_URL, docker_tag)
+    return requests.get(api_url).ok
 
 
 def resolve_docker_tag(docker_tag: str) -> str:
-    """Check if the docker tag exists, then resolve 'latest' if needed."""
+    """Check if the docker tag exists, then resolve 'latest' if needed.
+
+    NOTE: Assumes tag exists (or will soon) on CVMFS. Condor will back
+          off & retry until the image exists
+    """
     if not docker_tag:
         raise ValueError("Invalid docker tag")
 
     if docker_tag == "latest":
-        # NOTE: assumes tag exists (or will soon) on CVMFS
-        #       condor will back off & retry until the image exists
         return resolve_latest_docker_hub()
 
     if docker_tag.startswith("v"):
@@ -101,7 +103,6 @@ def resolve_docker_tag(docker_tag: str) -> str:
         if VERSION_REGEX.fullmatch(without_v := docker_tag.lstrip("v")):
             docker_tag = without_v
 
-    # in CVMFS?
-    if docker_tag in get_all_cvmfs_image_tags():
+    if tag_exists_on_docker_hub(docker_tag):
         return docker_tag
-    raise ValueError(f"Tag not in CVMFS: {docker_tag}")
+    raise ValueError(f"Tag not on Docker Hub: {docker_tag}")
