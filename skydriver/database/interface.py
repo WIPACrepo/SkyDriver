@@ -141,7 +141,7 @@ class ScanIDCollectionFacade:
             # enforce schema
             for key, value in update.items():
                 try:
-                    check_type(key, value, fields[key].type)  # TypeError, KeyError
+                    check_type(value, fields[key].type)  # TypeError, KeyError
                 except (TypeError, KeyError) as e:
                     raise web.HTTPError(
                         500,
