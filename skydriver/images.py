@@ -49,7 +49,7 @@ def get_skyscan_docker_image(tag: str) -> str:
 
 
 @cachetools.func.ttl_cache(ttl=5 * 60)
-def resolve_latest() -> str:
+def resolve_latest_docker_hub() -> str:
     """Get the most recent version-tag on Docker Hub.
 
     This is needed because 'latest' doesn't exist in CVMFS.
@@ -89,8 +89,11 @@ def get_all_cvmfs_image_tags() -> Iterator[str]:
 def resolve_docker_tag(docker_tag: str) -> str:
     """Check if the docker tag exists, then resolve 'latest' if needed."""
     if docker_tag == "latest":
-        docker_tag = resolve_latest()
-    elif docker_tag.startswith("v"):
+        # NOTE: assumes tag exists (or will soon) on CVMFS
+        #       condor will back off & retry until the image exists
+        return resolve_latest_docker_hub()
+
+    if docker_tag.startswith("v"):
         # v3.6.9 -> 3.6.9 (if needed)
         if VERSION_REGEX.fullmatch(without_v := docker_tag.lstrip("v")):
             docker_tag = without_v
