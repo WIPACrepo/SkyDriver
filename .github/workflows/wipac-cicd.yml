@@ -51,7 +51,6 @@ jobs:
           base-keywords: WIPAC IceCube
 
   py-versions:
-    needs: [py-setup]
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.versions.outputs.matrix }}
