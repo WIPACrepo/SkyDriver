@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.36 (2023-03-15)
+### Other
+* Clientmanager: using logging for condor logs ([`b7dac93`](https://github.com/WIPACrepo/SkyDriver/commit/b7dac938b8baec350c9ad40323a6645ab04084d5))
+
 ## v0.0.35 (2023-03-15)
 ### Other
 * <bot> update requirements.txt ([`a465df5`](https://github.com/WIPACrepo/SkyDriver/commit/a465df5089e74b80aac8bb3ce300be2f8f9c753e))
