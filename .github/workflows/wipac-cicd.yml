@@ -31,20 +31,16 @@ jobs:
     steps:
       # dependabot can't access normal secrets
       #   & don't run non-branch triggers (like tags)
-      #   & we don't want to trigger an update on PR's merge to main/master/default (which is a branch)
-      # IOW: only for non-dependabot branches
       - if: |
           github.actor != 'dependabot[bot]' &&
-          github.ref_type == 'branch' &&
-          format('refs/heads/{0}', github.event.repository.default_branch) != github.ref
+          github.ref_type == 'branch'
         name: checkout (only for non-dependabot non-default branches)
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       - if: |
           github.actor != 'dependabot[bot]' &&
-          github.ref_type == 'branch' &&
-          format('refs/heads/{0}', github.event.repository.default_branch) != github.ref
+          github.ref_type == 'branch'
         name: wipac-dev-py-setup-action (only for non-dependabot non-default branches)
         uses: WIPACrepo/wipac-dev-py-setup-action@v1.11
         with:
