@@ -157,7 +157,7 @@ class ScanIDCollectionFacade:
         else:
             try:  # validate via dataclass's `@typechecked` wrapper
                 doc = await find_one_and_update(dc.asdict(update))
-            except (typeguard.TypeCheckError, KeyError) as e:
+            except typeguard.TypeCheckError as e:
                 LOGGER.error(e)
                 raise web.HTTPError(
                     422,
