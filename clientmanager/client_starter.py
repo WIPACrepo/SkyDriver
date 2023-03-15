@@ -159,15 +159,15 @@ def update_skydriver(
 
 def dump_condor_dir(logs_subdir: Path) -> None:
     while True:
-        print("#######################################################################")
+        LOGGER.debug("################################################################")
         for fpath in logs_subdir.iterdir():
-            print(fpath)
-        print("-------------------------------")
+            LOGGER.debug(fpath)
+        LOGGER.debug("-------------------------------")
         log_file = _get_log_fpath(logs_subdir)
         if log_file.exists():
-            print(f"{log_file}:")
+            LOGGER.debug(f"{log_file}:")
             with open(log_file, "r") as f:
-                print("".join(f.readlines()))
+                LOGGER.debug("".join(f.readlines()))
         time.sleep(120)  # 2 mins
 
 
@@ -268,7 +268,7 @@ def main() -> None:
 
     args = parser.parse_args()
     logging_tools.set_level(
-        os.getenv("SKYSCAN_LOG", "INFO"),  # type: ignore[arg-type]
+        "DEBUG",  # os.getenv("SKYSCAN_LOG", "INFO"),  # type: ignore[arg-type]
         first_party_loggers=LOGGER,
         third_party_level=os.getenv("SKYSCAN_LOG_THIRD_PARTY", "WARNING"),  # type: ignore[arg-type]
     )
