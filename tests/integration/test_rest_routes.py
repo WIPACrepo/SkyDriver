@@ -455,7 +455,7 @@ async def _delete_result(
 ########################################################################################
 
 
-@pytest.mark.parametrize("docker_tag", ["latest", "3.4.2"])
+@pytest.mark.parametrize("docker_tag", ["latest", "3.4.0"])
 async def test_00(docker_tag: str, server: Callable[[], RestClient]) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
