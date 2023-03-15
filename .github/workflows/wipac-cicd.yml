@@ -117,6 +117,7 @@ jobs:
               | sed 's/v//' \
           )
           echo $LATEST_TAG  # this tag may be off if there's a delay between GH release & docker hub
+          touch tests/resources/mock-cvmfs-images/skymap_scanner:$LATEST_TAG
           pytest -vvv tests/integration
 
       - name: Dump logs
