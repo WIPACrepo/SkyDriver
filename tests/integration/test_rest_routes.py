@@ -2,6 +2,7 @@
 
 # pylint: disable=redefined-outer-name
 
+import os
 import random
 import re
 import socket
@@ -105,7 +106,7 @@ async def _launch_scan(rc: RestClient) -> str:
         f" --logs-directory /common-space "
         f" --jobs {POST_SCAN_BODY['njobs']} "
         f" --memory {POST_SCAN_BODY['memory']} "
-        f" --singularity-image /cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:latest "
+        f" --singularity-image /cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:{os.getenv('LATEST_TAG')} "
         f" --client-startup-json /common-space/startup.json "
     )
 
