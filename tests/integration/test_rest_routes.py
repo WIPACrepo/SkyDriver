@@ -5,6 +5,7 @@
 import random
 import re
 import socket
+from pathlib import Path
 from typing import Any, AsyncIterator, Callable
 from unittest.mock import Mock, patch
 
@@ -449,7 +450,7 @@ async def _delete_result(
 
 @patch(
     "skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH",
-    "tests/resources/mock-cvmfs-images",
+    Path("tests/resources/mock-cvmfs-images"),
 )
 async def test_00(server: Callable[[], RestClient]) -> None:
     """Test normal scan creation and retrieval."""
@@ -497,7 +498,7 @@ async def test_00(server: Callable[[], RestClient]) -> None:
 
 @patch(
     "skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH",
-    "tests/resources/mock-cvmfs-images",
+    Path("tests/resources/mock-cvmfs-images"),
 )
 async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     """Failure-test scan creation and retrieval."""
