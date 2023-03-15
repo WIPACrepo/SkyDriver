@@ -450,7 +450,7 @@ async def _delete_result(
 
 
 @pytest.mark.parametrize(
-    "docker_tag_inout",
+    "docker_tag_input_and_expect",
     [
         ("latest", os.environ["LATEST_TAG"]),
         ("3.4.0", "3.4.0"),
