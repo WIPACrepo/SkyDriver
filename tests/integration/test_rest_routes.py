@@ -87,7 +87,7 @@ POST_SCAN_BODY = {
 }
 
 
-async def _launch_scan(rc: RestClient, post_scan_body: dict) -> str:
+async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) -> str:
     # launch scan
     resp = await rc.request("POST", "/scan", post_scan_body)
 
@@ -101,18 +101,12 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict) -> str:
         f"--{post_scan_body['real_or_simulated_event']}-event"
     )
 
-    if post_scan_body["docker_tag"] == "latest":
-        tag = os.getenv("LATEST_TAG")
-    else:
-        tag = post_scan_body["docker_tag"]
-
     clientmanager_args = (
         f"python clientmanager/client_starter.py "
         f" --logs-directory /common-space "
         f" --jobs {post_scan_body['njobs']} "
         f" --memory {post_scan_body['memory']} "
-        # rely on CI env var
-        f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{tag} "
+        f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
         f" --client-startup-json /common-space/startup.json "
     )
 
@@ -455,15 +449,30 @@ async def _delete_result(
 ########################################################################################
 
 
-@pytest.mark.parametrize("docker_tag", ["latest", "3.4.0"])
-async def test_00(docker_tag: str, server: Callable[[], RestClient]) -> None:
+@pytest.mark.parametrize(
+    "docker_tag_inout",
+    [
+        ("latest", os.environ["LATEST_TAG"]),
+        ("3.4.0", "3.4.0"),
+        ("v3", os.environ["LATEST_TAG"]),
+        ("3.1", "3.1.5"),
+        ("gcd-handling-improvements-fe8ecee", "gcd-handling-improvements-fe8ecee"),
+    ],
+)
+async def test_00(
+    docker_tag_input_and_expect: tuple[str, str], server: Callable[[], RestClient]
+) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
 
     #
     # LAUNCH SCAN
     #
-    scan_id = await _launch_scan(rc, {**POST_SCAN_BODY, "docker_tag": docker_tag})
+    scan_id = await _launch_scan(
+        rc,
+        {**POST_SCAN_BODY, "docker_tag": docker_tag_input_and_expect[0]},
+        docker_tag_input_and_expect[1],
+    )
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
     manifest = await _clientmanager_reply(rc, scan_id, [])
 
@@ -559,7 +568,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     print(e.value)
 
     # OK
-    scan_id = await _launch_scan(rc, POST_SCAN_BODY)
+    scan_id = await _launch_scan(rc, POST_SCAN_BODY, os.environ["LATEST_TAG"])
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
     manifest = await _clientmanager_reply(rc, scan_id, [])
 

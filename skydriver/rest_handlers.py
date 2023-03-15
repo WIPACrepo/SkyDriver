@@ -155,7 +155,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             raise error
 
         # docker args
-        docker_tag = self.get_argument(
+        docker_tag = self.get_argument(  # either docker tag or 'latest'
             "docker_tag",
             type=images.resolve_docker_tag,
             forbiddens=[r"\s*"],  # no empty string / whitespace

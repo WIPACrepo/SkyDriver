@@ -2,7 +2,6 @@
 
 import re
 from pathlib import Path
-from typing import Iterator
 
 import cachetools.func
 import requests
@@ -24,7 +23,9 @@ DOCKERHUB_API_URL = (
 _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH = Path(
     "/cvmfs/icecube.opensciencegrid.org/containers/realtime/"
 )
-VERSION_REGEX = re.compile(r"\d+\.\d+\.\d+")
+VERSION_REGEX_MAJMINPATCH = re.compile(r"\d+\.\d+\.\d+")
+VERSION_REGEX_PREFIX_V = re.compile(r"v\d+(\.\d+(\.\d+)?)?")
+VERSION_REGEX_MAJ_OR_MAJMIN = re.compile(r"\d+(\.\d+)?")
 
 # clientmanager
 CLIENTMANAGER_IMAGE_WITH_TAG = "ghcr.io/wipacrepo/skydriver:latest"
@@ -49,33 +50,29 @@ def get_skyscan_docker_image(tag: str) -> str:
 
 
 @cachetools.func.ttl_cache(ttl=5 * 60)
-def resolve_latest_docker_hub() -> str:
-    """Get the most recent version-tag on Docker Hub.
+def pseudonym_to_full_version_docker_hub(docker_tag: str) -> str:
+    """Get the full-version tag on Docker Hub that has `docker_tag`'s SHA."""
 
-    This is needed because 'latest' doesn't exist in CVMFS.
-    """
-    # gives 10 most recent tags by default
+    def _match_find_full_version(digest_sha: str) -> str:
+        # no error handling
+        url = DOCKERHUB_API_URL
+        while True:
+            resp = requests.get(url).json()
+            for img in resp["results"]:
+                if digest_sha != img["digest"]:
+                    continue
+                if VERSION_REGEX_MAJMINPATCH.fullmatch(img["name"]):
+                    return img["name"]  # type: ignore[no-any-return]
+            if not resp["next"]:
+                raise RuntimeError("could not find tag")
+            url = resp["next"]
+
     try:
-        images = requests.get(DOCKERHUB_API_URL).json()["results"]
+        digest_sha = requests.get(f"{DOCKERHUB_API_URL}/{docker_tag}").json()["digest"]
+        return _match_find_full_version(digest_sha)
     except Exception as e:
         LOGGER.error(e)
-        raise ValueError("Image tag 'latest' failed to resolve to a version")
-
-    def latest_sha() -> str:
-        for img in images:
-            if img["name"] == "latest":
-                return img["digest"]  # type: ignore[no-any-return]
-        raise ValueError("Image tag 'latest' not found on Docker Hub")
-
-    def matching_sha(sha: str) -> Iterator[str]:
-        for img in images:
-            if img["digest"] == sha:
-                yield img["name"]
-
-    for tag in matching_sha(latest_sha()):
-        if VERSION_REGEX.fullmatch(tag):
-            return tag
-    raise ValueError("Image tag 'latest' could not resolve to a version")
+        raise ValueError("Image tag could not resolve to a full version")
 
 
 @cachetools.func.lru_cache()
@@ -97,14 +94,18 @@ def resolve_docker_tag(docker_tag: str) -> str:
     if not docker_tag:
         raise ValueError("Invalid docker tag")
 
-    if docker_tag == "latest":
-        return resolve_latest_docker_hub()
+    if docker_tag == "latest":  # 'latest' doesn't exist in CVMFS
+        return pseudonym_to_full_version_docker_hub("latest")
 
     if docker_tag.startswith("v"):
-        # v3.6.9 -> 3.6.9 (if needed)
-        if VERSION_REGEX.fullmatch(without_v := docker_tag.lstrip("v")):
-            docker_tag = without_v
+        # v4 -> 4; v5.1 -> 5.1; v3.6.9 -> 3.6.9
+        if VERSION_REGEX_PREFIX_V.fullmatch(docker_tag):
+            docker_tag = docker_tag.lstrip("v")
 
-    if tag_exists_on_docker_hub(docker_tag):
-        return docker_tag
-    raise ValueError(f"Image tag not on Docker Hub: {docker_tag}")
+    if not tag_exists_on_docker_hub(docker_tag):
+        raise ValueError(f"Image tag not on Docker Hub: {docker_tag}")
+
+    # resolve "shorthand versions", Ex: 3.1 -> 3.1.99, 5 -> 5.99.99
+    if VERSION_REGEX_MAJ_OR_MAJMIN.fullmatch(docker_tag):
+        return pseudonym_to_full_version_docker_hub(docker_tag)
+    return docker_tag
