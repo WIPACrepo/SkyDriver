@@ -552,6 +552,13 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
                 "POST", "/scan", {k: v for k, v in POST_SCAN_BODY.items() if k != arg}
             )
         print(e.value)
+    # # bad docker tag
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=rf"400 Client Error: `docker_tag`: \(ValueError\) .+ for url: {rc.address}/scan",
+    ) as e:
+        await rc.request("POST", "/scan", {**POST_SCAN_BODY, "docker_tag": "foo"})
+    print(e.value)
 
     # OK
     scan_id = await _launch_scan(rc)
