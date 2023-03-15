@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from typing import Iterator
 
+import cachetools.func
 import requests
 
 from .config import LOGGER
@@ -47,6 +48,7 @@ def get_skyscan_docker_image(tag: str) -> str:
 # utils
 
 
+@cachetools.func.ttl_cache(ttl=5 * 60)
 def resolve_latest() -> str:
     """Get the most recent version-tag on Docker Hub.
 
