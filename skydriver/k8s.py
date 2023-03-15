@@ -249,7 +249,7 @@ class SkymapScannerJob:
     @staticmethod
     def get_clientmanager_args(
         common_space_volume_path: Path,
-        singularity_image: str,
+        singularity_image: Path,
         njobs: int,
         memory: str,
         collector: str,

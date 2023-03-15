@@ -34,9 +34,9 @@ CLIENTMANAGER_IMAGE_WITH_TAG = "ghcr.io/wipacrepo/skydriver:latest"
 # getters
 
 
-def get_skyscan_cvmfs_singularity_image(tag: str) -> str:
+def get_skyscan_cvmfs_singularity_image(tag: str) -> Path:
     """Get the singularity image path for 'tag' (assumes it exists)."""
-    return f"{_SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH}{_IMAGE}:{tag}"
+    return _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH / f"{_IMAGE}:{tag}"
 
 
 def get_skyscan_docker_image(tag: str) -> str:
