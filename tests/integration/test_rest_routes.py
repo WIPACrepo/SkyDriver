@@ -88,34 +88,39 @@ POST_SCAN_BODY = {
 }
 
 
-async def _launch_scan(rc: RestClient) -> str:
+async def _launch_scan(rc: RestClient, post_scan_body: dict) -> str:
     # launch scan
-    resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
+    resp = await rc.request("POST", "/scan", post_scan_body)
 
     server_args = (
         f"python -m skymap_scanner.server "
-        f"--reco-algo {POST_SCAN_BODY['reco_algo']} "
+        f"--reco-algo {post_scan_body['reco_algo']} "
         f"--cache-dir /common-space "
         f"--output-dir /common-space "
         f"--client-startup-json /common-space/startup.json "
-        f"--nsides {' '.join(f'{k}:{v}' for k,v in POST_SCAN_BODY['nsides'].items())} "  # type: ignore[attr-defined]
-        f"--{POST_SCAN_BODY['real_or_simulated_event']}-event"
+        f"--nsides {' '.join(f'{k}:{v}' for k,v in post_scan_body['nsides'].items())} "
+        f"--{post_scan_body['real_or_simulated_event']}-event"
     )
+
+    if post_scan_body["docker_tag"] == "latest":
+        tag = os.getenv("LATEST_TAG")
+    else:
+        tag = post_scan_body["docker_tag"]
 
     clientmanager_args = (
         f"python clientmanager/client_starter.py "
         f" --logs-directory /common-space "
-        f" --jobs {POST_SCAN_BODY['njobs']} "
-        f" --memory {POST_SCAN_BODY['memory']} "
+        f" --jobs {post_scan_body['njobs']} "
+        f" --memory {post_scan_body['memory']} "
         # rely on _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH mocking & CI env var
-        f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{os.getenv('LATEST_TAG')} "
+        f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{tag} "
         f" --client-startup-json /common-space/startup.json "
     )
 
     assert resp == dict(
         scan_id=resp["scan_id"],
         is_deleted=False,
-        event_i3live_json_dict=POST_SCAN_BODY["event_i3live_json"],
+        event_i3live_json_dict=post_scan_body["event_i3live_json"],
         event_metadata=None,
         scan_metadata=None,
         condor_clusters=[],
@@ -455,14 +460,15 @@ async def _delete_result(
     "skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH",
     Path("tests/resources/mock-cvmfs-images"),
 )
-async def test_00(server: Callable[[], RestClient]) -> None:
+@pytest.mark.parametrize("docker_tag", ["latest", "3.0.74"])
+async def test_00(docker_tag: str, server: Callable[[], RestClient]) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
 
     #
     # LAUNCH SCAN
     #
-    scan_id = await _launch_scan(rc)
+    scan_id = await _launch_scan(rc, {**POST_SCAN_BODY, "docker_tag": docker_tag})
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
     manifest = await _clientmanager_reply(rc, scan_id, [])
 
@@ -562,7 +568,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     print(e.value)
 
     # OK
-    scan_id = await _launch_scan(rc)
+    scan_id = await _launch_scan(rc, POST_SCAN_BODY)
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
     manifest = await _clientmanager_reply(rc, scan_id, [])
 
