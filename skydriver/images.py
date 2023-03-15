@@ -88,6 +88,9 @@ def get_all_cvmfs_image_tags() -> Iterator[str]:
 
 def resolve_docker_tag(docker_tag: str) -> str:
     """Check if the docker tag exists, then resolve 'latest' if needed."""
+    if not docker_tag:
+        raise ValueError("Invalid docker tag")
+
     if docker_tag == "latest":
         # NOTE: assumes tag exists (or will soon) on CVMFS
         #       condor will back off & retry until the image exists
