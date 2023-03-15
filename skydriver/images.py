@@ -1,7 +1,6 @@
 """Utilities for dealing with docker/cvmfs/singularity images."""
 
 import re
-import urllib.parse
 from pathlib import Path
 from typing import Iterator
 
@@ -60,7 +59,7 @@ def resolve_latest_docker_hub() -> str:
         images = requests.get(DOCKERHUB_API_URL).json()["results"]
     except Exception as e:
         LOGGER.error(e)
-        ValueError("Image tag 'latest' failed to resolve to a version")
+        raise ValueError("Image tag 'latest' failed to resolve to a version")
 
     def latest_sha() -> str:
         for img in images:
@@ -82,8 +81,11 @@ def resolve_latest_docker_hub() -> str:
 @cachetools.func.lru_cache()
 def tag_exists_on_docker_hub(docker_tag: str) -> bool:
     """Return whether the tag exists on Docker Hub."""
-    api_url = urllib.parse.urljoin(DOCKERHUB_API_URL, docker_tag)
-    return requests.get(api_url).ok
+    try:
+        return requests.get(f"{DOCKERHUB_API_URL}/{docker_tag}").ok
+    except Exception as e:
+        LOGGER.error(e)
+        raise ValueError("Image tag verification failed")
 
 
 def resolve_docker_tag(docker_tag: str) -> str:
@@ -105,4 +107,4 @@ def resolve_docker_tag(docker_tag: str) -> str:
 
     if tag_exists_on_docker_hub(docker_tag):
         return docker_tag
-    raise ValueError(f"Tag not on Docker Hub: {docker_tag}")
+    raise ValueError(f"Image tag not on Docker Hub: {docker_tag}")
