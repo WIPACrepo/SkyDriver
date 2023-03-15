@@ -111,7 +111,7 @@ jobs:
 
       - name: Test
         run: |
-          LATEST_TAG=$( \
+          export LATEST_TAG=$( \
               curl -I https://github.com/icecube/skymap_scanner/releases/latest \
               | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}' \
               | sed 's/v//' \
