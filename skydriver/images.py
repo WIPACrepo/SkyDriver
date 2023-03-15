@@ -98,4 +98,4 @@ def resolve_docker_tag(docker_tag: str) -> str:
     # in CVMFS?
     if docker_tag in get_all_cvmfs_image_tags():
         return docker_tag
-    raise ValueError("Tag not in CVMFS")
+    raise ValueError(f"Tag not in CVMFS: {docker_tag}")
