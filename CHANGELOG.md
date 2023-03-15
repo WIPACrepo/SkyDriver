@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.37 (2023-03-15)
+### Other
+* Clientmanager: use `/bin/bash` ([`4d8e25c`](https://github.com/WIPACrepo/SkyDriver/commit/4d8e25c95e1de53eb4da1f97f3f38b0c5f90d2b1))
+
 ## v0.0.36 (2023-03-15)
 ### Other
 * Clientmanager: using logging for condor logs ([`b7dac93`](https://github.com/WIPACrepo/SkyDriver/commit/b7dac938b8baec350c9ad40323a6645ab04084d5))
