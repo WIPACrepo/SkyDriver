@@ -2,6 +2,15 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.35 (2023-03-15)
+### Other
+* <bot> update requirements.txt ([`a465df5`](https://github.com/WIPACrepo/SkyDriver/commit/a465df5089e74b80aac8bb3ce300be2f8f9c753e))
+* <bot> update requirements-tests.txt ([`e54b93a`](https://github.com/WIPACrepo/SkyDriver/commit/e54b93a0d2311d06a4398b5a8e21c7402f21236c))
+* <bot> update requirements-clientmanager.txt ([`0e910d7`](https://github.com/WIPACrepo/SkyDriver/commit/0e910d749627737fa199665e4d61338a30231f4f))
+* It's okay to run `py-setup` on `main` ([`8d22946`](https://github.com/WIPACrepo/SkyDriver/commit/8d229467dcf0d7b9246659bfbe021bf11147886f))
+* Pin `typeguard==2.13.3` until #15 ([`b67b6bd`](https://github.com/WIPACrepo/SkyDriver/commit/b67b6bd9582ae870c990bafba3ed48da5cd2e496))
+* Clientmanager: dump condor files when done launching ([`4963a7e`](https://github.com/WIPACrepo/SkyDriver/commit/4963a7ec53bb389be2936ba6aeb7908ad24f973e))
+
 ## v0.0.34 (2023-03-10)
 ### Other
 * Cast to list ([`923189c`](https://github.com/WIPACrepo/SkyDriver/commit/923189c2ff8ead25574a9b099ef9a25dc627304f))
