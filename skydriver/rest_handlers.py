@@ -159,7 +159,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "docker_tag",
             type=images.resolve_docker_tag,
             forbiddens=[r"\s*"],  # no empty string / whitespace
-            default="latest",
         )
 
         # condor args
