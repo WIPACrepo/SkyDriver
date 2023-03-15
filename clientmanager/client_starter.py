@@ -43,6 +43,10 @@ def make_condor_logs_subdir(directory: Path) -> Path:
     return subdir
 
 
+def _get_log_fpath(logs_subdir: Path) -> Path:
+    return logs_subdir / "clientmanager.log"
+
+
 def make_condor_job_description(  # pylint: disable=too-many-arguments
     logs_subdir: Path,
     # condor args
@@ -91,7 +95,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         "output": str(logs_subdir / "client-$(ProcId).out"),
         "environment": f'"{environment}"',  # must be quoted
         "error": str(logs_subdir / "client-$(ProcId).err"),
-        "log": str(logs_subdir / "client.log"),
+        "log": str(_get_log_fpath(logs_subdir)),
         "+FileSystemDomain": '"blah"',  # must be quoted
         "should_transfer_files": "YES",
         "transfer_input_files": ",".join(
@@ -151,6 +155,20 @@ def update_skydriver(
             }
         },
     )
+
+
+def dump_condor_dir(logs_subdir: Path) -> None:
+    while True:
+        print("#######################################################################")
+        for fpath in logs_subdir.iterdir():
+            print(fpath)
+        print("-------------------------------")
+        log_file = _get_log_fpath(logs_subdir)
+        if log_file.exists():
+            print(f"{log_file}:")
+            with open(log_file, "r") as f:
+                print("".join(f.readlines()))
+        time.sleep(120)  # 2 mins
 
 
 def main() -> None:
@@ -320,6 +338,9 @@ def main() -> None:
             args.schedd,
         )
         LOGGER.warning("Sent cluster info to SkyDriver")
+
+    # start dumping condor output
+    dump_condor_dir(logs_subdir)
 
 
 if __name__ == "__main__":
