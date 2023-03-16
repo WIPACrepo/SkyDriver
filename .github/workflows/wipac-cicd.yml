@@ -4,6 +4,7 @@ on: [push]
 
 env:
   CI_TEST: 'yes'
+  CLIENTMANAGER_IMAGE_TAG: 'latest'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

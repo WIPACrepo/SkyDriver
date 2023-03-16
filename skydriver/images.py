@@ -6,7 +6,7 @@ from pathlib import Path
 import cachetools.func
 import requests
 
-from .config import LOGGER
+from .config import ENV, LOGGER
 
 # ---------------------------------------------------------------------------------------
 # constants
@@ -25,9 +25,6 @@ _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH = Path(
 )
 VERSION_REGEX_MAJMINPATCH = re.compile(r"\d+\.\d+\.\d+")
 VERSION_REGEX_PREFIX_V = re.compile(r"v\d+(\.\d+(\.\d+)?)?")
-
-# clientmanager
-CLIENTMANAGER_IMAGE_WITH_TAG = "ghcr.io/wipacrepo/skydriver:latest"
 
 
 # ---------------------------------------------------------------------------------------
