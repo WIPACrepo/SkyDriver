@@ -20,12 +20,12 @@ charset-normalizer==3.1.0
     # via requests
 coloredlogs==15.0.1
     # via
-    #   skydriver (setup.py)
+    #   UNKNOWN (setup.py)
     #   wipac-telemetry
 cryptography==39.0.2
     # via pyjwt
 dacite==1.8.0
-    # via skydriver (setup.py)
+    # via UNKNOWN (setup.py)
 deprecated==1.2.13
     # via opentelemetry-api
 dnspython==2.3.0
@@ -39,15 +39,15 @@ googleapis-common-protos==1.56.2
 grpcio==1.51.3
     # via opentelemetry-exporter-jaeger-proto-grpc
 htcondor==10.3.0
-    # via skydriver (setup.py)
+    # via UNKNOWN (setup.py)
 humanfriendly==10.0
     # via coloredlogs
 idna==3.4
     # via requests
 kubernetes==26.1.0
-    # via skydriver (setup.py)
+    # via UNKNOWN (setup.py)
 motor==3.1.1
-    # via skydriver (setup.py)
+    # via UNKNOWN (setup.py)
 oauthlib==3.2.2
     # via requests-oauthlib
 opentelemetry-api==1.16.0
@@ -92,8 +92,8 @@ pyjwt[crypto]==2.5.0
     # via wipac-rest-tools
 pymongo==4.3.3
     # via
+    #   UNKNOWN (setup.py)
     #   motor
-    #   skydriver (setup.py)
 pypng==0.20220715.0
     # via qrcode
 python-dateutil==2.8.2
@@ -104,11 +104,11 @@ qrcode==7.4.2
     # via wipac-rest-tools
 requests==2.28.2
     # via
+    #   UNKNOWN (setup.py)
     #   kubernetes
     #   opentelemetry-exporter-otlp-proto-http
     #   requests-futures
     #   requests-oauthlib
-    #   skydriver (setup.py)
     #   wipac-dev-tools
     #   wipac-rest-tools
 requests-futures==1.0.0
@@ -127,10 +127,10 @@ thrift==0.16.0
     # via opentelemetry-exporter-jaeger-thrift
 tornado==6.2
     # via
-    #   skydriver (setup.py)
+    #   UNKNOWN (setup.py)
     #   wipac-rest-tools
 typeguard==2.13.3
-    # via skydriver (setup.py)
+    # via UNKNOWN (setup.py)
 types-cryptography==3.3.23.2
     # via pyjwt
 typing-extensions==4.5.0
@@ -147,11 +147,11 @@ websocket-client==1.5.1
     # via kubernetes
 wipac-dev-tools==1.6.13
     # via
-    #   skydriver (setup.py)
+    #   UNKNOWN (setup.py)
     #   wipac-rest-tools
     #   wipac-telemetry
 wipac-rest-tools[telemetry]==1.4.15
-    # via skydriver (setup.py)
+    # via UNKNOWN (setup.py)
 wipac-telemetry==0.2.5
     # via wipac-rest-tools
 wrapt==1.15.0
