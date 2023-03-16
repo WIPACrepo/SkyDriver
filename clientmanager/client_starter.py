@@ -147,7 +147,7 @@ def update_skydriver(
         "PATCH",
         f"/scan/manifest/{scan_id}",
         {
-            "condor_metadata": {
+            "condor_cluster": {
                 "collector": collector,
                 "schedd": schedd,
                 "cluster_id": submit_result.cluster(),
@@ -157,18 +157,18 @@ def update_skydriver(
     )
 
 
-def dump_condor_dir(logs_subdir: Path) -> None:
-    while True:
-        LOGGER.debug("################################################################")
-        for fpath in logs_subdir.iterdir():
-            LOGGER.debug(fpath)
-        LOGGER.debug("-------------------------------")
-        log_file = _get_log_fpath(logs_subdir)
-        if log_file.exists():
-            LOGGER.debug(f"{log_file}:")
-            with open(log_file, "r") as f:
-                LOGGER.debug("".join(f.readlines()))
-        time.sleep(120)  # 2 mins
+# def dump_condor_dir(logs_subdir: Path) -> None:
+#     while True:
+#         LOGGER.debug("################################################################")
+#         for fpath in logs_subdir.iterdir():
+#             LOGGER.debug(fpath)
+#         LOGGER.debug("-------------------------------")
+#         log_file = _get_log_fpath(logs_subdir)
+#         if log_file.exists():
+#             LOGGER.debug(f"{log_file}:")
+#             with open(log_file, "r") as f:
+#                 LOGGER.debug("".join(f.readlines()))
+#         time.sleep(120)  # 2 mins
 
 
 def main() -> None:
@@ -337,10 +337,10 @@ def main() -> None:
             args.collector,
             args.schedd,
         )
-        LOGGER.warning("Sent cluster info to SkyDriver")
+        LOGGER.info("Sent cluster info to SkyDriver")
 
     # start dumping condor output
-    dump_condor_dir(logs_subdir)
+    # dump_condor_dir(logs_subdir)
 
 
 if __name__ == "__main__":
