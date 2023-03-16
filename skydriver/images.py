@@ -97,10 +97,9 @@ def resolve_docker_tag(docker_tag: str) -> str:
     if docker_tag == "latest":  # 'latest' doesn't exist in CVMFS
         return pseudonym_to_full_version_docker_hub("latest")
 
-    if docker_tag.startswith("v"):
+    if VERSION_REGEX_PREFIX_V.fullmatch(docker_tag):
         # v4 -> 4; v5.1 -> 5.1; v3.6.9 -> 3.6.9
-        if VERSION_REGEX_PREFIX_V.fullmatch(docker_tag):
-            docker_tag = docker_tag.lstrip("v")
+        docker_tag = docker_tag.lstrip("v")
 
     if not tag_exists_on_docker_hub(docker_tag):
         raise ValueError(f"Image tag not on Docker Hub: {docker_tag}")
