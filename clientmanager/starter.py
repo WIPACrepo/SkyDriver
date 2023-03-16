@@ -1,4 +1,4 @@
-"""An HTCondor script for spawning Skymap Scanner clients."""
+"""For starting Skymap Scanner clients on an HTCondor cluster."""
 
 # pylint:disable=no-member
 
