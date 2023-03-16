@@ -260,7 +260,7 @@ class SkymapScannerJob:
         clientmanager.
         """
         args = (
-            f"python clientmanager/client_starter.py "
+            f"python -m clientmanager start "
             # f" --dryrun"
             f" --logs-directory {common_space_volume_path} "
             # --collector-address  # see below
