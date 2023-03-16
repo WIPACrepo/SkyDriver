@@ -78,7 +78,7 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
         No error handling
         """
         url = DOCKERHUB_API_URL
-        while url:
+        while True:
             resp = requests.get(url).json()
             for img in resp["results"]:
                 LOGGER.debug(img)
@@ -111,6 +111,8 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
 
 def tag_exists_on_docker_hub(docker_tag: str) -> bool:
     """Return whether the tag exists on Docker Hub."""
+    if not docker_tag or not docker_tag.strip():
+        return False
     try:
         return requests.get(f"{DOCKERHUB_API_URL}/{docker_tag}").ok
     except Exception as e:
