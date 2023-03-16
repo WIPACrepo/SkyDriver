@@ -335,10 +335,10 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         result = await self.results.get(scan_id, incl_del)
 
         # when we get the final result, it's time to tear down
-        if result.is_final and job_is_running:
-            manifest = await self.manifests.get(scan_id, incl_del)
-            k8s.stop_condor(manifest.condor_clusters)
-            k8s.stop_job
+        # if result.is_final and job_is_running:
+        #     manifest = await self.manifests.get(scan_id, incl_del)
+        #     k8s.stop_condor(manifest.condor_clusters)
+        #     k8s.stop_job
 
         self.write(dc.asdict(result))
 
