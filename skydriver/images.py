@@ -81,7 +81,6 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
         while True:
             resp = requests.get(url).json()
             for img in resp["results"]:
-                LOGGER.debug(img)
                 if sha != img["digest"]:
                     continue
                 if VERSION_REGEX_MAJMINPATCH.fullmatch(img["name"]):
