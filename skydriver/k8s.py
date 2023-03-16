@@ -393,3 +393,6 @@ class SkymapScannerJob:
             LOGGER.error(e)
             raise
         return api_response
+
+
+    def clientstopper()

@@ -5,18 +5,15 @@
 import argparse
 import datetime as dt
 import getpass
-import logging
 import os
 import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-import coloredlogs  # type: ignore[import]
 import htcondor  # type: ignore[import]
 from rest_tools.client import RestClient
-from wipac_dev_tools import logging_tools
 
-LOGGER = logging.getLogger("clientmanager")
+from .config import LOGGER
 
 
 def get_schedd_obj(collector: str, schedd: str) -> htcondor.Schedd:
@@ -171,15 +168,8 @@ def update_skydriver(
 #         time.sleep(120)  # 2 mins
 
 
-def main() -> None:
-    """Prep and submit Condor job(s)."""
-    parser = argparse.ArgumentParser(
-        description=(
-            "Submit Condor jobs running Skymap Scanner clients: "
-            "Condor log files to {logs_directory}/skyscan-{datetime}."
-        ),
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
+    """Add args to subparser."""
 
     def wait_for_file(waitee: Path, wait_time: int) -> Path:
         """Wait for `waitee` to exist, then return fullly-resolved path."""
@@ -196,31 +186,21 @@ def main() -> None:
         return waitee.resolve()
 
     # helper args
-    parser.add_argument(
+    sub_parser.add_argument(
         "--dryrun",
         default=False,
         action="store_true",
         help="does everything except submitting the condor job(s)",
     )
-    parser.add_argument(
+    sub_parser.add_argument(
         "--logs-directory",
         required=True,
         type=Path,
         help="where to save logs",
     )
-    parser.add_argument(
-        "--collector",
-        default="",
-        help="the full URL address of the HTCondor collector server. Ex: foo-bar.icecube.wisc.edu",
-    )
-    parser.add_argument(
-        "--schedd",
-        default="",
-        help="the full DNS name of the HTCondor Schedd server. Ex: baz.icecube.wisc.edu",
-    )
 
     # condor args
-    parser.add_argument(
+    sub_parser.add_argument(
         "--accounting-group",
         default="",
         help=(
@@ -228,14 +208,14 @@ def main() -> None:
             "By default no accounting group is used."
         ),
     )
-    parser.add_argument(
+    sub_parser.add_argument(
         "--jobs",
         required=True,
         type=int,
         help="number of jobs",
         # default=4,
     )
-    parser.add_argument(
+    sub_parser.add_argument(
         "--memory",
         required=True,
         help="amount of memory",
@@ -243,37 +223,28 @@ def main() -> None:
     )
 
     # client args
-    parser.add_argument(
+    sub_parser.add_argument(
         "--singularity-image",
         required=True,
         help="a path or url to the singularity image",
     )
-    parser.add_argument(
+    sub_parser.add_argument(
         "--client-startup-json",
         help="The 'startup.json' file to startup each client",
         type=lambda x: wait_for_file(
             Path(x), int(os.getenv("CLIENT_STARTER_WAIT_FOR_STARTUP_JSON", "60"))
         ),
     )
-    parser.add_argument(
+    sub_parser.add_argument(
         "--client-args",
         required=False,
         nargs="+",
         help="n 'key:value' pairs containing the python CL arguments to pass to skymap_scanner.client",
     )
 
-    args = parser.parse_args()
-    for arg, val in vars(args).items():
-        LOGGER.warning(f"{arg}: {val}")
 
-    args = parser.parse_args()
-    logging_tools.set_level(
-        "DEBUG",  # os.getenv("SKYSCAN_LOG", "INFO"),  # type: ignore[arg-type]
-        first_party_loggers=LOGGER,
-        third_party_level=os.getenv("SKYSCAN_LOG_THIRD_PARTY", "WARNING"),  # type: ignore[arg-type]
-    )
-    logging_tools.log_argparse_args(args, logger=LOGGER, level="WARNING")
-
+def start(args: argparse.Namespace) -> None:
+    """Main logic."""
     logs_subdir = make_condor_logs_subdir(args.logs_directory)
 
     # get client args
@@ -341,8 +312,3 @@ def main() -> None:
 
     # start dumping condor output
     # dump_condor_dir(logs_subdir)
-
-
-if __name__ == "__main__":
-    coloredlogs.install(level="DEBUG")
-    main()
