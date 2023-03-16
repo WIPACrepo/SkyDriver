@@ -78,6 +78,7 @@ class CondorClutser:
     schedd: str
     cluster_id: int
     jobs: int
+    submit_dict: StrDict
 
 
 @typechecked(always=True)  # always b/c we want full data validation
