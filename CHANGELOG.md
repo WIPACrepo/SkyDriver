@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.38 (2023-03-16)
+### Other
+* Clientmanager: fix sending cluster info, rollback dumping logs ([`98b5f65`](https://github.com/WIPACrepo/SkyDriver/commit/98b5f659af8b10c677954e817ecd9cb31c4b0368))
+
 ## v0.0.37 (2023-03-15)
 ### Other
 * Clientmanager: use `/bin/bash` ([`4d8e25c`](https://github.com/WIPACrepo/SkyDriver/commit/4d8e25c95e1de53eb4da1f97f3f38b0c5f90d2b1))
