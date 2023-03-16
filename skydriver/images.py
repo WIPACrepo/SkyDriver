@@ -6,7 +6,7 @@ from pathlib import Path
 import cachetools.func
 import requests
 
-from .config import LOGGER
+from .config import ENV, LOGGER
 
 # ---------------------------------------------------------------------------------------
 # constants
@@ -26,6 +26,9 @@ _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH = Path(
 VERSION_REGEX_MAJMINPATCH = re.compile(r"\d+\.\d+\.\d+")
 VERSION_REGEX_PREFIX_V = re.compile(r"v\d+(\.\d+(\.\d+)?)?")
 
+# clientmanager
+_CLIENTMANAGER_IMAGE_NO_TAG = "ghcr.io/wipacrepo/skydriver"
+
 
 # ---------------------------------------------------------------------------------------
 # getters
@@ -39,6 +42,11 @@ def get_skyscan_cvmfs_singularity_image(tag: str) -> Path:
 def get_skyscan_docker_image(tag: str) -> str:
     """Get the docker image + tag for 'tag' (assumes it exists)."""
     return f"{_SKYSCAN_DOCKER_IMAGE_NO_TAG}:{tag}"
+
+
+def get_clientmanager_image() -> str:
+    """Get the clientmanager image + tag (assumes it exists)."""
+    return f"{_CLIENTMANAGER_IMAGE_NO_TAG}:{ENV.CLIENTMANAGER_IMAGE_TAG}"
 
 
 # ---------------------------------------------------------------------------------------
