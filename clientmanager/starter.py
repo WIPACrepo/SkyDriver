@@ -1,6 +1,5 @@
 """For starting Skymap Scanner clients on an HTCondor cluster."""
 
-# pylint:disable=no-member
 
 import argparse
 import datetime as dt
@@ -13,22 +12,8 @@ from typing import List, Optional, Tuple
 import htcondor  # type: ignore[import]
 from rest_tools.client import RestClient
 
+from . import condor_tools
 from .config import LOGGER
-
-
-def get_schedd_obj(collector: str, schedd: str) -> htcondor.Schedd:
-    """Get object for talking with HTCondor schedd.
-
-    Examples:
-        `collector = "foo-bar.icecube.wisc.edu"`
-        `schedd = "baz.icecube.wisc.edu"`
-    """
-    schedd_ad = htcondor.Collector(collector).locate(  # ~> exception
-        htcondor.DaemonTypes.Schedd, schedd
-    )
-    schedd_obj = htcondor.Schedd(schedd_ad)
-    LOGGER.info(f"Connected to Schedd {collector=} {schedd=}")
-    return schedd_obj
 
 
 def make_condor_logs_subdir(directory: Path) -> Path:
@@ -53,7 +38,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     singularity_image: str,
     client_startup_json: Path,
     client_args: str,
-) -> htcondor.Submit:
+) -> htcondor.Submit:  # pylint:disable=no-member
     """Make the condor job description object."""
     transfer_input_files: List[Path] = [client_startup_json]
 
@@ -107,7 +92,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     if accounting_group:
         submit_dict["+AccountingGroup"] = f"{accounting_group}.{getpass.getuser()}"
 
-    return htcondor.Submit(submit_dict)
+    return htcondor.Submit(submit_dict)  # pylint:disable=no-member
 
 
 def connect_to_skydriver() -> Tuple[Optional[RestClient], str]:
@@ -135,7 +120,7 @@ def connect_to_skydriver() -> Tuple[Optional[RestClient], str]:
 def update_skydriver(
     skydriver_rc: RestClient,
     scan_id: str,
-    submit_result: htcondor.SubmitResult,
+    submit_result: htcondor.SubmitResult,  # pylint:disable=no-member
     collector: str,
     schedd: str,
 ) -> None:
@@ -287,7 +272,7 @@ def start(args: argparse.Namespace) -> None:
 
     # make connections -- do these before submitting so we don't have any unwanted surprises
     skydriver_rc, scan_id = connect_to_skydriver()
-    schedd_obj = get_schedd_obj(args.collector, args.schedd)
+    schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
 
     # submit
     submit_result = schedd_obj.submit(
@@ -296,8 +281,8 @@ def start(args: argparse.Namespace) -> None:
         spool=True,  # for transfer_input_files
     )
     LOGGER.info(submit_result)
-    job_ads = job_description.jobs(count=args.jobs, clusterid=submit_result.cluster())
-    schedd_obj.spool(list(job_ads))
+
+    schedd_obj.spool(condor_tools.get_jobs)
 
     # report to SkyDriver
     if skydriver_rc:
