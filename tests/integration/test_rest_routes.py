@@ -299,6 +299,7 @@ async def _clientmanager_reply(
         schedd="https://un-schedd.edu",
         cluster_id=random.randint(1, 10000),
         jobs=random.randint(1, 10000),
+        submit_dict={"submit": "all-the-things!"},
     )
 
     manifest = await _do_patch(
