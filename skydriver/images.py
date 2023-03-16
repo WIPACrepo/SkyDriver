@@ -90,15 +90,22 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
             url = resp["next"]
         return None
 
+    _error = ValueError("Image tag could not resolve to a full version")
+
     try:
         sha = requests.get(f"{DOCKERHUB_API_URL}/{docker_tag}").json()["digest"]
+    except Exception as e:
+        LOGGER.error(e)
+        raise _error
+
+    try:
         if majminpatch := _match_sha_to_majminpatch(sha):
             return majminpatch
         else:  # no match
             return docker_tag
     except Exception as e:
         LOGGER.error(e)
-        raise ValueError("Image tag could not resolve to a full version")
+        raise _error
 
 
 def tag_exists_on_docker_hub(docker_tag: str) -> bool:
@@ -116,9 +123,6 @@ def resolve_docker_tag(docker_tag: str) -> str:
     NOTE: Assumes tag exists (or will soon) on CVMFS. Condor will back
           off & retry until the image exists
     """
-    if not docker_tag:
-        raise ValueError("Invalid docker tag")
-
     if docker_tag == "latest":  # 'latest' doesn't exist in CVMFS
         return _try_resolve_to_majminpatch_docker_hub("latest")
 
