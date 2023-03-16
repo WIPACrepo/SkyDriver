@@ -394,5 +394,4 @@ class SkymapScannerJob:
             raise
         return api_response
 
-
-    def clientstopper()
+    # def clientstopper()
