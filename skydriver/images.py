@@ -25,7 +25,6 @@ _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH = Path(
 )
 VERSION_REGEX_MAJMINPATCH = re.compile(r"\d+\.\d+\.\d+")
 VERSION_REGEX_PREFIX_V = re.compile(r"v\d+(\.\d+(\.\d+)?)?")
-VERSION_REGEX_MAJ_OR_MAJMIN = re.compile(r"\d+(\.\d+)?")
 
 # clientmanager
 CLIENTMANAGER_IMAGE_WITH_TAG = "ghcr.io/wipacrepo/skydriver:latest"
@@ -50,32 +49,58 @@ def get_skyscan_docker_image(tag: str) -> str:
 
 
 @cachetools.func.ttl_cache(ttl=5 * 60)
-def pseudonym_to_full_version_docker_hub(docker_tag: str) -> str:
-    """Get the full-version tag on Docker Hub that has `docker_tag`'s SHA."""
+def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
+    """Get the '#.#.#' tag on Docker Hub w/ `docker_tag`'s SHA if possible.
 
-    def _match_find_full_version(digest_sha: str) -> str:
-        # no error handling
+    Return `docker_tag` if already a '#.#.#', or if there's no match.
+
+    Examples:
+        3.4.5     ->  3.4.5
+        3.1       ->  3.1.5 (forever)
+        3         ->  3.3.5 (on 2023/03/08)
+        latest    ->  3.4.2 (on 2023/03/15)
+        test-foo  ->  test-foo
+        typo_tag  ->  `ValueError`
+
+    Raises:
+        ValueError -- if `docker_tag` doesn't exist on Docker Hub
+        ValueError -- if there's an issue communicating w/ Docker Hub API
+    """
+    if not tag_exists_on_docker_hub(docker_tag):
+        raise ValueError(f"Image tag not on Docker Hub: {docker_tag}")
+
+    if VERSION_REGEX_MAJMINPATCH.fullmatch(docker_tag):
+        return docker_tag
+
+    def _match_sha_to_majminpatch(sha: str) -> str | None:
+        """Finds the image w/ same SHA and has a version tag like '#.#.#'.
+
+        No error handling
+        """
         url = DOCKERHUB_API_URL
-        while True:
+        while url:
             resp = requests.get(url).json()
             for img in resp["results"]:
-                if digest_sha != img["digest"]:
+                if sha != img["digest"]:
                     continue
                 if VERSION_REGEX_MAJMINPATCH.fullmatch(img["name"]):
                     return img["name"]  # type: ignore[no-any-return]
             if not resp["next"]:
-                raise RuntimeError("could not find tag")
+                break
             url = resp["next"]
+        return None
 
     try:
-        digest_sha = requests.get(f"{DOCKERHUB_API_URL}/{docker_tag}").json()["digest"]
-        return _match_find_full_version(digest_sha)
+        sha = requests.get(f"{DOCKERHUB_API_URL}/{docker_tag}").json()["digest"]
+        if majminpatch := _match_sha_to_majminpatch(sha):
+            return majminpatch
+        else:  # no match
+            return docker_tag
     except Exception as e:
         LOGGER.error(e)
         raise ValueError("Image tag could not resolve to a full version")
 
 
-@cachetools.func.lru_cache()
 def tag_exists_on_docker_hub(docker_tag: str) -> bool:
     """Return whether the tag exists on Docker Hub."""
     try:
@@ -95,16 +120,10 @@ def resolve_docker_tag(docker_tag: str) -> str:
         raise ValueError("Invalid docker tag")
 
     if docker_tag == "latest":  # 'latest' doesn't exist in CVMFS
-        return pseudonym_to_full_version_docker_hub("latest")
+        return _try_resolve_to_majminpatch_docker_hub("latest")
 
     if VERSION_REGEX_PREFIX_V.fullmatch(docker_tag):
         # v4 -> 4; v5.1 -> 5.1; v3.6.9 -> 3.6.9
         docker_tag = docker_tag.lstrip("v")
 
-    if not tag_exists_on_docker_hub(docker_tag):
-        raise ValueError(f"Image tag not on Docker Hub: {docker_tag}")
-
-    # resolve "shorthand versions", Ex: 3.1 -> 3.1.99, 5 -> 5.99.99
-    if VERSION_REGEX_MAJ_OR_MAJMIN.fullmatch(docker_tag):
-        return pseudonym_to_full_version_docker_hub(docker_tag)
-    return docker_tag
+    return _try_resolve_to_majminpatch_docker_hub(docker_tag)
