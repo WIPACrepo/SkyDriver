@@ -253,7 +253,7 @@ def start(args: argparse.Namespace) -> None:
             f.write(token)
 
     # make condor job description
-    job_description = make_condor_job_description(
+    submit_obj = make_condor_job_description(
         logs_subdir,
         # condor args
         args.memory,
@@ -263,7 +263,7 @@ def start(args: argparse.Namespace) -> None:
         args.client_startup_json,
         client_args,
     )
-    LOGGER.info(job_description)
+    LOGGER.info(submit_obj)
 
     # dryrun?
     if args.dryrun:
@@ -275,21 +275,21 @@ def start(args: argparse.Namespace) -> None:
     schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
 
     # submit
-    submit_result = schedd_obj.submit(
-        job_description,
+    submit_result_obj = schedd_obj.submit(
+        submit_obj,
         count=args.jobs,  # submit N jobs
         spool=True,  # for transfer_input_files
     )
-    LOGGER.info(submit_result)
-
-    schedd_obj.spool(condor_tools.get_jobs)
+    LOGGER.info(submit_result_obj)
+    jobs = condor_tools.get_job_classads(submit_obj, args.jobs, submit_result_obj.cluster())
+    schedd_obj.spool(jobs)
 
     # report to SkyDriver
     if skydriver_rc:
         update_skydriver(
             skydriver_rc,
             scan_id,
-            submit_result,
+            submit_result_obj,
             args.collector,
             args.schedd,
         )

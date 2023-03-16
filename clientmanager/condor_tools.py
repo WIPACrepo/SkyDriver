@@ -24,6 +24,11 @@ def get_schedd_obj(collector: str, schedd: str) -> htcondor.Schedd:
     return schedd_obj
 
 
-def get_jobs(njobs: int, clusterid: int) -> list[str]:
-    job_ads = job_description.jobs(count=args.jobs, clusterid=submit_result.cluster())
+def get_job_classads(
+    submit_obj: htcondor.Submit,
+    njobs: int,
+    clusterid: int,
+) -> list[htcondor.ClassAd]:
+    """Get list of (simulated) job ClassAds."""
+    job_ads = submit_obj.jobs(count=njobs, clusterid=clusterid)
     return list(job_ads)
