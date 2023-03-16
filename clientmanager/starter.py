@@ -139,20 +139,6 @@ def update_skydriver(
     )
 
 
-# def dump_condor_dir(logs_subdir: Path) -> None:
-#     while True:
-#         LOGGER.debug("################################################################")
-#         for fpath in logs_subdir.iterdir():
-#             LOGGER.debug(fpath)
-#         LOGGER.debug("-------------------------------")
-#         log_file = _get_log_fpath(logs_subdir)
-#         if log_file.exists():
-#             LOGGER.debug(f"{log_file}:")
-#             with open(log_file, "r") as f:
-#                 LOGGER.debug("".join(f.readlines()))
-#         time.sleep(120)  # 2 mins
-
-
 def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
     """Add args to subparser."""
 
@@ -294,6 +280,3 @@ def start(args: argparse.Namespace) -> None:
             args.schedd,
         )
         LOGGER.info("Sent cluster info to SkyDriver")
-
-    # start dumping condor output
-    # dump_condor_dir(logs_subdir)
