@@ -80,11 +80,12 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
         url = DOCKERHUB_API_URL
         while True:
             resp = requests.get(url).json()
-            for img in resp["results"]:
-                if sha != img["digest"]:
+            for result in resp["results"]:
+                if sha != result.get("digest", result["images"][0]["digest"]):
+                    # some old ones have their 'digest' in their 'images' list entry
                     continue
-                if VERSION_REGEX_MAJMINPATCH.fullmatch(img["name"]):
-                    return img["name"]  # type: ignore[no-any-return]
+                if VERSION_REGEX_MAJMINPATCH.fullmatch(result["name"]):
+                    return result["name"]  # type: ignore[no-any-return]
             if not resp["next"]:
                 break
             url = resp["next"]
