@@ -12,7 +12,7 @@ from typing import List, Optional, Tuple
 import htcondor  # type: ignore[import]
 from rest_tools.client import RestClient
 
-from . import condor_tools
+from . import condor_tools, utils
 from .config import LOGGER
 
 
@@ -270,8 +270,8 @@ def start(args: argparse.Namespace) -> None:
         LOGGER.error("Script Aborted: Condor job not submitted")
         return
 
-    # make connections -- do these before submitting so we don't have any unwanted surprises
-    skydriver_rc, scan_id = connect_to_skydriver()
+    # make connections -- do now so we don't have any surprises
+    skydriver_rc, scan_id = utils.connect_to_skydriver()
     schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
 
     # submit
