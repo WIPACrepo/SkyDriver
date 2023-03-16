@@ -66,7 +66,7 @@ async def server(
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:
-        return RestClient(f"http://localhost:{port}", timeout=1, retries=0)
+        return RestClient(f"http://localhost:{port}", retries=0)
 
     try:
         yield client
