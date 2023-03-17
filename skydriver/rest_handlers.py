@@ -275,7 +275,7 @@ async def stop_scanner_instance(
             log_message="Failed to launch Kubernetes job to stop Scanner instance",
         )
 
-    await manifests.patch(scan_id, complete=False)
+    await manifests.patch(scan_id, complete=True)
 
 
 # -----------------------------------------------------------------------------
