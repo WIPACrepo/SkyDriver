@@ -2,6 +2,17 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.39 (2023-03-17)
+### Other
+* <bot> update requirements.txt ([`caf59a4`](https://github.com/WIPACrepo/SkyDriver/commit/caf59a4ffd90d3dda0a41ba48ec1ce6f3e8e8398))
+* <bot> update requirements-tests.txt ([`46e3557`](https://github.com/WIPACrepo/SkyDriver/commit/46e35575e5d86d02ca11e94c6bec2f4573aa47de))
+* <bot> update requirements-clientmanager.txt ([`747dee6`](https://github.com/WIPACrepo/SkyDriver/commit/747dee6676b080dd55c727ea0fe424f51d04d4a7))
+* Unpin `typeguard` ([`55daf86`](https://github.com/WIPACrepo/SkyDriver/commit/55daf860f86ad09f53684d88aadc035b3fa1a55d))
+* <bot> update requirements.txt ([`a41fd96`](https://github.com/WIPACrepo/SkyDriver/commit/a41fd96959973be6a3bb436130a54d5b5643f2ae))
+* <bot> update requirements-tests.txt ([`87c4c50`](https://github.com/WIPACrepo/SkyDriver/commit/87c4c5009babc55216b3a01700bcef40701b349f))
+* <bot> update requirements-clientmanager.txt ([`4b2c2b4`](https://github.com/WIPACrepo/SkyDriver/commit/4b2c2b43ac3b7bbbd4843f955191a72b26a1fa1e))
+* Updated Docker Tag Logic ([#15](https://github.com/WIPACrepo/SkyDriver/issues/15)) ([`587c0ad`](https://github.com/WIPACrepo/SkyDriver/commit/587c0adaa109bf942b57d1d0b1217f927c25e802))
+
 ## v0.0.38 (2023-03-16)
 ### Other
 * Clientmanager: fix sending cluster info, rollback dumping logs ([`98b5f65`](https://github.com/WIPACrepo/SkyDriver/commit/98b5f659af8b10c677954e817ecd9cb31c4b0368))
