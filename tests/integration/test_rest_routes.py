@@ -717,6 +717,8 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
 
     # OK
     result = await _send_result(rc, scan_id, manifest, True)
+    manifest = await rc.request("GET", f"/scan/manifest/{scan_id}")
+    assert manifest["complete"]
 
     # # no arg
     with pytest.raises(
