@@ -405,4 +405,40 @@ class SkymapScannerStartupJob:
         KubeAPITools.start_job(self.api_instance, self.job_obj)
 
 
-    # def clientstopper()
+class SkymapScannerStopperJob:
+    """Wraps a Kubernetes job to stop condor cluster w/ Skymap Scanner."""
+
+    def __init__(
+        self,
+        api_instance: kubernetes.client.BatchV1Api,
+        scan_id: str,
+        cluster: schema.CondorClutser,
+    ):
+        self.api_instance = api_instance
+        self.cluster = cluster
+
+        args = (
+            f"python -m clientmanager stop "
+            f"--collector-address {cluster.collector} "
+            f"--schedd-name {cluster.schedd} "
+            f"--cluster-id {cluster.cluster_id} "
+        )
+
+        name = f"clientmanager-stop-{scan_id}"
+        condor_clientmanager_stop = KubeAPITools.create_container(
+            name,
+            ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
+            env=[get_condor_token_v1envvar()],
+            args=args.split(),
+        )
+        self.job_obj = KubeAPITools.kube_create_job_object(
+            name,
+            [condor_clientmanager_stop],
+            ENV.K8S_NAMESPACE,
+            # https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/
+            labels={"app.kubernetes.io/instance": ENV.K8S_APPLICATION_NAME},
+        )
+
+    def start_job(self) -> Any:
+        """Start the k8s job."""
+        KubeAPITools.start_job(self.api_instance, self.job_obj)

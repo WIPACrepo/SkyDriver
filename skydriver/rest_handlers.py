@@ -207,7 +207,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scan_id = uuid.uuid4().hex
 
         # get the container info ready
-        job = k8s.SkymapScannerJob(
+        job = k8s.SkymapScannerStartupJob(
             api_instance=self.k8s_api,
             docker_tag=docker_tag,
             scan_id=scan_id,
@@ -233,9 +233,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             job.env_dict,
         )
 
-        # start k8s job
+        # start skymap scanner instance
         try:
-            job.start()
+            job.start_job()
         except kubernetes.client.exceptions.ApiException as e:
             LOGGER.error(e)
             raise web.HTTPError(
