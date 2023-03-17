@@ -99,4 +99,7 @@ class Manifest(ScanIDDataclass):
     # updated during scanning, multiple times
     progress: Progress | None = None
 
+    # signifies k8s jobs and condor cluster(s) are done
+    complete: bool = False
+
     # logs  # TODO

@@ -220,6 +220,7 @@ async def _do_patch(
         server_args=resp["server_args"],  # not checking
         clientmanager_args=resp["clientmanager_args"],  # not checking
         env_vars=resp["env_vars"],  # not checking
+        complete=False,
         # TODO: check more fields in future
     )
     manifest = resp  # keep around

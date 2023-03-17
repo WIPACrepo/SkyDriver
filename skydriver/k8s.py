@@ -406,34 +406,37 @@ class SkymapScannerStartupJob:
 
 
 class SkymapScannerStopperJob:
-    """Wraps a Kubernetes job to stop condor cluster w/ Skymap Scanner."""
+    """Wraps a Kubernetes job to stop condor cluster(s) w/ Scanner clients."""
 
     def __init__(
         self,
         api_instance: kubernetes.client.BatchV1Api,
         scan_id: str,
-        cluster: schema.CondorClutser,
+        condor_clusters: list[schema.CondorClutser],
     ):
         self.api_instance = api_instance
-        self.cluster = cluster
 
-        args = (
-            f"python -m clientmanager stop "
-            f"--collector-address {cluster.collector} "
-            f"--schedd-name {cluster.schedd} "
-            f"--cluster-id {cluster.cluster_id} "
-        )
+        # make a container per cluster
+        containers = []
+        for i, cluster in enumerate(condor_clusters):
+            args = (
+                f"python -m clientmanager stop "
+                f"--collector-address {cluster.collector} "
+                f"--schedd-name {cluster.schedd} "
+                f"--cluster-id {cluster.cluster_id} "
+            )
+            containers.append(
+                KubeAPITools.create_container(
+                    f"clientmanager-stop-{i}-{scan_id}",
+                    ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
+                    env=[get_condor_token_v1envvar()],
+                    args=args.split(),
+                )
+            )
 
-        name = f"clientmanager-stop-{scan_id}"
-        condor_clientmanager_stop = KubeAPITools.create_container(
-            name,
-            ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
-            env=[get_condor_token_v1envvar()],
-            args=args.split(),
-        )
         self.job_obj = KubeAPITools.kube_create_job_object(
-            name,
-            [condor_clientmanager_stop],
+            f"clientmanager-stop-{scan_id}",
+            containers,
             ENV.K8S_NAMESPACE,
             # https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/
             labels={"app.kubernetes.io/instance": ENV.K8S_APPLICATION_NAME},
