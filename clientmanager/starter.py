@@ -7,15 +7,12 @@ import getpass
 import os
 import time
 from pathlib import Path
-from typing import Any
 
 import htcondor  # type: ignore[import]
 from rest_tools.client import RestClient
 
 from . import condor_tools, utils
 from .config import LOGGER
-
-StrDict = dict[str, Any]
 
 
 def make_condor_logs_subdir(directory: Path) -> Path:
@@ -31,7 +28,7 @@ def _get_log_fpath(logs_subdir: Path) -> Path:
     return logs_subdir / "clientmanager.log"
 
 
-def make_condor_submit_dict(  # pylint: disable=too-many-arguments
+def make_condor_job_description(  # pylint: disable=too-many-arguments
     logs_subdir: Path,
     # condor args
     memory: str,
@@ -40,8 +37,8 @@ def make_condor_submit_dict(  # pylint: disable=too-many-arguments
     singularity_image: str,
     client_startup_json: Path,
     client_args: str,
-) -> StrDict:
-    """Make the condor submit dict."""
+) -> htcondor.Submit:  # pylint:disable=no-member
+    """Make the condor job description (submit object)."""
     transfer_input_files: list[Path] = [client_startup_json]
 
     # NOTE:
@@ -94,7 +91,7 @@ def make_condor_submit_dict(  # pylint: disable=too-many-arguments
     if accounting_group:
         submit_dict["+AccountingGroup"] = f"{accounting_group}.{getpass.getuser()}"
 
-    return submit_dict
+    return htcondor.Submit(submit_dict)  # pylint:disable=no-member
 
 
 def update_skydriver(
@@ -103,7 +100,6 @@ def update_skydriver(
     submit_result: htcondor.SubmitResult,  # pylint:disable=no-member
     collector: str,
     schedd: str,
-    submit_dict: StrDict,
 ) -> None:
     """Send SkyDriver updates from the `submit_result`."""
     skydriver_rc.request_seq(
@@ -115,7 +111,6 @@ def update_skydriver(
                 "schedd": schedd,
                 "cluster_id": submit_result.cluster(),
                 "jobs": submit_result.num_procs(),
-                "submit_dict": submit_dict,
             }
         },
     )
@@ -221,7 +216,7 @@ def start(args: argparse.Namespace) -> None:
             f.write(token)
 
     # make condor job description
-    submit_dict = make_condor_submit_dict(
+    submit_obj = make_condor_job_description(
         logs_subdir,
         # condor args
         args.memory,
@@ -231,7 +226,6 @@ def start(args: argparse.Namespace) -> None:
         args.client_startup_json,
         client_args,
     )
-    submit_obj = htcondor.Submit(submit_dict)  # pylint:disable=no-member
     LOGGER.info(submit_obj)
 
     # dryrun?
@@ -263,6 +257,5 @@ def start(args: argparse.Namespace) -> None:
             submit_result_obj,
             args.collector,
             args.schedd,
-            submit_dict,
         )
         LOGGER.info("Sent cluster info to SkyDriver")
