@@ -29,7 +29,7 @@ class EnvConfig:
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
 
-    CLIENTMANAGER_IMAGE_TAG: str = ""
+    CLIENTMANAGER_IMAGE_WITH_TAG: str = ""
 
     # k8s
     K8S_NAMESPACE: str = ""
@@ -57,9 +57,9 @@ class EnvConfig:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
-        if not self.CLIENTMANAGER_IMAGE_TAG:
+        if not self.CLIENTMANAGER_IMAGE_WITH_TAG:
             raise RuntimeError(
-                "Missing required environment variable: 'CLIENTMANAGER_IMAGE_TAG'"
+                "Missing required environment variable: 'CLIENTMANAGER_IMAGE_WITH_TAG'"
             )
 
 

@@ -4,7 +4,7 @@ on: [push]
 
 env:
   CI_TEST: 'yes'
-  CLIENTMANAGER_IMAGE_TAG: 'latest'
+  CLIENTMANAGER_IMAGE_WITH_TAG: 'ghcr.io/wipacrepo/skydriver:latest'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

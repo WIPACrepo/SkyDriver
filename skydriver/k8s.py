@@ -213,7 +213,7 @@ class SkymapScannerJob:
         )
         condor_clientmanager = KubeAPITools.create_container(
             f"clientmanager-{scan_id}",
-            images.CLIENTMANAGER_IMAGE,
+            ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
             env,
             self.clientmanager_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
