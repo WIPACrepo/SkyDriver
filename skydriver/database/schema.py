@@ -8,7 +8,7 @@ from typeguard import typechecked
 StrDict = dict[str, Any]
 
 
-@typechecked(always=True)  # always b/c we want full data validation
+@typechecked
 @dc.dataclass
 class ScanIDDataclass:
     """A dataclass with a scan id."""
@@ -17,7 +17,7 @@ class ScanIDDataclass:
     is_deleted: bool
 
 
-@typechecked(always=True)  # always b/c we want full data validation
+@typechecked
 @dc.dataclass
 class ProgressProcessingStats:
     """Details about the scan processing."""
@@ -30,7 +30,7 @@ class ProgressProcessingStats:
     predictions: StrDict = dc.field(default_factory=dict)  # open to requestor
 
 
-@typechecked(always=True)  # always b/c we want full data validation
+@typechecked
 @dc.dataclass
 class Progress:
 
@@ -40,7 +40,7 @@ class Progress:
     processing_stats: ProgressProcessingStats
 
 
-@typechecked(always=True)  # always b/c we want full data validation
+@typechecked
 @dc.dataclass
 class Result(ScanIDDataclass):
     """Encompasses the physics results for a scan."""
@@ -57,7 +57,7 @@ class Result(ScanIDDataclass):
         return rep
 
 
-@typechecked(always=True)  # always b/c we want full data validation
+@typechecked
 @dc.dataclass
 class EventMetadata:
     """Encapsulates the identity of an event."""
@@ -69,7 +69,7 @@ class EventMetadata:
     is_real_event: bool  # as opposed to simulation
 
 
-@typechecked(always=True)  # always b/c we want full data validation
+@typechecked
 @dc.dataclass
 class CondorClutser:
     """Stores information provided by HTCondor."""
@@ -80,7 +80,7 @@ class CondorClutser:
     jobs: int
 
 
-@typechecked(always=True)  # always b/c we want full data validation
+@typechecked
 @dc.dataclass
 class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""

@@ -2,6 +2,7 @@
 
 # pylint: disable=redefined-outer-name
 
+import os
 import random
 import re
 import socket
@@ -11,6 +12,7 @@ from unittest.mock import Mock, patch
 import pytest
 import pytest_asyncio
 import requests
+import skydriver.images  # noqa: F401
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.client import RestClient
 from skydriver.config import config_logging
@@ -64,7 +66,7 @@ async def server(
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:
-        return RestClient(f"http://localhost:{port}", timeout=1, retries=0)
+        return RestClient(f"http://localhost:{port}", retries=0)
 
     try:
         yield client
@@ -81,36 +83,37 @@ POST_SCAN_BODY = {
     "event_i3live_json": {"a": 22},
     "nsides": {1: 2, 3: 4},
     "real_or_simulated_event": "real",
+    "docker_tag": "latest",
 }
 
 
-async def _launch_scan(rc: RestClient) -> str:
+async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) -> str:
     # launch scan
-    resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
+    resp = await rc.request("POST", "/scan", post_scan_body)
 
     server_args = (
         f"python -m skymap_scanner.server "
-        f"--reco-algo {POST_SCAN_BODY['reco_algo']} "
+        f"--reco-algo {post_scan_body['reco_algo']} "
         f"--cache-dir /common-space "
         f"--output-dir /common-space "
         f"--client-startup-json /common-space/startup.json "
-        f"--nsides {' '.join(f'{k}:{v}' for k,v in POST_SCAN_BODY['nsides'].items())} "  # type: ignore[attr-defined]
-        f"--{POST_SCAN_BODY['real_or_simulated_event']}-event"
+        f"--nsides {' '.join(f'{k}:{v}' for k,v in post_scan_body['nsides'].items())} "
+        f"--{post_scan_body['real_or_simulated_event']}-event"
     )
 
     clientmanager_args = (
         f"python -m clientmanager start "
         f" --logs-directory /common-space "
-        f" --jobs {POST_SCAN_BODY['njobs']} "
-        f" --memory {POST_SCAN_BODY['memory']} "
-        f" --singularity-image /cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:latest "
+        f" --jobs {post_scan_body['njobs']} "
+        f" --memory {post_scan_body['memory']} "
+        f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
         f" --client-startup-json /common-space/startup.json "
     )
 
     assert resp == dict(
         scan_id=resp["scan_id"],
         is_deleted=False,
-        event_i3live_json_dict=POST_SCAN_BODY["event_i3live_json"],
+        event_i3live_json_dict=post_scan_body["event_i3live_json"],
         event_metadata=None,
         scan_metadata=None,
         condor_clusters=[],
@@ -446,14 +449,30 @@ async def _delete_result(
 ########################################################################################
 
 
-async def test_00(server: Callable[[], RestClient]) -> None:
+@pytest.mark.parametrize(
+    "docker_tag_input_and_expect",
+    [
+        ("latest", os.environ["LATEST_TAG"]),
+        ("3.4.0", "3.4.0"),
+        ("v3", os.environ["LATEST_TAG"]),
+        ("3.1", "3.1.5"),
+        ("gcd-handling-improvements-fe8ecee", "gcd-handling-improvements-fe8ecee"),
+    ],
+)
+async def test_00(
+    docker_tag_input_and_expect: tuple[str, str], server: Callable[[], RestClient]
+) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
 
     #
     # LAUNCH SCAN
     #
-    scan_id = await _launch_scan(rc)
+    scan_id = await _launch_scan(
+        rc,
+        {**POST_SCAN_BODY, "docker_tag": docker_tag_input_and_expect[0]},
+        docker_tag_input_and_expect[1],
+    )
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
     manifest = await _clientmanager_reply(rc, scan_id, [])
 
@@ -540,9 +559,16 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
                 "POST", "/scan", {k: v for k, v in POST_SCAN_BODY.items() if k != arg}
             )
         print(e.value)
+    # # bad docker tag
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=rf"400 Client Error: `docker_tag`: \(ValueError\) .+ for url: {rc.address}/scan",
+    ) as e:
+        await rc.request("POST", "/scan", {**POST_SCAN_BODY, "docker_tag": "foo"})
+    print(e.value)
 
     # OK
-    scan_id = await _launch_scan(rc)
+    scan_id = await _launch_scan(rc, POST_SCAN_BODY, os.environ["LATEST_TAG"])
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
     manifest = await _clientmanager_reply(rc, scan_id, [])
 
