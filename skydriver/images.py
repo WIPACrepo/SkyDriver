@@ -6,7 +6,7 @@ from pathlib import Path
 import cachetools.func
 import requests
 
-from .config import ENV, LOGGER
+from .config import LOGGER
 
 # ---------------------------------------------------------------------------------------
 # constants
