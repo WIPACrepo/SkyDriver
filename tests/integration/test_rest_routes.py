@@ -499,7 +499,9 @@ async def test_00(
     #
     # SEND RESULT(s)
     #
+    assert not (await rc.request("GET", f"/scan/manifest/{scan_id}"))["complete"]
     result = await _send_result(rc, scan_id, manifest, True)
+    assert (await rc.request("GET", f"/scan/manifest/{scan_id}"))["complete"]
 
     #
     # DELETE MANIFEST
