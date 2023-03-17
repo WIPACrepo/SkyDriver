@@ -369,7 +369,7 @@ async def _delete_manifest(
         server_args=resp["server_args"],  # not checking
         clientmanager_args=resp["clientmanager_args"],  # not checking
         env_vars=resp["env_vars"],  # not checking
-        complete=False,
+        complete=last_known_manifest["complete"],
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
     del_resp = resp  # keep around
