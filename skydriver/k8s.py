@@ -62,9 +62,9 @@ class KubeAPITools:
     def kube_create_job_object(
         name: str,
         containers: list[kubernetes.client.V1Container],
-        volumes: list[str],  # volume names
         namespace: str,
-        labels: dict[str, str],
+        volumes: list[str] | None = None,  # volume names
+        labels: dict[str, str] | None = None,
     ) -> kubernetes.client.V1Job:
         """Create a k8 Job Object Minimum definition of a job object.
 
@@ -94,6 +94,9 @@ class KubeAPITools:
 
         Docs3: https://github.com/kubernetes-client/python/issues/589
         """
+        if not volumes:
+            volumes = []
+
         # Body is the object Body
         body = kubernetes.client.V1Job(api_version="batch/v1", kind="Job")
         # Body needs Metadata
@@ -142,9 +145,11 @@ class KubeAPITools:
         image: str,
         env: list[kubernetes.client.V1EnvVar],
         args: list[str],
-        volumes: dict[str, Path],
+        volumes: dict[str, Path] | None = None,
     ) -> kubernetes.client.V1Container:
         """Make a Container instance."""
+        if not volumes:
+            volumes = {}
         return kubernetes.client.V1Container(
             name=name,
             image=image,
@@ -156,8 +161,42 @@ class KubeAPITools:
             ],
         )
 
+    @staticmethod
+    def start_job(
+        api_instance: kubernetes.client.BatchV1Api,
+        job_obj: kubernetes.client.V1Job,
+    ) -> Any:
+        """Start the k8s job.
 
-class SkymapScannerJob:
+        Returns REST response.
+        """
+        if not job_obj:
+            raise ValueError("Job object not created")
+        try:
+            api_response = api_instance.create_namespaced_job(
+                ENV.K8S_NAMESPACE, job_obj
+            )
+            LOGGER.info(api_response)
+        except ApiException as e:
+            LOGGER.error(e)
+            raise
+        return api_response
+
+
+def get_condor_token_v1envvar() -> kubernetes.client.V1EnvVar:
+    """Get the `V1EnvVar` for `CONDOR_TOKEN`."""
+    return kubernetes.client.V1EnvVar(
+        name="CONDOR_TOKEN",
+        value_from=kubernetes.client.V1EnvVarSource(
+            secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                name=ENV.K8S_SECRET_NAME,
+                key="condor_token",
+            )
+        ),
+    )
+
+
+class SkymapScannerStartupJob:
     """Wraps a Skymap Scanner Kubernetes job with tools to start and manage."""
 
     def __init__(
@@ -211,8 +250,8 @@ class SkymapScannerJob:
             self.server_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
         )
-        condor_clientmanager = KubeAPITools.create_container(
-            f"clientmanager-{scan_id}",
+        condor_clientmanager_start = KubeAPITools.create_container(
+            f"clientmanager-start-{scan_id}",
             ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
             env,
             self.clientmanager_args.split(),
@@ -220,9 +259,9 @@ class SkymapScannerJob:
         )
         self.job_obj = KubeAPITools.kube_create_job_object(
             f"skyscan-{scan_id}",
-            [server, condor_clientmanager],
-            [common_space_volume_path.name],
-            namespace=ENV.K8S_NAMESPACE,
+            [server, condor_clientmanager_start],
+            ENV.K8S_NAMESPACE,
+            volumes=[common_space_volume_path.name],
             # https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/
             labels={"app.kubernetes.io/instance": ENV.K8S_APPLICATION_NAME},
         )
@@ -311,26 +350,7 @@ class SkymapScannerJob:
 
         # 1. start w/ secrets
         # NOTE: the values come from an existing secret in the current namespace
-        secrets = [
-            {
-                "dest": "CONDOR_TOKEN",
-                "key": "condor_token",
-            },
-        ]
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(
-                    name=s["dest"],
-                    value_from=kubernetes.client.V1EnvVarSource(
-                        secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                            name=ENV.K8S_SECRET_NAME,
-                            key=s["key"],
-                        )
-                    ),
-                )
-                for s in secrets
-            ]
-        )
+        env.append(get_condor_token_v1envvar())
 
         # 2. add required env vars
         required = {
@@ -363,12 +383,12 @@ class SkymapScannerJob:
 
         # 4. generate & add auth tokens
         tokens = {
-            "SKYSCAN_BROKER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+            "SKYSCAN_BROKER_AUTH": SkymapScannerStartupJob._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_BROKER,
                 ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
             ),
-            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerStartupJob._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
@@ -380,19 +400,9 @@ class SkymapScannerJob:
 
         return env
 
-    def start(self) -> Any:
-        """Start the k8s job.
+    def start_job(self) -> Any:
+        """Start the k8s job."""
+        KubeAPITools.start_job(self.api_instance, self.job_obj)
 
-        Returns REST response.
-        """
-        try:
-            api_response = self.api_instance.create_namespaced_job(
-                ENV.K8S_NAMESPACE, self.job_obj
-            )
-            LOGGER.info(api_response)
-        except ApiException as e:
-            LOGGER.error(e)
-            raise
-        return api_response
 
     # def clientstopper()
