@@ -29,8 +29,7 @@ class EnvConfig:
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
 
-    # clientmanager
-    CLIENTMANAGER_IMAGE_WITH_TAG: str = "ghcr.io/wipacrepo/skydriver:latest"
+    CLIENTMANAGER_IMAGE_WITH_TAG: str = ""
 
     # k8s
     K8S_NAMESPACE: str = ""
@@ -46,12 +45,6 @@ class EnvConfig:
     KEYCLOAK_CLIENT_ID_SKYDRIVER_REST: str = ""
     KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST: str = ""
 
-    # skyscan (meta)
-    SKYSCAN_DOCKER_IMAGE_NO_TAG: str = "icecube/skymap_scanner"
-    SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG: str = (
-        "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner"
-    )
-
     # skyscan (forwarded)
     SKYSCAN_BROKER_ADDRESS: str = "localhost"
     # TODO: see https://github.com/WIPACrepo/wipac-dev-tools/pull/69
@@ -64,15 +57,9 @@ class EnvConfig:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
-        if (
-            self.SKYSCAN_DOCKER_IMAGE_NO_TAG.split("/")[-1]
-            != self.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG.split("/")[-1]
-        ):
+        if not self.CLIENTMANAGER_IMAGE_WITH_TAG:
             raise RuntimeError(
-                f"Image Mismatch: "
-                f"'SKYSCAN_DOCKER_IMAGE_NO_TAG' ({self.SKYSCAN_DOCKER_IMAGE_NO_TAG}) and "
-                f"'SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG' ({self.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}) "
-                f"do not reference the same image"
+                "Missing required environment variable: 'CLIENTMANAGER_IMAGE_WITH_TAG'"
             )
 
 

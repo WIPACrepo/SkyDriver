@@ -129,7 +129,7 @@ tornado==6.2
     # via
     #   skydriver (setup.py)
     #   wipac-rest-tools
-typeguard==2.13.3
+typeguard==3.0.1
     # via skydriver (setup.py)
 types-cryptography==3.3.23.2
     # via pyjwt
@@ -137,6 +137,7 @@ typing-extensions==4.5.0
     # via
     #   opentelemetry-sdk
     #   qrcode
+    #   typeguard
     #   wipac-dev-tools
     #   wipac-telemetry
 urllib3==1.26.15

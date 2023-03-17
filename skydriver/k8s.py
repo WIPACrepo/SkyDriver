@@ -8,6 +8,7 @@ import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
+from . import images
 from .config import ENV, LOGGER
 from .database import schema
 
@@ -188,7 +189,7 @@ class SkymapScannerJob:
         )
         self.clientmanager_args = self.get_clientmanager_args(
             common_space_volume_path=common_space_volume_path,
-            singularity_image=f"{ENV.SKYSCAN_SINGULARITY_IMAGE_PATH_NO_TAG}:{docker_tag}",
+            singularity_image=images.get_skyscan_cvmfs_singularity_image(docker_tag),
             njobs=njobs,
             memory=memory,
             collector=collector,
@@ -205,7 +206,7 @@ class SkymapScannerJob:
         # job
         server = KubeAPITools.create_container(
             f"server-{scan_id}",
-            f"{ENV.SKYSCAN_DOCKER_IMAGE_NO_TAG}:{docker_tag}",
+            images.get_skyscan_docker_image(docker_tag),
             env,
             self.server_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
@@ -248,7 +249,7 @@ class SkymapScannerJob:
     @staticmethod
     def get_clientmanager_args(
         common_space_volume_path: Path,
-        singularity_image: str,
+        singularity_image: Path,
         njobs: int,
         memory: str,
         collector: str,

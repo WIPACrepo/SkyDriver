@@ -3,6 +3,7 @@
 import dataclasses as dc
 from typing import Any, AsyncIterator, Type, TypeVar
 
+import typeguard
 from dacite import from_dict  # type: ignore[attr-defined]
 from motor.motor_asyncio import (  # type: ignore
     AsyncIOMotorClient,
@@ -10,7 +11,6 @@ from motor.motor_asyncio import (  # type: ignore
 )
 from pymongo import DESCENDING, ReturnDocument
 from tornado import web
-from typeguard import check_type
 
 from ..config import LOGGER
 from . import schema
@@ -141,18 +141,29 @@ class ScanIDCollectionFacade:
             # enforce schema
             for key, value in update.items():
                 try:
-                    check_type(key, value, fields[key].type)  # TypeError, KeyError
-                except (TypeError, KeyError) as e:
+                    typeguard.check_type(value, fields[key].type)  # TypeError, KeyError
+                except (typeguard.TypeCheckError, KeyError) as e:
+                    LOGGER.error(e)
+                    msg = f"Invalid type (field '{key}')"
                     raise web.HTTPError(
-                        500,
-                        log_message=f"{e} [{coll=}, {scan_id=}]",
+                        422,
+                        log_message=msg + f" for {scan_id=}",
+                        reason=msg,
                     )
             # at this point we know all data is type checked, so transform & put in DB
             doc = await find_one_and_update(friendly_nested_asdict(update))
             out_type = dclass
         # WHOLE UPDATE
         else:
-            doc = await find_one_and_update(dc.asdict(update))  # validate via dataclass
+            try:  # validate via dataclass's `@typechecked` wrapper
+                doc = await find_one_and_update(dc.asdict(update))
+            except typeguard.TypeCheckError as e:
+                LOGGER.error(e)
+                raise web.HTTPError(
+                    422,
+                    log_message=f"Invalid type for {scan_id=}",
+                    reason="Invalid type",
+                )
             out_type = type(update)
 
         # upsert
