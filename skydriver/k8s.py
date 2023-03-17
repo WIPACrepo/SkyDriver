@@ -444,4 +444,7 @@ class SkymapScannerStopperJob:
 
     def start_job(self) -> Any:
         """Start the k8s job."""
+
+        # TODO: stop first k8s job (server & clientmanager-starter)
+
         KubeAPITools.start_job(self.api_instance, self.job_obj)
