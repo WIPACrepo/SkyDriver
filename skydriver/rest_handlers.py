@@ -174,10 +174,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         collector = self.get_argument(
             "collector",
             type=str,
+            forbiddens=[r"\s*"],  # no empty string / whitespace
         )
         schedd = self.get_argument(
             "schedd",
             type=str,
+            forbiddens=[r"\s*"],  # no empty string / whitespace
         )
 
         # scanner args
