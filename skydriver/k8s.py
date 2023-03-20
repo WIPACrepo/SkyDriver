@@ -64,7 +64,6 @@ class KubeAPITools:
         containers: list[kubernetes.client.V1Container],
         namespace: str,
         volumes: list[str] | None = None,  # volume names
-        labels: dict[str, str] | None = None,
     ) -> kubernetes.client.V1Job:
         """Create a k8 Job Object Minimum definition of a job object.
 
@@ -104,7 +103,10 @@ class KubeAPITools:
         body.metadata = kubernetes.client.V1ObjectMeta(
             namespace=namespace,
             name=name,
-            labels=labels,
+            labels={
+                # https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/
+                "app.kubernetes.io/instance": ENV.K8S_APPLICATION_NAME,
+            },
             annotations={
                 "argocd.argoproj.io/sync-options": "Prune=false"  # don't want argocd to prune this job
             },
@@ -262,8 +264,6 @@ class SkymapScannerStarterJob:
             [server, condor_clientmanager_start],
             ENV.K8S_NAMESPACE,
             volumes=[common_space_volume_path.name],
-            # https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/
-            labels={"app.kubernetes.io/instance": ENV.K8S_APPLICATION_NAME},
         )
 
     @staticmethod
@@ -435,8 +435,6 @@ class SkymapScannerStopperJob:
             f"clientmanager-stop-{scan_id}",
             containers,
             ENV.K8S_NAMESPACE,
-            # https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/
-            labels={"app.kubernetes.io/instance": ENV.K8S_APPLICATION_NAME},
         )
 
     def start_job(self) -> Any:
