@@ -79,6 +79,8 @@ async def server(
 POST_SCAN_BODY = {
     "njobs": 1,
     "memory": "20G",
+    "collector": "https://le-collector.edu",
+    "schedd": "https://un-schedd.edu",
     "reco_algo": "anything",
     "event_i3live_json": {"a": 22},
     "nsides": {1: 2, 3: 4},
@@ -102,7 +104,10 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
     )
 
     clientmanager_args = (
-        f"python -m clientmanager start "
+        f"python -m clientmanager "
+        f"--collector {post_scan_body['collector']} "
+        f"--schedd {post_scan_body['schedd']} "
+        "start "
         f" --logs-directory /common-space "
         f" --jobs {post_scan_body['njobs']} "
         f" --memory {post_scan_body['memory']} "
