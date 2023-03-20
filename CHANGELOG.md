@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.44 (2023-03-20)
+### Other
+* Mypy ([`f4fa897`](https://github.com/WIPACrepo/SkyDriver/commit/f4fa8971768daee7f714a3e04ea4e2b8aed6efee))
+* Require `flake8` and `mypy` jobs ([`51bc3e9`](https://github.com/WIPACrepo/SkyDriver/commit/51bc3e9d0d4ae9c4060b9b1ca42987366ebad145))
+* Flake8 ([`3474ec2`](https://github.com/WIPACrepo/SkyDriver/commit/3474ec245c851ba05d8525e299cf2ed6d6e3a4a6))
+* Clientmanager: move connections upstream ([`1faf734`](https://github.com/WIPACrepo/SkyDriver/commit/1faf734a23ef07f8364bcc8d6888a52dae5f2d0c))
+* Clientmanager: fix logging pt-2 ([`ad0df97`](https://github.com/WIPACrepo/SkyDriver/commit/ad0df971b037fc7e269d85439084b98225464a03))
+
 ## v0.0.43 (2023-03-20)
 ### Other
 * Always label k8s metadata with `app.kubernetes.io/instance` ([`f3a33ae`](https://github.com/WIPACrepo/SkyDriver/commit/f3a33ae51c580d9a8fc9d204a3f2e86cc3d9ff11))
