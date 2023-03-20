@@ -42,6 +42,7 @@ def main() -> None:
         "DEBUG",  # os.getenv("SKYSCAN_LOG", "INFO"),  # type: ignore[arg-type]
         first_party_loggers=LOGGER,
         third_party_level=os.getenv("SKYSCAN_LOG_THIRD_PARTY", "WARNING"),  # type: ignore[arg-type]
+        use_coloredlogs=True,  # for formatting
     )
     logging_tools.log_argparse_args(args, logger=LOGGER, level="WARNING")
 
