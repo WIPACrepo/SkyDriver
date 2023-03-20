@@ -28,7 +28,7 @@ def get_job_classads(
     submit_obj: htcondor.Submit,
     njobs: int,
     clusterid: int,
-) -> list[htcondor.ClassAd]:
+) -> list:
     """Get list of (simulated) job ClassAds."""
     job_ads = submit_obj.jobs(count=njobs, clusterid=clusterid)
     return list(job_ads)
