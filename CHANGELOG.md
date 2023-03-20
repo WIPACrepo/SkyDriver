@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.43 (2023-03-20)
+### Other
+* Always label k8s metadata with `app.kubernetes.io/instance` ([`f3a33ae`](https://github.com/WIPACrepo/SkyDriver/commit/f3a33ae51c580d9a8fc9d204a3f2e86cc3d9ff11))
+* Clientmanager: fix logging ([`ece113b`](https://github.com/WIPACrepo/SkyDriver/commit/ece113b2704d3000fbbd9d820787202f9fa7595d))
+
 ## v0.0.42 (2023-03-20)
 ### Other
 * Require `collector` & `schedd` ([`5fa5498`](https://github.com/WIPACrepo/SkyDriver/commit/5fa5498078499873b0795118178342c43ca311a5))
