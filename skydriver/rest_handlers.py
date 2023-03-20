@@ -207,7 +207,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scan_id = uuid.uuid4().hex
 
         # get the container info ready
-        job = k8s.SkymapScannerJob(
+        job = k8s.SkymapScannerStartupJob(
             api_instance=self.k8s_api,
             docker_tag=docker_tag,
             scan_id=scan_id,
@@ -233,9 +233,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             job.env_dict,
         )
 
-        # start k8s job
+        # start skymap scanner instance
         try:
-            job.start()
+            job.start_job()
         except kubernetes.client.exceptions.ApiException as e:
             LOGGER.error(e)
             raise web.HTTPError(
@@ -244,6 +244,38 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             )
 
         self.write(dc.asdict(manifest))
+
+
+# -----------------------------------------------------------------------------
+
+
+async def stop_scanner_instance(
+    manifests: database.interface.ManifestClient,
+    scan_id: str,
+    k8s_api: kubernetes.client.BatchV1Api,
+) -> None:
+    """Stop all parts of the Scanner instance (if running) and mark in DB."""
+    manifest = await manifests.get(scan_id, True)
+    if manifest.complete:
+        return
+
+    # get the container info ready
+    job = k8s.SkymapScannerStopperJob(
+        k8s_api,
+        scan_id,
+        manifest.condor_clusters,
+    )
+
+    try:
+        job.start_job()
+    except kubernetes.client.exceptions.ApiException as e:
+        LOGGER.error(e)
+        raise web.HTTPError(
+            500,
+            log_message="Failed to launch Kubernetes job to stop Scanner instance",
+        )
+
+    await manifests.patch(scan_id, complete=True)
 
 
 # -----------------------------------------------------------------------------
@@ -266,7 +298,7 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
-        # TODO - call to k8s / kill condor_rm cluster(s)
+        await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
 
         manifest = await self.manifests.mark_as_deleted(scan_id)
 
@@ -332,6 +364,10 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
         result = await self.results.get(scan_id, incl_del)
+
+        # when we get the final result, it's time to tear down
+        if result.is_final:
+            await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
 
         self.write(dc.asdict(result))
 

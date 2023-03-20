@@ -215,15 +215,22 @@ class ManifestClient(ScanIDCollectionFacade):
     async def patch(
         self,
         scan_id: str,
-        progress: schema.Progress | None,
-        event_metadata: schema.EventMetadata | None,
-        scan_metadata: schema.StrDict | None,
-        condor_cluster: schema.CondorClutser | None,
+        progress: schema.Progress | None = None,
+        event_metadata: schema.EventMetadata | None = None,
+        scan_metadata: schema.StrDict | None = None,
+        condor_cluster: schema.CondorClutser | None = None,
+        complete: bool | None = None,
     ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching manifest for {scan_id=}")
 
-        if not (progress or event_metadata or scan_metadata or condor_cluster):
+        if not (
+            progress
+            or event_metadata
+            or scan_metadata
+            or condor_cluster
+            or complete is not None  # True/False is ok
+        ):
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
             return await self.get(scan_id, incl_del=True)
 
@@ -262,6 +269,10 @@ class ManifestClient(ScanIDCollectionFacade):
             pass  # don't put in DB
         else:
             upserting["condor_clusters"] = in_db.condor_clusters + [condor_cluster]
+
+        # complete
+        if complete is not None:
+            upserting["complete"] = complete
 
         # progress
         if progress:

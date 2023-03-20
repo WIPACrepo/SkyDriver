@@ -102,7 +102,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
     )
 
     clientmanager_args = (
-        f"python clientmanager/client_starter.py "
+        f"python -m clientmanager start "
         f" --logs-directory /common-space "
         f" --jobs {post_scan_body['njobs']} "
         f" --memory {post_scan_body['memory']} "
@@ -121,7 +121,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         server_args=resp["server_args"],  # see below
         clientmanager_args=resp["clientmanager_args"],  # see below
         env_vars=resp["env_vars"],  # see below
-        # TODO: check more fields in future
+        complete=False,
+        # TODO: check more fields in future (hint: ctrl+F this comment)
     )
 
     # check args (avoid whitespace headaches...)
@@ -220,7 +221,8 @@ async def _do_patch(
         server_args=resp["server_args"],  # not checking
         clientmanager_args=resp["clientmanager_args"],  # not checking
         env_vars=resp["env_vars"],  # not checking
-        # TODO: check more fields in future
+        complete=False,
+        # TODO: check more fields in future (hint: ctrl+F this comment)
     )
     manifest = resp  # keep around
     # query progress
@@ -367,7 +369,8 @@ async def _delete_manifest(
         server_args=resp["server_args"],  # not checking
         clientmanager_args=resp["clientmanager_args"],  # not checking
         env_vars=resp["env_vars"],  # not checking
-        # TODO: check more fields in future
+        complete=last_known_manifest["complete"],
+        # TODO: check more fields in future (hint: ctrl+F this comment)
     )
     del_resp = resp  # keep around
 
@@ -496,7 +499,10 @@ async def test_00(
     #
     # SEND RESULT(s)
     #
+    assert not manifest["complete"]
     result = await _send_result(rc, scan_id, manifest, True)
+    manifest = await rc.request("GET", f"/scan/manifest/{scan_id}")
+    assert manifest["complete"]
 
     #
     # DELETE MANIFEST
@@ -711,6 +717,8 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
 
     # OK
     result = await _send_result(rc, scan_id, manifest, True)
+    manifest = await rc.request("GET", f"/scan/manifest/{scan_id}")
+    assert manifest["complete"]
 
     # # no arg
     with pytest.raises(

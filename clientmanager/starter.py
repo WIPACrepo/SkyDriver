@@ -1,37 +1,18 @@
-"""An HTCondor script for spawning Skymap Scanner clients."""
+"""For starting Skymap Scanner clients on an HTCondor cluster."""
 
-# pylint:disable=no-member
 
 import argparse
 import datetime as dt
 import getpass
-import logging
 import os
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple
 
-import coloredlogs  # type: ignore[import]
 import htcondor  # type: ignore[import]
 from rest_tools.client import RestClient
-from wipac_dev_tools import logging_tools
 
-LOGGER = logging.getLogger("clientmanager")
-
-
-def get_schedd_obj(collector: str, schedd: str) -> htcondor.Schedd:
-    """Get object for talking with HTCondor schedd.
-
-    Examples:
-        `collector = "foo-bar.icecube.wisc.edu"`
-        `schedd = "baz.icecube.wisc.edu"`
-    """
-    schedd_ad = htcondor.Collector(collector).locate(  # ~> exception
-        htcondor.DaemonTypes.Schedd, schedd
-    )
-    schedd_obj = htcondor.Schedd(schedd_ad)
-    LOGGER.info(f"Connected to Schedd {collector=} {schedd=}")
-    return schedd_obj
+from . import condor_tools, utils
+from .config import LOGGER
 
 
 def make_condor_logs_subdir(directory: Path) -> Path:
@@ -56,9 +37,9 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     singularity_image: str,
     client_startup_json: Path,
     client_args: str,
-) -> htcondor.Submit:
-    """Make the condor job description object."""
-    transfer_input_files: List[Path] = [client_startup_json]
+) -> htcondor.Submit:  # pylint:disable=no-member
+    """Make the condor job description (submit object)."""
+    transfer_input_files: list[Path] = [client_startup_json]
 
     # NOTE:
     # In the newest version of condor we could use:
@@ -110,35 +91,13 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     if accounting_group:
         submit_dict["+AccountingGroup"] = f"{accounting_group}.{getpass.getuser()}"
 
-    return htcondor.Submit(submit_dict)
-
-
-def connect_to_skydriver() -> Tuple[Optional[RestClient], str]:
-    """Connect to SkyDriver REST server, if the needed env vars are present.
-
-    Also return the scan id.
-    """
-    address = os.getenv("SKYSCAN_SKYDRIVER_ADDRESS")
-    if not address:
-        LOGGER.warning("Not connecting to SkyDriver")
-        return None, ""
-
-    scan_id = os.getenv("SKYSCAN_SKYDRIVER_SCAN_ID")
-    if not scan_id:
-        raise RuntimeError(
-            "Cannot connect to SkyDriver without `SKYSCAN_SKYDRIVER_SCAN_ID`"
-        )
-
-    skydriver_rc = RestClient(address, token=os.getenv("SKYSCAN_SKYDRIVER_AUTH"))
-    LOGGER.info("Connected to SkyDriver")
-
-    return skydriver_rc, scan_id
+    return htcondor.Submit(submit_dict)  # pylint:disable=no-member
 
 
 def update_skydriver(
     skydriver_rc: RestClient,
     scan_id: str,
-    submit_result: htcondor.SubmitResult,
+    submit_result: htcondor.SubmitResult,  # pylint:disable=no-member
     collector: str,
     schedd: str,
 ) -> None:
@@ -157,29 +116,8 @@ def update_skydriver(
     )
 
 
-# def dump_condor_dir(logs_subdir: Path) -> None:
-#     while True:
-#         LOGGER.debug("################################################################")
-#         for fpath in logs_subdir.iterdir():
-#             LOGGER.debug(fpath)
-#         LOGGER.debug("-------------------------------")
-#         log_file = _get_log_fpath(logs_subdir)
-#         if log_file.exists():
-#             LOGGER.debug(f"{log_file}:")
-#             with open(log_file, "r") as f:
-#                 LOGGER.debug("".join(f.readlines()))
-#         time.sleep(120)  # 2 mins
-
-
-def main() -> None:
-    """Prep and submit Condor job(s)."""
-    parser = argparse.ArgumentParser(
-        description=(
-            "Submit Condor jobs running Skymap Scanner clients: "
-            "Condor log files to {logs_directory}/skyscan-{datetime}."
-        ),
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
+    """Add args to subparser."""
 
     def wait_for_file(waitee: Path, wait_time: int) -> Path:
         """Wait for `waitee` to exist, then return fullly-resolved path."""
@@ -196,31 +134,21 @@ def main() -> None:
         return waitee.resolve()
 
     # helper args
-    parser.add_argument(
+    sub_parser.add_argument(
         "--dryrun",
         default=False,
         action="store_true",
         help="does everything except submitting the condor job(s)",
     )
-    parser.add_argument(
+    sub_parser.add_argument(
         "--logs-directory",
         required=True,
         type=Path,
         help="where to save logs",
     )
-    parser.add_argument(
-        "--collector",
-        default="",
-        help="the full URL address of the HTCondor collector server. Ex: foo-bar.icecube.wisc.edu",
-    )
-    parser.add_argument(
-        "--schedd",
-        default="",
-        help="the full DNS name of the HTCondor Schedd server. Ex: baz.icecube.wisc.edu",
-    )
 
     # condor args
-    parser.add_argument(
+    sub_parser.add_argument(
         "--accounting-group",
         default="",
         help=(
@@ -228,14 +156,14 @@ def main() -> None:
             "By default no accounting group is used."
         ),
     )
-    parser.add_argument(
+    sub_parser.add_argument(
         "--jobs",
         required=True,
         type=int,
         help="number of jobs",
         # default=4,
     )
-    parser.add_argument(
+    sub_parser.add_argument(
         "--memory",
         required=True,
         help="amount of memory",
@@ -243,37 +171,28 @@ def main() -> None:
     )
 
     # client args
-    parser.add_argument(
+    sub_parser.add_argument(
         "--singularity-image",
         required=True,
         help="a path or url to the singularity image",
     )
-    parser.add_argument(
+    sub_parser.add_argument(
         "--client-startup-json",
         help="The 'startup.json' file to startup each client",
         type=lambda x: wait_for_file(
             Path(x), int(os.getenv("CLIENT_STARTER_WAIT_FOR_STARTUP_JSON", "60"))
         ),
     )
-    parser.add_argument(
+    sub_parser.add_argument(
         "--client-args",
         required=False,
         nargs="+",
         help="n 'key:value' pairs containing the python CL arguments to pass to skymap_scanner.client",
     )
 
-    args = parser.parse_args()
-    for arg, val in vars(args).items():
-        LOGGER.warning(f"{arg}: {val}")
 
-    args = parser.parse_args()
-    logging_tools.set_level(
-        "DEBUG",  # os.getenv("SKYSCAN_LOG", "INFO"),  # type: ignore[arg-type]
-        first_party_loggers=LOGGER,
-        third_party_level=os.getenv("SKYSCAN_LOG_THIRD_PARTY", "WARNING"),  # type: ignore[arg-type]
-    )
-    logging_tools.log_argparse_args(args, logger=LOGGER, level="WARNING")
-
+def start(args: argparse.Namespace) -> None:
+    """Main logic."""
     logs_subdir = make_condor_logs_subdir(args.logs_directory)
 
     # get client args
@@ -297,7 +216,7 @@ def main() -> None:
             f.write(token)
 
     # make condor job description
-    job_description = make_condor_job_description(
+    submit_obj = make_condor_job_description(
         logs_subdir,
         # condor args
         args.memory,
@@ -307,42 +226,36 @@ def main() -> None:
         args.client_startup_json,
         client_args,
     )
-    LOGGER.info(job_description)
+    LOGGER.info(submit_obj)
 
     # dryrun?
     if args.dryrun:
         LOGGER.error("Script Aborted: Condor job not submitted")
         return
 
-    # make connections -- do these before submitting so we don't have any unwanted surprises
-    skydriver_rc, scan_id = connect_to_skydriver()
-    schedd_obj = get_schedd_obj(args.collector, args.schedd)
+    # make connections -- do now so we don't have any surprises
+    skydriver_rc, scan_id = utils.connect_to_skydriver()
+    schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
 
     # submit
-    submit_result = schedd_obj.submit(
-        job_description,
+    submit_result_obj = schedd_obj.submit(
+        submit_obj,
         count=args.jobs,  # submit N jobs
         spool=True,  # for transfer_input_files
     )
-    LOGGER.info(submit_result)
-    job_ads = job_description.jobs(count=args.jobs, clusterid=submit_result.cluster())
-    schedd_obj.spool(list(job_ads))
+    LOGGER.info(submit_result_obj)
+    jobs = condor_tools.get_job_classads(
+        submit_obj, args.jobs, submit_result_obj.cluster()
+    )
+    schedd_obj.spool(jobs)
 
     # report to SkyDriver
     if skydriver_rc:
         update_skydriver(
             skydriver_rc,
             scan_id,
-            submit_result,
+            submit_result_obj,
             args.collector,
             args.schedd,
         )
         LOGGER.info("Sent cluster info to SkyDriver")
-
-    # start dumping condor output
-    # dump_condor_dir(logs_subdir)
-
-
-if __name__ == "__main__":
-    coloredlogs.install(level="DEBUG")
-    main()
