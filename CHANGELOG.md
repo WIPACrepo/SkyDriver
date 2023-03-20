@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.41 (2023-03-20)
+### Other
+* Htcondor: syntax fix ([`7fb9f9f`](https://github.com/WIPACrepo/SkyDriver/commit/7fb9f9f7258eabbe2b909b4eaa56245bc0ee4867))
+
 ## v0.0.40 (2023-03-20)
 ### Other
 * <bot> update requirements.txt ([`7db2064`](https://github.com/WIPACrepo/SkyDriver/commit/7db2064f1a6c9c3cf50e777be88528be0fd71064))
