@@ -38,7 +38,6 @@ def main() -> None:
 
     # parse args & set up logging
     args = parser.parse_args()
-    logging_tools.log_argparse_args(args, logger=LOGGER, level="WARNING")
     logging_tools.set_level(
         "DEBUG",  # os.getenv("SKYSCAN_LOG", "INFO"),  # type: ignore[arg-type]
         first_party_loggers=LOGGER,
