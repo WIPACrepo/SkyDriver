@@ -196,7 +196,7 @@ def get_condor_token_v1envvar() -> kubernetes.client.V1EnvVar:
     )
 
 
-class SkymapScannerStartupJob:
+class SkymapScannerStarterJob:
     """Wraps a Skymap Scanner Kubernetes job with tools to start and manage."""
 
     def __init__(
@@ -300,11 +300,12 @@ class SkymapScannerStartupJob:
         clientmanager.
         """
         args = (
-            f"python -m clientmanager start "
+            f"python -m clientmanager "
+            f" --collector {collector} "
+            f" --schedd {schedd} "
+            "start "
             # f" --dryrun"
             f" --logs-directory {common_space_volume_path} "
-            # --collector-address  # see below
-            # --schedd-name  # see below
             # f" --accounting-group "
             f" --jobs {njobs} "
             f" --memory {memory} "
@@ -312,11 +313,6 @@ class SkymapScannerStartupJob:
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
-
-        if collector:
-            args += f" --collector {collector} "
-        if schedd:
-            args += f" --schedd {schedd} "
 
         return args
 
@@ -383,12 +379,12 @@ class SkymapScannerStartupJob:
 
         # 4. generate & add auth tokens
         tokens = {
-            "SKYSCAN_BROKER_AUTH": SkymapScannerStartupJob._get_token_from_keycloak(
+            "SKYSCAN_BROKER_AUTH": SkymapScannerStarterJob._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_BROKER,
                 ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
             ),
-            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerStartupJob._get_token_from_keycloak(
+            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerStarterJob._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
@@ -420,9 +416,10 @@ class SkymapScannerStopperJob:
         containers = []
         for i, cluster in enumerate(condor_clusters):
             args = (
-                f"python -m clientmanager stop "
-                f"--collector-address {cluster.collector} "
-                f"--schedd-name {cluster.schedd} "
+                f"python -m clientmanager "
+                f"--collector {cluster.collector} "
+                f"--schedd {cluster.schedd} "
+                "stop "
                 f"--cluster-id {cluster.cluster_id} "
             )
             containers.append(

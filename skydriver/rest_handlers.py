@@ -174,12 +174,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         collector = self.get_argument(
             "collector",
             type=str,
-            default="",
         )
         schedd = self.get_argument(
             "schedd",
             type=str,
-            default="",
         )
 
         # scanner args
@@ -207,7 +205,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scan_id = uuid.uuid4().hex
 
         # get the container info ready
-        job = k8s.SkymapScannerStartupJob(
+        job = k8s.SkymapScannerStarterJob(
             api_instance=self.k8s_api,
             docker_tag=docker_tag,
             scan_id=scan_id,
