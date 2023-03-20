@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.42 (2023-03-20)
+### Other
+* Require `collector` & `schedd` ([`5fa5498`](https://github.com/WIPACrepo/SkyDriver/commit/5fa5498078499873b0795118178342c43ca311a5))
+* Fix tests ([`8f92ff8`](https://github.com/WIPACrepo/SkyDriver/commit/8f92ff8a42c43c165f2626cac99774f21e88db5e))
+* Merge remote-tracking branch 'origin/main' ([`2e6be6d`](https://github.com/WIPACrepo/SkyDriver/commit/2e6be6d4fc366b8f2e44f6b75e07bbc3abe46819))
+* Fix CL arg ordering ([`2eff2c8`](https://github.com/WIPACrepo/SkyDriver/commit/2eff2c8926eaa436417b6c9acf576ff4a49a80f9))
+
 ## v0.0.41 (2023-03-20)
 ### Other
 * Htcondor: syntax fix ([`7fb9f9f`](https://github.com/WIPACrepo/SkyDriver/commit/7fb9f9f7258eabbe2b909b4eaa56245bc0ee4867))
