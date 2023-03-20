@@ -6,7 +6,7 @@ import os
 
 from wipac_dev_tools import logging_tools
 
-from . import starter, stopper
+from . import condor_tools, starter, stopper, utils
 from .config import LOGGER
 
 
@@ -46,10 +46,15 @@ def main() -> None:
     )
     logging_tools.log_argparse_args(args, logger=LOGGER, level="WARNING")
 
+    # make connections -- do now so we don't have any surprises downstream
+    skydriver_rc, scan_id = utils.connect_to_skydriver()
+    condor_tools.condor_token_auth()
+    schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
+
     # Go!
     match args.action:
         case "start":
-            return starter.start(args)
+            return starter.start(args, skydriver_rc, scan_id, schedd_obj)
         case "stop":
-            return stopper.stop(args)
+            return stopper.stop(args, schedd_obj)
     raise RuntimeError(f"Unknown action: {args.action}")

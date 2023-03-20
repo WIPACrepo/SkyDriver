@@ -191,7 +191,12 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
     )
 
 
-def start(args: argparse.Namespace) -> None:
+def start(
+    args: argparse.Namespace,
+    skydriver_rc: RestClient | None,
+    scan_id: str | None,
+    schedd_obj: htcondor.Schedd,
+) -> None:
     """Main logic."""
     logs_subdir = make_condor_logs_subdir(args.logs_directory)
 
@@ -207,13 +212,6 @@ def start(args: argparse.Namespace) -> None:
                 "The '--client-args' arg cannot include \"--client-startup-json\". "
                 "This needs to be given to this script explicitly ('--client-startup-json')."
             )
-
-    # write condor token file (before any condor calls)
-    if token := os.getenv("CONDOR_TOKEN"):
-        condor_tokens_dpath = Path("~/.condor/tokens.d/").expanduser()
-        condor_tokens_dpath.mkdir(parents=True, exist_ok=True)
-        with open(condor_tokens_dpath / "token1", "w") as f:
-            f.write(token)
 
     # make condor job description
     submit_obj = make_condor_job_description(
@@ -232,10 +230,6 @@ def start(args: argparse.Namespace) -> None:
     if args.dryrun:
         LOGGER.error("Script Aborted: Condor job not submitted")
         return
-
-    # make connections -- do now so we don't have any surprises
-    skydriver_rc, scan_id = utils.connect_to_skydriver()
-    schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
 
     # submit
     submit_result_obj = schedd_obj.submit(
