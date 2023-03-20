@@ -194,8 +194,8 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
 def start(
     args: argparse.Namespace,
     skydriver_rc: RestClient | None,
-    scan_id: str | None,
-    schedd_obj: htcondor.Schedd,
+    scan_id: str,
+    schedd_obj: htcondor.Schedd,  # pylint:disable=no-member
 ) -> None:
     """Main logic."""
     logs_subdir = make_condor_logs_subdir(args.logs_directory)
