@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.40 (2023-03-20)
+### Other
+* <bot> update requirements.txt ([`7db2064`](https://github.com/WIPACrepo/SkyDriver/commit/7db2064f1a6c9c3cf50e777be88528be0fd71064))
+* <bot> update requirements-tests.txt ([`205866d`](https://github.com/WIPACrepo/SkyDriver/commit/205866d0ab80a4d3ec677c90f902b559fdd29799))
+* <bot> update requirements-clientmanager.txt ([`cc22fa0`](https://github.com/WIPACrepo/SkyDriver/commit/cc22fa0747ce6a73eee1e3116ba139df38b86a2e))
+* ClientManager Upgrades (Stop Action) ([#16](https://github.com/WIPACrepo/SkyDriver/issues/16)) ([`cfa28ac`](https://github.com/WIPACrepo/SkyDriver/commit/cfa28ac2396bd45ac394e26b77bfb6257d17b041))
+
 ## v0.0.39 (2023-03-17)
 ### Other
 * <bot> update requirements.txt ([`caf59a4`](https://github.com/WIPACrepo/SkyDriver/commit/caf59a4ffd90d3dda0a41ba48ec1ce6f3e8e8398))
