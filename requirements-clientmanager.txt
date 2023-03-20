@@ -151,7 +151,7 @@ wipac-dev-tools==1.6.13
     #   UNKNOWN (setup.py)
     #   wipac-rest-tools
     #   wipac-telemetry
-wipac-rest-tools[telemetry]==1.4.15
+wipac-rest-tools[telemetry]==1.4.16
     # via UNKNOWN (setup.py)
 wipac-telemetry==0.2.5
     # via wipac-rest-tools
