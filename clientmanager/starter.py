@@ -11,7 +11,7 @@ from pathlib import Path
 import htcondor  # type: ignore[import]
 from rest_tools.client import RestClient
 
-from . import condor_tools, utils
+from . import condor_tools
 from .config import LOGGER
 
 
