@@ -44,9 +44,9 @@ def main() -> None:
         case "start":
             for i, (collector, schedd, njobs) in enumerate(args.cluster):
                 LOGGER.info(
-                    f"Starting Skymap Scanner client jobs on {collector} / {schedd}"
+                    f"Starting {njobs} Skymap Scanner client jobs on {collector} / {schedd}"
                 )
-                return starter.start(
+                starter.start(
                     skydriver_rc,
                     scan_id,
                     condor_tools.get_schedd_obj(collector, schedd),
@@ -61,6 +61,7 @@ def main() -> None:
                     collector,
                     schedd,
                 )
+            return
         case "stop":
             return stopper.stop(
                 args,
