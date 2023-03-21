@@ -42,7 +42,7 @@ def main() -> None:
     # Go!
     match args.action:
         case "start":
-            for i, (collector, schedd) in enumerate(args.clusters):
+            for i, (collector, schedd, njobs) in enumerate(args.clusters):
                 LOGGER.info(
                     f"Starting Skymap Scanner client jobs on {collector} / {schedd}"
                 )
@@ -50,7 +50,7 @@ def main() -> None:
                     skydriver_rc,
                     scan_id,
                     condor_tools.get_schedd_obj(collector, schedd),
-                    args.jobs[i],
+                    njobs,
                     args.logs_directory / str(i),
                     args.client_args,
                     args.memory,
