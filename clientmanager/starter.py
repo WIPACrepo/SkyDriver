@@ -154,7 +154,7 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
         default=[None, None],  # list of a single 2-list
         nargs="*",
         type=lambda x: argparse_tools.validate_arg(
-            x.split(","),
+            (x.split(",")[0], x.split(",")[1], int(x.split(",")[2])),
             len(x.split(",")) == 3 and x.split(",")[2].isnumeric(),
             ValueError('must " "-delimited series of "collector,schedd,njobs"-tuples'),
         ),
