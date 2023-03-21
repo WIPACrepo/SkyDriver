@@ -590,7 +590,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             ) as e:
                 await rc.request("POST", "/scan", {**POST_SCAN_BODY, arg: bad_val})
             print(e.value)
-    for bad_val in [
+    for bad_val in [  # type: ignore[assignment]
         {},
         {"collector": "a"},
         {"schedd": "a"},
@@ -600,7 +600,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         print(f"[{bad_val}]")
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=rf"400 Client Error: `c`: \(ValueError\) .+ for url: {rc.address}/scan",
+            match=rf"400 Client Error: `cluster`: \(ValueError\) .+ for url: {rc.address}/scan",
         ) as e:
             await rc.request("POST", "/scan", {**POST_SCAN_BODY, "cluster": bad_val})
     print(e.value)
