@@ -10,6 +10,7 @@ from pathlib import Path
 
 import htcondor  # type: ignore[import]
 from rest_tools.client import RestClient
+from wipac_dev_tools import argparse_tools
 
 from . import condor_tools
 from .config import LOGGER
@@ -36,7 +37,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     # skymap scanner args
     singularity_image: str,
     client_startup_json: Path,
-    client_args: str,
+    client_args_string: str,
 ) -> htcondor.Submit:  # pylint:disable=no-member
     """Make the condor job description (submit object)."""
     transfer_input_files: list[Path] = [client_startup_json]
@@ -69,7 +70,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     # write
     submit_dict = {
         "executable": "/bin/bash",
-        "arguments": f"/usr/local/icetray/env-shell.sh python -m skymap_scanner.client {client_args} --client-startup-json ./{client_startup_json.name}",
+        "arguments": f"/usr/local/icetray/env-shell.sh python -m skymap_scanner.client {client_args_string} --client-startup-json ./{client_startup_json.name}",
         "+SingularityImage": f'"{singularity_image}"',  # must be quoted
         "Requirements": "HAS_CVMFS_icecube_opensciencegrid_org && has_avx",
         "getenv": "SKYSCAN_*, EWMS_*, RABBITMQ_*, PULSAR_UNACKED_MESSAGES_TIMEOUT_SEC",
@@ -189,7 +190,12 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
     sub_parser.add_argument(
         "--client-args",
         required=False,
-        nargs="+",
+        nargs="*",
+        type=lambda x: argparse_tools.validate_arg(
+            x.split(":", maxsplit=1),
+            len(x.split(":", maxsplit=1)) == 2,
+            ValueError('must " "-delimited series of "clientarg:value"-tuples'),
+        ),
         help="n 'key:value' pairs containing the python CL arguments to pass to skymap_scanner.client",
     )
 
@@ -200,7 +206,7 @@ def start(
     schedd_obj: htcondor.Schedd,  # pylint:disable=no-member
     job_count: int,
     logs_directory: Path,
-    client_args: list[str] | str | None,
+    client_args: list[tuple[str, str]],
     memory: str,
     accounting_group: str,
     singularity_image: str,
@@ -211,13 +217,12 @@ def start(
     logs_subdir = make_condor_logs_subdir(logs_directory)
 
     # get client args
-    client_args = ""
-    if client_args is not None:
-        for carg_value in client_args:
-            carg, value = carg_value.split(":", maxsplit=1)
-            client_args += f" --{carg} {value} "
+    client_args_string = ""
+    if client_args:
+        for carg, value in client_args:
+            client_args_string += f" --{carg} {value} "
         LOGGER.info(f"Client Args: {client_args}")
-        if "--client-startup-json" in client_args:
+        if "--client-startup-json" in client_args_string:
             raise RuntimeError(
                 "The '--client-args' arg cannot include \"--client-startup-json\". "
                 "This needs to be given to this script explicitly ('--client-startup-json')."
@@ -232,7 +237,7 @@ def start(
         # skymap scanner args
         singularity_image,
         client_startup_json,
-        client_args,
+        client_args_string,
     )
     LOGGER.info(submit_obj)
 

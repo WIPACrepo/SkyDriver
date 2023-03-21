@@ -27,14 +27,17 @@ def main() -> None:
     # common arguments
     parser.add_argument(
         "--cluster",
-        default=[[None, None]],  # list of a single 2-list
-        help="the HTCondor clusters to use, each entry contains: "
-        "full DNS name of Collector server, full DNS name of Schedd server"
-        "Ex: foo-bar.icecube.wisc.edu,baz.icecube.wisc.edu alpha.icecube.wisc.edu,beta.icecube.wisc.edu",
+        default=[None, None],  # list of a single 2-list
+        nargs="*",
         type=lambda x: argparse_tools.validate_arg(
-            [c.split(",") for c in x.split()],
-            all(len(o) == 2 for o in [c.split(",") for c in x.split()]),  # all 2-lists
+            x.split(","),
+            len(x.split(",")) == 2,
             ValueError('must " "-delimited series of "collector,schedd"-tuples'),
+        ),
+        help=(
+            "the HTCondor clusters to use, each entry contains: "
+            "full DNS name of Collector server, full DNS name of Schedd server"
+            "Ex: foo-bar.icecube.wisc.edu,baz.icecube.wisc.edu alpha.icecube.wisc.edu,beta.icecube.wisc.edu"
         ),
     )
 
