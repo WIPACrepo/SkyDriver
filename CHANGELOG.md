@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.46 (2023-03-21)
+### Other
+* Starter: fix typo ([`861d04d`](https://github.com/WIPACrepo/SkyDriver/commit/861d04d075afff0e112fde89ad44647845edb5e3))
+
 ## v0.0.45 (2023-03-21)
 ### Other
 * Enable Starting Multiple Condor Clusters ([#17](https://github.com/WIPACrepo/SkyDriver/issues/17)) ([`0bb4d89`](https://github.com/WIPACrepo/SkyDriver/commit/0bb4d898e49b64c2eaef4c41b5345e0f84afbe94))
