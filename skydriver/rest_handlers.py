@@ -13,7 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore[import]
 from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
 from tornado import web
 
-from . import database, images, k8s
+from . import database, images, k8s, types
 from .config import LOGGER, is_testing
 
 # -----------------------------------------------------------------------------
@@ -133,15 +133,15 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Start a new scan."""
 
         def _json_to_dict(val: Any) -> dict:
-            error = TypeError("must be JSON-string or JSON-friendly dict")
+            _error = TypeError("must be JSON-string or JSON-friendly dict")
             # str -> json-dict
             if isinstance(val, str):
                 try:
                     obj = json.loads(val)
                 except:  # noqa: E722
-                    raise error
+                    raise _error
                 if not isinstance(obj, dict):  # loaded object must be dict
-                    raise error
+                    raise _error
                 return obj
             # dict -> check if json-friendly
             elif isinstance(val, dict):
@@ -149,14 +149,26 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                     json.dumps(val)
                     return val
                 except:  # noqa: E722
-                    raise error
+                    raise _error
             # fall-through
-            raise error
+            raise _error
 
-        def clusters(val: Any) -> dict:
-            error = TypeError("must be JSON-string or JSON-friendly dict")
-            if not isisinstance(val, dict):
-
+        def _dict_or_listdict_to_request_clusters(
+            val: Any,
+        ) -> list[types.RequestorInputCluster]:
+            _error = TypeError(
+                f"must be a dictionary (or a list of dictionaries) with keys "
+                f"{[f.name for f in dc.fields(types.RequestorInputCluster)]} "
+                # f"(optional: 'njobs')"  # TODO: make optional when using "smart starter"
+            )
+            if isinstance(val, dict):
+                return _dict_or_listdict_to_request_clusters([val])
+            if not isinstance(val, list):
+                raise _error
+            try:
+                return [from_dict(types.RequestorInputCluster, ic) for ic in val]
+            except DaciteError:
+                raise _error
 
         # docker args
         docker_tag = self.get_argument(  # any tag on docker hub (including 'latest') -- must also be on CVMFS (but not checked here)
@@ -171,24 +183,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=str,
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
-        clusters = self.get_argument(
-            "clusters",
-            type=clusters,
-        )
-
-        njobs = self.get_argument(
-            "njobs",
-            type=int,
-        )
-        collector = self.get_argument(
-            "collector",
-            type=str,
-            forbiddens=[r"\s*"],  # no empty string / whitespace
-        )
-        schedd = self.get_argument(
-            "schedd",
-            type=str,
-            forbiddens=[r"\s*"],  # no empty string / whitespace
+        request_clusters = self.get_argument(
+            "cluster",
+            type=_dict_or_listdict_to_request_clusters,
         )
 
         # scanner args
@@ -225,10 +222,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             nsides=nsides,  # type: ignore[arg-type]
             is_real_event=real_or_simulated_event in REAL_CHOICES,
             # clientmanager
-            njobs=njobs,
+            request_clusters=request_clusters,
             memory=memory,
-            collector=collector,
-            schedd=schedd,
             # env
             rest_address=self.request.full_url().rstrip(self.request.uri),
         )
