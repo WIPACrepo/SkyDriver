@@ -120,6 +120,22 @@ def update_skydriver(
 def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
     """Add args to subparser."""
 
+    sub_parser.add_argument(
+        "--cluster",
+        default=[None, None],  # list of a single 2-list
+        nargs="*",
+        type=lambda x: argparse_tools.validate_arg(
+            x.split(","),
+            len(x.split(",")) == 2,
+            ValueError('must " "-delimited series of "collector,schedd"-tuples'),
+        ),
+        help=(
+            "the HTCondor clusters to use, each entry contains: "
+            "full DNS name of Collector server, full DNS name of Schedd server"
+            "Ex: foo-bar.icecube.wisc.edu,baz.icecube.wisc.edu alpha.icecube.wisc.edu,beta.icecube.wisc.edu"
+        ),
+    )
+
     def wait_for_file(waitee: Path, wait_time: int) -> Path:
         """Wait for `waitee` to exist, then return fullly-resolved path."""
         elapsed_time = 0

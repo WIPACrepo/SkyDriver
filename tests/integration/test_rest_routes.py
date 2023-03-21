@@ -123,9 +123,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
             raise RuntimeError("need more cases")
 
     clientmanager_args = (
-        f"python -m clientmanager "
+        f"python -m clientmanager start "
         f"--cluster {cluster_arg} "
-        " start "
         f" --jobs {jobs_arg} "
         f" --logs-directory /common-space "
         f" --memory {post_scan_body['memory']} "

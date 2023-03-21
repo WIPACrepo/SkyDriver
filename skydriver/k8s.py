@@ -298,9 +298,8 @@ class SkymapScannerStarterJob:
         )  # Ex: "collectorA,scheddA collectorB,scheddB collectorC,scheddC"
 
         args = (
-            f"python -m clientmanager "
+            f"python -m clientmanager start "
             f" --cluster {clusters_args} "
-            f" start "
             f" --jobs {' '.join(str(x.njobs) for x in request_clusters)} "
             # f" --dryrun"
             f" --logs-directory {common_space_volume_path} "
@@ -409,27 +408,27 @@ class SkymapScannerStopperJob:
     ):
         self.api_instance = api_instance
 
-        clusters_args = " ".join(
-            ",".join([x.collector, x.schedd]) for x in condor_clusters
-        )  # Ex: "collectorA,scheddA collectorB,scheddB collectorC,scheddC"
-
         # make a container per cluster
-        args = (
-            f"python -m clientmanager "
-            f" --cluster {clusters_args} "
-            f" stop "
-            f" --cluster-id {' '.join(str(x.cluster_id) for x in condor_clusters)} "
-        )
-        container = KubeAPITools.create_container(
-            f"clientmanager-stop-{scan_id}",
-            ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
-            env=[get_condor_token_v1envvar()],
-            args=args.split(),
-        )
+        containers = []
+        for i, cluster in enumerate(condor_clusters):
+            args = (
+                f"python -m clientmanager stop "
+                f"--collector {cluster.collector} "
+                f"--schedd {cluster.schedd} "
+                f"--cluster-id {cluster.cluster_id} "
+            )
+            containers.append(
+                KubeAPITools.create_container(
+                    f"clientmanager-stop-{i}-{scan_id}",
+                    ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
+                    env=[get_condor_token_v1envvar()],
+                    args=args.split(),
+                )
+            )
 
         self.job_obj = KubeAPITools.kube_create_job_object(
             f"clientmanager-stop-{scan_id}",
-            container,
+            containers,
             ENV.K8S_NAMESPACE,
         )
 
