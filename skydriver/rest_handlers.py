@@ -26,8 +26,8 @@ SKYMAP_SCANNER_ACCT = "system"
 if is_testing():
 
     def service_account_auth(**kwargs):  # type: ignore
-        def make_wrapper(method):
-            async def wrapper(self, *args, **kwargs):
+        def make_wrapper(method):  # type: ignore[no-untyped-def]
+            async def wrapper(self, *args, **kwargs):  # type: ignore[no-untyped-def]
                 LOGGER.warning("TESTING: auth disabled")
                 return await method(self, *args, **kwargs)
 
@@ -36,7 +36,7 @@ if is_testing():
         return make_wrapper
 
 else:
-    service_account_auth = token_attribute_role_mapping_auth(
+    service_account_auth = token_attribute_role_mapping_auth(  # type: ignore[no-untyped-call]
         role_attrs={
             USER_ACCT: ["groups=/institutions/IceCube.*"],
             SKYMAP_SCANNER_ACCT: ["skydriver_role=system"],
@@ -67,7 +67,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
         **kwargs: Any,
     ) -> None:
         """Initialize a BaseSkyDriverHandler object."""
-        super().initialize(*args, **kwargs)
+        super().initialize(*args, **kwargs)  # type: ignore[no-untyped-call]
         # pylint: disable=W0201
         self.manifests = database.interface.ManifestClient(mongo_client)
         self.results = database.interface.ResultClient(mongo_client)
@@ -213,7 +213,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scan_id = uuid.uuid4().hex
 
         # get the container info ready
-        job = k8s.SkymapScannerStarterJob(
+        k8s_job = k8s.SkymapScannerStarterJob(
             api_instance=self.k8s_api,
             docker_tag=docker_tag,
             scan_id=scan_id,
@@ -232,14 +232,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await self.manifests.post(
             event_i3live_json_dict,
             scan_id,
-            job.server_args,
-            job.clientmanager_args,
-            job.env_dict,
+            k8s_job.server_args,
+            k8s_job.clientmanager_args,
+            k8s_job.env_dict,
         )
 
         # start skymap scanner instance
         try:
-            job.start_job()
+            k8s_job.start_job()
         except kubernetes.client.exceptions.ApiException as e:
             LOGGER.error(e)
             raise web.HTTPError(
@@ -264,14 +264,14 @@ async def stop_scanner_instance(
         return
 
     # get the container info ready
-    job = k8s.SkymapScannerStopperJob(
+    k8s_job = k8s.SkymapScannerStopperJob(
         k8s_api,
         scan_id,
         manifest.condor_clusters,
     )
 
     try:
-        job.start_job()
+        k8s_job.start_job()
     except kubernetes.client.exceptions.ApiException as e:
         LOGGER.error(e)
         raise web.HTTPError(
