@@ -32,7 +32,7 @@ IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 @pytest.fixture
 def port() -> int:
     """Get an ephemeral port number."""
-    # https://unix.stackexchange.com/a/132524
+    # unix.stackexchange.com/a/132524
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(("", 0))
     addr = s.getsockname()
@@ -79,8 +79,8 @@ async def server(
 POST_SCAN_BODY = {
     "memory": "20G",
     "cluster": {
-        "collector": "https://le-collector.edu",
-        "schedd": "https://un-schedd.edu",
+        "collector": "le-collector.edu",
+        "schedd": "un-schedd.edu",
         "njobs": 1,
     },
     "reco_algo": "anything",
@@ -306,8 +306,8 @@ async def _clientmanager_reply(
 ) -> StrDict:
     # reply as the clientmanager with a new condor cluster
     condor_cluster = dict(
-        collector="https://le-collector.edu",
-        schedd="https://un-schedd.edu",
+        collector="le-collector.edu",
+        schedd="un-schedd.edu",
         cluster_id=random.randint(1, 10000),
         jobs=random.randint(1, 10000),
     )
@@ -468,8 +468,34 @@ async def _delete_result(
         ("gcd-handling-improvements-fe8ecee", "gcd-handling-improvements-fe8ecee"),
     ],
 )
+@pytest.mark.parametrize(
+    "clusters",
+    [
+        [
+            {
+                "collector": "le-collector.edu",
+                "schedd": "un-schedd.edu",
+                "njobs": 1,
+            }
+        ],
+        [
+            {
+                "collector": "le-collector.edu",
+                "schedd": "un-schedd.edu",
+                "njobs": 1,
+            },
+            {
+                "collector": "the-collector.edu",
+                "schedd": "a-schedd.edu",
+                "njobs": 999,
+            },
+        ],
+    ],
+)
 async def test_00(
-    docker_tag_input_and_expect: tuple[str, str], server: Callable[[], RestClient]
+    clusters: list[dict],
+    docker_tag_input_and_expect: tuple[str, str],
+    server: Callable[[], RestClient],
 ) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
@@ -479,7 +505,11 @@ async def test_00(
     #
     scan_id = await _launch_scan(
         rc,
-        {**POST_SCAN_BODY, "docker_tag": docker_tag_input_and_expect[0]},
+        {
+            **POST_SCAN_BODY,
+            "docker_tag": docker_tag_input_and_expect[0],
+            "cluster": clusters,
+        },
         docker_tag_input_and_expect[1],
     )
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
