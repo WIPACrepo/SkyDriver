@@ -107,10 +107,10 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
 
     clientmanager_args = (
         f"python -m clientmanager "
-        f"--cluster {post_scan_body['cluster']['collector']},{post_scan_body['cluster']['schedd']}"
-        "start "
-        f" --logs-directory /common-space "
+        f"--cluster {post_scan_body['cluster']['collector']},{post_scan_body['cluster']['schedd']} "
+        " start "
         f" --jobs {post_scan_body['cluster']['njobs']} "
+        f" --logs-directory /common-space "
         f" --memory {post_scan_body['memory']} "
         f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
         f" --client-startup-json /common-space/startup.json "
