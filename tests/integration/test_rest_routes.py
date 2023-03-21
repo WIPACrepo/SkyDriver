@@ -77,7 +77,6 @@ async def server(
 ########################################################################################
 
 POST_SCAN_BODY = {
-    "memory": "20G",
     "cluster": {
         "collector": "le-collector.edu",
         "schedd": "un-schedd.edu",
@@ -124,7 +123,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         f"python -m clientmanager start "
         f"--cluster {cluster_arg} "
         f" --logs-directory /common-space "
-        f" --memory {post_scan_body['memory']} "
+        f" --memory 6GB "
         f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
         f" --client-startup-json /common-space/startup.json "
     )

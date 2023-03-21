@@ -181,6 +181,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         memory = self.get_argument(
             "memory",
             type=str,
+            default="6GB",
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
         request_clusters = self.get_argument(
