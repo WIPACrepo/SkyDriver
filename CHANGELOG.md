@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.49 (2023-03-21)
+### Other
+* Make `memory` default `6GB` ([`6a130db`](https://github.com/WIPACrepo/SkyDriver/commit/6a130db02959bdf75f50783aec78ffa29eaa6c50))
+
 ## v0.0.48 (2023-03-21)
 ### Other
 * Starter: fix multi-requests ([`50f7b7b`](https://github.com/WIPACrepo/SkyDriver/commit/50f7b7b5b4243de3ad902c9d9798a2d93bb43828))
