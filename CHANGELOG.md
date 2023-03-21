@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.45 (2023-03-21)
+### Other
+* Enable Starting Multiple Condor Clusters ([#17](https://github.com/WIPACrepo/SkyDriver/issues/17)) ([`0bb4d89`](https://github.com/WIPACrepo/SkyDriver/commit/0bb4d898e49b64c2eaef4c41b5345e0f84afbe94))
+
 ## v0.0.44 (2023-03-20)
 ### Other
 * Mypy ([`f4fa897`](https://github.com/WIPACrepo/SkyDriver/commit/f4fa8971768daee7f714a3e04ea4e2b8aed6efee))
