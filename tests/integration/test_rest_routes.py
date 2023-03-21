@@ -105,17 +105,20 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         f"--{post_scan_body['real_or_simulated_event']}-event"
     )
 
-    match len(post_scan_body["cluster"]):
+    clusters = post_scan_body["cluster"]
+    if not isinstance(clusters, list):
+        clusters = [clusters]
+    match len(clusters):
         # doing things manually here so we don't duplicate the same method used in the app
         case 1:
-            cluster_arg = f"{post_scan_body['cluster'][0]['collector']},{post_scan_body['cluster'][0]['schedd']}"
-            jobs_arg = post_scan_body["cluster"][0]["njobs"]
+            cluster_arg = f"{clusters[0]['collector']},{clusters[0]['schedd']}"
+            jobs_arg = clusters[0]["njobs"]
         case 2:
             cluster_arg = (
-                f"{post_scan_body['cluster'][0]['collector']},{post_scan_body['cluster'][0]['schedd']} "
-                f"{post_scan_body['cluster'][1]['collector']},{post_scan_body['cluster'][1]['schedd']} "
+                f"{clusters[0]['collector']},{clusters[0]['schedd']} "
+                f"{clusters[1]['collector']},{clusters[1]['schedd']} "
             )
-            jobs_arg = f"{post_scan_body['cluster'][0]['njobs']} {post_scan_body['cluster'][1]['njobs']}"
+            jobs_arg = f"{clusters[0]['njobs']} {clusters[1]['njobs']}"
         case _:
             raise RuntimeError("need more cases")
 
