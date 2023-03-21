@@ -212,6 +212,8 @@ def start(
     singularity_image: str,
     client_startup_json: Path,
     dryrun: bool,
+    collector: str,
+    schedd: str,
 ) -> None:
     """Main logic."""
     logs_subdir = make_condor_logs_subdir(logs_directory)
@@ -266,7 +268,7 @@ def start(
             skydriver_rc,
             scan_id,
             submit_result_obj,
-            args.collector,
-            args.schedd,
+            collector,
+            schedd,
         )
         LOGGER.info("Sent cluster info to SkyDriver")

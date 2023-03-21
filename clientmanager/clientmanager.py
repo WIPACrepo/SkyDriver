@@ -77,6 +77,8 @@ def main() -> None:
                     args.singularity_image,
                     args.client_startup_json,
                     args.dryrun,
+                    collector,
+                    schedd,
                 )
             case "stop":
                 LOGGER.info(
