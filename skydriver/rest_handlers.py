@@ -13,7 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore[import]
 from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
 from tornado import web
 
-from . import database, images, k8s
+from . import database, images, k8s, types
 from .config import LOGGER, is_testing
 
 # -----------------------------------------------------------------------------
@@ -26,8 +26,8 @@ SKYMAP_SCANNER_ACCT = "system"
 if is_testing():
 
     def service_account_auth(**kwargs):  # type: ignore
-        def make_wrapper(method):
-            async def wrapper(self, *args, **kwargs):
+        def make_wrapper(method):  # type: ignore[no-untyped-def]
+            async def wrapper(self, *args, **kwargs):  # type: ignore[no-untyped-def]
                 LOGGER.warning("TESTING: auth disabled")
                 return await method(self, *args, **kwargs)
 
@@ -36,7 +36,7 @@ if is_testing():
         return make_wrapper
 
 else:
-    service_account_auth = token_attribute_role_mapping_auth(
+    service_account_auth = token_attribute_role_mapping_auth(  # type: ignore[no-untyped-call]
         role_attrs={
             USER_ACCT: ["groups=/institutions/IceCube.*"],
             SKYMAP_SCANNER_ACCT: ["skydriver_role=system"],
@@ -67,7 +67,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
         **kwargs: Any,
     ) -> None:
         """Initialize a BaseSkyDriverHandler object."""
-        super().initialize(*args, **kwargs)
+        super().initialize(*args, **kwargs)  # type: ignore[no-untyped-call]
         # pylint: disable=W0201
         self.manifests = database.interface.ManifestClient(mongo_client)
         self.results = database.interface.ResultClient(mongo_client)
@@ -132,17 +132,16 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     async def post(self) -> None:
         """Start a new scan."""
 
-        def json_to_dict(val: Any) -> dict:
-            # pylint:disable=W0707
-            error = TypeError("must be JSON-string or JSON-friendly dict")
+        def _json_to_dict(val: Any) -> dict:
+            _error = TypeError("must be JSON-string or JSON-friendly dict")
             # str -> json-dict
             if isinstance(val, str):
                 try:
                     obj = json.loads(val)
                 except:  # noqa: E722
-                    raise error
+                    raise _error
                 if not isinstance(obj, dict):  # loaded object must be dict
-                    raise error
+                    raise _error
                 return obj
             # dict -> check if json-friendly
             elif isinstance(val, dict):
@@ -150,9 +149,26 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                     json.dumps(val)
                     return val
                 except:  # noqa: E722
-                    raise error
+                    raise _error
             # fall-through
-            raise error
+            raise _error
+
+        def _dict_or_listdict_to_request_clusters(
+            val: Any,
+        ) -> list[types.RequestorInputCluster]:
+            _error = TypeError(
+                f"must be a dictionary (or a list of dictionaries) with keys "
+                f"{[f.name for f in dc.fields(types.RequestorInputCluster)]} "
+                # f"(optional: 'njobs')"  # TODO: make optional when using "smart starter"
+            )
+            if isinstance(val, dict):
+                return _dict_or_listdict_to_request_clusters([val])
+            if not isinstance(val, list):
+                raise _error
+            try:
+                return [from_dict(types.RequestorInputCluster, ic) for ic in val]
+            except DaciteError:
+                raise _error
 
         # docker args
         docker_tag = self.get_argument(  # any tag on docker hub (including 'latest') -- must also be on CVMFS (but not checked here)
@@ -162,24 +178,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
 
         # condor args
-        njobs = self.get_argument(
-            "njobs",
-            type=int,
-        )
         memory = self.get_argument(
             "memory",
             type=str,
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
-        collector = self.get_argument(
-            "collector",
-            type=str,
-            forbiddens=[r"\s*"],  # no empty string / whitespace
-        )
-        schedd = self.get_argument(
-            "schedd",
-            type=str,
-            forbiddens=[r"\s*"],  # no empty string / whitespace
+        request_clusters = self.get_argument(
+            "cluster",
+            type=_dict_or_listdict_to_request_clusters,
         )
 
         # scanner args
@@ -190,7 +196,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         event_i3live_json_dict = self.get_argument(
             "event_i3live_json",
-            type=json_to_dict,  # JSON-string/JSON-friendly dict -> dict
+            type=_json_to_dict,  # JSON-string/JSON-friendly dict -> dict
         )
         nsides = self.get_argument(
             "nsides",
@@ -207,7 +213,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scan_id = uuid.uuid4().hex
 
         # get the container info ready
-        job = k8s.SkymapScannerStarterJob(
+        k8s_job = k8s.SkymapScannerStarterJob(
             api_instance=self.k8s_api,
             docker_tag=docker_tag,
             scan_id=scan_id,
@@ -216,10 +222,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             nsides=nsides,  # type: ignore[arg-type]
             is_real_event=real_or_simulated_event in REAL_CHOICES,
             # clientmanager
-            njobs=njobs,
+            request_clusters=request_clusters,
             memory=memory,
-            collector=collector,
-            schedd=schedd,
             # env
             rest_address=self.request.full_url().rstrip(self.request.uri),
         )
@@ -228,14 +232,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await self.manifests.post(
             event_i3live_json_dict,
             scan_id,
-            job.server_args,
-            job.clientmanager_args,
-            job.env_dict,
+            k8s_job.server_args,
+            k8s_job.clientmanager_args,
+            k8s_job.env_dict,
         )
 
         # start skymap scanner instance
         try:
-            job.start_job()
+            k8s_job.start_job()
         except kubernetes.client.exceptions.ApiException as e:
             LOGGER.error(e)
             raise web.HTTPError(
@@ -260,14 +264,14 @@ async def stop_scanner_instance(
         return
 
     # get the container info ready
-    job = k8s.SkymapScannerStopperJob(
+    k8s_job = k8s.SkymapScannerStopperJob(
         k8s_api,
         scan_id,
         manifest.condor_clusters,
     )
 
     try:
-        job.start_job()
+        k8s_job.start_job()
     except kubernetes.client.exceptions.ApiException as e:
         LOGGER.error(e)
         raise web.HTTPError(

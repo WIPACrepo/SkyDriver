@@ -32,7 +32,7 @@ IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 @pytest.fixture
 def port() -> int:
     """Get an ephemeral port number."""
-    # https://unix.stackexchange.com/a/132524
+    # unix.stackexchange.com/a/132524
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(("", 0))
     addr = s.getsockname()
@@ -77,10 +77,12 @@ async def server(
 ########################################################################################
 
 POST_SCAN_BODY = {
-    "njobs": 1,
     "memory": "20G",
-    "collector": "https://le-collector.edu",
-    "schedd": "https://un-schedd.edu",
+    "cluster": {
+        "collector": "le-collector.edu",
+        "schedd": "un-schedd.edu",
+        "njobs": 1,
+    },
     "reco_algo": "anything",
     "event_i3live_json": {"a": 22},
     "nsides": {1: 2, 3: 4},
@@ -103,13 +105,25 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         f"--{post_scan_body['real_or_simulated_event']}-event"
     )
 
+    clusters = post_scan_body["cluster"]
+    if not isinstance(clusters, list):
+        clusters = [clusters]
+    match len(clusters):
+        # doing things manually here so we don't duplicate the same method used in the app
+        case 1:
+            cluster_arg = f"{clusters[0]['collector']},{clusters[0]['schedd']},{clusters[0]['njobs']}"
+        case 2:
+            cluster_arg = (
+                f"{clusters[0]['collector']},{clusters[0]['schedd']},{clusters[0]['njobs']} "
+                f"{clusters[1]['collector']},{clusters[1]['schedd']},{clusters[1]['njobs']} "
+            )
+        case _:
+            raise RuntimeError("need more cases")
+
     clientmanager_args = (
-        f"python -m clientmanager "
-        f"--collector {post_scan_body['collector']} "
-        f"--schedd {post_scan_body['schedd']} "
-        "start "
+        f"python -m clientmanager start "
+        f"--cluster {cluster_arg} "
         f" --logs-directory /common-space "
-        f" --jobs {post_scan_body['njobs']} "
         f" --memory {post_scan_body['memory']} "
         f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
         f" --client-startup-json /common-space/startup.json "
@@ -305,8 +319,8 @@ async def _clientmanager_reply(
 ) -> StrDict:
     # reply as the clientmanager with a new condor cluster
     condor_cluster = dict(
-        collector="https://le-collector.edu",
-        schedd="https://un-schedd.edu",
+        collector="le-collector.edu",
+        schedd="un-schedd.edu",
         cluster_id=random.randint(1, 10000),
         jobs=random.randint(1, 10000),
     )
@@ -467,8 +481,34 @@ async def _delete_result(
         ("gcd-handling-improvements-fe8ecee", "gcd-handling-improvements-fe8ecee"),
     ],
 )
+@pytest.mark.parametrize(
+    "clusters",
+    [
+        [
+            {
+                "collector": "le-collector.edu",
+                "schedd": "un-schedd.edu",
+                "njobs": 1,
+            }
+        ],
+        [
+            {
+                "collector": "le-collector.edu",
+                "schedd": "un-schedd.edu",
+                "njobs": 1,
+            },
+            {
+                "collector": "the-collector.edu",
+                "schedd": "a-schedd.edu",
+                "njobs": 999,
+            },
+        ],
+    ],
+)
 async def test_00(
-    docker_tag_input_and_expect: tuple[str, str], server: Callable[[], RestClient]
+    clusters: list[dict],
+    docker_tag_input_and_expect: tuple[str, str],
+    server: Callable[[], RestClient],
 ) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
@@ -478,7 +518,11 @@ async def test_00(
     #
     scan_id = await _launch_scan(
         rc,
-        {**POST_SCAN_BODY, "docker_tag": docker_tag_input_and_expect[0]},
+        {
+            **POST_SCAN_BODY,
+            "docker_tag": docker_tag_input_and_expect[0],
+            "cluster": clusters,
+        },
         docker_tag_input_and_expect[1],
     )
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
@@ -559,6 +603,20 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             ) as e:
                 await rc.request("POST", "/scan", {**POST_SCAN_BODY, arg: bad_val})
             print(e.value)
+    for bad_val in [  # type: ignore[assignment]
+        {},
+        {"collector": "a"},
+        {"schedd": "a"},
+        {"collector": "a", "schedd": "a"},  # missing njobs
+        {"collector": "a", "schedd": "a", "njobs": "not-a-number"},
+    ]:
+        print(f"[{bad_val}]")
+        with pytest.raises(
+            requests.exceptions.HTTPError,
+            match=rf"400 Client Error: `cluster`: \(ValueError\) .+ for url: {rc.address}/scan",
+        ) as e:
+            await rc.request("POST", "/scan", {**POST_SCAN_BODY, "cluster": bad_val})
+    print(e.value)
     # # missing arg
     for arg in POST_SCAN_BODY:
         with pytest.raises(

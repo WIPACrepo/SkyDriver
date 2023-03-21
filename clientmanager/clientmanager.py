@@ -24,18 +24,6 @@ def main() -> None:
     starter.attach_sub_parser_args(subparsers.add_parser("start", help="start jobs"))
     stopper.attach_sub_parser_args(subparsers.add_parser("stop", help="stop jobs"))
 
-    # common arguments
-    parser.add_argument(
-        "--collector",
-        default="",
-        help="the full URL address of the HTCondor collector server. Ex: foo-bar.icecube.wisc.edu",
-    )
-    parser.add_argument(
-        "--schedd",
-        default="",
-        help="the full DNS name of the HTCondor Schedd server. Ex: baz.icecube.wisc.edu",
-    )
-
     # parse args & set up logging
     args = parser.parse_args()
     logging_tools.set_level(
@@ -46,15 +34,36 @@ def main() -> None:
     )
     logging_tools.log_argparse_args(args, logger=LOGGER, level="WARNING")
 
+    ####################################################################################
+
     # make connections -- do now so we don't have any surprises downstream
     skydriver_rc, scan_id = utils.connect_to_skydriver()
-    condor_tools.condor_token_auth()
-    schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
 
     # Go!
     match args.action:
         case "start":
-            return starter.start(args, skydriver_rc, scan_id, schedd_obj)
+            for i, (collector, schedd, njobs) in enumerate(args.clusters):
+                LOGGER.info(
+                    f"Starting Skymap Scanner client jobs on {collector} / {schedd}"
+                )
+                return starter.start(
+                    skydriver_rc,
+                    scan_id,
+                    condor_tools.get_schedd_obj(collector, schedd),
+                    njobs,
+                    args.logs_directory / str(i),
+                    args.client_args,
+                    args.memory,
+                    args.accounting_group,
+                    args.singularity_image,
+                    args.client_startup_json,
+                    args.dryrun,
+                    collector,
+                    schedd,
+                )
         case "stop":
-            return stopper.stop(args, schedd_obj)
+            return stopper.stop(
+                args,
+                condor_tools.get_schedd_obj(args.collector, args.schedd),
+            )
     raise RuntimeError(f"Unknown action: {args.action}")

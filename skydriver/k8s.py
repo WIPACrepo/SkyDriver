@@ -8,7 +8,7 @@ import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
-from . import images
+from . import images, types
 from .config import ENV, LOGGER
 from .database import schema
 
@@ -211,10 +211,8 @@ class SkymapScannerStarterJob:
         nsides: dict[int, int],
         is_real_event: bool,
         # clientmanager
-        njobs: int,
         memory: str,
-        collector: str,
-        schedd: str,
+        request_clusters: list[types.RequestorInputCluster],
         # env
         rest_address: str,
     ):
@@ -228,13 +226,11 @@ class SkymapScannerStarterJob:
             nsides=nsides,
             is_real_event=is_real_event,
         )
-        self.clientmanager_args = self.get_clientmanager_args(
+        self.clientmanager_args = self.get_clientmanager_starter_args(
             common_space_volume_path=common_space_volume_path,
             singularity_image=images.get_skyscan_cvmfs_singularity_image(docker_tag),
-            njobs=njobs,
             memory=memory,
-            collector=collector,
-            schedd=schedd,
+            request_clusters=request_clusters,
         )
         env = self.get_env(
             rest_address=rest_address,
@@ -286,28 +282,27 @@ class SkymapScannerStarterJob:
         return args
 
     @staticmethod
-    def get_clientmanager_args(
+    def get_clientmanager_starter_args(
         common_space_volume_path: Path,
         singularity_image: Path,
-        njobs: int,
         memory: str,
-        collector: str,
-        schedd: str,
+        request_clusters: list[types.RequestorInputCluster],
     ) -> str:
         """Make the clientmanager container args.
 
         This also includes any client args not added by the
         clientmanager.
         """
+        clusters_args = " ".join(
+            ",".join([x.collector, x.schedd, str(x.njobs)]) for x in request_clusters
+        )  # Ex: "collectorA,scheddA,123 collectorB,scheddB,345 collectorC,scheddC,989"
+
         args = (
-            f"python -m clientmanager "
-            f" --collector {collector} "
-            f" --schedd {schedd} "
-            "start "
+            f"python -m clientmanager start "
+            f" --cluster {clusters_args} "
             # f" --dryrun"
             f" --logs-directory {common_space_volume_path} "
             # f" --accounting-group "
-            f" --jobs {njobs} "
             f" --memory {memory} "
             f" --singularity-image {singularity_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
@@ -416,10 +411,9 @@ class SkymapScannerStopperJob:
         containers = []
         for i, cluster in enumerate(condor_clusters):
             args = (
-                f"python -m clientmanager "
+                f"python -m clientmanager stop "
                 f"--collector {cluster.collector} "
                 f"--schedd {cluster.schedd} "
-                "stop "
                 f"--cluster-id {cluster.cluster_id} "
             )
             containers.append(
