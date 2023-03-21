@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.47 (2023-03-21)
+### Other
+* Starter: fix type ([`cae870a`](https://github.com/WIPACrepo/SkyDriver/commit/cae870a676fe786026ce87a3dc4d18ba8e0544f3))
+
 ## v0.0.46 (2023-03-21)
 ### Other
 * Starter: fix typo ([`861d04d`](https://github.com/WIPACrepo/SkyDriver/commit/861d04d075afff0e112fde89ad44647845edb5e3))
