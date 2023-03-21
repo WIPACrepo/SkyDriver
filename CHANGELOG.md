@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.48 (2023-03-21)
+### Other
+* Starter: fix multi-requests ([`50f7b7b`](https://github.com/WIPACrepo/SkyDriver/commit/50f7b7b5b4243de3ad902c9d9798a2d93bb43828))
+
 ## v0.0.47 (2023-03-21)
 ### Other
 * Starter: fix type ([`cae870a`](https://github.com/WIPACrepo/SkyDriver/commit/cae870a676fe786026ce87a3dc4d18ba8e0544f3))
