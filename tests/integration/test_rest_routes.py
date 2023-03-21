@@ -111,21 +111,18 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
     match len(clusters):
         # doing things manually here so we don't duplicate the same method used in the app
         case 1:
-            cluster_arg = f"{clusters[0]['collector']},{clusters[0]['schedd']}"
-            jobs_arg = clusters[0]["njobs"]
+            cluster_arg = f"{clusters[0]['collector']},{clusters[0]['schedd']},{clusters[0]['njobs']}"
         case 2:
             cluster_arg = (
-                f"{clusters[0]['collector']},{clusters[0]['schedd']} "
-                f"{clusters[1]['collector']},{clusters[1]['schedd']} "
+                f"{clusters[0]['collector']},{clusters[0]['schedd']},{clusters[0]['njobs']} "
+                f"{clusters[1]['collector']},{clusters[1]['schedd']},{clusters[1]['njobs']} "
             )
-            jobs_arg = f"{clusters[0]['njobs']} {clusters[1]['njobs']}"
         case _:
             raise RuntimeError("need more cases")
 
     clientmanager_args = (
         f"python -m clientmanager start "
         f"--cluster {cluster_arg} "
-        f" --jobs {jobs_arg} "
         f" --logs-directory /common-space "
         f" --memory {post_scan_body['memory']} "
         f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "

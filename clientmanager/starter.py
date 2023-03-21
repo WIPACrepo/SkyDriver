@@ -120,22 +120,6 @@ def update_skydriver(
 def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
     """Add args to subparser."""
 
-    sub_parser.add_argument(
-        "--cluster",
-        default=[None, None],  # list of a single 2-list
-        nargs="*",
-        type=lambda x: argparse_tools.validate_arg(
-            x.split(","),
-            len(x.split(",")) == 2,
-            ValueError('must " "-delimited series of "collector,schedd"-tuples'),
-        ),
-        help=(
-            "the HTCondor clusters to use, each entry contains: "
-            "full DNS name of Collector server, full DNS name of Schedd server"
-            "Ex: foo-bar.icecube.wisc.edu,baz.icecube.wisc.edu alpha.icecube.wisc.edu,beta.icecube.wisc.edu"
-        ),
-    )
-
     def wait_for_file(waitee: Path, wait_time: int) -> Path:
         """Wait for `waitee` to exist, then return fullly-resolved path."""
         elapsed_time = 0
@@ -166,21 +150,26 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
 
     # condor args
     sub_parser.add_argument(
+        "--cluster",
+        default=[None, None],  # list of a single 2-list
+        nargs="*",
+        type=lambda x: argparse_tools.validate_arg(
+            x.split(","),
+            len(x.split(",")) == 3,
+            ValueError('must " "-delimited series of "collector,schedd,njobs"-tuples'),
+        ),
+        help=(
+            "the HTCondor clusters to use, each entry contains: "
+            "full DNS name of Collector server, full DNS name of Schedd server, # of jobs"
+            "Ex: foo-bar.icecube.wisc.edu,baz.icecube.wisc.edu,123 alpha.icecube.wisc.edu,beta.icecube.wisc.edu,9999"
+        ),
+    )
+    sub_parser.add_argument(
         "--accounting-group",
         default="",
         help=(
             "the accounting group to use, ex: 1_week. "
             "By default no accounting group is used."
-        ),
-    )
-    sub_parser.add_argument(
-        "--jobs",
-        nargs="+",
-        type=int,
-        help=(
-            "the number of jobs for each cluster (collector/schedd), "
-            "this will be a series of numbers if providing multiple clusters. "
-            "Each job # will be assigned to the matching order of '--cluster' entries"
         ),
     )
     sub_parser.add_argument(

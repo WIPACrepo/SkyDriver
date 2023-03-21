@@ -294,13 +294,12 @@ class SkymapScannerStarterJob:
         clientmanager.
         """
         clusters_args = " ".join(
-            ",".join([x.collector, x.schedd]) for x in request_clusters
-        )  # Ex: "collectorA,scheddA collectorB,scheddB collectorC,scheddC"
+            ",".join([x.collector, x.schedd, str(x.njobs)]) for x in request_clusters
+        )  # Ex: "collectorA,scheddA,123 collectorB,scheddB,345 collectorC,scheddC,989"
 
         args = (
             f"python -m clientmanager start "
             f" --cluster {clusters_args} "
-            f" --jobs {' '.join(str(x.njobs) for x in request_clusters)} "
             # f" --dryrun"
             f" --logs-directory {common_space_volume_path} "
             # f" --accounting-group "
