@@ -105,11 +105,25 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         f"--{post_scan_body['real_or_simulated_event']}-event"
     )
 
+    match len(post_scan_body["cluster"]):
+        # doing things manually here so we don't duplicate the same method used in the app
+        case 1:
+            cluster_arg = f"{post_scan_body['cluster'][0]['collector']},{post_scan_body['cluster'][0]['schedd']}"
+            jobs_arg = post_scan_body["cluster"][0]["njobs"]
+        case 2:
+            cluster_arg = (
+                f"{post_scan_body['cluster'][0]['collector']},{post_scan_body['cluster'][0]['schedd']} "
+                f"{post_scan_body['cluster'][1]['collector']},{post_scan_body['cluster'][1]['schedd']} "
+            )
+            jobs_arg = f"{post_scan_body['cluster'][0]['njobs']} {post_scan_body['cluster'][1]['njobs']}"
+        case _:
+            raise RuntimeError("need more cases")
+
     clientmanager_args = (
         f"python -m clientmanager "
-        f"--cluster {post_scan_body['cluster']['collector']},{post_scan_body['cluster']['schedd']} "
+        f"--cluster {cluster_arg} "
         " start "
-        f" --jobs {post_scan_body['cluster']['njobs']} "
+        f" --jobs {jobs_arg} "
         f" --logs-directory /common-space "
         f" --memory {post_scan_body['memory']} "
         f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
