@@ -11,23 +11,33 @@ from .config import LOGGER
 def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
     """Add args to subparser."""
     sub_parser.add_argument(
-        "--cluster-id",
+        "--",
         required=True,
-        help="the cluster id of the jobs to be stopped/removed",
+        help="the ",
+    )
+    sub_parser.add_argument(
+        "--cluster-id",
+        nargs="+",
+        type=int,
+        help=(
+            "the cluster id of the jobs to be stopped/removed for each cluster (collector/schedd), "
+            "this will be a series of ids if providing multiple clusters. "
+            "Each id will be assigned to the matching order of '--cluster' entries"
+        ),
     )
 
 
-def stop(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
+def stop(
+    schedd_obj: htcondor.Schedd,  # pylint:disable=no-member
+    cluster_id: str,
+) -> None:
     """Main logic."""
-    LOGGER.info(
-        f"Stopping Skymap Scanner client jobs on {args.cluster_id} / {args.collector} / {args.schedd}"
-    )
 
     # Remove jobs -- may not be instantaneous
-    LOGGER.info("Requesting removal...")
+    LOGGER.info(f"Requesting removal on Cluster {cluster_id}...")
     act_obj = schedd_obj.act(
         htcondor.JobAction.Remove,  # pylint:disable=no-member
-        f"ClusterId == {args.cluster_id}",
+        f"ClusterId == {cluster_id}",
         reason="Requested by SkyDriver",
     )
     LOGGER.debug(act_obj)

@@ -12,8 +12,9 @@ import htcondor  # type: ignore[import]
 from .config import LOGGER
 
 
-def condor_token_auth() -> None:
+def condor_token_auth(collector: str, schedd: str) -> None:
     """Write condor token file from `CONDOR_TOKEN` (before any condor calls)"""
+    # TODO: implement per-collector/schedd tokens
     if token := os.getenv("CONDOR_TOKEN"):
         condor_tokens_dpath = Path("~/.condor/tokens.d/").expanduser()
         condor_tokens_dpath.mkdir(parents=True, exist_ok=True)

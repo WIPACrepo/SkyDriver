@@ -158,10 +158,13 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
     )
     sub_parser.add_argument(
         "--jobs",
-        required=True,
+        nargs="+",
         type=int,
-        help="number of jobs",
-        # default=4,
+        help=(
+            "the number of jobs for each cluster (collector/schedd), "
+            "this will be a series of numbers if providing multiple clusters. "
+            "Each job # will be assigned to the matching order of '--cluster' entries"
+        ),
     )
     sub_parser.add_argument(
         "--memory",
@@ -192,18 +195,25 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
 
 
 def start(
-    args: argparse.Namespace,
     skydriver_rc: RestClient | None,
     scan_id: str,
     schedd_obj: htcondor.Schedd,  # pylint:disable=no-member
+    job_count: int,
+    logs_directory: Path,
+    client_args: list[str] | str | None,
+    memory: str,
+    accounting_group: str,
+    singularity_image: str,
+    client_startup_json: Path,
+    dryrun: bool,
 ) -> None:
     """Main logic."""
-    logs_subdir = make_condor_logs_subdir(args.logs_directory)
+    logs_subdir = make_condor_logs_subdir(logs_directory)
 
     # get client args
     client_args = ""
-    if args.client_args is not None:
-        for carg_value in args.client_args:
+    if client_args is not None:
+        for carg_value in client_args:
             carg, value = carg_value.split(":", maxsplit=1)
             client_args += f" --{carg} {value} "
         LOGGER.info(f"Client Args: {client_args}")
@@ -217,29 +227,31 @@ def start(
     submit_obj = make_condor_job_description(
         logs_subdir,
         # condor args
-        args.memory,
-        args.accounting_group,
+        memory,
+        accounting_group,
         # skymap scanner args
-        args.singularity_image,
-        args.client_startup_json,
+        singularity_image,
+        client_startup_json,
         client_args,
     )
     LOGGER.info(submit_obj)
 
     # dryrun?
-    if args.dryrun:
+    if dryrun:
         LOGGER.error("Script Aborted: Condor job not submitted")
         return
 
     # submit
     submit_result_obj = schedd_obj.submit(
         submit_obj,
-        count=args.jobs,  # submit N jobs
+        count=job_count,  # submit N jobs
         spool=True,  # for transfer_input_files
     )
     LOGGER.info(submit_result_obj)
     jobs = condor_tools.get_job_classads(
-        submit_obj, args.jobs, submit_result_obj.cluster()
+        submit_obj,
+        job_count,
+        submit_result_obj.cluster(),
     )
     schedd_obj.spool(jobs)
 

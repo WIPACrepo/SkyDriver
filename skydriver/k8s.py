@@ -226,7 +226,7 @@ class SkymapScannerStarterJob:
             nsides=nsides,
             is_real_event=is_real_event,
         )
-        self.clientmanager_args = self.get_clientmanager_args(
+        self.clientmanager_args = self.get_clientmanager_starter_args(
             common_space_volume_path=common_space_volume_path,
             singularity_image=images.get_skyscan_cvmfs_singularity_image(docker_tag),
             memory=memory,
@@ -282,7 +282,7 @@ class SkymapScannerStarterJob:
         return args
 
     @staticmethod
-    def get_clientmanager_args(
+    def get_clientmanager_starter_args(
         common_space_volume_path: Path,
         singularity_image: Path,
         memory: str,
@@ -294,14 +294,14 @@ class SkymapScannerStarterJob:
         clientmanager.
         """
         clusters_args = " ".join(
-            ",".join([x.collector, x.schedd, x.njobs])  # type: ignore[list-item]
-            for x in request_clusters
-        )  # Ex: "collectorA,scheddA,### collectorB,scheddB,## collectorC,scheddC,####"
+            ",".join([x.collector, x.schedd]) for x in request_clusters
+        )  # Ex: "collectorA,scheddA collectorB,scheddB collectorC,scheddC"
 
         args = (
             f"python -m clientmanager "
             f" --cluster {clusters_args} "
-            "start "
+            f" start "
+            f" --jobs {' '.join(str(x.njobs) for x in request_clusters)} "
             # f" --dryrun"
             f" --logs-directory {common_space_volume_path} "
             # f" --accounting-group "
@@ -409,28 +409,27 @@ class SkymapScannerStopperJob:
     ):
         self.api_instance = api_instance
 
+        clusters_args = " ".join(
+            ",".join([x.collector, x.schedd]) for x in condor_clusters
+        )  # Ex: "collectorA,scheddA collectorB,scheddB collectorC,scheddC"
+
         # make a container per cluster
-        containers = []
-        for i, cluster in enumerate(condor_clusters):
-            args = (
-                f"python -m clientmanager "
-                f"--collector {cluster.collector} "
-                f"--schedd {cluster.schedd} "
-                "stop "
-                f"--cluster-id {cluster.cluster_id} "
-            )
-            containers.append(
-                KubeAPITools.create_container(
-                    f"clientmanager-stop-{i}-{scan_id}",
-                    ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
-                    env=[get_condor_token_v1envvar()],
-                    args=args.split(),
-                )
-            )
+        args = (
+            f"python -m clientmanager "
+            f" --cluster {clusters_args} "
+            f" stop "
+            f" --cluster-id {' '.join(str(x.cluster_id) for x in condor_clusters)} "
+        )
+        container = KubeAPITools.create_container(
+            f"clientmanager-stop-{scan_id}",
+            ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
+            env=[get_condor_token_v1envvar()],
+            args=args.split(),
+        )
 
         self.job_obj = KubeAPITools.kube_create_job_object(
             f"clientmanager-stop-{scan_id}",
-            containers,
+            container,
             ENV.K8S_NAMESPACE,
         )
 

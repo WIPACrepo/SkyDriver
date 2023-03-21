@@ -4,7 +4,7 @@
 import argparse
 import os
 
-from wipac_dev_tools import logging_tools
+from wipac_dev_tools import argparse_tools, logging_tools
 
 from . import condor_tools, starter, stopper, utils
 from .config import LOGGER
@@ -26,14 +26,16 @@ def main() -> None:
 
     # common arguments
     parser.add_argument(
-        "--collector",
-        default="",
-        help="the full URL address of the HTCondor collector server. Ex: foo-bar.icecube.wisc.edu",
-    )
-    parser.add_argument(
-        "--schedd",
-        default="",
-        help="the full DNS name of the HTCondor Schedd server. Ex: baz.icecube.wisc.edu",
+        "--cluster",
+        default=[[None, None]],  # list of a single 2-list
+        help="the HTCondor clusters to use, each entry contains: "
+        "full DNS name of Collector server, full DNS name of Schedd server"
+        "Ex: foo-bar.icecube.wisc.edu,baz.icecube.wisc.edu alpha.icecube.wisc.edu,beta.icecube.wisc.edu",
+        type=lambda x: argparse_tools.validate_arg(
+            [c.split(",") for c in x.split()],
+            all(len(o) == 2 for o in [c.split(",") for c in x.split()]),  # all 2-lists
+            ValueError('must " "-delimited series of "collector,schedd"-tuples'),
+        ),
     )
 
     # parse args & set up logging
@@ -48,13 +50,37 @@ def main() -> None:
 
     # make connections -- do now so we don't have any surprises downstream
     skydriver_rc, scan_id = utils.connect_to_skydriver()
-    condor_tools.condor_token_auth()
-    schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
 
-    # Go!
-    match args.action:
-        case "start":
-            return starter.start(args, skydriver_rc, scan_id, schedd_obj)
-        case "stop":
-            return stopper.stop(args, schedd_obj)
-    raise RuntimeError(f"Unknown action: {args.action}")
+    for i, (collector, schedd) in enumerate(args.clusters):
+        if collector and schedd:
+            condor_tools.condor_token_auth(collector, schedd)
+            schedd_obj = condor_tools.get_schedd_obj(collector, schedd)
+
+        # Go!
+        match args.action:
+            case "start":
+                LOGGER.info(
+                    f"Starting Skymap Scanner client jobs on {collector} / {schedd}"
+                )
+                return starter.start(
+                    skydriver_rc,
+                    scan_id,
+                    schedd_obj,
+                    args.jobs[i],
+                    args.logs_directory / str(i),
+                    args.client_args,
+                    args.memory,
+                    args.accounting_group,
+                    args.singularity_image,
+                    args.client_startup_json,
+                    args.dryrun,
+                )
+            case "stop":
+                LOGGER.info(
+                    f"Stopping Skymap Scanner client jobs on {collector} / {schedd}"
+                )
+                return stopper.stop(
+                    schedd_obj,
+                    args.cluster_id[i],
+                )
+        raise RuntimeError(f"Unknown action: {args.action}")
