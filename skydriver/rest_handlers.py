@@ -132,8 +132,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     async def post(self) -> None:
         """Start a new scan."""
 
-        def json_to_dict(val: Any) -> dict:
-            # pylint:disable=W0707
+        def _json_to_dict(val: Any) -> dict:
             error = TypeError("must be JSON-string or JSON-friendly dict")
             # str -> json-dict
             if isinstance(val, str):
@@ -154,6 +153,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # fall-through
             raise error
 
+        def clusters(val: Any) -> dict:
+            error = TypeError("must be JSON-string or JSON-friendly dict")
+            if not isisinstance(val, dict):
+
+
         # docker args
         docker_tag = self.get_argument(  # any tag on docker hub (including 'latest') -- must also be on CVMFS (but not checked here)
             "docker_tag",
@@ -162,14 +166,19 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
 
         # condor args
-        njobs = self.get_argument(
-            "njobs",
-            type=int,
-        )
         memory = self.get_argument(
             "memory",
             type=str,
             forbiddens=[r"\s*"],  # no empty string / whitespace
+        )
+        clusters = self.get_argument(
+            "clusters",
+            type=clusters,
+        )
+
+        njobs = self.get_argument(
+            "njobs",
+            type=int,
         )
         collector = self.get_argument(
             "collector",
@@ -190,7 +199,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         event_i3live_json_dict = self.get_argument(
             "event_i3live_json",
-            type=json_to_dict,  # JSON-string/JSON-friendly dict -> dict
+            type=_json_to_dict,  # JSON-string/JSON-friendly dict -> dict
         )
         nsides = self.get_argument(
             "nsides",
