@@ -42,7 +42,7 @@ def main() -> None:
     # Go!
     match args.action:
         case "start":
-            for i, (collector, schedd, njobs) in enumerate(args.clusters):
+            for i, (collector, schedd, njobs) in enumerate(args.cluster):
                 LOGGER.info(
                     f"Starting Skymap Scanner client jobs on {collector} / {schedd}"
                 )
