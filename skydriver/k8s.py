@@ -363,6 +363,7 @@ class SkymapScannerStarterJob:
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
+            "RABBITMQ_HEARTBEAT": ENV.RABBITMQ_HEARTBEAT,
         }
         env.extend(
             [

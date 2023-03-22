@@ -54,6 +54,7 @@ class EnvConfig:
     SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS: Optional[int] = None
     SKYSCAN_LOG: Optional[str] = None
     SKYSCAN_LOG_THIRD_PARTY: Optional[str] = None
+    RABBITMQ_HEARTBEAT: int = 3600
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
