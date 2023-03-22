@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.50 (2023-03-22)
+### Other
+* Fix tests ([`08152fe`](https://github.com/WIPACrepo/SkyDriver/commit/08152fec8f6dc511153c226ccc550ece2ea9ac25))
+* <bot> update requirements.txt ([`b801241`](https://github.com/WIPACrepo/SkyDriver/commit/b801241863e4e304b29003b6c125d5f33f18ccff))
+* <bot> update requirements-tests.txt ([`11afab4`](https://github.com/WIPACrepo/SkyDriver/commit/11afab4efe34c53f41c875683a6bc27ac94b5756))
+* <bot> update requirements-clientmanager.txt ([`5c374f9`](https://github.com/WIPACrepo/SkyDriver/commit/5c374f9fd7cd8128928ebe908997c550df04cf66))
+* Add `RABBITMQ_HEARTBEAT` default as `3600` ([`8ef911d`](https://github.com/WIPACrepo/SkyDriver/commit/8ef911d4033256abb218995cb29086f3c954179f))
+
 ## v0.0.49 (2023-03-21)
 ### Other
 * Make `memory` default `6GB` ([`6a130db`](https://github.com/WIPACrepo/SkyDriver/commit/6a130db02959bdf75f50783aec78ffa29eaa6c50))
