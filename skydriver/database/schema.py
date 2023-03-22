@@ -103,3 +103,18 @@ class Manifest(ScanIDDataclass):
     complete: bool = False
 
     # logs  # TODO
+
+    def __repr__(self) -> str:
+        dicto = dc.asdict(self)
+        # shorten b/c this can be a LARGE dict
+        try:
+            dicto["event_i3live_json_dict"]["value"]["data"] = hash(
+                str(dicto["event_i3live_json_dict"]["value"]["data"])
+            )
+        except KeyError:
+            pass
+        dicto["event_i3live_json_dict__hashed_data"] = dicto.pop(
+            "event_i3live_json_dict"
+        )
+        rep = f"{self.__class__.__name__}{dicto}"
+        return rep
