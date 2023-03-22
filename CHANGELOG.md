@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.51 (2023-03-22)
+### Other
+* <bot> update requirements.txt ([`5abee33`](https://github.com/WIPACrepo/SkyDriver/commit/5abee332cddeb63520bb211a4c1c55314ff82842))
+* <bot> update requirements-tests.txt ([`1214f79`](https://github.com/WIPACrepo/SkyDriver/commit/1214f794a12b982827edf6336b4eda1855c89afb))
+* <bot> update requirements-clientmanager.txt ([`3e18fc1`](https://github.com/WIPACrepo/SkyDriver/commit/3e18fc199fbeb04434b12df755595daad0992697))
+* Truncate log dumps for `event_i3live_json_dict.value.data` ([`7d0158d`](https://github.com/WIPACrepo/SkyDriver/commit/7d0158d9beed2070c13d1249a29d47f7854750c7))
+
 ## v0.0.50 (2023-03-22)
 ### Other
 * Fix tests ([`08152fe`](https://github.com/WIPACrepo/SkyDriver/commit/08152fec8f6dc511153c226ccc550ece2ea9ac25))
