@@ -46,6 +46,8 @@ humanfriendly==10.0
     # via coloredlogs
 idna==3.4
     # via requests
+importlib-metadata==6.0.1
+    # via opentelemetry-api
 iniconfig==2.0.0
     # via pytest
 kubernetes==26.1.0
@@ -56,30 +58,30 @@ nest-asyncio==1.5.6
     # via UNKNOWN (setup.py)
 oauthlib==3.2.2
     # via requests-oauthlib
-opentelemetry-api==1.16.0
+opentelemetry-api==1.17.0
     # via
     #   opentelemetry-exporter-jaeger-proto-grpc
     #   opentelemetry-exporter-jaeger-thrift
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-sdk
     #   wipac-telemetry
-opentelemetry-exporter-jaeger==1.16.0
+opentelemetry-exporter-jaeger==1.17.0
     # via wipac-telemetry
-opentelemetry-exporter-jaeger-proto-grpc==1.16.0
+opentelemetry-exporter-jaeger-proto-grpc==1.17.0
     # via opentelemetry-exporter-jaeger
-opentelemetry-exporter-jaeger-thrift==1.16.0
+opentelemetry-exporter-jaeger-thrift==1.17.0
     # via opentelemetry-exporter-jaeger
-opentelemetry-exporter-otlp-proto-http==1.16.0
+opentelemetry-exporter-otlp-proto-http==1.17.0
     # via wipac-telemetry
-opentelemetry-proto==1.16.0
+opentelemetry-proto==1.17.0
     # via opentelemetry-exporter-otlp-proto-http
-opentelemetry-sdk==1.16.0
+opentelemetry-sdk==1.17.0
     # via
     #   opentelemetry-exporter-jaeger-proto-grpc
     #   opentelemetry-exporter-jaeger-thrift
     #   opentelemetry-exporter-otlp-proto-http
     #   wipac-telemetry
-opentelemetry-semantic-conventions==0.37b0
+opentelemetry-semantic-conventions==0.38b0
     # via opentelemetry-sdk
 packaging==23.0
     # via pytest
@@ -178,6 +180,8 @@ wipac-telemetry==0.2.5
     # via wipac-rest-tools
 wrapt==1.15.0
     # via deprecated
+zipp==3.15.0
+    # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
