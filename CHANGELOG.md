@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.52 (2023-03-23)
+### Other
+* All k8s env vars need to be strings ([`9c48cbd`](https://github.com/WIPACrepo/SkyDriver/commit/9c48cbd2f7573c65ab081215b629b4e12e392028))
+
 ## v0.0.51 (2023-03-22)
 ### Other
 * <bot> update requirements.txt ([`5abee33`](https://github.com/WIPACrepo/SkyDriver/commit/5abee332cddeb63520bb211a4c1c55314ff82842))
