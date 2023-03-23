@@ -72,7 +72,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         "executable": "/bin/bash",
         "arguments": f"/usr/local/icetray/env-shell.sh python -m skymap_scanner.client {client_args_string} --client-startup-json ./{client_startup_json.name}",
         "+SingularityImage": f'"{singularity_image}"',  # must be quoted
-        "Requirements": "HAS_CVMFS_icecube_opensciencegrid_org && has_avx",
+        "Requirements": "HAS_CVMFS_icecube_opensciencegrid_org && has_avx && has_avx2",
         "getenv": "SKYSCAN_*, EWMS_*, RABBITMQ_*, PULSAR_UNACKED_MESSAGES_TIMEOUT_SEC",
         "output": str(logs_subdir / "client-$(ProcId).out"),
         "environment": f'"{environment}"',  # must be quoted
