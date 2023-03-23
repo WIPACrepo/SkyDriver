@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.53 (2023-03-23)
+### Other
+* Starter: require `has_avx2` ([`265d219`](https://github.com/WIPACrepo/SkyDriver/commit/265d219fd006e7239898abe489d6d3e11aa94b93))
+
 ## v0.0.52 (2023-03-23)
 ### Other
 * All k8s env vars need to be strings ([`9c48cbd`](https://github.com/WIPACrepo/SkyDriver/commit/9c48cbd2f7573c65ab081215b629b4e12e392028))
