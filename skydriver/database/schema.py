@@ -116,5 +116,7 @@ class Manifest(ScanIDDataclass):
         dicto["event_i3live_json_dict__hashed_data"] = dicto.pop(
             "event_i3live_json_dict"
         )
+        # obfuscate tokens
+        # TODO
         rep = f"{self.__class__.__name__}{dicto}"
         return rep

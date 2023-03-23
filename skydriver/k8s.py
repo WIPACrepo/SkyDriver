@@ -352,7 +352,10 @@ class SkymapScannerStarterJob:
             "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
         }
         env.extend(
-            [kubernetes.client.V1EnvVar(name=k, value=v) for k, v in required.items()]
+            [
+                kubernetes.client.V1EnvVar(name=k, value=str(v))
+                for k, v in required.items()
+            ]
         )
 
         # 3. add extra env vars, if present
@@ -367,7 +370,7 @@ class SkymapScannerStarterJob:
         }
         env.extend(
             [
-                kubernetes.client.V1EnvVar(name=k, value=v)
+                kubernetes.client.V1EnvVar(name=k, value=str(v))
                 for k, v in prefiltered.items()
                 if v  # skip any env vars that are Falsy
             ]
@@ -387,7 +390,10 @@ class SkymapScannerStarterJob:
             ),
         }
         env.extend(
-            [kubernetes.client.V1EnvVar(name=k, value=v) for k, v in tokens.items()]
+            [
+                kubernetes.client.V1EnvVar(name=k, value=str(v))
+                for k, v in tokens.items()
+            ]
         )
 
         return env
