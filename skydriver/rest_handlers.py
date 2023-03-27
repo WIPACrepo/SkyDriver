@@ -209,6 +209,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=str,
             choices=REAL_CHOICES + SIM_CHOICES,
         )
+        predictive_scanning_threshold = self.get_argument(
+            "predictive_scanning_threshold",
+            type=float,
+            default=1.0,
+            strict_type=False,  # allow casting from int (1)
+        )
 
         # generate unique scan_id
         scan_id = uuid.uuid4().hex
@@ -222,6 +228,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             reco_algo=reco_algo,
             nsides=nsides,  # type: ignore[arg-type]
             is_real_event=real_or_simulated_event in REAL_CHOICES,
+            predictive_scanning_threshold=predictive_scanning_threshold,
             # clientmanager
             request_clusters=request_clusters,
             memory=memory,

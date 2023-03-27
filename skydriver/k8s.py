@@ -210,6 +210,7 @@ class SkymapScannerStarterJob:
         reco_algo: str,
         nsides: dict[int, int],
         is_real_event: bool,
+        predictive_scanning_threshold: float,
         # clientmanager
         memory: str,
         request_clusters: list[types.RequestorInputCluster],
@@ -225,6 +226,7 @@ class SkymapScannerStarterJob:
             reco_algo=reco_algo,
             nsides=nsides,
             is_real_event=is_real_event,
+            predictive_scanning_threshold=predictive_scanning_threshold,
         )
         self.clientmanager_args = self.get_clientmanager_starter_args(
             common_space_volume_path=common_space_volume_path,
@@ -268,6 +270,7 @@ class SkymapScannerStarterJob:
         reco_algo: str,
         nsides: dict[int, int],
         is_real_event: bool,
+        predictive_scanning_threshold: float,
     ) -> str:
         """Make the server container args."""
         args = (
@@ -278,6 +281,7 @@ class SkymapScannerStarterJob:
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "  # k1:v1 k2:v2
             f" {'--real-event' if is_real_event else '--simulated-event'} "
+            f" --predictive-scanning-threshold {predictive_scanning_threshold} "
         )
         return args
 
