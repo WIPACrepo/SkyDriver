@@ -22,7 +22,7 @@ coloredlogs==15.0.1
     # via
     #   UNKNOWN (setup.py)
     #   wipac-telemetry
-cryptography==39.0.2
+cryptography==40.0.1
     # via pyjwt
 dacite==1.8.0
     # via UNKNOWN (setup.py)
@@ -30,13 +30,13 @@ deprecated==1.2.13
     # via opentelemetry-api
 dnspython==2.3.0
     # via pymongo
-google-auth==2.16.2
+google-auth==2.16.3
     # via kubernetes
 googleapis-common-protos==1.56.2
     # via
     #   opentelemetry-exporter-jaeger-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
-grpcio==1.51.3
+grpcio==1.53.0
     # via opentelemetry-exporter-jaeger-proto-grpc
 humanfriendly==10.0
     # via coloredlogs
