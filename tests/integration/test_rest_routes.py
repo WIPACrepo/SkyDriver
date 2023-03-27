@@ -102,6 +102,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         f"--client-startup-json /common-space/startup.json "
         f"--nsides {' '.join(f'{k}:{v}' for k,v in post_scan_body['nsides'].items())} "
         f"--{post_scan_body['real_or_simulated_event']}-event"
+        f"--predictive-scanning-threshold 1.0 "  # the default
     )
 
     clusters = post_scan_body["cluster"]
