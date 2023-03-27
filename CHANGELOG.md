@@ -2,6 +2,15 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.54 (2023-03-27)
+### Other
+* Fix tests ([`8b6be59`](https://github.com/WIPACrepo/SkyDriver/commit/8b6be59cd23428f6fccbab8fb4cba9ea1889cad8))
+* Fix tests ([`0143f79`](https://github.com/WIPACrepo/SkyDriver/commit/0143f7996067314cf027ffe70022e78607eb01c2))
+* <bot> update requirements.txt ([`2d9a20b`](https://github.com/WIPACrepo/SkyDriver/commit/2d9a20b26e9f1a29d44931430a7b9805a6ac2141))
+* <bot> update requirements-tests.txt ([`d80237f`](https://github.com/WIPACrepo/SkyDriver/commit/d80237f887cf09133b2749bc6ab90d1ce1de3988))
+* <bot> update requirements-clientmanager.txt ([`4fa8923`](https://github.com/WIPACrepo/SkyDriver/commit/4fa8923a90da6575324e345c738ceb0110bb1a6b))
+* Add `predictive_scanning_threshold` (default: `1.0`) ([`a95b459`](https://github.com/WIPACrepo/SkyDriver/commit/a95b45907a94c91d91c8d76f0105b7064e10245a))
+
 ## v0.0.53 (2023-03-23)
 ### Other
 * Starter: require `has_avx2` ([`265d219`](https://github.com/WIPACrepo/SkyDriver/commit/265d219fd006e7239898abe489d6d3e11aa94b93))
