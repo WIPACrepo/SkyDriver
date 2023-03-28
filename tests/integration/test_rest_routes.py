@@ -272,6 +272,8 @@ async def _patch_progress_and_scan_metadata(
                 # finished: bool = False
                 # predictions: StrDict = dc.field(default_factory=dict)  # open to requestor)
             ),
+            predictive_scanning_threshold=1.0,
+            last_updated="now!",
         )
         # update progress (update `scan_metadata` sometimes--not as important)
         if i % 2:  # odd

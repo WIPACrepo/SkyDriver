@@ -33,11 +33,14 @@ class ProgressProcessingStats:
 @typechecked
 @dc.dataclass
 class Progress:
+    """Houses all the progress for a scan (changed throughout scan)."""
 
     summary: str
     epilogue: str
     tallies: StrDict
     processing_stats: ProgressProcessingStats
+    predictive_scanning_threshold: float
+    last_updated: str
 
 
 @typechecked
