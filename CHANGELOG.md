@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.55 (2023-03-28)
+### Other
+* Add `last updated` & `predictive scanning threshold` to progress report ([`5ac524e`](https://github.com/WIPACrepo/SkyDriver/commit/5ac524e9bdca4e1504625867712201257a32691d))
+
 ## v0.0.54 (2023-03-27)
 ### Other
 * Fix tests ([`8b6be59`](https://github.com/WIPACrepo/SkyDriver/commit/8b6be59cd23428f6fccbab8fb4cba9ea1889cad8))
