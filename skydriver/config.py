@@ -28,6 +28,7 @@ class EnvConfig:
     REST_PORT: int = 8080
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
+    DEBUG: bool = False
 
     CLIENTMANAGER_IMAGE_WITH_TAG: str = ""
 
@@ -57,7 +58,14 @@ class EnvConfig:
     RABBITMQ_HEARTBEAT: int = 3600
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
+        # log level
+        if self.DEBUG:
+            level = "DEBUG"
+        else:
+            level = self.LOG_LEVEL.upper()
+        object.__setattr__(self, "LOG_LEVEL", level)  # b/c frozen
+
+        # check missing env var(s)
         if not self.CLIENTMANAGER_IMAGE_WITH_TAG:
             raise RuntimeError(
                 "Missing required environment variable: 'CLIENTMANAGER_IMAGE_WITH_TAG'"

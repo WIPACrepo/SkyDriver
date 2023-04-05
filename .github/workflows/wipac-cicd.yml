@@ -3,6 +3,7 @@ name: wipac ci/cd
 on: [push]
 
 env:
+  DEBUG: true
   CI_TEST: 'yes'
   CLIENTMANAGER_IMAGE_WITH_TAG: 'ghcr.io/wipacrepo/skydriver:latest'
 
