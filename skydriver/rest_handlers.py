@@ -170,6 +170,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             except DaciteError:
                 raise _error
 
+        def _optional_int(val: Any) -> int | None:
+            if val is None:
+                return None
+            return int(val)
+
         # docker args
         docker_tag = self.get_argument(  # any tag on docker hub (including 'latest') -- must also be on CVMFS (but not checked here)
             "docker_tag",
@@ -217,7 +222,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         max_reco_time = self.get_argument(
             "max_reco_time",
-            type=int,
+            type=_optional_int,
             default=None,
         )
 
