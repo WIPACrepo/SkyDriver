@@ -219,7 +219,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "max_reco_time",
             type=int,
             default=None,
-            strict_type=True,  # don't allow casting from float
         )
 
         # generate unique scan_id
