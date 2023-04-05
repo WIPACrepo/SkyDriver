@@ -152,7 +152,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
     print(resp["env_vars"])
     assert set(resp["env_vars"].keys()) == {
         "CONDOR_TOKEN",
-        "RABBITMQ_HEARTBEAT",
+        "EWMS_PILOT_SUBPROC_TIMEOUT",
         "SKYSCAN_BROKER_ADDRESS",
         "SKYSCAN_BROKER_AUTH",
         "SKYSCAN_SKYDRIVER_ADDRESS",
@@ -165,7 +165,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         for k, v in resp["env_vars"].items()
         if v["value"] is not None and v["value_from"] is None
     ) == {
-        "RABBITMQ_HEARTBEAT",
+        "EWMS_PILOT_SUBPROC_TIMEOUT",
         "SKYSCAN_BROKER_ADDRESS",
         "SKYSCAN_BROKER_AUTH",
         "SKYSCAN_SKYDRIVER_ADDRESS",
