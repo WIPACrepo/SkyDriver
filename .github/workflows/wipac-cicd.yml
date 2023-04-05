@@ -5,6 +5,7 @@ on: [push]
 env:
   CI_TEST: 'yes'
   CLIENTMANAGER_IMAGE_WITH_TAG: 'ghcr.io/wipacrepo/skydriver:latest'
+  EWMS_PILOT_SUBPROC_TIMEOUT: 999
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
