@@ -378,6 +378,7 @@ class SkymapScannerStarterJob:
                 if max_reco_time
                 else ENV.EWMS_PILOT_SUBPROC_TIMEOUT  # may also be None
             ),
+            "EWMS_PILOT_QUARANTINE_TIME": ENV.EWMS_PILOT_QUARANTINE_TIME,
         }
         env.extend(
             [
