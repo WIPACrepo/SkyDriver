@@ -15,7 +15,7 @@ jobs:
   add-to-project:
     runs-on: ubuntu-latest
     steps:
-      - uses: WIPACrepo/wipac-dev-project-action@v1
+      - uses: WIPACrepo/wipac-dev-project-action@v1.0
         with:
           github_token: ${{ secrets.ORG_PROJECT_TOKEN }}
           organization: WIPACrepo
