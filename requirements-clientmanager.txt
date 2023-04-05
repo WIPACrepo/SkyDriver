@@ -30,7 +30,7 @@ deprecated==1.2.13
     # via opentelemetry-api
 dnspython==2.3.0
     # via pymongo
-google-auth==2.16.3
+google-auth==2.17.2
     # via kubernetes
 googleapis-common-protos==1.56.2
     # via
@@ -48,7 +48,7 @@ importlib-metadata==6.0.1
     # via opentelemetry-api
 kubernetes==26.1.0
     # via UNKNOWN (setup.py)
-motor==3.1.1
+motor==3.1.2
     # via UNKNOWN (setup.py)
 oauthlib==3.2.2
     # via requests-oauthlib
@@ -148,14 +148,14 @@ urllib3==1.26.15
     #   requests
 websocket-client==1.5.1
     # via kubernetes
-wipac-dev-tools==1.6.13
+wipac-dev-tools==1.6.14
     # via
     #   UNKNOWN (setup.py)
     #   wipac-rest-tools
     #   wipac-telemetry
-wipac-rest-tools[telemetry]==1.4.16
+wipac-rest-tools[telemetry]==1.4.17
     # via UNKNOWN (setup.py)
-wipac-telemetry==0.2.5
+wipac-telemetry==0.2.6
     # via wipac-rest-tools
 wrapt==1.15.0
     # via deprecated
