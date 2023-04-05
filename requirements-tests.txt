@@ -169,12 +169,12 @@ urllib3==1.26.15
     #   requests
 websocket-client==1.5.1
     # via kubernetes
-wipac-dev-tools==1.6.14
+wipac-dev-tools==1.6.15
     # via
     #   UNKNOWN (setup.py)
     #   wipac-rest-tools
     #   wipac-telemetry
-wipac-rest-tools[telemetry]==1.4.17
+wipac-rest-tools[telemetry]==1.4.18
     # via UNKNOWN (setup.py)
 wipac-telemetry==0.2.6
     # via wipac-rest-tools
