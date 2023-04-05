@@ -59,7 +59,7 @@ async def server(
     mongo_clear: Any,  # pylint:disable=unused-argument
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
-    # monkeypatch.setenv("PORT", str(port))
+    monkeypatch.setenv("EWMS_PILOT_SUBPROC_TIMEOUT", 100)
 
     with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
         rs = await make(debug=True)
