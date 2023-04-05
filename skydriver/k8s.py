@@ -305,13 +305,16 @@ class SkymapScannerStarterJob:
             f"python -m clientmanager start "
             f" --cluster {clusters_args} "
             # f" --dryrun"
-            f" --logs-directory {common_space_volume_path} "
+            # f" --logs-directory "  # see below
             # f" --accounting-group "
             f" --memory {memory} "
             f" --singularity-image {singularity_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
+
+        if ENV.DEBUG:
+            args += f" --logs-directory {common_space_volume_path} "
 
         return args
 

@@ -51,7 +51,7 @@ def main() -> None:
                     scan_id,
                     condor_tools.get_schedd_obj(collector, schedd),
                     njobs,
-                    args.logs_directory / str(i),
+                    args.logs_directory / str(i) if args.logs_directory else None,
                     args.client_args,
                     args.memory,
                     args.accounting_group,
