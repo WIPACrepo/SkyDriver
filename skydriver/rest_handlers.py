@@ -215,6 +215,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default=1.0,
             strict_type=False,  # allow casting from int (1)
         )
+        max_reco_time = self.get_argument(
+            "max_reco_time",
+            type=int,
+            default=None,
+            strict_type=True,  # don't allow casting from float
+        )
 
         # generate unique scan_id
         scan_id = uuid.uuid4().hex
@@ -232,6 +238,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # clientmanager
             request_clusters=request_clusters,
             memory=memory,
+            max_reco_time=max_reco_time,
             # env
             rest_address=self.request.full_url().rstrip(self.request.uri),
         )
