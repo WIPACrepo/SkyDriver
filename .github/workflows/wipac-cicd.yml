@@ -3,7 +3,6 @@ name: wipac ci/cd
 on: [push]
 
 env:
-  DEBUG: true
   CI_TEST: 'yes'
   CLIENTMANAGER_IMAGE_WITH_TAG: 'ghcr.io/wipacrepo/skydriver:latest'
   EWMS_PILOT_SUBPROC_TIMEOUT: 999

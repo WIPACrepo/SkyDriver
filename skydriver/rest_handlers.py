@@ -225,6 +225,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=_optional_int,
             default=None,
         )
+        debug_mode = self.get_argument(
+            "debug_mode",
+            type=bool,
+            default=False,
+        )
 
         # generate unique scan_id
         scan_id = uuid.uuid4().hex
@@ -243,6 +248,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             request_clusters=request_clusters,
             memory=memory,
             max_reco_time=max_reco_time,
+            # universal
+            debug_mode=debug_mode,
             # env
             rest_address=self.request.full_url().rstrip(self.request.uri),
         )

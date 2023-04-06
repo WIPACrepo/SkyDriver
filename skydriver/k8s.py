@@ -215,6 +215,8 @@ class SkymapScannerStarterJob:
         memory: str,
         request_clusters: list[types.RequestorInputCluster],
         max_reco_time: int | None,
+        # universal
+        debug_mode: bool,
         # env
         rest_address: str,
     ):
@@ -234,6 +236,7 @@ class SkymapScannerStarterJob:
             singularity_image=images.get_skyscan_cvmfs_singularity_image(docker_tag),
             memory=memory,
             request_clusters=request_clusters,
+            debug_mode=debug_mode,
         )
         env = self.make_v1_env_vars(
             rest_address=rest_address,
@@ -293,6 +296,7 @@ class SkymapScannerStarterJob:
         singularity_image: Path,
         memory: str,
         request_clusters: list[types.RequestorInputCluster],
+        debug_mode: bool,
     ) -> str:
         """Make the clientmanager container args.
 
@@ -315,7 +319,7 @@ class SkymapScannerStarterJob:
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
 
-        if ENV.DEBUG:
+        if debug_mode:
             args += f" --logs-directory {common_space_volume_path} "
 
         return args

@@ -28,7 +28,6 @@ class EnvConfig:
     REST_PORT: int = 8080
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
-    DEBUG: bool = False
 
     CLIENTMANAGER_IMAGE_WITH_TAG: str = ""
 
@@ -61,12 +60,7 @@ class EnvConfig:
     EWMS_PILOT_QUARANTINE_TIME: int = 0  # wait-time after error (stop greedy worker)
 
     def __post_init__(self) -> None:
-        # log level
-        if self.DEBUG:
-            level = "DEBUG"
-        else:
-            level = self.LOG_LEVEL.upper()
-        object.__setattr__(self, "LOG_LEVEL", level)  # b/c frozen
+        object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
 
         # check missing env var(s)
         if not self.CLIENTMANAGER_IMAGE_WITH_TAG:
