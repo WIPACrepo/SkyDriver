@@ -36,7 +36,7 @@ def main() -> None:
     ####################################################################################
 
     # make connections -- do now so we don't have any surprises downstream
-    skydriver_rc, scan_id = utils.connect_to_skydriver()
+    skydriver_rc = utils.connect_to_skydriver()
 
     # Go!
     match args.action:
@@ -45,9 +45,7 @@ def main() -> None:
                 LOGGER.info(
                     f"Starting {njobs} Skymap Scanner client jobs on {collector} / {schedd}"
                 )
-                starter.start(
-                    skydriver_rc,
-                    scan_id,
+                submit_result_obj = starter.start(
                     condor_tools.get_schedd_obj(collector, schedd),
                     njobs,
                     args.logs_directory / str(i) if args.logs_directory else None,
@@ -57,9 +55,16 @@ def main() -> None:
                     args.singularity_image,
                     args.client_startup_json,
                     args.dryrun,
-                    collector,
-                    schedd,
                 )
+                # report to SkyDriver
+                if skydriver_rc:
+                    utils.update_skydriver(
+                        skydriver_rc,
+                        submit_result_obj,
+                        collector,
+                        schedd,
+                    )
+                    LOGGER.info("Sent cluster info to SkyDriver")
             return
         case "stop":
             return stopper.stop(

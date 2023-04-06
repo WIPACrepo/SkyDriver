@@ -11,7 +11,6 @@ from pathlib import Path
 import boto3  # type: ignore[import]
 import htcondor  # type: ignore[import]
 import requests
-from rest_tools.client import RestClient
 from wipac_dev_tools import argparse_tools
 
 from . import condor_tools
@@ -141,28 +140,6 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     return htcondor.Submit(submit_dict)  # pylint:disable=no-member
 
 
-def update_skydriver(
-    skydriver_rc: RestClient,
-    scan_id: str,
-    submit_result: htcondor.SubmitResult,  # pylint:disable=no-member
-    collector: str,
-    schedd: str,
-) -> None:
-    """Send SkyDriver updates from the `submit_result`."""
-    skydriver_rc.request_seq(
-        "PATCH",
-        f"/scan/manifest/{scan_id}",
-        {
-            "condor_cluster": {
-                "collector": collector,
-                "schedd": schedd,
-                "cluster_id": submit_result.cluster(),
-                "jobs": submit_result.num_procs(),
-            }
-        },
-    )
-
-
 def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
     """Add args to subparser."""
 
@@ -253,8 +230,6 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
 
 
 def start(
-    skydriver_rc: RestClient | None,
-    scan_id: str,
     schedd_obj: htcondor.Schedd,  # pylint:disable=no-member
     job_count: int,
     logs_directory: Path | None,
@@ -264,9 +239,7 @@ def start(
     singularity_image: str,
     client_startup_json: Path,
     dryrun: bool,
-    collector: str,
-    schedd: str,
-) -> None:
+) -> htcondor.SubmitResult:  # pylint:disable=no-member
     """Main logic."""
     if logs_directory:
         logs_subdir = make_condor_logs_subdir(logs_directory)
@@ -320,13 +293,4 @@ def start(
     )
     schedd_obj.spool(jobs)
 
-    # report to SkyDriver
-    if skydriver_rc:
-        update_skydriver(
-            skydriver_rc,
-            scan_id,
-            submit_result_obj,
-            collector,
-            schedd,
-        )
-        LOGGER.info("Sent cluster info to SkyDriver")
+    return submit_result_obj
