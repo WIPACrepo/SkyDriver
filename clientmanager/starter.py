@@ -5,7 +5,6 @@ import argparse
 import dataclasses as dc
 import datetime as dt
 import getpass
-import os
 import time
 from pathlib import Path
 
@@ -16,7 +15,7 @@ from rest_tools.client import RestClient
 from wipac_dev_tools import argparse_tools
 
 from . import condor_tools
-from .config import LOGGER
+from .config import ENV, LOGGER
 
 boto3.set_stream_logger(name="botocore")
 
@@ -34,12 +33,12 @@ def s3ify(filepath: Path) -> S3File:
     s3_client = boto3.client(
         "s3",
         "us-east-1",
-        endpoint_url=os.getenv("EWMS_TMS_S3_URL"),
-        aws_access_key_id=os.getenv("EWMS_TMS_S3_ACCESS_KEY"),
-        aws_secret_access_key=os.getenv("EWMS_TMS_S3_SECRET_KEY"),
+        endpoint_url=ENV.EWMS_TMS_S3_URL,
+        aws_access_key_id=ENV.EWMS_TMS_S3_ACCESS_KEY,
+        aws_secret_access_key=ENV.EWMS_TMS_S3_SECRET_KEY,
     )
     bucket = "clientmanager"
-    key = os.getenv("SKYSCAN_SKYDRIVER_SCAN_ID")
+    key = ENV.SKYSCAN_SKYDRIVER_SCAN_ID
 
     # POST
     upload_details = s3_client.generate_presigned_post(bucket, key)
@@ -102,7 +101,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     # Build the environment specification for condor
     env_vars = []
     # EWMS_* are inherited via condor `getenv`, but we have default in case these are not set.
-    if not os.getenv("EWMS_PILOT_QUARANTINE_TIME"):
+    if not ENV.EWMS_PILOT_QUARANTINE_TIME:
         env_vars.append("EWMS_PILOT_QUARANTINE_TIME=1800")
     # The container sets I3_DATA to /opt/i3-data, however `millipede_wilks` requires files (spline tables) that are not available in the image. For the time being we require CVFMS and we load I3_DATA from there. In order to override the environment variables we need to prepend APPTAINERENV_ or SINGULARITYENV_ to the variable name. There are site-dependent behaviour but these two should cover all cases. See https://github.com/icecube/skymap_scanner/issues/135#issuecomment-1449063054.
     for prefix in ["APPTAINERENV_", "SINGULARITYENV_"]:
@@ -236,7 +235,8 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
         "--client-startup-json",
         help="The 'startup.json' file to startup each client",
         type=lambda x: wait_for_file(
-            Path(x), int(os.getenv("CLIENT_STARTER_WAIT_FOR_STARTUP_JSON", "60"))
+            Path(x),
+            ENV.CLIENT_STARTER_WAIT_FOR_STARTUP_JSON,
         ),
     )
     sub_parser.add_argument(

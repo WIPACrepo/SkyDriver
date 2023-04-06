@@ -5,7 +5,7 @@ import os
 
 from rest_tools.client import RestClient
 
-from .config import LOGGER
+from .config import ENV, LOGGER
 
 
 def connect_to_skydriver() -> tuple[RestClient | None, str]:
@@ -13,13 +13,12 @@ def connect_to_skydriver() -> tuple[RestClient | None, str]:
 
     Also return the scan id.
     """
-    address = os.getenv("SKYSCAN_SKYDRIVER_ADDRESS")
-    if not address:
+    if not (address := ENV.SKYSCAN_SKYDRIVER_ADDRESS):
         LOGGER.warning("Not connecting to SkyDriver")
         return None, ""
 
-    scan_id = os.getenv("SKYSCAN_SKYDRIVER_SCAN_ID")
-    if not scan_id:
+    scan_id = os.getenv("")
+    if not (scan_id := ENV.SKYSCAN_SKYDRIVER_SCAN_ID):
         raise RuntimeError(
             "Cannot connect to SkyDriver without `SKYSCAN_SKYDRIVER_SCAN_ID`"
         )

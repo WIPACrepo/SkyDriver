@@ -2,12 +2,11 @@
 
 
 import argparse
-import os
 
 from wipac_dev_tools import logging_tools
 
 from . import condor_tools, starter, stopper, utils
-from .config import LOGGER
+from .config import ENV, LOGGER
 
 
 def main() -> None:
@@ -29,7 +28,7 @@ def main() -> None:
     logging_tools.set_level(
         "DEBUG",  # os.getenv("SKYSCAN_LOG", "INFO"),  # type: ignore[arg-type]
         first_party_loggers=LOGGER,
-        third_party_level=os.getenv("SKYSCAN_LOG_THIRD_PARTY", "WARNING"),  # type: ignore[arg-type]
+        third_party_level=ENV.SKYSCAN_LOG_THIRD_PARTY,  # type: ignore[arg-type]
         use_coloredlogs=True,  # for formatting
     )
     logging_tools.log_argparse_args(args, logger=LOGGER, level="WARNING")
