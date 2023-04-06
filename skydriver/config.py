@@ -61,6 +61,8 @@ class EnvConfig:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
+
+        # check missing env var(s)
         if not self.CLIENTMANAGER_IMAGE_WITH_TAG:
             raise RuntimeError(
                 "Missing required environment variable: 'CLIENTMANAGER_IMAGE_WITH_TAG'"

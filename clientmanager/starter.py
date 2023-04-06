@@ -30,7 +30,7 @@ def _get_log_fpath(logs_subdir: Path) -> Path:
 
 
 def make_condor_job_description(  # pylint: disable=too-many-arguments
-    logs_subdir: Path,
+    logs_subdir: Path | None,
     # condor args
     memory: str,
     accounting_group: str,
@@ -72,10 +72,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         "+SingularityImage": f'"{singularity_image}"',  # must be quoted
         "Requirements": "HAS_CVMFS_icecube_opensciencegrid_org && has_avx && has_avx2",
         "getenv": "SKYSCAN_*, EWMS_*",
-        "output": str(logs_subdir / "client-$(ProcId).out"),
         "environment": f'"{environment}"',  # must be quoted
-        "error": str(logs_subdir / "client-$(ProcId).err"),
-        "log": str(_get_log_fpath(logs_subdir)),
         "+FileSystemDomain": '"blah"',  # must be quoted
         "should_transfer_files": "YES",
         "transfer_input_files": ",".join(
@@ -85,6 +82,16 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         "request_memory": memory,
         "notification": "Error",
     }
+
+    # outputs
+    if logs_subdir:
+        submit_dict.update(
+            {
+                "output": str(logs_subdir / "client-$(ProcId).out"),
+                "error": str(logs_subdir / "client-$(ProcId).err"),
+                "log": str(_get_log_fpath(logs_subdir)),
+            }
+        )
 
     # accounting group
     if accounting_group:
@@ -141,9 +148,9 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
     )
     sub_parser.add_argument(
         "--logs-directory",
-        required=True,
+        default=None,
         type=Path,
-        help="where to save logs",
+        help="where to save logs (if not given, logs are not saved)",
     )
 
     # condor args
@@ -208,7 +215,7 @@ def start(
     scan_id: str,
     schedd_obj: htcondor.Schedd,  # pylint:disable=no-member
     job_count: int,
-    logs_directory: Path,
+    logs_directory: Path | None,
     client_args: list[tuple[str, str]],
     memory: str,
     accounting_group: str,
@@ -219,7 +226,10 @@ def start(
     schedd: str,
 ) -> None:
     """Main logic."""
-    logs_subdir = make_condor_logs_subdir(logs_directory)
+    if logs_directory:
+        logs_subdir = make_condor_logs_subdir(logs_directory)
+    else:
+        logs_subdir = None
 
     # get client args
     client_args_string = ""

@@ -215,6 +215,8 @@ class SkymapScannerStarterJob:
         memory: str,
         request_clusters: list[types.RequestorInputCluster],
         max_reco_time: int | None,
+        # universal
+        debug_mode: bool,
         # env
         rest_address: str,
     ):
@@ -234,6 +236,7 @@ class SkymapScannerStarterJob:
             singularity_image=images.get_skyscan_cvmfs_singularity_image(docker_tag),
             memory=memory,
             request_clusters=request_clusters,
+            debug_mode=debug_mode,
         )
         env = self.make_v1_env_vars(
             rest_address=rest_address,
@@ -279,7 +282,7 @@ class SkymapScannerStarterJob:
             f"python -m skymap_scanner.server "
             f" --reco-algo {reco_algo}"
             f" --cache-dir {common_space_volume_path} "
-            f" --output-dir {common_space_volume_path} "
+            # f" --output-dir {common_space_volume_path} "  # output is sent to skydriver
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "  # k1:v1 k2:v2
             f" {'--real-event' if is_real_event else '--simulated-event'} "
@@ -293,6 +296,7 @@ class SkymapScannerStarterJob:
         singularity_image: Path,
         memory: str,
         request_clusters: list[types.RequestorInputCluster],
+        debug_mode: bool,
     ) -> str:
         """Make the clientmanager container args.
 
@@ -307,13 +311,16 @@ class SkymapScannerStarterJob:
             f"python -m clientmanager start "
             f" --cluster {clusters_args} "
             # f" --dryrun"
-            f" --logs-directory {common_space_volume_path} "
+            # f" --logs-directory "  # see below
             # f" --accounting-group "
             f" --memory {memory} "
             f" --singularity-image {singularity_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
+
+        if debug_mode:
+            args += f" --logs-directory {common_space_volume_path} "
 
         return args
 
