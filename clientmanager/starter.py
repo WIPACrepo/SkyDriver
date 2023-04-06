@@ -13,7 +13,6 @@ import htcondor  # type: ignore[import]
 import requests
 from wipac_dev_tools import argparse_tools
 
-from . import condor_tools
 from .config import ENV, LOGGER
 
 boto3.set_stream_logger(name="botocore")
