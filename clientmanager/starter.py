@@ -2,18 +2,58 @@
 
 
 import argparse
+import dataclasses as dc
 import datetime as dt
 import getpass
 import os
 import time
 from pathlib import Path
 
+import boto3  # type: ignore[import]
 import htcondor  # type: ignore[import]
+import requests
 from rest_tools.client import RestClient
 from wipac_dev_tools import argparse_tools
 
 from . import condor_tools
 from .config import LOGGER
+
+boto3.set_stream_logger(name="botocore")
+
+
+@dc.dataclass
+class S3File:
+    """Wrap an S3 file."""
+
+    url: str
+    base_fname: str
+
+
+def s3ify(filepath: Path) -> S3File:
+    """Put the file in s3 and return info about it."""
+    s3_client = boto3.client(
+        "s3",
+        "us-east-1",
+        endpoint_url=os.getenv("EWMS_TMS_S3_URL"),
+        aws_access_key_id=os.getenv("EWMS_TMS_S3_ACCESS_KEY"),
+        aws_secret_access_key=os.getenv("EWMS_TMS_S3_SECRET_KEY"),
+    )
+
+    # POST
+    upload_details = s3_client.generate_presigned_post(
+        "clientmanager",
+        os.getenv("SKYSCAN_SKYDRIVER_SCAN_ID"),
+    )
+    with open(filepath, "rb") as f:
+        response = requests.post(
+            upload_details["url"],
+            data=upload_details["fields"],
+            files={"file": (filepath.name, f)},  # maps filename to obj
+        )
+    print(f"Upload response: {response.status_code}")
+    print(str(response.content))
+
+    return S3File(upload_details["url"], filepath.name)
 
 
 def make_condor_logs_subdir(directory: Path) -> Path:
@@ -36,11 +76,10 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     accounting_group: str,
     # skymap scanner args
     singularity_image: str,
-    client_startup_json: Path,
+    client_startup_json_s3: S3File,
     client_args_string: str,
 ) -> htcondor.Submit:  # pylint:disable=no-member
     """Make the condor job description (submit object)."""
-    transfer_input_files: list[Path] = [client_startup_json]
 
     # NOTE:
     # In the newest version of condor we could use:
@@ -68,16 +107,14 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     # write
     submit_dict = {
         "executable": "/bin/bash",
-        "arguments": f"/usr/local/icetray/env-shell.sh python -m skymap_scanner.client {client_args_string} --client-startup-json ./{client_startup_json.name}",
+        "arguments": f"/usr/local/icetray/env-shell.sh python -m skymap_scanner.client {client_args_string} --client-startup-json ./{client_startup_json_s3.base_fname}",
         "+SingularityImage": f'"{singularity_image}"',  # must be quoted
         "Requirements": "HAS_CVMFS_icecube_opensciencegrid_org && has_avx && has_avx2",
         "getenv": "SKYSCAN_*, EWMS_*",
         "environment": f'"{environment}"',  # must be quoted
         "+FileSystemDomain": '"blah"',  # must be quoted
         "should_transfer_files": "YES",
-        "transfer_input_files": ",".join(
-            [os.path.abspath(str(f)) for f in transfer_input_files]
-        ),
+        "transfer_input_files": client_startup_json_s3.url,
         "request_cpus": "1",
         "request_memory": memory,
         "notification": "Error",
@@ -243,6 +280,9 @@ def start(
                 "This needs to be given to this script explicitly ('--client-startup-json')."
             )
 
+    # put client_startup_json in S3 bucket
+    client_startup_json_s3 = s3ify(client_startup_json)
+
     # make condor job description
     submit_obj = make_condor_job_description(
         logs_subdir,
@@ -251,7 +291,7 @@ def start(
         accounting_group,
         # skymap scanner args
         singularity_image,
-        client_startup_json,
+        client_startup_json_s3,
         client_args_string,
     )
     LOGGER.info(submit_obj)
