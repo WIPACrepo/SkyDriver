@@ -37,13 +37,3 @@ def get_schedd_obj(collector: str | None, schedd: str | None) -> htcondor.Schedd
     schedd_obj = htcondor.Schedd(schedd_ad)
     LOGGER.info(f"Connected to Schedd {collector=} {schedd=}")
     return schedd_obj
-
-
-def get_job_classads(
-    submit_obj: htcondor.Submit,
-    njobs: int,
-    clusterid: int,
-) -> list:
-    """Get list of (simulated) job ClassAds."""
-    job_ads = submit_obj.jobs(count=njobs, clusterid=clusterid)
-    return list(job_ads)

@@ -283,14 +283,9 @@ def start(
     submit_result_obj = schedd_obj.submit(
         submit_obj,
         count=job_count,  # submit N jobs
-        spool=True,  # for transfer_input_files
     )
     LOGGER.info(submit_result_obj)
-    jobs = condor_tools.get_job_classads(
-        submit_obj,
-        job_count,
-        submit_result_obj.cluster(),
-    )
-    schedd_obj.spool(jobs)
+    # NOTE: since we're not transferring any local files directly,
+    # we don't need to spool. Files are on CVMFS and S3.
 
     return submit_result_obj
