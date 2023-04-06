@@ -38,12 +38,11 @@ def s3ify(filepath: Path) -> S3File:
         aws_access_key_id=os.getenv("EWMS_TMS_S3_ACCESS_KEY"),
         aws_secret_access_key=os.getenv("EWMS_TMS_S3_SECRET_KEY"),
     )
+    bucket = "clientmanager"
+    key = os.getenv("SKYSCAN_SKYDRIVER_SCAN_ID")
 
     # POST
-    upload_details = s3_client.generate_presigned_post(
-        "clientmanager",
-        os.getenv("SKYSCAN_SKYDRIVER_SCAN_ID"),
-    )
+    upload_details = s3_client.generate_presigned_post(bucket, key)
     with open(filepath, "rb") as f:
         response = requests.post(
             upload_details["url"],
@@ -53,7 +52,13 @@ def s3ify(filepath: Path) -> S3File:
     print(f"Upload response: {response.status_code}")
     print(str(response.content))
 
-    return S3File(upload_details["url"], filepath.name)
+    # get GET url
+    get_url = s3_client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket, "Key": key},
+        ExpiresIn=3600,  # 60 mins
+    )
+    return S3File(get_url, filepath.name)
 
 
 def make_condor_logs_subdir(directory: Path) -> Path:
