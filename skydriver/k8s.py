@@ -214,6 +214,7 @@ class SkymapScannerStarterJob:
         # clientmanager
         memory: str,
         request_clusters: list[types.RequestorInputCluster],
+        max_reco_time: int | None,
         # env
         rest_address: str,
     ):
@@ -234,9 +235,10 @@ class SkymapScannerStarterJob:
             memory=memory,
             request_clusters=request_clusters,
         )
-        env = self.get_env(
+        env = self.make_v1_env_vars(
             rest_address=rest_address,
             scan_id=scan_id,
+            max_reco_time=max_reco_time,
         )
         self.env_dict = {  # promote `e.name` to a key of a dict (instead of an attr in list element)
             e.name: {k: v for k, v in e.to_dict().items() if k != "name"} for e in env
@@ -336,9 +338,10 @@ class SkymapScannerStarterJob:
         return token
 
     @staticmethod
-    def get_env(
+    def make_v1_env_vars(
         rest_address: str,
         scan_id: str,
+        max_reco_time: int | None,
     ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to all containers.
 
@@ -365,7 +368,7 @@ class SkymapScannerStarterJob:
             ]
         )
 
-        # 3. add extra env vars, if present
+        # 3. add extra env vars, then filter out if 'None'
         prefiltered = {
             "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
             "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
@@ -373,7 +376,12 @@ class SkymapScannerStarterJob:
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
-            "RABBITMQ_HEARTBEAT": ENV.RABBITMQ_HEARTBEAT,
+            "EWMS_PILOT_SUBPROC_TIMEOUT": (
+                max_reco_time
+                if max_reco_time
+                else ENV.EWMS_PILOT_SUBPROC_TIMEOUT  # may also be None
+            ),
+            "EWMS_PILOT_QUARANTINE_TIME": ENV.EWMS_PILOT_QUARANTINE_TIME,
         }
         env.extend(
             [

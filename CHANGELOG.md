@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.56 (2023-04-06)
+### Other
+* `max_reco_time` / `EWMS_PILOT_SUBPROC_TIMEOUT` ([#20](https://github.com/WIPACrepo/SkyDriver/issues/20)) ([`81aedd0`](https://github.com/WIPACrepo/SkyDriver/commit/81aedd05173abf46943a5e0d83a9dde2276d1a4f))
+
 ## v0.0.55 (2023-03-28)
 ### Other
 * Add `last updated` & `predictive scanning threshold` to progress report ([`5ac524e`](https://github.com/WIPACrepo/SkyDriver/commit/5ac524e9bdca4e1504625867712201257a32691d))

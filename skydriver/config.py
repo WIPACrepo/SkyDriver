@@ -55,7 +55,10 @@ class EnvConfig:
     SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS: Optional[int] = None
     SKYSCAN_LOG: Optional[str] = None
     SKYSCAN_LOG_THIRD_PARTY: Optional[str] = None
-    RABBITMQ_HEARTBEAT: int = 3600
+
+    # EWMS (forwarded)
+    EWMS_PILOT_SUBPROC_TIMEOUT: Optional[int] = None  # max work time (stop slow worker)
+    EWMS_PILOT_QUARANTINE_TIME: int = 0  # wait-time after error (stop greedy worker)
 
     def __post_init__(self) -> None:
         # log level
