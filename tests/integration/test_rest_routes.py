@@ -98,7 +98,6 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         f"python -m skymap_scanner.server "
         f"--reco-algo {post_scan_body['reco_algo']} "
         f"--cache-dir /common-space "
-        f"--output-dir /common-space "
         f"--client-startup-json /common-space/startup.json "
         f"--nsides {' '.join(f'{k}:{v}' for k,v in post_scan_body['nsides'].items())} "
         f"--{post_scan_body['real_or_simulated_event']}-event "
