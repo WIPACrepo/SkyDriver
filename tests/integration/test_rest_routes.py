@@ -125,7 +125,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         f" --memory 6GB "
         f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
         f" --client-startup-json /common-space/startup.json "
-        f" --logs-directory /common-space "
+        # f" --logs-directory /common-space "
     )
 
     assert resp == dict(
