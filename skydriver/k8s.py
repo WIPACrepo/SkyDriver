@@ -235,7 +235,7 @@ class SkymapScannerStarterJob:
             memory=memory,
             request_clusters=request_clusters,
         )
-        env = self.get_v1_env_vars(
+        env = self.make_v1_env_vars(
             rest_address=rest_address,
             scan_id=scan_id,
             max_reco_time=max_reco_time,
@@ -335,7 +335,7 @@ class SkymapScannerStarterJob:
         return token
 
     @staticmethod
-    def get_v1_env_vars(
+    def make_v1_env_vars(
         rest_address: str,
         scan_id: str,
         max_reco_time: int | None,
