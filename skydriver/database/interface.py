@@ -1,7 +1,7 @@
 """Database interface for persisted scan data."""
 
 import dataclasses as dc
-from typing import Any, AsyncIterator, Type, TypeVar
+from typing import Any, AsyncIterator, Type, TypeVar, cast
 
 import typeguard
 from dacite import from_dict  # type: ignore[attr-defined]
@@ -174,7 +174,7 @@ class ScanIDCollectionFacade:
             )
         scandc = from_dict(out_type, doc)
         LOGGER.debug(f"replaced: ({coll=}) doc {scandc}")
-        return scandc  # type: ignore[no-any-return]  # mypy internal bug
+        return cast(S, scandc)  # mypy internal bug
 
 
 # -----------------------------------------------------------------------------
