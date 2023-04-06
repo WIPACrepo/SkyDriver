@@ -5,6 +5,7 @@ on: [push]
 env:
   CI_TEST: 'yes'
   CLIENTMANAGER_IMAGE_WITH_TAG: 'ghcr.io/wipacrepo/skydriver:latest'
+  EWMS_PILOT_SUBPROC_TIMEOUT: 999
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -18,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
-      - uses: WIPACrepo/wipac-dev-flake8-action@v1
+      - uses: WIPACrepo/wipac-dev-flake8-action@v1.0
 
   mypy:
     runs-on: ubuntu-latest
@@ -54,7 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - id: versions
-        uses: WIPACrepo/wipac-dev-py-versions-action@v2
+        uses: WIPACrepo/wipac-dev-py-versions-action@v2.0
 
   unit-tests:
     needs: [py-versions]
