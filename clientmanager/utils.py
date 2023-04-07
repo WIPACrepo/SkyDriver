@@ -96,4 +96,4 @@ def s3ify(filepath: Path) -> S3File:
         Params={"Bucket": bucket, "Key": key},
         ExpiresIn=ENV.EWMS_TMS_S3_EXPIRATION,  # seconds
     )
-    return S3File(get_url, filepath.name)
+    return S3File(get_url, key)
