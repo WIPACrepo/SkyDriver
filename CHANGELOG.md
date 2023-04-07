@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.62 (2023-04-07)
+### Other
+* S3: point scanner to filename of name `key` ([`3fb88b3`](https://github.com/WIPACrepo/SkyDriver/commit/3fb88b306a8a8e74bfb230fe77b81c2acf7a54d5))
+* Condor: set `initialdir = /tmp` when not spooling ([`5156cc2`](https://github.com/WIPACrepo/SkyDriver/commit/5156cc22400b6288834f1bf778d3b5987e781250))
+
 ## v0.0.61 (2023-04-07)
 ### Other
 * Condor: use `skip_filechecks = True` when not spooling ([`d242250`](https://github.com/WIPACrepo/SkyDriver/commit/d24225039adc1971042b08d14189f9a34e699c02))
