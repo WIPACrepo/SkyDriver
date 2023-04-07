@@ -10,6 +10,7 @@ from pathlib import Path
 import htcondor  # type: ignore[import]
 from wipac_dev_tools import argparse_tools
 
+from . import condor_tools
 from .config import ENV, LOGGER
 from .utils import S3File
 
@@ -73,6 +74,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         "+FileSystemDomain": '"blah"',  # must be quoted
         "should_transfer_files": "YES",
         "transfer_input_files": client_startup_json_s3.url,
+        "initialdir": "/tmp",  #
         "request_cpus": "1",
         "request_memory": memory,
         "notification": "Error",
@@ -198,8 +200,12 @@ def start(
     """Main logic."""
     if logs_directory:
         logs_subdir = make_condor_logs_subdir(logs_directory)
+        spool = True
     else:
         logs_subdir = None
+        # NOTE: since we're not transferring any local files directly,
+        # we don't need to spool. Files are on CVMFS and S3.
+        spool = False
 
     # get client args
     client_args_string = ""
@@ -235,9 +241,15 @@ def start(
     submit_result_obj = schedd_obj.submit(
         submit_obj,
         count=job_count,  # submit N jobs
+        spool=spool,  # for transferring logs & files
     )
     LOGGER.info(submit_result_obj)
-    # NOTE: since we're not transferring any local files directly,
-    # we don't need to spool. Files are on CVMFS and S3.
+    if spool:
+        jobs = condor_tools.get_job_classads(
+            submit_obj,
+            job_count,
+            submit_result_obj.cluster(),
+        )
+        schedd_obj.spool(jobs)
 
     return submit_result_obj
