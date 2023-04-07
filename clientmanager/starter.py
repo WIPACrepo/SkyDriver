@@ -74,7 +74,6 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         "+FileSystemDomain": '"blah"',  # must be quoted
         "should_transfer_files": "YES",
         "transfer_input_files": client_startup_json_s3.url,
-        "initialdir": "/tmp",  #
         "request_cpus": "1",
         "request_memory": memory,
         "notification": "Error",
@@ -89,6 +88,9 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
                 "log": str(_get_log_fpath(logs_subdir)),
             }
         )
+    else:
+        # NOTE: this needs to be removed if we ARE transferring files
+        submit_dict["skip_filechecks"] = "True"
 
     # accounting group
     if accounting_group:
