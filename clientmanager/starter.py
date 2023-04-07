@@ -90,7 +90,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         )
     else:
         # NOTE: this needs to be removed if we ARE transferring files
-        submit_dict["skip_filechecks"] = "True"
+        submit_dict["initialdir"] = "/tmp"
 
     # accounting group
     if accounting_group:
