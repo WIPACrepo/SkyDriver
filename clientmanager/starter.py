@@ -56,8 +56,8 @@ def s3ify(filepath: Path) -> S3File:
             data=upload_details["fields"],
             files={"file": (filepath.name, f)},  # maps filename to obj
         )
-    print(f"Upload response: {response.status_code}")
-    print(str(response.content))
+    LOGGER.info(f"Upload response: {response.status_code}")
+    LOGGER.info(str(response.content))
 
     # get GET url
     get_url = s3_client.generate_presigned_url(
