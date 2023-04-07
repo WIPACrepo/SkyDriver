@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.59 (2023-04-07)
+### Other
+* <bot> update requirements-clientmanager.txt ([`fda62b5`](https://github.com/WIPACrepo/SkyDriver/commit/fda62b59f87d6005f35c34bb00f2a8dc24a11890))
+* Require `boto3` (not `boto`) ([`6f58e24`](https://github.com/WIPACrepo/SkyDriver/commit/6f58e24a5681438dfa98b9ee25d12ddda2641131))
+
 ## v0.0.58 (2023-04-07)
 ### Other
 * Put Statup Files in S3 ([#22](https://github.com/WIPACrepo/SkyDriver/issues/22)) ([`654439d`](https://github.com/WIPACrepo/SkyDriver/commit/654439d6349323f7dbedb3e89c2572d1d0367f39))
