@@ -28,6 +28,16 @@ class S3File:
 
 def s3ify(filepath: Path) -> S3File:
     """Put the file in s3 and return info about it."""
+    if not (
+        ENV.EWMS_TMS_S3_URL
+        and ENV.EWMS_TMS_S3_ACCESS_KEY
+        and ENV.EWMS_TMS_S3_SECRET_KEY
+        and ENV.EWMS_TMS_S3_BUCKET
+        and ENV.SKYSCAN_SKYDRIVER_SCAN_ID
+    ):
+        raise RuntimeError(
+            "must define all EWMS_TMS_S3_* environment variables to use S3"
+        )
     s3_client = boto3.client(
         "s3",
         "us-east-1",
@@ -35,7 +45,7 @@ def s3ify(filepath: Path) -> S3File:
         aws_access_key_id=ENV.EWMS_TMS_S3_ACCESS_KEY,
         aws_secret_access_key=ENV.EWMS_TMS_S3_SECRET_KEY,
     )
-    bucket = "clientmanager"
+    bucket = ENV.EWMS_TMS_S3_BUCKET
     key = ENV.SKYSCAN_SKYDRIVER_SCAN_ID
 
     # POST

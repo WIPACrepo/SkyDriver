@@ -18,6 +18,7 @@ class EnvConfig:
     CONDOR_TOKEN: str = ""
     EWMS_PILOT_QUARANTINE_TIME: int = 0
     EWMS_TMS_S3_ACCESS_KEY: str = ""
+    EWMS_TMS_S3_BUCKET: str = ""
     EWMS_TMS_S3_SECRET_KEY: str = ""
     EWMS_TMS_S3_URL: str = ""
 
