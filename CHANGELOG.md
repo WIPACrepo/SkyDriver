@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.60 (2023-04-07)
+### Other
+* TMS S3 Environment Variables ([#24](https://github.com/WIPACrepo/SkyDriver/issues/24)) ([`8ff144d`](https://github.com/WIPACrepo/SkyDriver/commit/8ff144d04f0d15cceba93f5be32861caa29ca930))
+
 ## v0.0.59 (2023-04-07)
 ### Other
 * <bot> update requirements-clientmanager.txt ([`fda62b5`](https://github.com/WIPACrepo/SkyDriver/commit/fda62b59f87d6005f35c34bb00f2a8dc24a11890))
