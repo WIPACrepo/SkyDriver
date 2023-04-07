@@ -94,6 +94,6 @@ def s3ify(filepath: Path) -> S3File:
     get_url = s3_client.generate_presigned_url(
         "get_object",
         Params={"Bucket": bucket, "Key": key},
-        ExpiresIn=3600,  # 60 mins
+        ExpiresIn=ENV.EWMS_TMS_S3_EXPIRATION,  # seconds
     )
     return S3File(get_url, filepath.name)
