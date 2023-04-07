@@ -59,7 +59,7 @@ async def server(
     mongo_clear: Any,  # pylint:disable=unused-argument
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
-    # monkeypatch.setenv("EWMS_PILOT_SUBPROC_TIMEOUT", 100)
+    # monkeypatch.setenv("", 100)
 
     with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
         rs = await make(debug=True)
@@ -152,6 +152,10 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
     assert set(resp["env_vars"].keys()) == {
         "CONDOR_TOKEN",
         "EWMS_PILOT_SUBPROC_TIMEOUT",  # set by CI runner
+        "EWMS_TMS_S3_ACCESS_KEY_ID",
+        "EWMS_TMS_S3_BUCKET",
+        "EWMS_TMS_S3_SECRET_KEY",
+        "EWMS_TMS_S3_URL",
         "SKYSCAN_BROKER_ADDRESS",
         "SKYSCAN_BROKER_AUTH",
         "SKYSCAN_SKYDRIVER_ADDRESS",
@@ -165,6 +169,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         if v["value"] is not None and v["value_from"] is None
     ) == {
         "EWMS_PILOT_SUBPROC_TIMEOUT",  # set by CI runner
+        "EWMS_TMS_S3_BUCKET",
+        "EWMS_TMS_S3_URL",
         "SKYSCAN_BROKER_ADDRESS",
         "SKYSCAN_BROKER_AUTH",
         "SKYSCAN_SKYDRIVER_ADDRESS",
@@ -177,6 +183,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         if v["value_from"] is not None and v["value"] is None
     ) == {
         "CONDOR_TOKEN",
+        "EWMS_TMS_S3_ACCESS_KEY_ID",
+        "EWMS_TMS_S3_SECRET_KEY",
     }
     # check env vars, even MORE closely
     assert resp["env_vars"]["SKYSCAN_BROKER_ADDRESS"]["value"] == "localhost"
