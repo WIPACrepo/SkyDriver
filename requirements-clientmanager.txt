@@ -6,6 +6,8 @@
 #
 backoff==2.2.1
     # via opentelemetry-exporter-otlp-proto-http
+boto==2.49.0
+    # via UNKNOWN (setup.py)
 cachetools==5.3.0
     # via
     #   google-auth

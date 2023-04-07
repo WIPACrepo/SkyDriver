@@ -4,16 +4,14 @@
 import argparse
 import datetime as dt
 import getpass
-import os
 import time
 from pathlib import Path
 
 import htcondor  # type: ignore[import]
-from rest_tools.client import RestClient
 from wipac_dev_tools import argparse_tools
 
-from . import condor_tools
-from .config import LOGGER
+from .config import ENV, LOGGER
+from .utils import S3File
 
 
 def make_condor_logs_subdir(directory: Path) -> Path:
@@ -36,11 +34,10 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     accounting_group: str,
     # skymap scanner args
     singularity_image: str,
-    client_startup_json: Path,
+    client_startup_json_s3: S3File,
     client_args_string: str,
 ) -> htcondor.Submit:  # pylint:disable=no-member
     """Make the condor job description (submit object)."""
-    transfer_input_files: list[Path] = [client_startup_json]
 
     # NOTE:
     # In the newest version of condor we could use:
@@ -58,7 +55,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     # Build the environment specification for condor
     env_vars = []
     # EWMS_* are inherited via condor `getenv`, but we have default in case these are not set.
-    if not os.getenv("EWMS_PILOT_QUARANTINE_TIME"):
+    if not ENV.EWMS_PILOT_QUARANTINE_TIME:
         env_vars.append("EWMS_PILOT_QUARANTINE_TIME=1800")
     # The container sets I3_DATA to /opt/i3-data, however `millipede_wilks` requires files (spline tables) that are not available in the image. For the time being we require CVFMS and we load I3_DATA from there. In order to override the environment variables we need to prepend APPTAINERENV_ or SINGULARITYENV_ to the variable name. There are site-dependent behaviour but these two should cover all cases. See https://github.com/icecube/skymap_scanner/issues/135#issuecomment-1449063054.
     for prefix in ["APPTAINERENV_", "SINGULARITYENV_"]:
@@ -68,16 +65,14 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     # write
     submit_dict = {
         "executable": "/bin/bash",
-        "arguments": f"/usr/local/icetray/env-shell.sh python -m skymap_scanner.client {client_args_string} --client-startup-json ./{client_startup_json.name}",
+        "arguments": f"/usr/local/icetray/env-shell.sh python -m skymap_scanner.client {client_args_string} --client-startup-json ./{client_startup_json_s3.base_fname}",
         "+SingularityImage": f'"{singularity_image}"',  # must be quoted
         "Requirements": "HAS_CVMFS_icecube_opensciencegrid_org && has_avx && has_avx2",
         "getenv": "SKYSCAN_*, EWMS_*",
         "environment": f'"{environment}"',  # must be quoted
         "+FileSystemDomain": '"blah"',  # must be quoted
         "should_transfer_files": "YES",
-        "transfer_input_files": ",".join(
-            [os.path.abspath(str(f)) for f in transfer_input_files]
-        ),
+        "transfer_input_files": client_startup_json_s3.url,
         "request_cpus": "1",
         "request_memory": memory,
         "notification": "Error",
@@ -98,28 +93,6 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         submit_dict["+AccountingGroup"] = f"{accounting_group}.{getpass.getuser()}"
 
     return htcondor.Submit(submit_dict)  # pylint:disable=no-member
-
-
-def update_skydriver(
-    skydriver_rc: RestClient,
-    scan_id: str,
-    submit_result: htcondor.SubmitResult,  # pylint:disable=no-member
-    collector: str,
-    schedd: str,
-) -> None:
-    """Send SkyDriver updates from the `submit_result`."""
-    skydriver_rc.request_seq(
-        "PATCH",
-        f"/scan/manifest/{scan_id}",
-        {
-            "condor_cluster": {
-                "collector": collector,
-                "schedd": schedd,
-                "cluster_id": submit_result.cluster(),
-                "jobs": submit_result.num_procs(),
-            }
-        },
-    )
 
 
 def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
@@ -194,7 +167,8 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
         "--client-startup-json",
         help="The 'startup.json' file to startup each client",
         type=lambda x: wait_for_file(
-            Path(x), int(os.getenv("CLIENT_STARTER_WAIT_FOR_STARTUP_JSON", "60"))
+            Path(x),
+            ENV.CLIENT_STARTER_WAIT_FOR_STARTUP_JSON,
         ),
     )
     sub_parser.add_argument(
@@ -211,8 +185,6 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
 
 
 def start(
-    skydriver_rc: RestClient | None,
-    scan_id: str,
     schedd_obj: htcondor.Schedd,  # pylint:disable=no-member
     job_count: int,
     logs_directory: Path | None,
@@ -220,11 +192,9 @@ def start(
     memory: str,
     accounting_group: str,
     singularity_image: str,
-    client_startup_json: Path,
+    client_startup_json_s3: S3File,
     dryrun: bool,
-    collector: str,
-    schedd: str,
-) -> None:
+) -> htcondor.SubmitResult:  # pylint:disable=no-member
     """Main logic."""
     if logs_directory:
         logs_subdir = make_condor_logs_subdir(logs_directory)
@@ -251,7 +221,7 @@ def start(
         accounting_group,
         # skymap scanner args
         singularity_image,
-        client_startup_json,
+        client_startup_json_s3,
         client_args_string,
     )
     LOGGER.info(submit_obj)
@@ -265,23 +235,9 @@ def start(
     submit_result_obj = schedd_obj.submit(
         submit_obj,
         count=job_count,  # submit N jobs
-        spool=True,  # for transfer_input_files
     )
     LOGGER.info(submit_result_obj)
-    jobs = condor_tools.get_job_classads(
-        submit_obj,
-        job_count,
-        submit_result_obj.cluster(),
-    )
-    schedd_obj.spool(jobs)
+    # NOTE: since we're not transferring any local files directly,
+    # we don't need to spool. Files are on CVMFS and S3.
 
-    # report to SkyDriver
-    if skydriver_rc:
-        update_skydriver(
-            skydriver_rc,
-            scan_id,
-            submit_result_obj,
-            collector,
-            schedd,
-        )
-        LOGGER.info("Sent cluster info to SkyDriver")
+    return submit_result_obj

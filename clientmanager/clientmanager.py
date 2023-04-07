@@ -2,12 +2,11 @@
 
 
 import argparse
-import os
 
 from wipac_dev_tools import logging_tools
 
 from . import condor_tools, starter, stopper, utils
-from .config import LOGGER
+from .config import ENV, LOGGER
 
 
 def main() -> None:
@@ -29,15 +28,13 @@ def main() -> None:
     logging_tools.set_level(
         "DEBUG",  # os.getenv("SKYSCAN_LOG", "INFO"),  # type: ignore[arg-type]
         first_party_loggers=LOGGER,
-        third_party_level=os.getenv("SKYSCAN_LOG_THIRD_PARTY", "WARNING"),  # type: ignore[arg-type]
+        third_party_level=ENV.SKYSCAN_LOG_THIRD_PARTY,  # type: ignore[arg-type]
         use_coloredlogs=True,  # for formatting
+        future_third_parties=["boto3", "botocore"],
     )
     logging_tools.log_argparse_args(args, logger=LOGGER, level="WARNING")
 
     ####################################################################################
-
-    # make connections -- do now so we don't have any surprises downstream
-    skydriver_rc, scan_id = utils.connect_to_skydriver()
 
     # Go!
     match args.action:
@@ -46,9 +43,10 @@ def main() -> None:
                 LOGGER.info(
                     f"Starting {njobs} Skymap Scanner client jobs on {collector} / {schedd}"
                 )
-                starter.start(
-                    skydriver_rc,
-                    scan_id,
+                # make connections -- do now so we don't have any surprises downstream
+                skydriver_rc = utils.connect_to_skydriver()
+                # start
+                submit_result_obj = starter.start(
                     condor_tools.get_schedd_obj(collector, schedd),
                     njobs,
                     args.logs_directory / str(i) if args.logs_directory else None,
@@ -56,11 +54,18 @@ def main() -> None:
                     args.memory,
                     args.accounting_group,
                     args.singularity_image,
-                    args.client_startup_json,
+                    # put client_startup_json in S3 bucket
+                    utils.s3ify(args.client_startup_json),
                     args.dryrun,
+                )
+                # report to SkyDriver
+                utils.update_skydriver(
+                    skydriver_rc,
+                    submit_result_obj,
                     collector,
                     schedd,
                 )
+                LOGGER.info("Sent cluster info to SkyDriver")
             return
         case "stop":
             return stopper.stop(

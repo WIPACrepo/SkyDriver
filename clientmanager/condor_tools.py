@@ -4,18 +4,17 @@
 # pylint:disable=no-member
 
 
-import os
 from pathlib import Path
 
 import htcondor  # type: ignore[import]
 
-from .config import LOGGER
+from .config import ENV, LOGGER
 
 
 def _condor_token_auth(collector: str, schedd: str) -> None:
     """Write condor token file from `CONDOR_TOKEN` (before any condor calls)"""
     # TODO: implement per-collector/schedd tokens
-    if token := os.getenv("CONDOR_TOKEN"):
+    if token := ENV.CONDOR_TOKEN:
         condor_tokens_dpath = Path("~/.condor/tokens.d/").expanduser()
         condor_tokens_dpath.mkdir(parents=True, exist_ok=True)
         with open(condor_tokens_dpath / "token1", "w") as f:
@@ -38,13 +37,3 @@ def get_schedd_obj(collector: str | None, schedd: str | None) -> htcondor.Schedd
     schedd_obj = htcondor.Schedd(schedd_ad)
     LOGGER.info(f"Connected to Schedd {collector=} {schedd=}")
     return schedd_obj
-
-
-def get_job_classads(
-    submit_obj: htcondor.Submit,
-    njobs: int,
-    clusterid: int,
-) -> list:
-    """Get list of (simulated) job ClassAds."""
-    job_ads = submit_obj.jobs(count=njobs, clusterid=clusterid)
-    return list(job_ads)
