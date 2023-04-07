@@ -25,6 +25,7 @@ class EnvConfig:
     # piggy-back scanner env vars
     SKYSCAN_LOG_THIRD_PARTY: str = "WARNING"
     SKYSCAN_SKYDRIVER_ADDRESS: str = ""
+    SKYSCAN_SKYDRIVER_AUTH: str = ""
     SKYSCAN_SKYDRIVER_SCAN_ID: str = ""
 
 
