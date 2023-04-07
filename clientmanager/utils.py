@@ -49,9 +49,6 @@ def update_skydriver(
     )
 
 
-boto3.set_stream_logger(name="botocore")
-
-
 @dc.dataclass
 class S3File:
     """Wrap an S3 file."""

@@ -30,6 +30,7 @@ def main() -> None:
         first_party_loggers=LOGGER,
         third_party_level=ENV.SKYSCAN_LOG_THIRD_PARTY,  # type: ignore[arg-type]
         use_coloredlogs=True,  # for formatting
+        future_third_parties=["boto3", "botocore"],
     )
     logging_tools.log_argparse_args(args, logger=LOGGER, level="WARNING")
 
