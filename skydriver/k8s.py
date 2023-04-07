@@ -198,6 +198,30 @@ def get_condor_token_v1envvar() -> kubernetes.client.V1EnvVar:
     )
 
 
+def get_tms_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
+    """Get the `V1EnvVar`s for TMS's S3 auth."""
+    return [
+        kubernetes.client.V1EnvVar(
+            name="EWMS_TMS_S3_ACCESS_KEY_ID",
+            value_from=kubernetes.client.V1EnvVarSource(
+                secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                    name=ENV.K8S_SECRET_NAME,
+                    key="ewms_tms_s3_access_key_id",
+                )
+            ),
+        ),
+        kubernetes.client.V1EnvVar(
+            name="EWMS_TMS_S3_SECRET_KEY",
+            value_from=kubernetes.client.V1EnvVarSource(
+                secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                    name=ENV.K8S_SECRET_NAME,
+                    key="ewms_tms_s3_secret_key",
+                )
+            ),
+        ),
+    ]
+
+
 class SkymapScannerStarterJob:
     """Wraps a Skymap Scanner Kubernetes job with tools to start and manage."""
 
@@ -356,6 +380,7 @@ class SkymapScannerStarterJob:
         # 1. start w/ secrets
         # NOTE: the values come from an existing secret in the current namespace
         env.append(get_condor_token_v1envvar())
+        env.extend(get_tms_s3_v1envvars())
 
         # 2. add required env vars
         required = {
@@ -364,6 +389,9 @@ class SkymapScannerStarterJob:
             # skydriver vars
             "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
             "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
+            #
+            "EWMS_TMS_S3_BUCKET": ENV.EWMS_TMS_S3_BUCKET,
+            "EWMS_TMS_S3_URL": ENV.EWMS_TMS_S3_URL,
         }
         env.extend(
             [

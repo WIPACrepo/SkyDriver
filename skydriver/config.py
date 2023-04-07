@@ -58,6 +58,8 @@ class EnvConfig:
     # EWMS (forwarded)
     EWMS_PILOT_SUBPROC_TIMEOUT: Optional[int] = None  # max work time (stop slow worker)
     EWMS_PILOT_QUARANTINE_TIME: int = 0  # wait-time after error (stop greedy worker)
+    EWMS_TMS_S3_BUCKET: str = ""
+    EWMS_TMS_S3_URL: str = ""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
