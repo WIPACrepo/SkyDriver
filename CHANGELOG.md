@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.58 (2023-04-07)
+### Other
+* Put Statup Files in S3 ([#22](https://github.com/WIPACrepo/SkyDriver/issues/22)) ([`654439d`](https://github.com/WIPACrepo/SkyDriver/commit/654439d6349323f7dbedb3e89c2572d1d0367f39))
+
 ## v0.0.57 (2023-04-06)
 ### Other
 * Don't Persist Condor Outputs When Not Needed ([#21](https://github.com/WIPACrepo/SkyDriver/issues/21)) ([`1ea84b6`](https://github.com/WIPACrepo/SkyDriver/commit/1ea84b6d38c15358efe4750859ee162cbc8332d3))
