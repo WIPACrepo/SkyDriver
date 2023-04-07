@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.61 (2023-04-07)
+### Other
+* Condor: use `skip_filechecks = True` when not spooling ([`d242250`](https://github.com/WIPACrepo/SkyDriver/commit/d24225039adc1971042b08d14189f9a34e699c02))
+* Condor: spool when using `log`, etc. ([`0bea2dc`](https://github.com/WIPACrepo/SkyDriver/commit/0bea2dc0037f02ac9f8d3a93c9be3c920c8650ea))
+
 ## v0.0.60 (2023-04-07)
 ### Other
 * TMS S3 Environment Variables ([#24](https://github.com/WIPACrepo/SkyDriver/issues/24)) ([`8ff144d`](https://github.com/WIPACrepo/SkyDriver/commit/8ff144d04f0d15cceba93f5be32861caa29ca930))
