@@ -66,7 +66,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     # write
     submit_dict = {
         "executable": "/bin/bash",
-        "arguments": f"/usr/local/icetray/env-shell.sh python -m skymap_scanner.client {client_args_string} --client-startup-json ./{client_startup_json_s3.base_fname}",
+        "arguments": f"/usr/local/icetray/env-shell.sh python -m skymap_scanner.client {client_args_string} --client-startup-json ./{client_startup_json_s3.fname}",
         "+SingularityImage": f'"{singularity_image}"',  # must be quoted
         "Requirements": "HAS_CVMFS_icecube_opensciencegrid_org && has_avx && has_avx2",
         "getenv": "SKYSCAN_*, EWMS_*",

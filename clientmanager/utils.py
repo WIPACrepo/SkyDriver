@@ -54,7 +54,7 @@ class S3File:
     """Wrap an S3 file."""
 
     url: str
-    base_fname: str
+    fname: str
 
 
 def s3ify(filepath: Path) -> S3File:
@@ -77,7 +77,7 @@ def s3ify(filepath: Path) -> S3File:
         aws_secret_access_key=ENV.EWMS_TMS_S3_SECRET_KEY,
     )
     bucket = ENV.EWMS_TMS_S3_BUCKET
-    key = ENV.SKYSCAN_SKYDRIVER_SCAN_ID
+    key = f"{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}-{filepath.name}"
 
     # get GET url
     get_url = s3_client.generate_presigned_url(
@@ -85,10 +85,10 @@ def s3ify(filepath: Path) -> S3File:
         Params={
             "Bucket": bucket,
             "Key": key,
-            "ResponseContentDisposition": f'attachment; filename ="{filepath.name}"',  # sets destination filename
         },
         ExpiresIn=ENV.EWMS_TMS_S3_EXPIRATION,  # seconds
     )
+    s3_file = S3File(get_url, filepath.name)
 
     # check if already there (via other process/container)
     try:
@@ -96,7 +96,7 @@ def s3ify(filepath: Path) -> S3File:
         resp.raise_for_status()
         LOGGER.debug(resp)
         LOGGER.info(f"File is already in S3. Using url: {get_url}")
-        return S3File(get_url, key)
+        return s3_file
     except requests.exceptions.HTTPError:
         LOGGER.info("File is not in S3 yet. Posting...")
 
@@ -111,4 +111,4 @@ def s3ify(filepath: Path) -> S3File:
     LOGGER.info(f"Upload response: {response.status_code}")
     LOGGER.info(str(response.content))
 
-    return S3File(get_url, key)
+    return s3_file
