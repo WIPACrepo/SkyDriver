@@ -132,19 +132,9 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
 
     # condor args
     sub_parser.add_argument(
-        "--cluster",
-        default=[None, None],  # list of a single 2-list
-        nargs="*",
-        type=lambda x: argparse_tools.validate_arg(
-            (x.split(",")[0], x.split(",")[1], int(x.split(",")[2])),
-            len(x.split(",")) == 3 and x.split(",")[2].isnumeric(),
-            ValueError('must " "-delimited series of "collector,schedd,njobs"-tuples'),
-        ),
-        help=(
-            "the HTCondor clusters to use, each entry contains: "
-            "full DNS name of Collector server, full DNS name of Schedd server, # of jobs"
-            "Ex: foo-bar.icecube.wisc.edu,baz.icecube.wisc.edu,123 alpha.icecube.wisc.edu,beta.icecube.wisc.edu,9999"
-        ),
+        "--n-jobs",
+        default="",
+        help="number of jobs to start",
     )
     sub_parser.add_argument(
         "--accounting-group",

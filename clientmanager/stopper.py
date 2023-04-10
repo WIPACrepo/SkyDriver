@@ -11,16 +11,6 @@ from .config import LOGGER
 def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
     """Add args to subparser."""
     sub_parser.add_argument(
-        "--collector",
-        default="",
-        help="the full URL address of the HTCondor collector server. Ex: foo-bar.icecube.wisc.edu",
-    )
-    sub_parser.add_argument(
-        "--schedd",
-        default="",
-        help="the full DNS name of the HTCondor Schedd server. Ex: baz.icecube.wisc.edu",
-    )
-    sub_parser.add_argument(
         "--cluster-id",
         required=True,
         help="the cluster id of the jobs to be stopped/removed",
