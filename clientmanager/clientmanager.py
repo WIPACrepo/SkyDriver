@@ -49,7 +49,7 @@ def main() -> None:
 
     # Go!
     with htcondor.SecMan() as secman:
-        secman.setToken(ENV.CONDOR_TOKEN)
+        secman.setToken(htcondor.Token(ENV.CONDOR_TOKEN))
         schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
         act(args, schedd_obj)
 
