@@ -3,6 +3,7 @@
 
 import argparse
 
+import htcondor  # type: ignore[import]
 from wipac_dev_tools import logging_tools
 
 from . import condor_tools, starter, stopper, utils
@@ -19,6 +20,16 @@ def main() -> None:
         required=True,
         dest="action",
         help="clientmanager action",
+    )
+    parser.add_argument(
+        "--collector",
+        default="",
+        help="the full URL address of the HTCondor collector server. Ex: foo-bar.icecube.wisc.edu",
+    )
+    parser.add_argument(
+        "--schedd",
+        default="",
+        help="the full DNS name of the HTCondor Schedd server. Ex: baz.icecube.wisc.edu",
     )
     starter.attach_sub_parser_args(subparsers.add_parser("start", help="start jobs"))
     stopper.attach_sub_parser_args(subparsers.add_parser("stop", help="stop jobs"))
@@ -37,39 +48,46 @@ def main() -> None:
     ####################################################################################
 
     # Go!
+    with htcondor.SecMan() as secman:
+        secman.setToken(ENV.CONDOR_TOKEN)
+        schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
+        act(args, schedd_obj)
+
+
+def act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
+    """Do the action."""
     match args.action:
         case "start":
-            for i, (collector, schedd, njobs) in enumerate(args.cluster):
-                LOGGER.info(
-                    f"Starting {njobs} Skymap Scanner client jobs on {collector} / {schedd}"
-                )
-                # make connections -- do now so we don't have any surprises downstream
-                skydriver_rc = utils.connect_to_skydriver()
-                # start
-                submit_result_obj = starter.start(
-                    condor_tools.get_schedd_obj(collector, schedd),
-                    njobs,
-                    args.logs_directory / str(i) if args.logs_directory else None,
-                    args.client_args,
-                    args.memory,
-                    args.accounting_group,
-                    args.singularity_image,
-                    # put client_startup_json in S3 bucket
-                    utils.s3ify(args.client_startup_json),
-                    args.dryrun,
-                )
-                # report to SkyDriver
-                utils.update_skydriver(
-                    skydriver_rc,
-                    submit_result_obj,
-                    collector,
-                    schedd,
-                )
-                LOGGER.info("Sent cluster info to SkyDriver")
-            return
-        case "stop":
-            return stopper.stop(
-                args,
-                condor_tools.get_schedd_obj(args.collector, args.schedd),
+            LOGGER.info(
+                f"Starting {args.n_jobs} Skymap Scanner client jobs on {args.collector} / {args.schedd}"
             )
-    raise RuntimeError(f"Unknown action: {args.action}")
+            # make connections -- do now so we don't have any surprises downstream
+            skydriver_rc = utils.connect_to_skydriver()
+            # start
+            submit_result_obj = starter.start(
+                schedd_obj,
+                args.n_jobs,
+                args.logs_directory if args.logs_directory else None,
+                args.client_args,
+                args.memory,
+                args.accounting_group,
+                args.singularity_image,
+                # put client_startup_json in S3 bucket
+                utils.s3ify(args.client_startup_json),
+                args.dryrun,
+            )
+            # report to SkyDriver
+            utils.update_skydriver(
+                skydriver_rc,
+                submit_result_obj,
+                args.collector,
+                args.schedd,
+            )
+            LOGGER.info("Sent cluster info to SkyDriver")
+        case "stop":
+            stopper.stop(
+                args,
+                schedd_obj,
+            )
+        case _:
+            raise RuntimeError(f"Unknown action: {args.action}")

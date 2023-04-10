@@ -258,8 +258,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await self.manifests.post(
             event_i3live_json_dict,
             scan_id,
-            k8s_job.server_args,
-            k8s_job.clientmanager_args,
+            k8s_job.scanner_server_args,
+            k8s_job.tms_args_list,
             k8s_job.env_dict,
         )
 
