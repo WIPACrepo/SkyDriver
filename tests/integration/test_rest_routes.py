@@ -110,23 +110,38 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
     match len(clusters):
         # doing things manually here so we don't duplicate the same method used in the app
         case 1:
-            cluster_arg = f"{clusters[0]['collector']},{clusters[0]['schedd']},{clusters[0]['njobs']}"
+            tms_args = [
+                f"python -m clientmanager start "
+                f" --collector {clusters[0]['collector']} "
+                f" --schedd {clusters[0]['schedd']} "
+                f" --n-jobs {clusters[0]['njobs']} "
+                f" --memory 6GB "
+                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --client-startup-json /common-space/startup.json "
+                # f" --logs-directory /common-space "
+            ]
         case 2:
-            cluster_arg = (
-                f"{clusters[0]['collector']},{clusters[0]['schedd']},{clusters[0]['njobs']} "
-                f"{clusters[1]['collector']},{clusters[1]['schedd']},{clusters[1]['njobs']} "
-            )
+            tms_args = [
+                f"python -m clientmanager start "
+                f" --collector {clusters[0]['collector']} "
+                f" --schedd {clusters[0]['schedd']} "
+                f" --n-jobs {clusters[0]['njobs']} "
+                f" --memory 6GB "
+                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --client-startup-json /common-space/startup.json "
+                # f" --logs-directory /common-space "
+                ,
+                f"python -m clientmanager start "
+                f" --collector {clusters[1]['collector']} "
+                f" --schedd {clusters[1]['schedd']} "
+                f" --n-jobs {clusters[1]['njobs']} "
+                f" --memory 6GB "
+                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --client-startup-json /common-space/startup.json "
+                # f" --logs-directory /common-space "
+            ]
         case _:
             raise RuntimeError("need more cases")
-
-    tms_args = (
-        f"python -m clientmanager start "
-        f"--cluster {cluster_arg} "
-        f" --memory 6GB "
-        f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
-        f" --client-startup-json /common-space/startup.json "
-        # f" --logs-directory /common-space "
-    )
 
     assert resp == dict(
         scan_id=resp["scan_id"],
@@ -145,7 +160,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
 
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
-    assert resp["tms_args"].split() == tms_args.split()
+    assert [a.split() for a in resp["tms_args"]] == [a.split() for a in tms_args]
 
     # check env vars
     print(resp["env_vars"])
