@@ -82,7 +82,11 @@ def s3ify(filepath: Path) -> S3File:
     # get GET url
     get_url = s3_client.generate_presigned_url(
         "get_object",
-        Params={"Bucket": bucket, "Key": key},
+        Params={
+            "Bucket": bucket,
+            "Key": key,
+            "ResponseContentDisposition": f'attachment; filename ="{filepath.name}"',  # sets destination filename
+        },
         ExpiresIn=ENV.EWMS_TMS_S3_EXPIRATION,  # seconds
     )
 
