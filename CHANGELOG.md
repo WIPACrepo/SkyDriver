@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.68 (2023-04-10)
+### Other
+* Rename S3 File (`ResponseContentDisposition`) ([#27](https://github.com/WIPACrepo/SkyDriver/issues/27)) ([`5806bd6`](https://github.com/WIPACrepo/SkyDriver/commit/5806bd608f3eacbb7f0ce93498f8c1126560f168))
+
 ## v0.0.67 (2023-04-10)
 ### Other
 * Fix S3 pre-check ([`8633592`](https://github.com/WIPACrepo/SkyDriver/commit/8633592f34a55cdeab4b4274f799a407b6a9d66b))
