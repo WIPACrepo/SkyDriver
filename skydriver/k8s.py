@@ -255,12 +255,17 @@ class SkymapScannerStarterJob:
             is_real_event=is_real_event,
             predictive_scanning_threshold=predictive_scanning_threshold,
         )
-        self.clientmanager_args = self.get_clientmanager_starter_args(
-            common_space_volume_path=common_space_volume_path,
-            singularity_image=images.get_skyscan_cvmfs_singularity_image(docker_tag),
-            memory=memory,
-            request_clusters=request_clusters,
-            debug_mode=debug_mode,
+        self.clientmanager_args_list = list(
+            self.get_clientmanager_starter_args(
+                common_space_volume_path=common_space_volume_path,
+                singularity_image=images.get_skyscan_cvmfs_singularity_image(
+                    docker_tag
+                ),
+                memory=memory,
+                request_cluster=c,
+                debug_mode=debug_mode,
+            )
+            for c in request_clusters
         )
         env = self.make_v1_env_vars(
             rest_address=rest_address,
@@ -271,7 +276,7 @@ class SkymapScannerStarterJob:
             e.name: {k: v for k, v in e.to_dict().items() if k != "name"} for e in env
         }
 
-        # job
+        # containers
         server = KubeAPITools.create_container(
             f"server-{scan_id}",
             images.get_skyscan_docker_image(docker_tag),
@@ -279,13 +284,15 @@ class SkymapScannerStarterJob:
             self.server_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
         )
-        condor_clientmanager_start = KubeAPITools.create_container(
-            f"clientmanager-start-{scan_id}",
-            ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
-            env,
-            self.clientmanager_args.split(),
-            {common_space_volume_path.name: common_space_volume_path},
-        )
+        for i, csargs in enumerate(self.clientmanager_args_list):
+            condor_clientmanager_start = KubeAPITools.create_container(
+                f"clientmanager-start-{i}-{scan_id}",
+                ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
+                env,
+                csargs.split(),
+                {common_space_volume_path.name: common_space_volume_path},
+            )
+        # job
         self.job_obj = KubeAPITools.kube_create_job_object(
             f"skyscan-{scan_id}",
             [server, condor_clientmanager_start],
@@ -319,7 +326,7 @@ class SkymapScannerStarterJob:
         common_space_volume_path: Path,
         singularity_image: Path,
         memory: str,
-        request_clusters: list[types.RequestorInputCluster],
+        request_cluster: types.RequestorInputCluster,
         debug_mode: bool,
     ) -> str:
         """Make the clientmanager container args.
@@ -327,13 +334,11 @@ class SkymapScannerStarterJob:
         This also includes any client args not added by the
         clientmanager.
         """
-        clusters_args = " ".join(
-            ",".join([x.collector, x.schedd, str(x.njobs)]) for x in request_clusters
-        )  # Ex: "collectorA,scheddA,123 collectorB,scheddB,345 collectorC,scheddC,989"
-
         args = (
             f"python -m clientmanager start "
-            f" --cluster {clusters_args} "
+            f" --collector {request_cluster.collector} "
+            f" --schedd {request_cluster.schedd} "
+            f" --n-jobs {request_cluster.njobs} "
             # f" --dryrun"
             # f" --logs-directory "  # see below
             # f" --accounting-group "
@@ -344,7 +349,7 @@ class SkymapScannerStarterJob:
         )
 
         if debug_mode:
-            args += f" --logs-directory {common_space_volume_path} "
+            args += f" --logs-directory {common_space_volume_path} "  # TODO unique
 
         return args
 

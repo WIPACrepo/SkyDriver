@@ -67,7 +67,7 @@ def act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
             submit_result_obj = starter.start(
                 schedd_obj,
                 args.n_jobs,
-                args.logs_directory / str(i) if args.logs_directory else None,
+                args.logs_directory if args.logs_directory else None,
                 args.client_args,
                 args.memory,
                 args.accounting_group,
