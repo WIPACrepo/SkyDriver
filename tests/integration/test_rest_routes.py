@@ -111,9 +111,10 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         # doing things manually here so we don't duplicate the same method used in the app
         case 1:
             tms_args = [
-                f"python -m clientmanager start "
+                f"python -m clientmanager "
                 f" --collector {clusters[0]['collector']} "
                 f" --schedd {clusters[0]['schedd']} "
+                f" start "
                 f" --n-jobs {clusters[0]['njobs']} "
                 f" --memory 6GB "
                 f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
@@ -122,18 +123,20 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
             ]
         case 2:
             tms_args = [
-                f"python -m clientmanager start "
+                f"python -m clientmanager "
                 f" --collector {clusters[0]['collector']} "
                 f" --schedd {clusters[0]['schedd']} "
+                f" start "
                 f" --n-jobs {clusters[0]['njobs']} "
                 f" --memory 6GB "
                 f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
                 # f" --logs-directory /common-space "
                 ,
-                f"python -m clientmanager start "
+                f"python -m clientmanager "
                 f" --collector {clusters[1]['collector']} "
                 f" --schedd {clusters[1]['schedd']} "
+                f" start "
                 f" --n-jobs {clusters[1]['njobs']} "
                 f" --memory 6GB "
                 f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "

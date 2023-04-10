@@ -337,9 +337,10 @@ class SkymapScannerStarterJob:
         clientmanager.
         """
         args = (
-            f"python -m clientmanager start "
+            f"python -m clientmanager "
             f" --collector {request_cluster.collector} "
             f" --schedd {request_cluster.schedd} "
+            f" start "
             f" --n-jobs {request_cluster.njobs} "
             # f" --dryrun"
             # f" --logs-directory "  # see below
@@ -472,9 +473,10 @@ class SkymapScannerStopperJob:
         containers = []
         for i, cluster in enumerate(condor_clusters):
             args = (
-                f"python -m clientmanager stop "
+                f"python -m clientmanager "
                 f" --collector {cluster.collector} "
                 f" --schedd {cluster.schedd} "
+                f" stop "
                 f" --cluster-id {cluster.cluster_id} "
             )
             containers.append(
