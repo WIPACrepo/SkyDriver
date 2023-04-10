@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.65 (2023-04-10)
+### Other
+* Fix condor syntax ([`dbdfdaa`](https://github.com/WIPACrepo/SkyDriver/commit/dbdfdaa696fc83857eeeaddf8847bfbe58405287))
+
 ## v0.0.64 (2023-04-10)
 ### Other
 * Fix starter/stopper arg ordering ([`22714a7`](https://github.com/WIPACrepo/SkyDriver/commit/22714a7d40c0247570427e22f69583c470dc4766))
