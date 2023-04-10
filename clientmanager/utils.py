@@ -79,6 +79,21 @@ def s3ify(filepath: Path) -> S3File:
     bucket = ENV.EWMS_TMS_S3_BUCKET
     key = ENV.SKYSCAN_SKYDRIVER_SCAN_ID
 
+    # get GET url
+    get_url = s3_client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket, "Key": key},
+        ExpiresIn=ENV.EWMS_TMS_S3_EXPIRATION,  # seconds
+    )
+
+    # check if already there (via other process/container)
+    try:
+        requests.get(get_url)
+        LOGGER.info("File is already in S3. Using url.")
+        return S3File(get_url, key)
+    except requests.exceptions.HTTPError:
+        LOGGER.info("File is not in S3 yet. Posting...")
+
     # POST
     upload_details = s3_client.generate_presigned_post(bucket, key)
     with open(filepath, "rb") as f:
@@ -90,10 +105,4 @@ def s3ify(filepath: Path) -> S3File:
     LOGGER.info(f"Upload response: {response.status_code}")
     LOGGER.info(str(response.content))
 
-    # get GET url
-    get_url = s3_client.generate_presigned_url(
-        "get_object",
-        Params={"Bucket": bucket, "Key": key},
-        ExpiresIn=ENV.EWMS_TMS_S3_EXPIRATION,  # seconds
-    )
     return S3File(get_url, key)
