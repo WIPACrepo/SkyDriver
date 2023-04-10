@@ -94,7 +94,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
     # launch scan
     resp = await rc.request("POST", "/scan", post_scan_body)
 
-    server_args = (
+    scanner_server_args = (
         f"python -m skymap_scanner.server "
         f"--reco-algo {post_scan_body['reco_algo']} "
         f"--cache-dir /common-space "
@@ -136,7 +136,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         scan_metadata=None,
         condor_clusters=[],
         progress=None,
-        server_args=resp["server_args"],  # see below
+        scanner_server_args=resp["scanner_server_args"],  # see below
         tms_args=resp["tms_args"],  # see below
         env_vars=resp["env_vars"],  # see below
         complete=False,
@@ -144,7 +144,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
     )
 
     # check args (avoid whitespace headaches...)
-    assert resp["server_args"].split() == server_args.split()
+    assert resp["scanner_server_args"].split() == scanner_server_args.split()
     assert resp["tms_args"].split() == tms_args.split()
 
     # check env vars
@@ -246,7 +246,7 @@ async def _do_patch(
             if progress
             else resp["progress"]  # not checking
         ),
-        server_args=resp["server_args"],  # not checking
+        scanner_server_args=resp["scanner_server_args"],  # not checking
         tms_args=resp["tms_args"],  # not checking
         env_vars=resp["env_vars"],  # not checking
         complete=False,
@@ -396,7 +396,7 @@ async def _delete_manifest(
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         scan_metadata=resp["scan_metadata"],  # not checking
         condor_clusters=resp["condor_clusters"],  # not checking
-        server_args=resp["server_args"],  # not checking
+        scanner_server_args=resp["scanner_server_args"],  # not checking
         tms_args=resp["tms_args"],  # not checking
         env_vars=resp["env_vars"],  # not checking
         complete=last_known_manifest["complete"],

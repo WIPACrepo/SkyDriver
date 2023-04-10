@@ -195,7 +195,7 @@ class ManifestClient(ScanIDCollectionFacade):
         self,
         event_i3live_json_dict: schema.StrDict,
         scan_id: str,
-        server_args: str,
+        scanner_server_args: str,
         tms_args_list: list[str],
         env_vars: dict[str, schema.StrDict],
     ) -> schema.Manifest:
@@ -205,7 +205,7 @@ class ManifestClient(ScanIDCollectionFacade):
             scan_id=scan_id,
             is_deleted=False,
             event_i3live_json_dict=event_i3live_json_dict,
-            server_args=server_args,
+            scanner_server_args=scanner_server_args,
             tms_args=tms_args_list,
             env_vars=env_vars,
         )

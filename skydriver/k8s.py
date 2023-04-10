@@ -230,12 +230,12 @@ class SkymapScannerStarterJob:
         api_instance: kubernetes.client.BatchV1Api,
         docker_tag: str,
         scan_id: str,
-        # server
+        # scanner
         reco_algo: str,
         nsides: dict[int, int],
         is_real_event: bool,
         predictive_scanning_threshold: float,
-        # clientmanager
+        # tms
         memory: str,
         request_clusters: list[types.RequestorInputCluster],
         max_reco_time: int | None,
@@ -248,7 +248,7 @@ class SkymapScannerStarterJob:
         common_space_volume_path = Path("/common-space")
 
         # store some data for public access
-        self.server_args = self.get_server_args(
+        self.scanner_server_args = self.get_scanner_server_args(
             common_space_volume_path=common_space_volume_path,
             reco_algo=reco_algo,
             nsides=nsides,
@@ -277,15 +277,16 @@ class SkymapScannerStarterJob:
         }
 
         # containers
-        server = KubeAPITools.create_container(
+        scanner_server = KubeAPITools.create_container(
             f"skyscan-server-{scan_id}",
             images.get_skyscan_docker_image(docker_tag),
             env,
-            self.server_args.split(),
+            self.scanner_server_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
         )
+        tms_starters = []
         for i, csargs in enumerate(self.tms_args_list):
-            condor_clientmanager_start = KubeAPITools.create_container(
+            tms_starters += KubeAPITools.create_container(
                 f"tms-starter-{i}-{scan_id}",
                 ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
                 env,
@@ -295,13 +296,13 @@ class SkymapScannerStarterJob:
         # job
         self.job_obj = KubeAPITools.kube_create_job_object(
             f"skyscan-{scan_id}",
-            [server, condor_clientmanager_start],
+            [scanner_server] + tms_starters,
             ENV.K8S_NAMESPACE,
             volumes=[common_space_volume_path.name],
         )
 
     @staticmethod
-    def get_server_args(
+    def get_scanner_server_args(
         common_space_volume_path: Path,
         reco_algo: str,
         nsides: dict[int, int],
