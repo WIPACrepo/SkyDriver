@@ -255,8 +255,8 @@ class SkymapScannerStarterJob:
             is_real_event=is_real_event,
             predictive_scanning_threshold=predictive_scanning_threshold,
         )
-        self.clientmanager_args_list = list(
-            self.get_clientmanager_starter_args(
+        self.tms_args_list = list(
+            self.get_tms_starter_args(
                 common_space_volume_path=common_space_volume_path,
                 singularity_image=images.get_skyscan_cvmfs_singularity_image(
                     docker_tag
@@ -278,15 +278,15 @@ class SkymapScannerStarterJob:
 
         # containers
         server = KubeAPITools.create_container(
-            f"server-{scan_id}",
+            f"skyscan-server-{scan_id}",
             images.get_skyscan_docker_image(docker_tag),
             env,
             self.server_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
         )
-        for i, csargs in enumerate(self.clientmanager_args_list):
+        for i, csargs in enumerate(self.tms_args_list):
             condor_clientmanager_start = KubeAPITools.create_container(
-                f"clientmanager-start-{i}-{scan_id}",
+                f"tms-starter-{i}-{scan_id}",
                 ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
                 env,
                 csargs.split(),
@@ -322,7 +322,7 @@ class SkymapScannerStarterJob:
         return args
 
     @staticmethod
-    def get_clientmanager_starter_args(
+    def get_tms_starter_args(
         common_space_volume_path: Path,
         singularity_image: Path,
         memory: str,
@@ -477,7 +477,7 @@ class SkymapScannerStopperJob:
             )
             containers.append(
                 KubeAPITools.create_container(
-                    f"clientmanager-stop-{i}-{scan_id}",
+                    f"tms-stoppper-{i}-{scan_id}",
                     ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
                     env=[get_condor_token_v1envvar()],
                     args=args.split(),
@@ -485,7 +485,7 @@ class SkymapScannerStopperJob:
             )
 
         self.job_obj = KubeAPITools.kube_create_job_object(
-            f"clientmanager-stop-{scan_id}",
+            f"tms-stopper-{scan_id}",
             containers,
             ENV.K8S_NAMESPACE,
         )

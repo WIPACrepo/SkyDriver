@@ -196,7 +196,7 @@ class ManifestClient(ScanIDCollectionFacade):
         event_i3live_json_dict: schema.StrDict,
         scan_id: str,
         server_args: str,
-        clientmanager_args_list: list[str],
+        tms_args_list: list[str],
         env_vars: dict[str, schema.StrDict],
     ) -> schema.Manifest:
         """Create `schema.Manifest` doc."""
@@ -206,7 +206,7 @@ class ManifestClient(ScanIDCollectionFacade):
             is_deleted=False,
             event_i3live_json_dict=event_i3live_json_dict,
             server_args=server_args,
-            clientmanager_args=clientmanager_args_list,
+            tms_args=tms_args_list,
             env_vars=env_vars,
         )
         manifest = await self._upsert(_MANIFEST_COLL_NAME, manifest.scan_id, manifest)

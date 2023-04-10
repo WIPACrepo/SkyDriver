@@ -119,7 +119,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         case _:
             raise RuntimeError("need more cases")
 
-    clientmanager_args = (
+    tms_args = (
         f"python -m clientmanager start "
         f"--cluster {cluster_arg} "
         f" --memory 6GB "
@@ -137,7 +137,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         condor_clusters=[],
         progress=None,
         server_args=resp["server_args"],  # see below
-        clientmanager_args=resp["clientmanager_args"],  # see below
+        tms_args=resp["tms_args"],  # see below
         env_vars=resp["env_vars"],  # see below
         complete=False,
         # TODO: check more fields in future (hint: ctrl+F this comment)
@@ -145,7 +145,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
 
     # check args (avoid whitespace headaches...)
     assert resp["server_args"].split() == server_args.split()
-    assert resp["clientmanager_args"].split() == clientmanager_args.split()
+    assert resp["tms_args"].split() == tms_args.split()
 
     # check env vars
     print(resp["env_vars"])
@@ -247,7 +247,7 @@ async def _do_patch(
             else resp["progress"]  # not checking
         ),
         server_args=resp["server_args"],  # not checking
-        clientmanager_args=resp["clientmanager_args"],  # not checking
+        tms_args=resp["tms_args"],  # not checking
         env_vars=resp["env_vars"],  # not checking
         complete=False,
         # TODO: check more fields in future (hint: ctrl+F this comment)
@@ -397,7 +397,7 @@ async def _delete_manifest(
         scan_metadata=resp["scan_metadata"],  # not checking
         condor_clusters=resp["condor_clusters"],  # not checking
         server_args=resp["server_args"],  # not checking
-        clientmanager_args=resp["clientmanager_args"],  # not checking
+        tms_args=resp["tms_args"],  # not checking
         env_vars=resp["env_vars"],  # not checking
         complete=last_known_manifest["complete"],
         # TODO: check more fields in future (hint: ctrl+F this comment)
