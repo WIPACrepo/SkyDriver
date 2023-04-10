@@ -88,7 +88,7 @@ def s3ify(filepath: Path) -> S3File:
         },
         ExpiresIn=ENV.EWMS_TMS_S3_EXPIRATION,  # seconds
     )
-    s3_file = S3File(get_url, filepath.name)
+    s3_file = S3File(get_url, key)
 
     # check if already there (via other process/container)
     try:
