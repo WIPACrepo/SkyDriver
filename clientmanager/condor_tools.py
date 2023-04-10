@@ -11,7 +11,7 @@ import htcondor  # type: ignore[import]
 from .config import LOGGER
 
 
-def get_schedd_obj(collector: str | None, schedd: str | None) -> htcondor.Schedd:
+def get_schedd_obj(collector: str, schedd: str) -> htcondor.Schedd:
     """Get object for talking with HTCondor schedd.
 
     Examples:

@@ -331,7 +331,7 @@ class SkymapScannerStarterJob:
         request_cluster: types.RequestorInputCluster,
         debug_mode: bool,
     ) -> str:
-        """Make the clientmanager container args.
+        """Make the starter container args.
 
         This also includes any client args not added by the
         clientmanager.
@@ -473,13 +473,13 @@ class SkymapScannerStopperJob:
         for i, cluster in enumerate(condor_clusters):
             args = (
                 f"python -m clientmanager stop "
-                f"--collector {cluster.collector} "
-                f"--schedd {cluster.schedd} "
-                f"--cluster-id {cluster.cluster_id} "
+                f" --collector {cluster.collector} "
+                f" --schedd {cluster.schedd} "
+                f" --cluster-id {cluster.cluster_id} "
             )
             containers.append(
                 KubeAPITools.create_container(
-                    f"tms-stoppper-{i}-{scan_id}",
+                    f"tms-stopper-{i}-{scan_id}",
                     ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
                     env=[get_condor_token_v1envvar()],
                     args=args.split(),
