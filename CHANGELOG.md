@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.64 (2023-04-10)
+### Other
+* Fix starter/stopper arg ordering ([`22714a7`](https://github.com/WIPACrepo/SkyDriver/commit/22714a7d40c0247570427e22f69583c470dc4766))
+
 ## v0.0.63 (2023-04-10)
 ### Other
 * <bot> update requirements-clientmanager.txt ([`0223ac7`](https://github.com/WIPACrepo/SkyDriver/commit/0223ac7bf3f806d18b71a68bf46e0453ee3a181c))
