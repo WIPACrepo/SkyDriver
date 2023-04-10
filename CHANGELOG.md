@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.66 (2023-04-10)
+### Other
+* Fix condor data types ([`714ae7d`](https://github.com/WIPACrepo/SkyDriver/commit/714ae7dd4ecd4d3cff3d2f67266c8216f3d75ff4))
+
 ## v0.0.65 (2023-04-10)
 ### Other
 * Fix condor syntax ([`dbdfdaa`](https://github.com/WIPACrepo/SkyDriver/commit/dbdfdaa696fc83857eeeaddf8847bfbe58405287))
