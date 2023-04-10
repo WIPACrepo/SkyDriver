@@ -3,6 +3,7 @@
 
 import argparse
 
+import htcondor  # type: ignore[import]
 from wipac_dev_tools import logging_tools
 
 from . import condor_tools, starter, stopper, utils
@@ -47,7 +48,14 @@ def main() -> None:
     ####################################################################################
 
     # Go!
-    schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
+    with htcondor.SecMan() as secman:
+        secman.setToken(ENV.CONDOR_TOKEN)
+        schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
+        act(args, schedd_obj)
+
+
+def act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
+    """Do the action."""
     match args.action:
         case "start":
             LOGGER.info(
@@ -76,10 +84,10 @@ def main() -> None:
                 args.schedd,
             )
             LOGGER.info("Sent cluster info to SkyDriver")
-            return
         case "stop":
-            return stopper.stop(
+            stopper.stop(
                 args,
                 schedd_obj,
             )
-    raise RuntimeError(f"Unknown action: {args.action}")
+        case _:
+            raise RuntimeError(f"Unknown action: {args.action}")
