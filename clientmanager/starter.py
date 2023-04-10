@@ -133,7 +133,8 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
     # condor args
     sub_parser.add_argument(
         "--n-jobs",
-        default="",
+        required=True,
+        type=int,
         help="number of jobs to start",
     )
     sub_parser.add_argument(

@@ -88,8 +88,9 @@ def s3ify(filepath: Path) -> S3File:
 
     # check if already there (via other process/container)
     try:
-        requests.get(get_url)
-        LOGGER.info("File is already in S3. Using url.")
+        resp = requests.get(get_url)
+        LOGGER.debug(resp)
+        LOGGER.info(f"File is already in S3. Using url: {get_url}")
         return S3File(get_url, key)
     except requests.exceptions.HTTPError:
         LOGGER.info("File is not in S3 yet. Posting...")
