@@ -284,15 +284,16 @@ class SkymapScannerStarterJob:
             self.scanner_server_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
         )
-        tms_starters = []
-        for i, csargs in enumerate(self.tms_args_list):
-            tms_starters += KubeAPITools.create_container(
+        tms_starters = [
+            KubeAPITools.create_container(
                 f"tms-starter-{i}-{scan_id}",
                 ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
                 env,
-                csargs.split(),
+                args.split(),
                 {common_space_volume_path.name: common_space_volume_path},
             )
+            for i, args in enumerate(self.tms_args_list)
+        ]
         # job
         self.job_obj = KubeAPITools.kube_create_job_object(
             f"skyscan-{scan_id}",
