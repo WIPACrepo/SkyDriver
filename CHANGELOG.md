@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.63 (2023-04-10)
+### Other
+* <bot> update requirements-clientmanager.txt ([`0223ac7`](https://github.com/WIPACrepo/SkyDriver/commit/0223ac7bf3f806d18b71a68bf46e0453ee3a181c))
+* Handle Multiple Condor Schedds ([#26](https://github.com/WIPACrepo/SkyDriver/issues/26)) ([`6d41e2b`](https://github.com/WIPACrepo/SkyDriver/commit/6d41e2b543b2e30c21943f5d8339e09a6b8b802e))
+
 ## v0.0.62 (2023-04-07)
 ### Other
 * S3: point scanner to filename of name `key` ([`3fb88b3`](https://github.com/WIPACrepo/SkyDriver/commit/3fb88b306a8a8e74bfb230fe77b81c2acf7a54d5))
