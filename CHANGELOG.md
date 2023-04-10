@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.67 (2023-04-10)
+### Other
+* Fix S3 pre-check ([`8633592`](https://github.com/WIPACrepo/SkyDriver/commit/8633592f34a55cdeab4b4274f799a407b6a9d66b))
+
 ## v0.0.66 (2023-04-10)
 ### Other
 * Fix condor data types ([`714ae7d`](https://github.com/WIPACrepo/SkyDriver/commit/714ae7dd4ecd4d3cff3d2f67266c8216f3d75ff4))
