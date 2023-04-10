@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.69 (2023-04-10)
+### Other
+* Condor: use filename in key instead pt-2 ([`7998366`](https://github.com/WIPACrepo/SkyDriver/commit/7998366e7f9be9d015bd3179f4fa341ba7650426))
+* Condor: use filename in key instead ([`323dbff`](https://github.com/WIPACrepo/SkyDriver/commit/323dbff7116cce16dbc65714a6af11cb56b41b5a))
+
 ## v0.0.68 (2023-04-10)
 ### Other
 * Rename S3 File (`ResponseContentDisposition`) ([#27](https://github.com/WIPACrepo/SkyDriver/issues/27)) ([`5806bd6`](https://github.com/WIPACrepo/SkyDriver/commit/5806bd608f3eacbb7f0ce93498f8c1126560f168))
