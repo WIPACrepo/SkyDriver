@@ -11,10 +11,14 @@ A SaaS Solution for Neutrino Event Reconstruction using the Skymap Scanner
 #### GET
 
 ##### Arguments
-###### `run_id` (int)
-###### `event_id` (int)
-###### `is_real_event` (bool)
-###### `include_deleted` (bool): default=`False`
+- *run_id* (int)
+    [REQUIRED]
+- *event_id* (int)
+    [REQUIRED]
+- *is_real_event* (bool)
+    [REQUIRED]
+- *include_deleted* (bool)
+    default: `False`
 
 ##### Returns
 ```
