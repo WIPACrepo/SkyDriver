@@ -52,7 +52,7 @@ _Launch a new scan of an event_
 
 ##### SkyDriver Effects
 - Creates and starts a new Skymap Scanner instance spread across many HTCondor workers
-- The new scanner will send updates routinely and when the scan completes (see [GET (manifest)](#scan-manifest-scan_id) and [GET (result)](#scan-result-scan_id))
+- The new scanner will send updates routinely and when the scan completes (see [GET (manifest)](#scanmanifestscan_id) and [GET (result)](#scanresultscan_id))
 
 ##### Returns
 `skydriver.database.schema.Manifest` as a dict
