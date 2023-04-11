@@ -7,13 +7,9 @@ A SaaS Solution for Neutrino Event Reconstruction using the Skymap Scanner
 ## REST API
 This is documentation for the public-facing routes/methods
 
+-------------------------------------------------------------------------------
 
-
-
-
-## `/scans`
-
-### GET
+### `/scans`: GET
 _Retrieve scan ids corresponding to a specific run & event_
 
 #### Arguments
@@ -37,11 +33,7 @@ None
 
 -------------------------------------------------------------------------------
 
-
-
-## `/scan`
-
-### POST
+### `/scan`: POST
 _Launch a new scan of an event_
 
 #### Arguments
@@ -59,18 +51,14 @@ _Launch a new scan of an event_
 
 #### SkyDriver Effects
 - Creates and starts a new Skymap Scanner instance spread across many HTCondor workers
-- The new scanner will send updates routinely and when the scan completes (see [GET (manifest)](#scanmanifestscan_id) and [GET (result)](#scanresultscan_id))
+- The new scanner will send updates routinely and when the scan completes (see [GET (manifest)](#scanmanifestscan_id-get) and [GET (result)](#scanresultscan_id-get))
 
 #### Returns
 `skydriver.database.schema.Manifest` as a dict
 
 -------------------------------------------------------------------------------
 
-
-
-## `/scan/manifest/SCAN_ID`
-
-### GET
+### `/scan/manifest/SCAN_ID`: GET
 _Retrieve the manifest of a scan_
 
 #### Arguments
@@ -86,7 +74,7 @@ None
 
 -------------------------------------------------------------------------------
 
-### DELETE
+### `/scan/manifest/SCAN_ID`: DELETE
 _Abort ongoing scan_
 
 #### Arguments
@@ -101,11 +89,7 @@ None
 
 -------------------------------------------------------------------------------
 
-
-
-## `/scan/result/SCAN_ID`
-
-### GET
+### `/scan/result/SCAN_ID`: GET
 _Retrieve the result of a scan_
 
 #### Arguments
@@ -121,7 +105,7 @@ Stops the Skymap Scanner instance if it is still running
 
 -------------------------------------------------------------------------------
 
-### DELETE
+### `/scan/result/SCAN_ID`: DELETE
 _Delete the result of a scan_
 
 #### Arguments
