@@ -5,7 +5,7 @@
 A SaaS Solution for Neutrino Event Reconstruction using the Skymap Scanner
 
 ## REST API
-This is documentation for the public-facing routes/methods
+Documentation for the public-facing routes and methods
 
 
 &nbsp;
@@ -56,7 +56,7 @@ _Launch a new scan of an event_
 - The new scanner will send updates routinely and when the scan completes (see [GET (manifest)](#scanmanifestscan_id-get) and [GET (result)](#scanresultscan_id-get))
 
 #### Returns
-`skydriver.database.schema.Manifest` as a dict (see [Manifest](#manifest))
+dict - [Manifest](#manifest)
 
 
 &nbsp;
@@ -73,7 +73,7 @@ _Retrieve the manifest of a scan_
 None
 
 #### Returns
-`skydriver.database.schema.Manifest` as a dict (see [Manifest](#manifest))
+dict - [Manifest](#manifest)
 
 
 &nbsp;
@@ -89,7 +89,7 @@ None
 - The scan's manifest is marked as "deleted" in the database
 
 #### Returns
-`skydriver.database.schema.Manifest` as a dict
+dict - [Manifest](#manifest)
 
 
 &nbsp;
@@ -106,7 +106,7 @@ _Retrieve the result of a scan_
 Stops the Skymap Scanner instance if it is still running
 
 #### Returns
-`skydriver.database.schema.Result` as a dict (see [Result](#result))
+dict - [Result](#result)
 
 
 &nbsp;
@@ -121,7 +121,7 @@ None
 The result is marked as "deleted" in the database
 
 #### Returns
-`skydriver.database.schema.Result` as a dict (see [Result](#result))
+dict - [Result](#result)
 
 
 &nbsp;
