@@ -192,7 +192,7 @@ def get_condor_token_v1envvar() -> kubernetes.client.V1EnvVar:
         value_from=kubernetes.client.V1EnvVarSource(
             secret_key_ref=kubernetes.client.V1SecretKeySelector(
                 name=ENV.K8S_SECRET_NAME,
-                key="condor_token",
+                key="condor_token_sub2",
             )
         ),
     )
