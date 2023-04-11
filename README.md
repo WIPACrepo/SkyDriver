@@ -7,6 +7,10 @@ A SaaS Solution for Neutrino Event Reconstruction using the Skymap Scanner
 ## REST API
 This is documentation for the public-facing routes/methods
 
+
+-------------------------------------------------------------------------------
+
+
 ### `/scans`
 
 #### GET
@@ -30,6 +34,9 @@ None
     "scan_ids": scan_ids,  # list of strings
 }
 ```
+
+
+-------------------------------------------------------------------------------
 
 
 ### `/scan`
@@ -57,6 +64,8 @@ _Launch a new scan of an event_
 ##### Returns
 `skydriver.database.schema.Manifest` as a dict
 
+
+-------------------------------------------------------------------------------
 
 
 ### `/scan/manifest/SCAN_ID`
@@ -89,6 +98,8 @@ None
 ##### Returns
 `skydriver.database.schema.Manifest` as a dict
 
+
+-------------------------------------------------------------------------------
 
 
 ### `/scan/result/SCAN_ID`
