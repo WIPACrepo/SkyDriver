@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.71 (2023-04-11)
+### Other
+* <bot> update requirements-clientmanager.txt ([`d899a9f`](https://github.com/WIPACrepo/SkyDriver/commit/d899a9fbeb33d00613faa95f3acf6c8e6e72d5e0))
+* Fix S3 path url key name ([`f56d351`](https://github.com/WIPACrepo/SkyDriver/commit/f56d3512929fbb7c3f6dbfc031937b748bd84305))
+
 ## v0.0.70 (2023-04-11)
 ### Other
 * Use `condor_token_sub2` ([`8d23cbf`](https://github.com/WIPACrepo/SkyDriver/commit/8d23cbfc8ddc3e9db990a1871365c91f6376acbc))
