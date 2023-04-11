@@ -8,7 +8,7 @@ A SaaS Solution for Neutrino Event Reconstruction using the Skymap Scanner
 This is documentation for the public-facing routes/methods
 
 
-\
+&nbsp;
 -------------------------------------------------------------------------------
 
 
@@ -35,7 +35,7 @@ None
 ```
 
 
-\
+&nbsp;
 -------------------------------------------------------------------------------
 
 
@@ -63,7 +63,7 @@ _Launch a new scan of an event_
 `skydriver.database.schema.Manifest` as a dict
 
 
-\
+&nbsp;
 -------------------------------------------------------------------------------
 
 
@@ -82,7 +82,7 @@ None
 `skydriver.database.schema.Manifest` as a dict
 
 
-\
+&nbsp;
 -------------------------------------------------------------------------------
 
 
@@ -100,7 +100,7 @@ None
 `skydriver.database.schema.Manifest` as a dict
 
 
-\
+&nbsp;
 -------------------------------------------------------------------------------
 
 
@@ -119,7 +119,7 @@ Stops the Skymap Scanner instance if it is still running
 `skydriver.database.schema.Result` as a dict
 
 
-\
+&nbsp;
 -------------------------------------------------------------------------------
 
 
@@ -136,7 +136,7 @@ The result is marked as "deleted" in the database
 `skydriver.database.schema.Result` as a dict
 
 
-\
+&nbsp;
 -------------------------------------------------------------------------------
 
 
