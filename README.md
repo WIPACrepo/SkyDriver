@@ -11,12 +11,12 @@ This is documentation for the public-facing routes/methods
 -------------------------------------------------------------------------------
 
 
-### `/scans`
+## `/scans`
 
-#### GET
+### GET
 _Retrieve scan ids corresponding to a specific run & event_
 
-##### Arguments
+#### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
 | `"run_id"`          | int         | *[REQUIRED]*     | id of the run
@@ -24,10 +24,10 @@ _Retrieve scan ids corresponding to a specific run & event_
 | `"is_real_event"`   | bool        | *[REQUIRED]*     | whether this event is real or simulated
 | `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
 
-##### SkyDriver Effects
+#### SkyDriver Effects
 None
 
-##### Returns
+#### Returns
 ```
 {
     "event_id": event_id,
@@ -39,12 +39,12 @@ None
 -------------------------------------------------------------------------------
 
 
-### `/scan`
+## `/scan`
 
-#### POST
+### POST
 _Launch a new scan of an event_
 
-##### Arguments
+#### Arguments
 | Argument                          | Type         | Required/Default | Description          |
 | --------------------------------- | ------------ | ---------------- | -------------------- |
 | `"docker_tag"`                    | str          | *[REQUIRED]*     | the docker tag of the Skymap Scanner image (must be in CVMFS). Ex: `v3.1.4`, `v3.5`, `v3`, `latest`
@@ -57,78 +57,78 @@ _Launch a new scan of an event_
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"max_reco_time"`                 | int          | default: `None`  | the max amount of time each reco should take
 
-##### SkyDriver Effects
+#### SkyDriver Effects
 - Creates and starts a new Skymap Scanner instance spread across many HTCondor workers
 - The new scanner will send updates routinely and when the scan completes (see [GET (manifest)](#scanmanifestscan_id) and [GET (result)](#scanresultscan_id))
 
-##### Returns
+#### Returns
 `skydriver.database.schema.Manifest` as a dict
 
 
 -------------------------------------------------------------------------------
 
 
-### `/scan/manifest/SCAN_ID`
+## `/scan/manifest/SCAN_ID`
 
-#### GET
+### GET
 _Retrieve the manifest of a scan_
 
-##### Arguments
+#### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
 | `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
 
-##### SkyDriver Effects
+#### SkyDriver Effects
 None
 
-##### Returns
+#### Returns
 `skydriver.database.schema.Manifest` as a dict
 
 
-#### DELETE
+### DELETE
 _Abort ongoing scan_
 
-##### Arguments
+#### Arguments
 None
 
-##### SkyDriver Effects
+#### SkyDriver Effects
 - The Skymap Scanner instance is stopped and removed
 - The scan's manifest is marked as "deleted" in the database
 
-##### Returns
+#### Returns
 `skydriver.database.schema.Manifest` as a dict
 
 
 -------------------------------------------------------------------------------
 
 
-### `/scan/result/SCAN_ID`
+## `/scan/result/SCAN_ID`
 
-#### GET
+### GET
 _Retrieve the result of a scan_
 
-##### Arguments
+#### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
 | `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
 
-##### SkyDriver Effects
+#### SkyDriver Effects
 Stops the Skymap Scanner instance if it is still running
 
-##### Returns
+#### Returns
 `skydriver.database.schema.Result` as a dict
 
 
-#### DELETE
+### DELETE
 _Delete the result of a scan_
 
-##### Arguments
+#### Arguments
 None
 
-##### SkyDriver Effects
+#### SkyDriver Effects
 The result is marked as "deleted" in the database
 
-##### Returns
+#### Returns
 `skydriver.database.schema.Result` as a dict
 
 
