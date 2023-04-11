@@ -158,8 +158,22 @@ Pseudo-code:
     },
     scan_metadata: dict | None,
 
-    # updated during scanning, multiple times
-    progress: Progress | None,
+    # updated during scanning, multiple times (initially will be 'None')
+    progress: {
+        summary: str,
+        epilogue: str,
+        tallies: dict,
+        processing_stats: {
+            start: dict,
+            runtime: dict,
+            rate: dict,
+            end: str,
+            finished: bool,
+            predictions: dict,
+        },
+        predictive_scanning_threshold: float,
+        last_updated: str,
+    },
 
     # signifies k8s jobs and condor cluster(s) are done
     complete: bool,
