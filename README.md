@@ -129,6 +129,7 @@ The result is marked as "deleted" in the database
 -------------------------------------------------------------------------------
 #### Manifest
 _A dictionary containing non-physics metadata on a scan_
+
 Pseudo-code:
 ```
 {
@@ -164,10 +165,12 @@ Pseudo-code:
     complete: bool,
 }
 ```
-See https://github.com/WIPACrepo/SkyDriver/blob/main/skydriver/database/schema.py
+See:
+- https://github.com/WIPACrepo/SkyDriver/blob/main/skydriver/database/schema.py
 
 #### Result
 _A dictionary containing the scan result_
+
 Pseudo-code:
 ```
 {
@@ -175,7 +178,8 @@ Pseudo-code:
     is_final: bool,  # is this result the final result?
 }
 ```
-See https://github.com/WIPACrepo/SkyDriver/blob/main/skydriver/database/schema.py
-See [skyreader's SkyScanResult](https://github.com/icecube/skyreader/)
+See:
+- https://github.com/WIPACrepo/SkyDriver/blob/main/skydriver/database/schema.py
+- [skyreader's SkyScanResult](https://github.com/icecube/skyreader/)
 
 
