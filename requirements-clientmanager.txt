@@ -6,7 +6,7 @@
 #
 backoff==2.2.1
     # via opentelemetry-exporter-otlp-proto-http
-boto3==1.26.110
+boto3==1.26.111
     # via UNKNOWN (setup.py)
 botocore==1.29.111
     # via
