@@ -35,7 +35,7 @@ None
 }
 ```
 
-
+-------------------------------------------------------------------------------
 
 
 
@@ -64,7 +64,7 @@ _Launch a new scan of an event_
 #### Returns
 `skydriver.database.schema.Manifest` as a dict
 
-
+-------------------------------------------------------------------------------
 
 
 
@@ -99,7 +99,7 @@ None
 #### Returns
 `skydriver.database.schema.Manifest` as a dict
 
-
+-------------------------------------------------------------------------------
 
 
 
@@ -132,6 +132,10 @@ The result is marked as "deleted" in the database
 
 #### Returns
 `skydriver.database.schema.Result` as a dict
+
+-------------------------------------------------------------------------------
+
+
 
 
 
