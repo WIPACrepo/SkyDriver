@@ -77,7 +77,7 @@ def s3ify(filepath: Path) -> S3File:
         aws_secret_access_key=ENV.EWMS_TMS_S3_SECRET_KEY,
     )
     bucket = ENV.EWMS_TMS_S3_BUCKET
-    key = f"{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}-{filepath.name}"
+    key = f"{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}-s3-{filepath.stem}"
 
     # get GET url
     get_url = s3_client.generate_presigned_url(
