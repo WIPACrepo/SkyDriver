@@ -56,7 +56,7 @@ _Launch a new scan of an event_
 - The new scanner will send updates routinely and when the scan completes (see [GET (manifest)](#scanmanifestscan_id-get) and [GET (result)](#scanresultscan_id-get))
 
 #### Returns
-`skydriver.database.schema.Manifest` as a dict
+`skydriver.database.schema.Manifest` as a dict (see [Manifest](#manifest))
 
 
 &nbsp;
@@ -73,7 +73,7 @@ _Retrieve the manifest of a scan_
 None
 
 #### Returns
-`skydriver.database.schema.Manifest` as a dict
+`skydriver.database.schema.Manifest` as a dict (see [Manifest](#manifest))
 
 
 &nbsp;
@@ -106,7 +106,7 @@ _Retrieve the result of a scan_
 Stops the Skymap Scanner instance if it is still running
 
 #### Returns
-`skydriver.database.schema.Result` as a dict
+`skydriver.database.schema.Result` as a dict (see [Result](#result))
 
 
 &nbsp;
@@ -121,13 +121,61 @@ None
 The result is marked as "deleted" in the database
 
 #### Returns
-`skydriver.database.schema.Result` as a dict
+`skydriver.database.schema.Result` as a dict (see [Result](#result))
 
 
 &nbsp;
+### Return Types
+-------------------------------------------------------------------------------
+#### Manifest
+_A dictionary containing non-physics metadata on a scan_
+Pseudo-code:
+```
+{
+    event_i3live_json_dict: dict,
+    scanner_server_args: str,
+    tms_args: list[str],
+    env_vars: dict[str, dict],
 
+    condor_clusters: [
+        {
+            collector: str,
+            schedd: str,
+            cluster_id: int,
+            jobs: int,
+        },
+        ...
+    ],
 
+    # found/created during first few seconds of scanning
+    event_metadata: {
+        run_id: int,
+        event_id: int,
+        event_type: str,
+        mjd: float,
+        is_real_event: bool,  # as opposed to simulation
+    },
+    scan_metadata: dict | None,
 
+    # updated during scanning, multiple times
+    progress: Progress | None,
 
+    # signifies k8s jobs and condor cluster(s) are done
+    complete: bool,
+}
+```
+See https://github.com/WIPACrepo/SkyDriver/blob/main/skydriver/database/schema.py
+
+#### Result
+_A dictionary containing the scan result_
+Pseudo-code:
+```
+{
+    skyscan_result: dict,  # serialized version of 'skyreader.SkyScanResult'
+    is_final: bool,  # is this result the final result?
+}
+```
+See https://github.com/WIPACrepo/SkyDriver/blob/main/skydriver/database/schema.py
+See [skyreader's SkyScanResult](https://github.com/icecube/skyreader/)
 
 
