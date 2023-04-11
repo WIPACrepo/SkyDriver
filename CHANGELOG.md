@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.72 (2023-04-11)
+### Other
+* <bot> update requirements-clientmanager.txt ([`48fb5ca`](https://github.com/WIPACrepo/SkyDriver/commit/48fb5ca7970ec6cd3b0736b546b4a15b8d2e2d4d))
+
 ## v0.0.71 (2023-04-11)
 ### Other
 * <bot> update requirements-clientmanager.txt ([`d899a9f`](https://github.com/WIPACrepo/SkyDriver/commit/d899a9fbeb33d00613faa95f3acf6c8e6e72d5e0))
