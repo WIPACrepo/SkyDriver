@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.70 (2023-04-11)
+### Other
+* Use `condor_token_sub2` ([`8d23cbf`](https://github.com/WIPACrepo/SkyDriver/commit/8d23cbfc8ddc3e9db990a1871365c91f6376acbc))
+
 ## v0.0.69 (2023-04-10)
 ### Other
 * Condor: use filename in key instead pt-2 ([`7998366`](https://github.com/WIPACrepo/SkyDriver/commit/7998366e7f9be9d015bd3179f4fa341ba7650426))
