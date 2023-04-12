@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 import pytest
 import pytest_asyncio
 import requests
-import skydriver.config
+import skydriver
 import skydriver.images  # noqa: F401
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.client import RestClient
@@ -70,7 +70,7 @@ async def server(
     mongo_clear: Any,  # pylint:disable=unused-argument
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
-    monkeypatch.setattr(skydriver.config, "KNOWN_CONDORS", SCHEDD_LOOKUP)
+    monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CONDORS", SCHEDD_LOOKUP)
 
     with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
         rs = await make(debug=True)
