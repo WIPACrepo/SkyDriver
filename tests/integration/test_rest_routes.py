@@ -543,7 +543,6 @@ async def _delete_result(
 ########################################################################################
 
 
-@patch("skydriver.config.KNOWN_CONDORS", SCHEDD_LOOKUP)
 @pytest.mark.parametrize(
     "docker_tag_input_and_expect",
     [
@@ -562,6 +561,7 @@ async def _delete_result(
         [["foobar", 1], ["a-schedd", 999], ["a-schedd", 1234]],
     ],
 )
+@patch("skydriver.config.KNOWN_CONDORS", SCHEDD_LOOKUP)
 async def test_00(
     clusters: list | dict,
     docker_tag_input_and_expect: tuple[str, str],

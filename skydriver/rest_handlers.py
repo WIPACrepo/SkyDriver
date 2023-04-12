@@ -182,7 +182,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 except KeyError as e:
                     raise TypeError(
                         f"requested unknown schedd: {entry[0]}"
-                        f" (available clusters: {list(KNOWN_CONDORS.keys())})"
+                        f" (available clusters: {', '.join(KNOWN_CONDORS.keys())})"
                     ) from e
             return clusters
 
