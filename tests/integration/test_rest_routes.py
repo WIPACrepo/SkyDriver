@@ -26,9 +26,9 @@ StrDict = dict[str, Any]
 ########################################################################################
 
 SCHEDD_LOOKUP = {
-    "sub-2": {
+    "foobar": {
         "collector": "for-sure.a-collector.edu",
-        "schedd": "this.schedd.edu",
+        "schedd": "foobar.schedd.edu",
     },
     "a-schedd": {
         "collector": "the-collector.edu",
@@ -90,7 +90,7 @@ async def server(
 
 POST_SCAN_BODY = {
     "cluster": {
-        "sub-2": 1,
+        "foobar": 1,
     },
     "reco_algo": "anything",
     "event_i3live_json": {"a": 22},
@@ -558,9 +558,9 @@ async def _delete_result(
 @pytest.mark.parametrize(
     "clusters",
     [
-        {"sub-2": 1},
-        {"sub-2": 1, "a-schedd": 999},
-        [["sub-2", 1], ["a-schedd", 999], ["a-schedd", 1234]],
+        {"foobar": 1},
+        {"foobar": 1, "a-schedd": 999},
+        [["foobar", 1], ["a-schedd", 999], ["a-schedd", 1234]],
     ],
 )
 async def test_00(
