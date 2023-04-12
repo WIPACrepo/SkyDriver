@@ -78,9 +78,7 @@ async def server(
 
 POST_SCAN_BODY = {
     "cluster": {
-        "collector": "le-collector.edu",
-        "schedd": "un-schedd.edu",
-        "njobs": 1,
+        "sub-2": 1,
     },
     "reco_algo": "anything",
     "event_i3live_json": {"a": 22},
@@ -348,8 +346,8 @@ async def _clientmanager_reply(
 ) -> StrDict:
     # reply as the clientmanager with a new condor cluster
     condor_cluster = dict(
-        collector="le-collector.edu",
-        schedd="un-schedd.edu",
+        collector="glidein-cm.icecube.wisc.edu",
+        schedd="sub-2.icecube.wisc.edu",
         cluster_id=random.randint(1, 10000),
         jobs=random.randint(1, 10000),
     )
@@ -515,15 +513,15 @@ async def _delete_result(
     [
         [
             {
-                "collector": "le-collector.edu",
-                "schedd": "un-schedd.edu",
+                "collector": "glidein-cm.icecube.wisc.edu",
+                "schedd": "sub-2.icecube.wisc.edu",
                 "njobs": 1,
             }
         ],
         [
             {
-                "collector": "le-collector.edu",
-                "schedd": "un-schedd.edu",
+                "collector": "glidein-cm.icecube.wisc.edu",
+                "schedd": "sub-2.icecube.wisc.edu",
                 "njobs": 1,
             },
             {
