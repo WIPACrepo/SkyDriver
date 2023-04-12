@@ -15,11 +15,11 @@ import requests
 import skydriver.images  # noqa: F401
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.client import RestClient
-from skydriver import config
+from skydriver.config import config_logging
 from skydriver.database.interface import drop_collections
 from skydriver.server import make, mongodb_url
 
-config.config_logging("debug")
+config_logging("debug")
 
 StrDict = dict[str, Any]
 
@@ -70,8 +70,6 @@ async def server(
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
     # monkeypatch.setenv("", 100)
-
-    config.KNOWN_CONDORS = SCHEDD_LOOKUP  # overwrite so we can use dummy values
 
     with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
         rs = await make(debug=True)
@@ -545,6 +543,7 @@ async def _delete_result(
 ########################################################################################
 
 
+@patch("skydriver.config.KNOWN_CONDORS", SCHEDD_LOOKUP)
 @pytest.mark.parametrize(
     "docker_tag_input_and_expect",
     [
@@ -622,6 +621,7 @@ async def test_00(
     await _delete_result(rc, scan_id, result, True)
 
 
+@patch("skydriver.config.KNOWN_CONDORS", SCHEDD_LOOKUP)
 async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
