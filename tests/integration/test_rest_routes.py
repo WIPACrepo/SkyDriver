@@ -113,17 +113,18 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
     )
 
     clusters = post_scan_body["cluster"]
-    if not isinstance(clusters, list):
-        clusters = [clusters]
+    if isinstance(clusters, dict):
+        clusters = list(clusters.items())
     match len(clusters):
         # doing things manually here so we don't duplicate the same method used in the app
         case 1:
+
             tms_args = [
                 f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP['sub-2']['collector']} "
-                f" --schedd {SCHEDD_LOOKUP['sub-2']['schedd']} "
+                f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
+                f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
                 f" start "
-                f" --n-jobs {clusters[0]['njobs']} "
+                f" --n-jobs {clusters[0][1]} "
                 f" --memory 8GB "
                 f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
@@ -132,20 +133,52 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         case 2:
             tms_args = [
                 f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP['sub-2']['collector']} "
-                f" --schedd {SCHEDD_LOOKUP['sub-2']['schedd']} "
+                f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
+                f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
                 f" start "
-                f" --n-jobs {clusters[0]['njobs']} "
+                f" --n-jobs {clusters[0][1]} "
                 f" --memory 8GB "
                 f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
                 # f" --logs-directory /common-space "
                 ,
                 f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP['a-schedd']['collector']} "
-                f" --schedd {SCHEDD_LOOKUP['a-schedd']['schedd']} "
+                f" --collector {SCHEDD_LOOKUP[clusters[1][0]]['collector']} "
+                f" --schedd {SCHEDD_LOOKUP[clusters[1][0]]['schedd']} "
                 f" start "
-                f" --n-jobs {clusters[1]['njobs']} "
+                f" --n-jobs {clusters[1][1]} "
+                f" --memory 8GB "
+                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --client-startup-json /common-space/startup.json "
+                # f" --logs-directory /common-space "
+            ]
+        case 3:
+            tms_args = [
+                f"python -m clientmanager "
+                f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
+                f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
+                f" start "
+                f" --n-jobs {clusters[0][1]} "
+                f" --memory 8GB "
+                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --client-startup-json /common-space/startup.json "
+                # f" --logs-directory /common-space "
+                ,
+                f"python -m clientmanager "
+                f" --collector {SCHEDD_LOOKUP[clusters[1][0]]['collector']} "
+                f" --schedd {SCHEDD_LOOKUP[clusters[1][0]]['schedd']} "
+                f" start "
+                f" --n-jobs {clusters[1][1]} "
+                f" --memory 8GB "
+                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --client-startup-json /common-space/startup.json "
+                # f" --logs-directory /common-space "
+                ,
+                f"python -m clientmanager "
+                f" --collector {SCHEDD_LOOKUP[clusters[2][0]]['collector']} "
+                f" --schedd {SCHEDD_LOOKUP[clusters[2][0]]['schedd']} "
+                f" start "
+                f" --n-jobs {clusters[2][1]} "
                 f" --memory 8GB "
                 f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
