@@ -35,7 +35,7 @@ SCHEDD_LOOKUP = {
         "schedd": "a-schedd.edu",
     },
 }
-skydriver.config.KNOWN_CONDORS = SCHEDD_LOOKUP  # override
+
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 
@@ -70,7 +70,7 @@ async def server(
     mongo_clear: Any,  # pylint:disable=unused-argument
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
-    # monkeypatch.setenv("", 100)
+    monkeypatch.setattr(skydriver.config, "KNOWN_CONDORS", SCHEDD_LOOKUP)
 
     with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
         rs = await make(debug=True)
