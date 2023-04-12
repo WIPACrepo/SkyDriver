@@ -43,7 +43,7 @@ _Launch a new scan of an event_
 | --------------------------------- | ------------ | ---------------- | -------------------- |
 | `"docker_tag"`                    | str          | *[REQUIRED]*     | the docker tag of the Skymap Scanner image (must be in CVMFS). Ex: `v3.1.4`, `v3.5`, `v3`, `latest`
 | `"memory"`                        | str          | default: `8GB`   | how much memory per condor worker to request
-| `"cluster"`                       | dict or list | *[REQUIRED]*     | the HTCondor cluster(s) to use: list of `{collector: foo, schedd: baz, njobs: 1234}`
+| `"cluster"`                       | dict or list | *[REQUIRED]*     | the HTCondor cluster(s) to use along with the number of jobs for each: Example: `{"sub-2": 1234}`. NOTE: To request a schedd more than once, provide a list of 2-lists instead (Ex: `[ ["sub-2", 56], ["sub-2", 1234] ]`)
 | `"reco_algo"`                     | bool         | *[REQUIRED]*     | which reco algorithm to use (see [Skymap Scanner](https://github.com/icecube/skymap_scanner/tree/main/skymap_scanner/recos))
 | `"event_i3live_json"`             | dict or str  | *[REQUIRED]*     | Realtime's JSON event format
 | `"nsides"`                        | dict         | *[REQUIRED]*     | the nside progression to use (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))

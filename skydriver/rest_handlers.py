@@ -158,7 +158,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         ) -> list[types.RequestorInputCluster]:
             _error = TypeError(
                 "must be a dict of schedd name and number of jobs, Ex: {'sub-2': 1500, ...}"
-                " (to indicate a schedd more than once, provide a list of 2-lists instead),"
+                " (to request a schedd more than once, provide a list of 2-lists instead),"
                 # TODO: make N_JOBS optional when using "TMS smart starter"
             )
             if isinstance(val, dict):
