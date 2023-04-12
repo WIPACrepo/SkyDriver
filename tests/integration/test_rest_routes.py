@@ -71,7 +71,10 @@ async def server(
     """Startup server in this process, yield RestClient func, then clean up."""
     # monkeypatch.setenv("", 100)
 
-    with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
+    with (
+        patch("skydriver.server.setup_k8s_client", return_value=Mock()),
+        patch("skydriver.config.KNOWN_CONDORS", SCHEDD_LOOKUP),
+    ):
         rs = await make(debug=True)
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
@@ -561,7 +564,6 @@ async def _delete_result(
         [["foobar", 1], ["a-schedd", 999], ["a-schedd", 1234]],
     ],
 )
-@patch("skydriver.config.KNOWN_CONDORS", SCHEDD_LOOKUP)
 async def test_00(
     clusters: list | dict,
     docker_tag_input_and_expect: tuple[str, str],
@@ -621,7 +623,6 @@ async def test_00(
     await _delete_result(rc, scan_id, result, True)
 
 
-@patch("skydriver.config.KNOWN_CONDORS", SCHEDD_LOOKUP)
 async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
