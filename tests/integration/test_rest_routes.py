@@ -70,6 +70,8 @@ async def server(
     mongo_clear: Any,  # pylint:disable=unused-argument
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
+
+    # patch at directly named import that happens before running the test
     monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CONDORS", SCHEDD_LOOKUP)
 
     with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
