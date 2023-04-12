@@ -163,6 +163,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             )
             if isinstance(val, dict):
                 val = list(val.items())  # {'a': 1, 'b': 2} -> [('a', 1), ('b', 2)}
+            if not val:
+                raise _error
             if not isinstance(val, list):
                 raise _error
             # check all entries are 2-lists (or tuple)
@@ -182,7 +184,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 except KeyError as e:
                     raise TypeError(
                         f"requested unknown schedd: {entry[0]}"
-                        f" (available clusters: {', '.join(KNOWN_CONDORS.keys())})"
+                        f" (available: {', '.join(KNOWN_CONDORS.keys())})"
                     ) from e
             return clusters
 
