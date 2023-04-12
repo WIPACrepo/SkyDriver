@@ -25,6 +25,16 @@ StrDict = dict[str, Any]
 
 ########################################################################################
 
+SCHEDD_LOOKUP = {
+    "sub-2": {
+        "collector": "glidein-cm.icecube.wisc.edu",
+        "schedd": "sub-2.icecube.wisc.edu",
+    },
+    "a-schedd": {
+        "collector": "the-collector.edu",
+        "schedd": "a-schedd.edu",
+    },
+}
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 
@@ -110,8 +120,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         case 1:
             tms_args = [
                 f"python -m clientmanager "
-                f" --collector {clusters[0]['collector']} "
-                f" --schedd {clusters[0]['schedd']} "
+                f" --collector {SCHEDD_LOOKUP['sub-2']['collector']} "
+                f" --schedd {SCHEDD_LOOKUP['sub-2']['schedd']} "
                 f" start "
                 f" --n-jobs {clusters[0]['njobs']} "
                 f" --memory 8GB "
@@ -122,8 +132,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         case 2:
             tms_args = [
                 f"python -m clientmanager "
-                f" --collector {clusters[0]['collector']} "
-                f" --schedd {clusters[0]['schedd']} "
+                f" --collector {SCHEDD_LOOKUP['sub-2']['collector']} "
+                f" --schedd {SCHEDD_LOOKUP['sub-2']['schedd']} "
                 f" start "
                 f" --n-jobs {clusters[0]['njobs']} "
                 f" --memory 8GB "
@@ -132,8 +142,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 # f" --logs-directory /common-space "
                 ,
                 f"python -m clientmanager "
-                f" --collector {clusters[1]['collector']} "
-                f" --schedd {clusters[1]['schedd']} "
+                f" --collector {SCHEDD_LOOKUP['a-schedd']['collector']} "
+                f" --schedd {SCHEDD_LOOKUP['a-schedd']['schedd']} "
                 f" start "
                 f" --n-jobs {clusters[1]['njobs']} "
                 f" --memory 8GB "
@@ -511,29 +521,13 @@ async def _delete_result(
 @pytest.mark.parametrize(
     "clusters",
     [
-        [
-            {
-                "collector": "glidein-cm.icecube.wisc.edu",
-                "schedd": "sub-2.icecube.wisc.edu",
-                "njobs": 1,
-            }
-        ],
-        [
-            {
-                "collector": "glidein-cm.icecube.wisc.edu",
-                "schedd": "sub-2.icecube.wisc.edu",
-                "njobs": 1,
-            },
-            {
-                "collector": "the-collector.edu",
-                "schedd": "a-schedd.edu",
-                "njobs": 999,
-            },
-        ],
+        {"sub-2": 1},
+        {"sub-2": 1, "a-schedd": 999},
+        [["sub-2", 1], ["a-schedd", 999], ["a-schedd", 1234]],
     ],
 )
 async def test_00(
-    clusters: list[dict],
+    clusters: list | dict,
     docker_tag_input_and_expect: tuple[str, str],
     server: Callable[[], RestClient],
 ) -> None:
