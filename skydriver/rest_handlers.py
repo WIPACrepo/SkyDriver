@@ -159,7 +159,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             _error = TypeError(
                 "must be a dict of schedd name and number of jobs, Ex: {'sub-2': 1500, ...}"
                 " (to indicate a schedd more than once, provide a list of 2-lists instead),"
-                f" available clusters: {list(KNOWN_CONDORS.keys())}"
                 # TODO: make N_JOBS optional when using "TMS smart starter"
             )
             if isinstance(val, dict):
@@ -181,7 +180,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                         )
                     )
                 except KeyError as e:
-                    raise TypeError(f"requested unknown schedd: {entry[0]}") from e
+                    raise TypeError(
+                        f"requested unknown schedd: {entry[0]}"
+                        f" (available clusters: {list(KNOWN_CONDORS.keys())})"
+                    ) from e
             return clusters
 
         def _optional_int(val: Any) -> int | None:
