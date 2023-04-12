@@ -13,6 +13,14 @@ LOGGER = logging.getLogger("skydriver")
 # Constants
 
 
+KNOWN_CONDORS = {
+    "sub-2": {
+        "collector": "glidein-cm.icecube.wisc.edu",
+        "schedd": "sub-2.icecube.wisc.edu",
+    }
+}
+
+
 @dc.dataclass(frozen=True)
 class EnvConfig:
     """Environment variables."""

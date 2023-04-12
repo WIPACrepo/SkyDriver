@@ -14,7 +14,7 @@ from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
 from tornado import web
 
 from . import database, images, k8s, types
-from .config import LOGGER, is_testing
+from .config import KNOWN_CONDORS, LOGGER, is_testing
 
 # -----------------------------------------------------------------------------
 # REST requestor auth
@@ -153,22 +153,35 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # fall-through
             raise _error
 
-        def _dict_or_listdict_to_request_clusters(
+        def _dict_or_list_to_request_clusters(
             val: Any,
         ) -> list[types.RequestorInputCluster]:
             _error = TypeError(
-                f"must be a dictionary (or a list of dictionaries) with keys "
-                f"{[f.name for f in dc.fields(types.RequestorInputCluster)]} "
-                # f"(optional: 'njobs')"  # TODO: make optional when using "smart starter"
+                "must be a dict of schedd name and number of jobs, Ex: {'sub-2': 1500, ...}"
+                " (to indicate a schedd more than once, provide a list of 2-lists instead)"
+                # TODO: make N_JOBS optional when using "TMS smart starter"
             )
             if isinstance(val, dict):
-                return _dict_or_listdict_to_request_clusters([val])
+                val = list(val.items())  # {'a': 1, 'b': 2} -> [('a', 1), ('b', 2)}
             if not isinstance(val, list):
                 raise _error
-            try:
-                return [from_dict(types.RequestorInputCluster, ic) for ic in val]
-            except DaciteError:
+            # check all entries are 2-lists (or tuple)
+            if not all(isinstance(a, list | tuple) and len(a) == 2 for a in val):
                 raise _error
+            #
+            clusters = []
+            for entry in val:
+                try:
+                    clusters.append(
+                        types.RequestorInputCluster(
+                            collector=KNOWN_CONDORS[entry[0]]["collector"],
+                            schedd=KNOWN_CONDORS[entry[0]]["schedd"],
+                            njobs=entry[1],
+                        )
+                    )
+                except KeyError as e:
+                    raise TypeError(f"requested unknown schedd: {entry[0]}") from e
+            return clusters
 
         def _optional_int(val: Any) -> int | None:
             if val is None:
@@ -191,7 +204,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         request_clusters = self.get_argument(
             "cluster",
-            type=_dict_or_listdict_to_request_clusters,
+            type=_dict_or_list_to_request_clusters,
         )
 
         # scanner args
