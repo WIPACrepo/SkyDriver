@@ -205,7 +205,10 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
 
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
-    assert [a.split() for a in resp["tms_args"]] == [a.split() for a in tms_args]
+    # fmt: off
+    # order of tms args doesn't matter here
+    assert sorted(a.split() for a in resp["tms_args"]) == sorted(a.split() for a in tms_args)
+    # fmt: on
 
     # check env vars
     print(resp["env_vars"])
