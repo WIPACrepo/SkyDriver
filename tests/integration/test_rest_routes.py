@@ -12,14 +12,14 @@ from unittest.mock import Mock, patch
 import pytest
 import pytest_asyncio
 import requests
+import skydriver.config
 import skydriver.images  # noqa: F401
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.client import RestClient
-from skydriver.config import config_logging
 from skydriver.database.interface import drop_collections
 from skydriver.server import make, mongodb_url
 
-config_logging("debug")
+skydriver.config.config_logging("debug")
 
 StrDict = dict[str, Any]
 
@@ -35,6 +35,7 @@ SCHEDD_LOOKUP = {
         "schedd": "a-schedd.edu",
     },
 }
+skydriver.config.KNOWN_CONDORS = SCHEDD_LOOKUP  # override
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 
@@ -71,10 +72,7 @@ async def server(
     """Startup server in this process, yield RestClient func, then clean up."""
     # monkeypatch.setenv("", 100)
 
-    with (
-        patch("skydriver.server.setup_k8s_client", return_value=Mock()),
-        patch("skydriver.config.KNOWN_CONDORS", SCHEDD_LOOKUP),
-    ):
+    with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
         rs = await make(debug=True)
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
