@@ -15,11 +15,11 @@ import requests
 import skydriver.images  # noqa: F401
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.client import RestClient
-from skydriver.config import config_logging
+from skydriver import config
 from skydriver.database.interface import drop_collections
 from skydriver.server import make, mongodb_url
 
-config_logging("debug")
+config.config_logging("debug")
 
 StrDict = dict[str, Any]
 
@@ -27,8 +27,8 @@ StrDict = dict[str, Any]
 
 SCHEDD_LOOKUP = {
     "sub-2": {
-        "collector": "glidein-cm.icecube.wisc.edu",
-        "schedd": "sub-2.icecube.wisc.edu",
+        "collector": "for-sure.a-collector.edu",
+        "schedd": "this.schedd.edu",
     },
     "a-schedd": {
         "collector": "the-collector.edu",
@@ -70,6 +70,8 @@ async def server(
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
     # monkeypatch.setenv("", 100)
+
+    config.KNOWN_CONDORS = SCHEDD_LOOKUP  # overwrite so we can use dummy values
 
     with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
         rs = await make(debug=True)
@@ -118,7 +120,6 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
     match len(clusters):
         # doing things manually here so we don't duplicate the same method used in the app
         case 1:
-
             tms_args = [
                 f"python -m clientmanager "
                 f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
@@ -389,8 +390,8 @@ async def _clientmanager_reply(
 ) -> StrDict:
     # reply as the clientmanager with a new condor cluster
     condor_cluster = dict(
-        collector="glidein-cm.icecube.wisc.edu",
-        schedd="sub-2.icecube.wisc.edu",
+        collector="for-sure.a-collector.edu",
+        schedd="this.schedd.edu",
         cluster_id=random.randint(1, 10000),
         jobs=random.randint(1, 10000),
     )
