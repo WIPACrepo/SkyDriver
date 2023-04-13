@@ -11,7 +11,7 @@ Documentation for the public-facing routes and methods
 
 
 &nbsp;
-### `/scans`: GET
+### `/scans` - GET
 -------------------------------------------------------------------------------
 _Retrieve scan ids corresponding to a specific run & event_
 
@@ -36,7 +36,7 @@ None
 
 
 &nbsp;
-### `/scan`: POST
+### `/scan` - POST
 -------------------------------------------------------------------------------
 _Launch a new scan of an event_
 
@@ -62,7 +62,7 @@ dict - [Manifest](#manifest)
 
 
 &nbsp;
-### `/scan/manifest/SCAN_ID`: GET
+### `/scan/manifest/SCAN_ID` - GET
 -------------------------------------------------------------------------------
 _Retrieve the manifest of a scan_
 
@@ -79,7 +79,7 @@ dict - [Manifest](#manifest)
 
 
 &nbsp;
-### `/scan/manifest/SCAN_ID`: DELETE
+### `/scan/manifest/SCAN_ID` - DELETE
 -------------------------------------------------------------------------------
 _Abort ongoing scan_
 
@@ -95,7 +95,7 @@ dict - [Manifest](#manifest)
 
 
 &nbsp;
-### `/scan/result/SCAN_ID`: GET
+### `/scan/result/SCAN_ID` - GET
 -------------------------------------------------------------------------------
 _Retrieve the result of a scan_
 
@@ -112,7 +112,7 @@ dict - [Result](#result)
 
 
 &nbsp;
-### `/scan/result/SCAN_ID`: DELETE
+### `/scan/result/SCAN_ID` - DELETE
 -------------------------------------------------------------------------------
 _Delete the result of a scan_
 
@@ -201,7 +201,11 @@ Pseudo-code:
 ## Examples
 ### Scanning an Event
 See [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
-### Monitoring (Progress and/or Result)
+### Monitoring: Progress, Partial Results, and Final Result
 Also, see [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
 ### Scanning Multiple Events
 See [examples/scan_many.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_many.py)
+### Making Plots with a Scan's Result
+See skyreader's [plot_skydriver_scan_result.py](https://github.com/icecube/skyreader/blob/main/examples/plot_skydriver_scan_result.py)
+### Creating a `SkyScanResult` Instance from a Scan's Result
+Also, see skyreader's [plot_skydriver_scan_result.py](https://github.com/icecube/skyreader/blob/main/examples/plot_skydriver_scan_result.py)
