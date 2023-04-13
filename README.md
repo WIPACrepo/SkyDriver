@@ -8,10 +8,10 @@ A SaaS Solution for Neutrino Event Reconstruction using the Skymap Scanner
 SkyDriver automates the entire scanning of an event: starting all servers and workers, transferring all needed data, and finally, all tear-down. SkyDriver also includes a database for storing scan requests, progress reports, and results. The computational engine for a scan is the [Skymap Scanner](https://github.com/icecube/skymap_scanner). The main interface is a REST server with several [routes and methods](#rest-api).
 
 A standard workflow may be:
-1. Request a scan ([POST @ `/scan`](#scan-post))
-2. Check for progress updates ([GET @ `/scan/manifest/SCAN_ID`](#scanmanifestscan_id-get))
-3. Check for partial results ([GET @ `/scan/result/SCAN_ID`](#scanresultscan_id-get))
-4. Get a final result ([GET @ `/scan/result/SCAN_ID`](#scanresultscan_id-get))
+1. Request a scan ([POST @ `/scan`](#scan---post))
+2. Check for progress updates ([GET @ `/scan/manifest/SCAN_ID`](#scanmanifestscan_id---get))
+3. Check for partial results ([GET @ `/scan/result/SCAN_ID`](#scanresultscan_id---get))
+4. Get a final result ([GET @ `/scan/result/SCAN_ID`](#scanresultscan_id---get))
 5. [Make plots](#making-plots-with-a-scans-result-using-the-scan_id)
 
 
