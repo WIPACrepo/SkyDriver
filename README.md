@@ -92,7 +92,7 @@ _Retrieve the result of a scan_
 | `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
 
 #### SkyDriver Effects
-Stops the Skymap Scanner instance if it is still running
+None
 
 #### Returns
 dict - [Result](#result)
