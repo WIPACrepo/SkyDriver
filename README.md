@@ -199,7 +199,9 @@ Pseudo-code:
 
 &nbsp;
 ## Examples
-#### Scanning an Event
+### Scanning an Event
 See [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
-#### Monitoring (Progress and/or Result)
+### Monitoring (Progress and/or Result)
 Also, see [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
+### Scanning Multiple Events
+See [examples/scan_many.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_many.py)

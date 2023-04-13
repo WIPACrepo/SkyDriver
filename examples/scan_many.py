@@ -1,13 +1,11 @@
-"""An example script for scanning an event & monitoring its progress.
+"""An example script for scanning multiple events.
 
 This script is meant to be a starting point--many arguments and options
 will need to be tweaked and/or parameterized.
 """
 
 import argparse
-import time
 from pathlib import Path
-from pprint import pprint
 
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
@@ -44,47 +42,31 @@ def launch_a_scan(rc: RestClient, event_file: Path) -> str:
     }
     resp = rc.request_seq("POST", "/scan", body)
 
-    print(resp["scan_id"])
+    # print(resp["scan_id"])
     return resp["scan_id"]  # type: ignore[no-any-return]
 
 
-def monitor(rc: RestClient, scan_id: str) -> None:
-    """Monitor the event scan until its done."""
-    while True:
-        try:
-            progress = rc.request_seq("GET", f"/scan/manifest/{scan_id}")["progress"]
-            pprint(progress)
-        except:  # 404 (scanner not yet online) or KeyError (no progress yet)
-            pass
-        try:
-            result = rc.request_seq("GET", f"/scan/result/{scan_id}")
-            pprint(result)
-            pprint(progress)
-            if result["is_final"]:
-                return
-        except:  # 404 (scanner not yet online)
-            pass
-        time.sleep(60)
-
-
 def main() -> None:
-    """Launch and monitor a scan for an event."""
+    """Launch scans for multiple events."""
 
     parser = argparse.ArgumentParser(
-        description="Launch and monitor a scan for an event",
+        description="Launch scans for multiple events",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--event-file",
+        "--event-files",
         required=True,
         type=Path,
-        help="the event in realtime's JSON format",
+        help="a directory of event files in realtime's JSON format",
     )
     args = parser.parse_args()
 
     rc = get_rest_client()
-    scan_id = launch_a_scan(rc, args.event_file)
-    monitor(rc, scan_id)
+    for event_file in args.event_files.iterdir():
+        print("-----------------------")
+        print(event_file)
+        scan_id = launch_a_scan(rc, args.event_file)
+        print(f"SCAN ID: {scan_id}")
 
 
 if __name__ == "__main__":
