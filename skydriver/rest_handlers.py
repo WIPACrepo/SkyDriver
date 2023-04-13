@@ -424,6 +424,8 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         self.write(dc.asdict(result_dc))
 
+        # END #
+        self.finish()
         # AFTER RESPONSE #
 
         # when we get the final result, it's time to tear down
