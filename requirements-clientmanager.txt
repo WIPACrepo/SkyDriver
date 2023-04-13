@@ -6,9 +6,9 @@
 #
 backoff==2.2.1
     # via opentelemetry-exporter-otlp-proto-http
-boto3==1.26.112
+boto3==1.26.113
     # via UNKNOWN (setup.py)
-botocore==1.29.112
+botocore==1.29.113
     # via
     #   boto3
     #   s3transfer
@@ -36,7 +36,7 @@ deprecated==1.2.13
     # via opentelemetry-api
 dnspython==2.3.0
     # via pymongo
-google-auth==2.17.2
+google-auth==2.17.3
     # via kubernetes
 googleapis-common-protos==1.56.2
     # via
