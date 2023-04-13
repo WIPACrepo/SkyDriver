@@ -56,19 +56,24 @@ def launch_a_scan(rc: RestClient, event_file: Path) -> str:
 def monitor(rc: RestClient, scan_id: str) -> None:
     """Monitor the event scan until its done."""
     while True:
+        # get progress
         try:
             progress = rc.request_seq("GET", f"/scan/manifest/{scan_id}")["progress"]
             pprint(progress)
-        except:  # 404 (scanner not yet online) or KeyError (no progress yet)
-            pass
+        except Exception as e:  # 404 (scanner not yet online) or KeyError (no progress yet)
+            print(e)
+
+        # get result
         try:
             result = rc.request_seq("GET", f"/scan/result/{scan_id}")
             pprint(result)
             pprint(progress)
             if result["is_final"]:
                 return
-        except:  # 404 (scanner not yet online)
-            pass
+        except Exception as e:  # 404 (scanner not yet online)
+            print(e)
+
+        # wait
         time.sleep(60)
 
 
