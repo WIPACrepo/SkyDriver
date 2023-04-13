@@ -2,6 +2,7 @@
 
 # pylint: disable=redefined-outer-name
 
+import asyncio
 import os
 import random
 import re
@@ -38,6 +39,7 @@ SCHEDD_LOOKUP = {
 
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
+TEST_WAIT_BEFORE_TEARDOWN = 2
 
 
 @pytest.fixture
@@ -73,6 +75,9 @@ async def server(
 
     # patch at directly named import that happens before running the test
     monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CONDORS", SCHEDD_LOOKUP)
+    monkeypatch.setattr(
+        skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
+    )
 
     with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
         rs = await make(debug=True)
@@ -609,6 +614,8 @@ async def test_00(
     #
     assert not manifest["complete"]
     result = await _send_result(rc, scan_id, manifest, True)
+    # wait as long as the server, so it'll mark as complete
+    await asyncio.sleep(TEST_WAIT_BEFORE_TEARDOWN)
     manifest = await rc.request("GET", f"/scan/manifest/{scan_id}")
     assert manifest["complete"]
 
@@ -839,6 +846,8 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
 
     # OK
     result = await _send_result(rc, scan_id, manifest, True)
+    # wait as long as the server, so it'll mark as complete
+    await asyncio.sleep(TEST_WAIT_BEFORE_TEARDOWN)
     manifest = await rc.request("GET", f"/scan/manifest/{scan_id}")
     assert manifest["complete"]
 
