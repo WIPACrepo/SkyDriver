@@ -13,27 +13,22 @@ from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
 
 def get_rest_client() -> RestClient:
-    """Get REST client for talking to SkyDriver."""
-    token = SavedDeviceGrantAuth(
-        "",
+    """Get REST client for talking to SkyDriver.
+
+    This will present a QR code in the terminal for initial validation.
+    """
+
+    # NOTE: If your script will not be interactive (like a cron job),
+    # then you need to first run your script manually to validate using
+    # the QR code in the terminal.
+
+    return SavedDeviceGrantAuth(
+        "https://skydriver.icecube.aq",
         token_url="https://keycloak.icecube.wisc.edu/auth/realms/IceCube",
         filename="device-refresh-token",
         client_id="skydriver-external",
-    )._openid_token()
-
-    # NOTE: 'SavedDeviceGrantAuth' will validate using a QR code in the terminal.
-    # If your script will not be interactive (like a cron job), then you need a
-    # dual script solution:
-    #    In Script 1, call 'SavedDeviceGrantAuth()' and write the token to a file.
-    #    In Script 2, read that token into 'RestClient' and make your requests.
-    # Script 1 will need to be invoked daily (since the persisted token expires).
-
-    rc = RestClient(
-        "https://skydriver.icecube.aq",
-        token=token,
         retries=0,
     )
-    return rc
 
 
 def launch_a_scan(rc: RestClient, event_file: Path) -> str:
