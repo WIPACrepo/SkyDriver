@@ -1,9 +1,9 @@
 """Handlers for the SkyDriver REST API server interface."""
 
 
+import asyncio
 import dataclasses as dc
 import json
-import time
 import uuid
 from typing import Any, Type, TypeVar, cast
 
@@ -430,7 +430,7 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # when we get the final result, it's time to tear down
         if is_final:
-            time.sleep(60)
+            await asyncio.sleep(60)  # regular time.sleep() sleeps the entire server
             await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
 
 
