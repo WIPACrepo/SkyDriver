@@ -205,7 +205,7 @@ See [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/exam
 Also, see [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
 ### Scanning Multiple Events
 See [examples/scan_many.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_many.py)
-### Making Plots with a Scan's Result
+### Making Plots with a Scan's Result (using the `scan_id`)
 See skyreader's [plot_skydriver_scan_result.py](https://github.com/icecube/skyreader/blob/main/examples/plot_skydriver_scan_result.py)
-### Creating a `SkyScanResult` Instance from a Scan's Result
+### Creating a `SkyScanResult` Instance from a Scan's Result (using the `scan_id`)
 Also, see skyreader's [plot_skydriver_scan_result.py](https://github.com/icecube/skyreader/blob/main/examples/plot_skydriver_scan_result.py)
