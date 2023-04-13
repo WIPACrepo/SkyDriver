@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.73 (2023-04-13)
+### Other
+* Tear Down After Final Result ([#29](https://github.com/WIPACrepo/SkyDriver/issues/29)) ([`7735a38`](https://github.com/WIPACrepo/SkyDriver/commit/7735a3886cb123262112e064e52da93e51a01ec4))
+
 ## v0.0.72 (2023-04-11)
 ### Other
 * <bot> update requirements-clientmanager.txt ([`48fb5ca`](https://github.com/WIPACrepo/SkyDriver/commit/48fb5ca7970ec6cd3b0736b546b4a15b8d2e2d4d))
