@@ -4,6 +4,18 @@
 # SkyDriver
 A SaaS Solution for Neutrino Event Reconstruction using the Skymap Scanner
 
+
+&nbsp;
+## Examples
+-------------------------------------------------------------------------------
+#### Scanning an Event
+See [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
+#### Monitoring (Progress and/or Result)
+Also, see [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
+
+
+
+&nbsp;
 ## REST API
 Documentation for the public-facing routes and methods
 
@@ -195,10 +207,3 @@ Pseudo-code:
 - See [skyreader's SkyScanResult](https://github.com/icecube/skyreader/)
 
 
-&nbsp;
-### Examples
--------------------------------------------------------------------------------
-#### Scanning an Event
-See [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
-#### Monitoring (Progress and/or Result)
-Also, see [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
