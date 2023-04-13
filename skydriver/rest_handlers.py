@@ -3,6 +3,7 @@
 
 import dataclasses as dc
 import json
+import time
 import uuid
 from typing import Any, Type, TypeVar, cast
 
@@ -395,10 +396,6 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         result = await self.results.get(scan_id, incl_del)
 
-        # when we get the final result, it's time to tear down
-        if result.is_final:
-            await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
-
         self.write(dc.asdict(result))
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
@@ -426,6 +423,13 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             is_final,
         )
         self.write(dc.asdict(result_dc))
+
+        # AFTER RESPONSE #
+
+        # when we get the final result, it's time to tear down
+        if is_final:
+            time.sleep(60)
+            await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
 
 
 # -----------------------------------------------------------------------------
