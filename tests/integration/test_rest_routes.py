@@ -2,6 +2,7 @@
 
 # pylint: disable=redefined-outer-name
 
+import asyncio
 import os
 import random
 import re
@@ -28,6 +29,7 @@ StrDict = dict[str, Any]
 
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
+TEST_WAIT_BEFORE_TEARDOWN = 2
 
 
 @pytest.fixture
@@ -60,7 +62,9 @@ async def server(
     mongo_clear: Any,  # pylint:disable=unused-argument
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
-    monkeypatch.setattr(skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", 0)
+    monkeypatch.setattr(
+        skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
+    )
 
     with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
         rs = await make(debug=True)
@@ -580,6 +584,8 @@ async def test_00(
     #
     assert not manifest["complete"]
     result = await _send_result(rc, scan_id, manifest, True)
+    # wait as long as the server, so it'll mark as complete
+    await asyncio.sleep(TEST_WAIT_BEFORE_TEARDOWN)
     manifest = await rc.request("GET", f"/scan/manifest/{scan_id}")
     assert manifest["complete"]
 
@@ -811,6 +817,8 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # OK
     result = await _send_result(rc, scan_id, manifest, True)
     manifest = await rc.request("GET", f"/scan/manifest/{scan_id}")
+    # wait as long as the server, so it'll mark as complete
+    await asyncio.sleep(TEST_WAIT_BEFORE_TEARDOWN)
     assert manifest["complete"]
 
     # # no arg
