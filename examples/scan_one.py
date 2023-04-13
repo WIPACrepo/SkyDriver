@@ -21,7 +21,12 @@ def get_rest_client() -> RestClient:
         client_id="skydriver-external",
     )._openid_token()
 
-    # NOTE: if you want to automate this script, write 'token' to a file -- it will expire <1 day
+    # NOTE: 'SavedDeviceGrantAuth' will validate using a QR code in the terminal.
+    # If your script will not be interactive (like a cron job), then you need a
+    # dual script solution:
+    #    In Script 1, call 'SavedDeviceGrantAuth()' and write the token to a file.
+    #    In Script 2, read that token into 'RestClient' and make your requests.
+    # Script 1 will need to be invoked daily (since the persisted token expires).
 
     rc = RestClient(
         "https://skydriver.icecube.aq",
