@@ -816,9 +816,9 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
 
     # OK
     result = await _send_result(rc, scan_id, manifest, True)
-    manifest = await rc.request("GET", f"/scan/manifest/{scan_id}")
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(TEST_WAIT_BEFORE_TEARDOWN)
+    manifest = await rc.request("GET", f"/scan/manifest/{scan_id}")
     assert manifest["complete"]
 
     # # no arg
