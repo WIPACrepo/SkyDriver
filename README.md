@@ -7,7 +7,7 @@ A SaaS Solution for Neutrino Event Reconstruction using the Skymap Scanner
 ## Overview
 SkyDriver automates the entire scanning of an event: starting all servers and workers, transferring all needed data, and finally, all tear-down. SkyDriver also includes a database for storing scan requests, progress reports, and results. The computational engine for a scan is the [Skymap Scanner](https://github.com/icecube/skymap_scanner). The main interface is a REST server with several [routes and methods](#rest-api).
 
-A standard workflow may be:
+One of many workflows may be:
 1. Request a scan ([POST @ `/scan`](#scan---post))
 2. Check for progress updates ([GET @ `/scan/manifest/SCAN_ID`](#scanmanifestscan_id---get))
 3. Check for partial results ([GET @ `/scan/result/SCAN_ID`](#scanresultscan_id---get))
@@ -19,29 +19,7 @@ A standard workflow may be:
 ## REST API
 Documentation for the public-facing routes and methods
 
-&nbsp;
-### `/scans` - GET
--------------------------------------------------------------------------------
-_Retrieve scan ids corresponding to a specific run & event_
 
-#### Arguments
-| Argument            | Type        | Required/Default | Description          |
-| ------------------- | ----------- | ---------------- | -------------------- |
-| `"run_id"`          | int         | *[REQUIRED]*     | id of the run
-| `"event_id"`        | int         | *[REQUIRED]*     | id of the event
-| `"is_real_event"`   | bool        | *[REQUIRED]*     | whether this event is real or simulated
-| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
-
-#### SkyDriver Effects
-None
-
-#### Returns
-```
-{
-    "event_id": event_id,
-    "scan_ids": scan_ids,  # list of strings
-}
-```
 
 
 &nbsp;
@@ -133,6 +111,30 @@ The result is marked as "deleted" in the database
 
 #### Returns
 dict - [Result](#result)
+
+&nbsp;
+### `/scans` - GET
+-------------------------------------------------------------------------------
+_Retrieve scan ids corresponding to a specific run & event_
+
+#### Arguments
+| Argument            | Type        | Required/Default | Description          |
+| ------------------- | ----------- | ---------------- | -------------------- |
+| `"run_id"`          | int         | *[REQUIRED]*     | id of the run
+| `"event_id"`        | int         | *[REQUIRED]*     | id of the event
+| `"is_real_event"`   | bool        | *[REQUIRED]*     | whether this event is real or simulated
+| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
+
+#### SkyDriver Effects
+None
+
+#### Returns
+```
+{
+    "event_id": event_id,
+    "scan_ids": scan_ids,  # list of strings
+}
+```
 
 
 &nbsp;
