@@ -17,12 +17,16 @@ from tornado import web
 from . import database, images, k8s, types
 from .config import LOGGER, is_testing
 
+WAIT_BEFORE_TEARDOWN = 60
+
+
 # -----------------------------------------------------------------------------
 # REST requestor auth
 
 
 USER_ACCT = "user"
 SKYMAP_SCANNER_ACCT = "system"
+
 
 if is_testing():
 
@@ -430,7 +434,9 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # when we get the final result, it's time to tear down
         if is_final:
-            await asyncio.sleep(60)  # regular time.sleep() sleeps the entire server
+            await asyncio.sleep(
+                WAIT_BEFORE_TEARDOWN
+            )  # regular time.sleep() sleeps the entire server
             await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
 
 
