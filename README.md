@@ -42,12 +42,12 @@ _Launch a new scan of an event_
 | Argument                          | Type         | Required/Default | Description          |
 | --------------------------------- | ------------ | ---------------- | -------------------- |
 | `"docker_tag"`                    | str          | *[REQUIRED]*     | the docker tag of the Skymap Scanner image (must be in CVMFS). Ex: `v3.1.4`, `v3.5`, `v3`, `latest`, `eqscan-6207146` (branch-based tag)
-| `"memory"`                        | str          | default: `8GB`   | how much memory per condor worker to request
 | `"cluster"`                       | dict or list | *[REQUIRED]*     | the HTCondor cluster(s) to use along with the number of jobs for each: Example: `{"sub-2": 1234}`. NOTE: To request a schedd more than once, provide a list of 2-lists instead (Ex: `[ ["sub-2", 56], ["sub-2", 1234] ]`)
 | `"reco_algo"`                     | bool         | *[REQUIRED]*     | which reco algorithm to use (see [Skymap Scanner](https://github.com/icecube/skymap_scanner/tree/main/skymap_scanner/recos))
 | `"event_i3live_json"`             | dict or str  | *[REQUIRED]*     | Realtime's JSON event format
 | `"nsides"`                        | dict         | *[REQUIRED]*     | the nside progression to use (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"real_or_simulated_event"`       | str          | *[REQUIRED]*     | whether this event is real or simulated. Ex: `real`, `simulated`
+| `"memory"`                        | str          | default: `8GB`   | how much memory per condor worker to request
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"max_reco_time"`                 | int          | default: `None`  | the max amount of time each reco should take
 
@@ -195,3 +195,10 @@ Pseudo-code:
 - See [skyreader's SkyScanResult](https://github.com/icecube/skyreader/)
 
 
+&nbsp;
+### Examples
+-------------------------------------------------------------------------------
+#### Scanning an Event
+See [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
+#### Monitoring (Progress and/or Result)
+Also, see [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
