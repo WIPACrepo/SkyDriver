@@ -43,7 +43,7 @@ _Launch a new scan of an event_
 | `"real_or_simulated_event"`       | str          | *[REQUIRED]*     | whether this event is real or simulated. Ex: `real`, `simulated`
 | `"memory"`                        | str          | default: `8GB`   | how much memory per condor worker to request
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
-| `"max_reco_time"`                 | int          | default: `None`  | the max amount of time each reco should take
+| `"max_pixel_reco_time"`                 | int          | default: `None`  | the max amount of time each pixel's reco should take
 
 #### SkyDriver Effects
 - Creates and starts a new Skymap Scanner instance spread across many HTCondor workers

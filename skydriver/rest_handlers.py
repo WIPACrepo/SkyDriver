@@ -243,8 +243,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default=1.0,
             strict_type=False,  # allow casting from int (1)
         )
-        max_reco_time = self.get_argument(
-            "max_reco_time",
+        max_pixel_reco_time = self.get_argument(
+            "max_pixel_reco_time",
             type=_optional_int,
             default=None,
         )
@@ -270,7 +270,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # clientmanager
             request_clusters=request_clusters,
             memory=memory,
-            max_reco_time=max_reco_time,
+            max_pixel_reco_time=max_pixel_reco_time,
             # universal
             debug_mode=debug_mode,
             # env

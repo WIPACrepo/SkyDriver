@@ -238,7 +238,7 @@ class SkymapScannerStarterJob:
         # tms
         memory: str,
         request_clusters: list[types.RequestorInputCluster],
-        max_reco_time: int | None,
+        max_pixel_reco_time: int | None,
         # universal
         debug_mode: bool,
         # env
@@ -270,7 +270,7 @@ class SkymapScannerStarterJob:
         env = self.make_v1_env_vars(
             rest_address=rest_address,
             scan_id=scan_id,
-            max_reco_time=max_reco_time,
+            max_pixel_reco_time=max_pixel_reco_time,
         )
         self.env_dict = {  # promote `e.name` to a key of a dict (instead of an attr in list element)
             e.name: {k: v for k, v in e.to_dict().items() if k != "name"} for e in env
@@ -377,7 +377,7 @@ class SkymapScannerStarterJob:
     def make_v1_env_vars(
         rest_address: str,
         scan_id: str,
-        max_reco_time: int | None,
+        max_pixel_reco_time: int | None,
     ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to all containers.
 
@@ -417,8 +417,8 @@ class SkymapScannerStarterJob:
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
             "EWMS_PILOT_SUBPROC_TIMEOUT": (
-                max_reco_time
-                if max_reco_time
+                max_pixel_reco_time
+                if max_pixel_reco_time
                 else ENV.EWMS_PILOT_SUBPROC_TIMEOUT  # may also be None
             ),
             "EWMS_PILOT_QUARANTINE_TIME": ENV.EWMS_PILOT_QUARANTINE_TIME,
