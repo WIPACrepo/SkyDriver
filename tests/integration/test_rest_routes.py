@@ -409,11 +409,12 @@ async def _delete_scan(
     last_known_manifest: StrDict,
     last_known_result: StrDict,
     is_final: bool,
+    delete_completed_scan: bool | None,
 ) -> None:
     # DELETE SCAN
     body = {}
-    if is_final:
-        body["delete_completed_scan"] = True
+    if delete_completed_scan is not None:
+        body["delete_completed_scan"] = delete_completed_scan
     resp = await rc.request("DELETE", f"/scan/{scan_id}", body)
     assert resp == {
         "manifest": {
@@ -591,7 +592,7 @@ async def test_00(
     #
     # DELETE SCAN
     #
-    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True)
+    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
 
 
 async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
@@ -795,7 +796,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     print(e.value)
 
     # OK
-    await _delete_scan(rc, event_metadata, scan_id, manifest, result, False)
+    await _delete_scan(rc, event_metadata, scan_id, manifest, result, False, True)
 
     # also OK
-    await _delete_scan(rc, event_metadata, scan_id, manifest, result, False)
+    await _delete_scan(rc, event_metadata, scan_id, manifest, result, False, True)
