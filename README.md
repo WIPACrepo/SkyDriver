@@ -9,9 +9,9 @@ SkyDriver automates the entire scanning of an event: starting all servers and wo
 
 One of many workflows may be:
 1. Request a scan ([POST @ `/scan`](#scan---post))
-2. Check for progress updates ([GET @ `/scan/SCAN_ID/manifest`](#scanscan_idmanifest---get))
-3. Check for partial results ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get))
-4. Get a final result ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get))
+2. Check for progress updates ([GET @ `/scan/SCAN_ID/manifest`](#scanscan_idmanifest---get) or [GET @ `/scan/SCAN_ID`](#scanscan_id---get))
+3. Check for partial results ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get) or [GET @ `/scan/SCAN_ID`](#scanscan_id---get))
+4. Get a final result ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get) or [GET @ `/scan/SCAN_ID`](#scanscan_id---get))
 5. [Make plots](#making-plots-with-a-scans-result-using-the-scan_id)
 
 
