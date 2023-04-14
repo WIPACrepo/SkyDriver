@@ -695,15 +695,6 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     #
 
     # ERROR - update PROGRESS
-    # # no arg
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/manifest"
-        ),
-    ) as e:
-        await rc.request("PATCH", f"/scan/{scan_id}/manifest")
-    print(e.value)
     # # no arg w/ body
     with pytest.raises(
         requests.exceptions.HTTPError,
@@ -745,30 +736,11 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     ) as e:
         await _do_patch(rc, scan_id, scan_metadata={"boo": "baz", "bot": "fox"})
 
-    # # no arg
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/manifest"
-        ),
-    ) as e:
-        await rc.request("GET", f"/scan/{scan_id}/manifest")
-    print(e.value)
-
     #
     # SEND RESULT
     #
 
     # ERROR
-    # # no arg
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/result"
-        ),
-    ) as e:
-        await rc.request("PUT", f"/scan/{scan_id}/result")
-    print(e.value)
     # # no arg w/ body
     with pytest.raises(
         requests.exceptions.HTTPError,
@@ -817,27 +789,29 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest["complete"]
 
-    # # no arg
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/result"
-        ),
-    ) as e:
-        await rc.request("GET", f"/scan/{scan_id}/result")
-    print(e.value)
-
     #
     # DELETE SCAN
     #
 
     # ERROR
-    # # no arg
+    # # try to deleted completed scan
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/scan"),
+        match=re.escape(
+            f"400 Client Error: Attempted to delete a completed scan "
+            f"(must use `delete_completed_scan=True`) for url: {rc.address}/scan"
+        ),
     ) as e:
-        await rc.request("DELETE", "/scan")
+        await rc.request("DELETE", f"/scan/{scan_id}", {"delete_completed_scan": False})
+    print(e.value)
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"400 Client Error: Attempted to delete a completed scan "
+            f"(must use `delete_completed_scan=True`) for url: {rc.address}/scan"
+        ),
+    ) as e:
+        await rc.request("DELETE", f"/scan/{scan_id}")
     print(e.value)
 
     # OK

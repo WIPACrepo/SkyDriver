@@ -333,7 +333,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # check DB states
         manifest = await self.manifests.get(scan_id, True)
         if manifest.complete and not delete_completed_scan:
-            msg = "Attempting to delete a completed scan. Use `delete_completed_scan=True`."
+            msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
                 400,
                 log_message=msg,
