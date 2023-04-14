@@ -114,7 +114,7 @@ None
 &nbsp;
 ### `/scan/SCAN_ID` - DELETE
 -------------------------------------------------------------------------------
-_Abort a scan and/or mark manifest and result as "deleted"_
+_Abort a scan and/or mark scan (manifest and result) as "deleted"_
 
 #### Arguments
 | Argument                  | Type        | Required/Default | Description          |
