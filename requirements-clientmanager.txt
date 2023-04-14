@@ -28,7 +28,7 @@ coloredlogs==15.0.1
     # via
     #   UNKNOWN (setup.py)
     #   wipac-telemetry
-cryptography==40.0.1
+cryptography==40.0.2
     # via pyjwt
 dacite==1.8.0
     # via UNKNOWN (setup.py)
