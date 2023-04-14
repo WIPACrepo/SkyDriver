@@ -47,53 +47,6 @@ _Launch a new scan of an event_
 #### Returns
 dict - [Manifest](#manifest)
 
-&nbsp;
-### `/scan/SCAN_ID` - GET
--------------------------------------------------------------------------------
-_Retrieve the manifest & result of a scan_
-
-#### Arguments
-| Argument            | Type        | Required/Default | Description          |
-| ------------------- | ----------- | ---------------- | -------------------- |
-| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
-
-#### SkyDriver Effects
-None
-
-#### Returns
-```
-{
-    "manifest": Manifest dict,
-    "result": Result dict,
-}
-```
-- See [Manifest](#manifest)
-- See [Result](#result)
-
-&nbsp;
-### `/scan/SCAN_ID` - DELETE
--------------------------------------------------------------------------------
-_Abort a scan and/or mark manifest & result as "deleted"_
-
-#### Arguments
-| Argument                  | Type        | Required/Default | Description          |
-| ------------------------- | ----------- | ---------------- | -------------------- |
-| `"delete_completed_scan"` | bool        | default: `False` | whether to mark a completed scan as "deleted" -- *this is not needed for aborting an ongoing scan*
-
-#### SkyDriver Effects
-- The Skymap Scanner instance is stopped and removed
-- The scan's manifest & result are marked as "deleted" in the database
-
-#### Returns
-```
-{
-    "manifest": Manifest dict,
-    "result": Result dict,
-}
-```
-- See [Manifest](#manifest)
-- See [Result](#result)
-
 
 &nbsp;
 ### `/scan/SCAN_ID/manifest` - GET
@@ -152,6 +105,55 @@ None
     "scan_ids": scan_ids,  # list of strings
 }
 ```
+
+
+&nbsp;
+### `/scan/SCAN_ID` - GET
+-------------------------------------------------------------------------------
+_Retrieve the manifest & result of a scan_
+
+#### Arguments
+| Argument            | Type        | Required/Default | Description          |
+| ------------------- | ----------- | ---------------- | -------------------- |
+| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
+
+#### SkyDriver Effects
+None
+
+#### Returns
+```
+{
+    "manifest": Manifest dict,
+    "result": Result dict,
+}
+```
+- See [Manifest](#manifest)
+- See [Result](#result)
+
+
+&nbsp;
+### `/scan/SCAN_ID` - DELETE
+-------------------------------------------------------------------------------
+_Abort a scan and/or mark manifest & result as "deleted"_
+
+#### Arguments
+| Argument                  | Type        | Required/Default | Description          |
+| ------------------------- | ----------- | ---------------- | -------------------- |
+| `"delete_completed_scan"` | bool        | default: `False` | whether to mark a completed scan as "deleted" -- *this is not needed for aborting an ongoing scan*
+
+#### SkyDriver Effects
+- The Skymap Scanner instance is stopped and removed
+- The scan's manifest & result are marked as "deleted" in the database
+
+#### Returns
+```
+{
+    "manifest": Manifest dict,
+    "result": Result dict,
+}
+```
+- See [Manifest](#manifest)
+- See [Result](#result)
 
 
 &nbsp;
