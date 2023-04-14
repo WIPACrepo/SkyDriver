@@ -417,16 +417,11 @@ async def _delete_scan(
     resp = await rc.request("DELETE", f"/scan/{scan_id}", body)
     assert resp == {
         "manifest": dict(
+            **resp["manifest"],
+            # only checking these fields:
             scan_id=scan_id,
             is_deleted=True,
-            event_metadata=resp["event_metadata"],
             progress=last_known_manifest["progress"],
-            event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
-            scan_metadata=resp["scan_metadata"],  # not checking
-            condor_clusters=resp["condor_clusters"],  # not checking
-            scanner_server_args=resp["scanner_server_args"],  # not checking
-            tms_args=resp["tms_args"],  # not checking
-            env_vars=resp["env_vars"],  # not checking
             complete=last_known_manifest["complete"],
             # TODO: check more fields in future (hint: ctrl+F this comment)
         ),
