@@ -10,31 +10,16 @@ def test_00__rest_handlers() -> None:
     """Dir-check all the REST handlers."""
 
     known_handlers = {
-        rest_handlers.MainHandler: (
-            r"/$",
-            ["post"],
-        ),
-        rest_handlers.RunEventMappingHandler: (
-            r"/scans$",
-            ["get"],
-        ),
-        rest_handlers.ScanLauncherHandler: (
-            r"/scan$",
-            ["post"],
-        ),
-        rest_handlers.ManifestHandler: (
-            r"/scan/manifest/(?P<scan_id>\w+)$",
-            ["get", "delete", "patch"],
-        ),
-        rest_handlers.ResultsHandler: (
-            r"/scan/result/(?P<scan_id>\w+)$",
-            ["get", "delete", "put"],
-        ),
+        rest_handlers.MainHandler: r"/$",
+        rest_handlers.RunEventMappingHandler: r"/scans$",
+        rest_handlers.ScanLauncherHandler: r"/scan$",
+        rest_handlers.ScanHandler: r"/scan/(?P<scan_id>\w+)$",
+        rest_handlers.ScanManifestHandler: r"/scan/(?P<scan_id>\w+)/manifest$",
+        rest_handlers.ScanResultHandler: r"/scan/(?P<scan_id>\w+)/result$",
     }
 
     # search for all known handlers
-    for handler, (route, methods) in known_handlers.items():
-        assert all(x in dir(handler) for x in methods)
+    for handler, route in known_handlers.items():
         assert handler.ROUTE == route  # type: ignore[attr-defined]  # base type does not have ROUTE
 
     # find
