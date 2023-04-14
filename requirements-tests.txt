@@ -106,7 +106,7 @@ pymongo==4.3.3
     #   motor
 pypng==0.20220715.0
     # via qrcode
-pytest==7.3.0
+pytest==7.3.1
     # via
     #   UNKNOWN (setup.py)
     #   pytest-asyncio
