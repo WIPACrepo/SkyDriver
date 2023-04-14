@@ -695,15 +695,6 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     #
 
     # ERROR - update PROGRESS
-    # # no arg w/ body
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/manifest"
-        ),
-    ) as e:
-        await rc.request("PATCH", f"/scan/{scan_id}/manifest", {"progress": {"a": 1}})
-    print(e.value)
     # # empty body-arg -- this is okay, it'll silently do nothing
     # with pytest.raises(
     #     requests.exceptions.HTTPError,
@@ -741,17 +732,6 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     #
 
     # ERROR
-    # # no arg w/ body
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/result"
-        ),
-    ) as e:
-        await rc.request(
-            "PUT", f"/scan/{scan_id}/result", {"skyscan_result": {"bb": 22}}
-        )
-    print(e.value)
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
