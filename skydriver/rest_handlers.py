@@ -360,6 +360,21 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             }
         )
 
+    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
+        """Get manifest & result."""
+        incl_del = self.get_argument("include_deleted", default=False, type=bool)
+
+        manifest = await self.manifests.get(scan_id, incl_del)
+        result = await self.results.get(scan_id, incl_del)
+
+        self.write(
+            {
+                "manifest": dc.asdict(manifest),
+                "result": dc.asdict(result),
+            }
+        )
+
 
 # -----------------------------------------------------------------------------
 
