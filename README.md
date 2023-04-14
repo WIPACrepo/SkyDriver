@@ -61,7 +61,7 @@ _Retrieve the manifest of a scan_
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
-| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
+| `"include_deleted"` | bool        | default: `False` | If `False` (or not given) and the scan was deleted, a  404 error is replied
 
 #### SkyDriver Effects
 None
@@ -78,7 +78,7 @@ _Retrieve the result of a scan_
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
-| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
+| `"include_deleted"` | bool        | default: `False` | If `False` (or not given) and the scan was deleted, a  404 error is replied
 
 #### SkyDriver Effects
 None
@@ -95,7 +95,7 @@ _Retrieve the manifest and result of a scan_
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
-| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
+| `"include_deleted"` | bool        | default: `False` | If `False` (or not given) and the scan was deleted, a  404 error is replied
 
 #### SkyDriver Effects
 None
