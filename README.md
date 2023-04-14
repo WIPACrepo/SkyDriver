@@ -9,10 +9,15 @@ SkyDriver automates the entire scanning of an event: starting all servers and wo
 
 One of many workflows may be:
 1. Request a scan ([POST @ `/scan`](#scan---post))
-2. Check for progress updates ([GET @ `/scan/SCAN_ID/manifest`](#scanscan_idmanifest---get) or [GET @ `/scan/SCAN_ID`](#scanscan_id---get))
-3. Check for partial results ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get) or [GET @ `/scan/SCAN_ID`](#scanscan_id---get))
-4. Get a final result ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get) or [GET @ `/scan/SCAN_ID`](#scanscan_id---get))
+2. Check for progress updates ([GET @ `/scan/SCAN_ID/manifest`](#scanscan_idmanifest---get))
+3. Check for partial results ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get))
+4. Get a final result ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get))
 5. [Make plots](#making-plots-with-a-scans-result-using-the-scan_id)
+
+Another workflow:
+1. Find a scan id for a particular run & event ([GET @ `/scans`](#scans---get))
+2. Get the scan's manifest & result ([GET @ `/scan/SCAN_ID`](#scanscan_id---get))
+
 
 
 &nbsp;
@@ -83,31 +88,6 @@ dict - [Result](#result)
 
 
 &nbsp;
-### `/scans` - GET
--------------------------------------------------------------------------------
-_Retrieve scan ids corresponding to a specific run & event_
-
-#### Arguments
-| Argument            | Type        | Required/Default | Description          |
-| ------------------- | ----------- | ---------------- | -------------------- |
-| `"run_id"`          | int         | *[REQUIRED]*     | id of the run
-| `"event_id"`        | int         | *[REQUIRED]*     | id of the event
-| `"is_real_event"`   | bool        | *[REQUIRED]*     | whether this event is real or simulated
-| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
-
-#### SkyDriver Effects
-None
-
-#### Returns
-```
-{
-    "event_id": event_id,
-    "scan_ids": scan_ids,  # list of strings
-}
-```
-
-
-&nbsp;
 ### `/scan/SCAN_ID` - GET
 -------------------------------------------------------------------------------
 _Retrieve the manifest & result of a scan_
@@ -154,6 +134,31 @@ _Abort a scan and/or mark manifest & result as "deleted"_
 ```
 - See [Manifest](#manifest)
 - See [Result](#result)
+
+
+&nbsp;
+### `/scans` - GET
+-------------------------------------------------------------------------------
+_Retrieve scan ids corresponding to a specific run & event_
+
+#### Arguments
+| Argument            | Type        | Required/Default | Description          |
+| ------------------- | ----------- | ---------------- | -------------------- |
+| `"run_id"`          | int         | *[REQUIRED]*     | id of the run
+| `"event_id"`        | int         | *[REQUIRED]*     | id of the event
+| `"is_real_event"`   | bool        | *[REQUIRED]*     | whether this event is real or simulated
+| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
+
+#### SkyDriver Effects
+None
+
+#### Returns
+```
+{
+    "event_id": event_id,
+    "scan_ids": scan_ids,  # list of strings
+}
+```
 
 
 &nbsp;
