@@ -411,7 +411,10 @@ async def _delete_scan(
     is_final: bool,
 ) -> None:
     # DELETE SCAN
-    resp = await rc.request("DELETE", f"/scan/{scan_id}")
+    body = {}
+    if is_final:
+        body["delete_completed_scan"] = True
+    resp = await rc.request("DELETE", f"/scan/{scan_id}", body)
     assert resp == {
         "manifest": dict(
             scan_id=scan_id,
