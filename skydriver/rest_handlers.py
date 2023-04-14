@@ -379,7 +379,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles actions on scan's manifest."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/manifest$"
@@ -442,7 +442,7 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles actions on persisted scan results."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/result$"

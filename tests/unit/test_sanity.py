@@ -22,13 +22,17 @@ def test_00__rest_handlers() -> None:
             r"/scan$",
             ["post"],
         ),
-        rest_handlers.ManifestHandler: (
-            r"/scan/manifest/(?P<scan_id>\w+)$",
-            ["get", "delete", "patch"],
+        rest_handlers.ScanHandler: (
+            r"/scan/(?P<scan_id>\w+)$",
+            ["get", "delete"],
         ),
-        rest_handlers.ResultsHandler: (
-            r"/scan/result/(?P<scan_id>\w+)$",
-            ["get", "delete", "put"],
+        rest_handlers.ScanManifestHandler: (
+            r"/scan/(?P<scan_id>\w+)/manifest$",
+            ["get", "patch"],
+        ),
+        rest_handlers.ScanResultHandler: (
+            r"/scan/(?P<scan_id>\w+)/result$",
+            ["get", "put"],
         ),
     }
 
