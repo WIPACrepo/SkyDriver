@@ -9,9 +9,9 @@ SkyDriver automates the entire scanning of an event: starting all servers and wo
 
 One of many workflows may be:
 1. Request a scan ([POST @ `/scan`](#scan---post))
-2. Check for progress updates ([GET @ `/scan/manifest/SCAN_ID`](#scanmanifestscan_id---get))
-3. Check for partial results ([GET @ `/scan/result/SCAN_ID`](#scanresultscan_id---get))
-4. Get a final result ([GET @ `/scan/result/SCAN_ID`](#scanresultscan_id---get))
+2. Check for progress updates ([GET @ `/scan/SCAN_ID/manifest`](#scanscan_idmanifest---get))
+3. Check for partial results ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get))
+4. Get a final result ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get))
 5. [Make plots](#making-plots-with-a-scans-result-using-the-scan_id)
 
 
@@ -42,14 +42,61 @@ _Launch a new scan of an event_
 
 #### SkyDriver Effects
 - Creates and starts a new Skymap Scanner instance spread across many HTCondor workers
-- The new scanner will send updates routinely and when the scan completes (see [GET (manifest)](#scanmanifestscan_id-get) and [GET (result)](#scanresultscan_id-get))
+- The new scanner will send updates routinely and when the scan completes (see [GET (manifest)](#scanscan_idmanifest-get) and [GET (result)](#scanscan_idresult-get))
 
 #### Returns
 dict - [Manifest](#manifest)
 
+&nbsp;
+### `/scan/SCAN_ID` - GET
+-------------------------------------------------------------------------------
+_Retrieve the manifest & result of a scan_
+
+#### Arguments
+| Argument            | Type        | Required/Default | Description          |
+| ------------------- | ----------- | ---------------- | -------------------- |
+| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
+
+#### SkyDriver Effects
+None
+
+#### Returns
+```
+{
+    "manifest": Manifest dict,
+    "result": Result dict,
+}
+```
+- See [Manifest](#manifest)
+- See [Result](#result)
 
 &nbsp;
-### `/scan/manifest/SCAN_ID` - GET
+### `/scan/SCAN_ID` - DELETE
+-------------------------------------------------------------------------------
+_Abort a scan and/or mark manifest & result as "deleted"_
+
+#### Arguments
+| Argument                  | Type        | Required/Default | Description          |
+| ------------------------- | ----------- | ---------------- | -------------------- |
+| `"delete_completed_scan"` | bool        | default: `False` | whether to mark a completed scan as "deleted" -- *this is not needed for aborting an ongoing scan*
+
+#### SkyDriver Effects
+- The Skymap Scanner instance is stopped and removed
+- The scan's manifest & result are marked as "deleted" in the database
+
+#### Returns
+```
+{
+    "manifest": Manifest dict,
+    "result": Result dict,
+}
+```
+- See [Manifest](#manifest)
+- See [Result](#result)
+
+
+&nbsp;
+### `/scan/SCAN_ID/manifest` - GET
 -------------------------------------------------------------------------------
 _Retrieve the manifest of a scan_
 
@@ -66,23 +113,7 @@ dict - [Manifest](#manifest)
 
 
 &nbsp;
-### `/scan/manifest/SCAN_ID` - DELETE
--------------------------------------------------------------------------------
-_Abort ongoing scan_
-
-#### Arguments
-None
-
-#### SkyDriver Effects
-- The Skymap Scanner instance is stopped and removed
-- The scan's manifest is marked as "deleted" in the database
-
-#### Returns
-dict - [Manifest](#manifest)
-
-
-&nbsp;
-### `/scan/result/SCAN_ID` - GET
+### `/scan/SCAN_ID/result` - GET
 -------------------------------------------------------------------------------
 _Retrieve the result of a scan_
 
@@ -97,20 +128,6 @@ None
 #### Returns
 dict - [Result](#result)
 
-
-&nbsp;
-### `/scan/result/SCAN_ID` - DELETE
--------------------------------------------------------------------------------
-_Delete the result of a scan_
-
-#### Arguments
-None
-
-#### SkyDriver Effects
-The result is marked as "deleted" in the database
-
-#### Returns
-dict - [Result](#result)
 
 &nbsp;
 ### `/scans` - GET
