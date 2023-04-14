@@ -382,7 +382,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles actions on scan's manifest."""
 
-    ROUTE = r"/scan/manifest/(?P<scan_id>\w+)$"
+    ROUTE = r"/scan/(?P<scan_id>\w+)/manifest$"
 
     @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
@@ -445,7 +445,7 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles actions on persisted scan results."""
 
-    ROUTE = r"/scan/result/(?P<scan_id>\w+)$"
+    ROUTE = r"/scan/(?P<scan_id>\w+)/result$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
