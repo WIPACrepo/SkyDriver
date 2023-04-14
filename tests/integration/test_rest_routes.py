@@ -775,7 +775,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     #
 
     # ERROR
-    # # try to deleted completed scan
+    # # try to delete completed scan
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
@@ -796,7 +796,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     print(e.value)
 
     # OK
-    await _delete_scan(rc, event_metadata, scan_id, manifest, result, False, True)
+    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
 
     # also OK
-    await _delete_scan(rc, event_metadata, scan_id, manifest, result, False, True)
+    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
