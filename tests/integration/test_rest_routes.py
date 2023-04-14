@@ -17,15 +17,25 @@ import skydriver
 import skydriver.images  # noqa: F401
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.client import RestClient
-from skydriver.config import config_logging
 from skydriver.database.interface import drop_collections
 from skydriver.server import make, mongodb_url
 
-config_logging("debug")
+skydriver.config.config_logging("debug")
 
 StrDict = dict[str, Any]
 
 ########################################################################################
+
+SCHEDD_LOOKUP = {
+    "foobar": {
+        "collector": "for-sure.a-collector.edu",
+        "schedd": "foobar.schedd.edu",
+    },
+    "a-schedd": {
+        "collector": "the-collector.edu",
+        "schedd": "a-schedd.edu",
+    },
+}
 
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
@@ -62,6 +72,9 @@ async def server(
     mongo_clear: Any,  # pylint:disable=unused-argument
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
+
+    # patch at directly named import that happens before running the test
+    monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CONDORS", SCHEDD_LOOKUP)
     monkeypatch.setattr(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
@@ -83,9 +96,7 @@ async def server(
 
 POST_SCAN_BODY = {
     "cluster": {
-        "collector": "le-collector.edu",
-        "schedd": "un-schedd.edu",
-        "njobs": 1,
+        "foobar": 1,
     },
     "reco_algo": "anything",
     "event_i3live_json": {"a": 22},
@@ -110,18 +121,18 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
     )
 
     clusters = post_scan_body["cluster"]
-    if not isinstance(clusters, list):
-        clusters = [clusters]
+    if isinstance(clusters, dict):
+        clusters = list(clusters.items())
     match len(clusters):
         # doing things manually here so we don't duplicate the same method used in the app
         case 1:
             tms_args = [
                 f"python -m clientmanager "
-                f" --collector {clusters[0]['collector']} "
-                f" --schedd {clusters[0]['schedd']} "
+                f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
+                f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
                 f" start "
-                f" --n-jobs {clusters[0]['njobs']} "
-                f" --memory 6GB "
+                f" --n-jobs {clusters[0][1]} "
+                f" --memory 8GB "
                 f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
                 # f" --logs-directory /common-space "
@@ -129,21 +140,53 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         case 2:
             tms_args = [
                 f"python -m clientmanager "
-                f" --collector {clusters[0]['collector']} "
-                f" --schedd {clusters[0]['schedd']} "
+                f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
+                f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
                 f" start "
-                f" --n-jobs {clusters[0]['njobs']} "
-                f" --memory 6GB "
+                f" --n-jobs {clusters[0][1]} "
+                f" --memory 8GB "
                 f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
                 # f" --logs-directory /common-space "
                 ,
                 f"python -m clientmanager "
-                f" --collector {clusters[1]['collector']} "
-                f" --schedd {clusters[1]['schedd']} "
+                f" --collector {SCHEDD_LOOKUP[clusters[1][0]]['collector']} "
+                f" --schedd {SCHEDD_LOOKUP[clusters[1][0]]['schedd']} "
                 f" start "
-                f" --n-jobs {clusters[1]['njobs']} "
-                f" --memory 6GB "
+                f" --n-jobs {clusters[1][1]} "
+                f" --memory 8GB "
+                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --client-startup-json /common-space/startup.json "
+                # f" --logs-directory /common-space "
+            ]
+        case 3:
+            tms_args = [
+                f"python -m clientmanager "
+                f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
+                f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
+                f" start "
+                f" --n-jobs {clusters[0][1]} "
+                f" --memory 8GB "
+                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --client-startup-json /common-space/startup.json "
+                # f" --logs-directory /common-space "
+                ,
+                f"python -m clientmanager "
+                f" --collector {SCHEDD_LOOKUP[clusters[1][0]]['collector']} "
+                f" --schedd {SCHEDD_LOOKUP[clusters[1][0]]['schedd']} "
+                f" start "
+                f" --n-jobs {clusters[1][1]} "
+                f" --memory 8GB "
+                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --client-startup-json /common-space/startup.json "
+                # f" --logs-directory /common-space "
+                ,
+                f"python -m clientmanager "
+                f" --collector {SCHEDD_LOOKUP[clusters[2][0]]['collector']} "
+                f" --schedd {SCHEDD_LOOKUP[clusters[2][0]]['schedd']} "
+                f" start "
+                f" --n-jobs {clusters[2][1]} "
+                f" --memory 8GB "
                 f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
                 # f" --logs-directory /common-space "
@@ -168,7 +211,10 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
 
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
-    assert [a.split() for a in resp["tms_args"]] == [a.split() for a in tms_args]
+    # fmt: off
+    # order of tms args doesn't matter here
+    assert sorted(a.split() for a in resp["tms_args"]) == sorted(a.split() for a in tms_args)
+    # fmt: on
 
     # check env vars
     print(resp["env_vars"])
@@ -353,8 +399,8 @@ async def _clientmanager_reply(
 ) -> StrDict:
     # reply as the clientmanager with a new condor cluster
     condor_cluster = dict(
-        collector="le-collector.edu",
-        schedd="un-schedd.edu",
+        collector="for-sure.a-collector.edu",
+        schedd="this.schedd.edu",
         cluster_id=random.randint(1, 10000),
         jobs=random.randint(1, 10000),
     )
@@ -518,29 +564,13 @@ async def _delete_scan(
 @pytest.mark.parametrize(
     "clusters",
     [
-        [
-            {
-                "collector": "le-collector.edu",
-                "schedd": "un-schedd.edu",
-                "njobs": 1,
-            }
-        ],
-        [
-            {
-                "collector": "le-collector.edu",
-                "schedd": "un-schedd.edu",
-                "njobs": 1,
-            },
-            {
-                "collector": "the-collector.edu",
-                "schedd": "a-schedd.edu",
-                "njobs": 999,
-            },
-        ],
+        {"foobar": 1},
+        {"foobar": 1, "a-schedd": 999},
+        [["foobar", 1], ["a-schedd", 999], ["a-schedd", 1234]],
     ],
 )
 async def test_00(
-    clusters: list[dict],
+    clusters: list | dict,
     docker_tag_input_and_expect: tuple[str, str],
     server: Callable[[], RestClient],
 ) -> None:
