@@ -313,6 +313,19 @@ async def stop_scanner_instance(
     await manifests.patch(scan_id, complete=True)
 
 
+async def validate_complete_status(
+    manifest: database.schema.Manifest,
+    delete_completed_scan: bool,
+) -> None:
+    if manifest.complete and not delete_completed_scan:
+        msg = "Attempting to delete a completed scan's manifest. Use `delete_completed_scan=True`."
+        raise web.HTTPError(
+            400,
+            log_message=msg,
+            reason=msg,
+        )
+
+
 # -----------------------------------------------------------------------------
 
 
@@ -333,6 +346,17 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan."""
+        delete_completed_scan = self.get_argument(
+            "delete_completed_scan",
+            default=False,
+            type=bool,
+        )
+
+        # check DB states
+        manifest = await self.manifests.get(scan_id, True)
+        await validate_complete_status(manifest, delete_completed_scan)
+
+        # Abort
         await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
 
         manifest = await self.manifests.mark_as_deleted(scan_id)
