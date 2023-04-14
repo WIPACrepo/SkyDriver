@@ -85,8 +85,9 @@ async def make(debug: bool = False) -> RestServer:
     for klass in [
         rest_handlers.RunEventMappingHandler,
         rest_handlers.MainHandler,
-        rest_handlers.ManifestHandler,
-        rest_handlers.ResultsHandler,
+        rest_handlers.ScanHandler,
+        rest_handlers.ScanManifestHandler,
+        rest_handlers.ScanResultHandler,
         rest_handlers.ScanLauncherHandler,
     ]:
         try:

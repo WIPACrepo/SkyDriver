@@ -316,10 +316,66 @@ async def stop_scanner_instance(
 # -----------------------------------------------------------------------------
 
 
-class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles actions on scan's manifest."""
 
-    ROUTE = r"/scan/manifest/(?P<scan_id>\w+)$"
+    ROUTE = r"/scan/(?P<scan_id>\w+)$"
+
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    async def delete(self, scan_id: str) -> None:
+        """Abort a scan and/or mark manifest & result as "deleted"."""
+        delete_completed_scan = self.get_argument(
+            "delete_completed_scan",
+            default=False,
+            type=bool,
+        )
+
+        # check DB states
+        manifest = await self.manifests.get(scan_id, True)
+        if manifest.complete and not delete_completed_scan:
+            msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
+            raise web.HTTPError(
+                400,
+                log_message=msg,
+                reason=msg,
+            )
+
+        # Abort
+        await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
+
+        manifest = await self.manifests.mark_as_deleted(scan_id)
+        result = await self.results.mark_as_deleted(scan_id)
+
+        self.write(
+            {
+                "manifest": dc.asdict(manifest),
+                "result": dc.asdict(result),
+            }
+        )
+
+    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
+        """Get manifest & result."""
+        incl_del = self.get_argument("include_deleted", default=False, type=bool)
+
+        manifest = await self.manifests.get(scan_id, incl_del)
+        result = await self.results.get(scan_id, incl_del)
+
+        self.write(
+            {
+                "manifest": dc.asdict(manifest),
+                "result": dc.asdict(result),
+            }
+        )
+
+
+# -----------------------------------------------------------------------------
+
+
+class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles actions on scan's manifest."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/manifest$"
 
     @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
@@ -327,15 +383,6 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
         manifest = await self.manifests.get(scan_id, incl_del)
-
-        self.write(dc.asdict(manifest))
-
-    @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    async def delete(self, scan_id: str) -> None:
-        """Abort a scan."""
-        await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
-
-        manifest = await self.manifests.mark_as_deleted(scan_id)
 
         self.write(dc.asdict(manifest))
 
@@ -388,10 +435,10 @@ class ManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles actions on persisted scan results."""
 
-    ROUTE = r"/scan/result/(?P<scan_id>\w+)$"
+    ROUTE = r"/scan/(?P<scan_id>\w+)/result$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
@@ -399,13 +446,6 @@ class ResultsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
         result = await self.results.get(scan_id, incl_del)
-
-        self.write(dc.asdict(result))
-
-    @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    async def delete(self, scan_id: str) -> None:
-        """Delete a scan's persisted result."""
-        result = await self.results.mark_as_deleted(scan_id)
 
         self.write(dc.asdict(result))
 

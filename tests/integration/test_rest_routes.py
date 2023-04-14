@@ -231,7 +231,7 @@ async def _do_patch(
     condor_cluster: StrDict | None = None,
     previous_clusters: list[StrDict] | None = None,
 ) -> StrDict:
-    # do PATCH @ /scan/manifest, assert response
+    # do PATCH @ /scan/{scan_id}/manifest, assert response
     body = {}
     if progress:
         body["progress"] = progress
@@ -244,7 +244,7 @@ async def _do_patch(
         assert isinstance(previous_clusters, list)  # gotta include this one too
     assert body
 
-    resp = await rc.request("PATCH", f"/scan/manifest/{scan_id}", body)
+    resp = await rc.request("PATCH", f"/scan/{scan_id}/manifest", body)
     assert resp == dict(
         scan_id=scan_id,
         is_deleted=False,
@@ -277,7 +277,7 @@ async def _do_patch(
     )
     manifest = resp  # keep around
     # query progress
-    resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
+    resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert resp == manifest
     return manifest  # type: ignore[no-any-return]
 
@@ -380,7 +380,7 @@ async def _send_result(
         result["gamma"] = 5
     resp = await rc.request(
         "PUT",
-        f"/scan/result/{scan_id}",
+        f"/scan/{scan_id}/result",
         {"skyscan_result": result, "is_final": is_final},
     )
     assert resp == {
@@ -392,55 +392,90 @@ async def _send_result(
     result = resp  # keep around
 
     # query progress
-    resp = await rc.request("GET", f"/scan/manifest/{scan_id}")
+    resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert resp == last_known_manifest
 
     # query result
-    resp = await rc.request("GET", f"/scan/result/{scan_id}")
+    resp = await rc.request("GET", f"/scan/{scan_id}/result")
     assert resp == result
 
     return result
 
 
-async def _delete_manifest(
+async def _delete_scan(
     rc: RestClient,
     event_metadata: StrDict,
     scan_id: str,
     last_known_manifest: StrDict,
     last_known_result: StrDict,
+    is_final: bool,
+    delete_completed_scan: bool | None,
 ) -> None:
-    # delete manifest
-    resp = await rc.request("DELETE", f"/scan/manifest/{scan_id}")
-    assert resp == dict(
-        scan_id=scan_id,
-        is_deleted=True,
-        event_metadata=resp["event_metadata"],
-        progress=last_known_manifest["progress"],
-        event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
-        scan_metadata=resp["scan_metadata"],  # not checking
-        condor_clusters=resp["condor_clusters"],  # not checking
-        scanner_server_args=resp["scanner_server_args"],  # not checking
-        tms_args=resp["tms_args"],  # not checking
-        env_vars=resp["env_vars"],  # not checking
-        complete=last_known_manifest["complete"],
-        # TODO: check more fields in future (hint: ctrl+F this comment)
-    )
+    # DELETE SCAN
+    body = {}
+    if delete_completed_scan is not None:
+        body["delete_completed_scan"] = delete_completed_scan
+    resp = await rc.request("DELETE", f"/scan/{scan_id}", body)
+    assert resp == {
+        "manifest": {
+            **resp["manifest"],
+            # only checking these fields:
+            "scan_id": scan_id,
+            "is_deleted": True,
+            "progress": last_known_manifest["progress"],
+            "complete": last_known_manifest["complete"],
+            # TODO: check more fields in future (hint: ctrl+F this comment)
+        },
+        "result": {
+            "scan_id": scan_id,
+            "is_deleted": True,
+            "is_final": is_final,
+            "skyscan_result": last_known_result["skyscan_result"],
+        },
+    }
     del_resp = resp  # keep around
 
-    # query w/ scan id (fails)
+    #
+
+    # SCAN: query w/ scan id (fails)
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest/{scan_id}"
+            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}"
         ),
     ):
-        await rc.request("GET", f"/scan/manifest/{scan_id}")
+        await rc.request("GET", f"/scan/{scan_id}")
+    # query w/ incl_del
+    resp = await rc.request("GET", f"/scan/{scan_id}", {"include_deleted": True})
+    assert resp == del_resp
 
+    # MANIFEST: query w/ scan id (fails)
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/manifest"
+        ),
+    ):
+        await rc.request("GET", f"/scan/{scan_id}/manifest")
     # query w/ incl_del
     resp = await rc.request(
-        "GET", f"/scan/manifest/{scan_id}", {"include_deleted": True}
+        "GET", f"/scan/{scan_id}/manifest", {"include_deleted": True}
     )
-    assert resp == del_resp
+    assert resp == del_resp["manifest"]
+
+    # RESULT: query w/ scan id (fails)
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=re.escape(
+            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/result"
+        ),
+    ):
+        await rc.request("GET", f"/scan/{scan_id}/result")
+    # query w/ incl_del
+    resp = await rc.request("GET", f"/scan/{scan_id}/result", {"include_deleted": True})
+    assert resp == del_resp["result"]
+
+    #
 
     # query by event id (none)
     resp = await rc.request(
@@ -453,7 +488,6 @@ async def _delete_manifest(
         },
     )
     assert not resp["scan_ids"]  # no matches
-
     # query by event id w/ incl_del
     resp = await rc.request(
         "GET",
@@ -466,40 +500,6 @@ async def _delete_manifest(
         },
     )
     assert resp["scan_ids"] == [scan_id]
-
-    # query result (still exists)
-    resp = await rc.request("GET", f"/scan/result/{scan_id}")
-    assert resp == last_known_result
-
-
-async def _delete_result(
-    rc: RestClient,
-    scan_id: str,
-    last_known_result: StrDict,
-    is_final: bool,
-) -> None:
-    # delete result
-    resp = await rc.request("DELETE", f"/scan/result/{scan_id}")
-    assert resp == {
-        "scan_id": scan_id,
-        "is_deleted": True,
-        "is_final": is_final,
-        "skyscan_result": last_known_result["skyscan_result"],
-    }
-    del_resp = resp  # keep around
-
-    # query result (fails)
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/result/{scan_id}"
-        ),
-    ):
-        await rc.request("GET", f"/scan/result/{scan_id}")
-
-    # query w/ incl_del
-    resp = await rc.request("GET", f"/scan/result/{scan_id}", {"include_deleted": True})
-    assert resp == del_resp
 
 
 ########################################################################################
@@ -586,18 +586,13 @@ async def test_00(
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(TEST_WAIT_BEFORE_TEARDOWN)
-    manifest = await rc.request("GET", f"/scan/manifest/{scan_id}")
+    manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest["complete"]
 
     #
-    # DELETE MANIFEST
+    # DELETE SCAN
     #
-    await _delete_manifest(rc, event_metadata, scan_id, manifest, result)
-
-    #
-    # DELETE RESULT
-    #
-    await _delete_result(rc, scan_id, result, True)
+    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
 
 
 async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
@@ -681,7 +676,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"400 Client Error: Cannot change an existing event_metadata for url: {rc.address}/scan/manifest"
+            f"400 Client Error: Cannot change an existing event_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
         await _do_patch(
@@ -701,41 +696,23 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     #
 
     # ERROR - update PROGRESS
-    # # no arg
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest"
-        ),
-    ) as e:
-        await rc.request("PATCH", "/scan/manifest")
-    print(e.value)
-    # # no arg w/ body
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest"
-        ),
-    ) as e:
-        await rc.request("PATCH", "/scan/manifest", {"progress": {"a": 1}})
-    print(e.value)
     # # empty body-arg -- this is okay, it'll silently do nothing
     # with pytest.raises(
     #     requests.exceptions.HTTPError,
     #     match=re.escape(
-    #         f"422 Client Error: Attempted progress update with an empty object ({{}}) for url: {rc.address}/scan/manifest/{scan_id}"
+    #         f"422 Client Error: Attempted progress update with an empty object ({{}}) for url: {rc.address}/scan/{scan_id}/manifest"
     #     ),
     # ) as e:
-    #     await rc.request("PATCH", f"/scan/manifest/{scan_id}", {"progress": {}})
+    #     await rc.request("PATCH", f"/scan/{scan_id}/manifest", {"progress": {}})
     print(e.value)
     # # bad-type body-arg
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=rf"400 Client Error: `progress`: \(ValueError\) missing value for field .* for url: {rc.address}/scan/manifest/{scan_id}",
+            match=rf"400 Client Error: `progress`: \(ValueError\) missing value for field .* for url: {rc.address}/scan/{scan_id}/manifest",
         ) as e:
             await rc.request(
-                "PATCH", f"/scan/manifest/{scan_id}", {"progress": bad_val}
+                "PATCH", f"/scan/{scan_id}/manifest", {"progress": bad_val}
             )
         print(e.value)
 
@@ -746,56 +723,28 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"400 Client Error: Cannot change an existing scan_metadata for url: {rc.address}/scan/manifest"
+            f"400 Client Error: Cannot change an existing scan_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
         await _do_patch(rc, scan_id, scan_metadata={"boo": "baz", "bot": "fox"})
-
-    # # no arg
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest"
-        ),
-    ) as e:
-        await rc.request("GET", "/scan/manifest")
-    print(e.value)
 
     #
     # SEND RESULT
     #
 
     # ERROR
-    # # no arg
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/result"
-        ),
-    ) as e:
-        await rc.request("PUT", "/scan/result")
-    print(e.value)
-    # # no arg w/ body
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/result"
-        ),
-    ) as e:
-        await rc.request("PUT", "/scan/result", {"skyscan_result": {"bb": 22}})
-    print(e.value)
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"400 Client Error: `skyscan_result`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/result/{scan_id}"
+            f"400 Client Error: `skyscan_result`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/{scan_id}/result"
         ),
     ) as e:
-        await rc.request("PUT", f"/scan/result/{scan_id}", {})
+        await rc.request("PUT", f"/scan/{scan_id}/result", {})
     print(e.value)
     # # empty body-arg -- no error, doesn't do anything but return {}
     ret = await rc.request(
-        "PUT", f"/scan/result/{scan_id}", {"skyscan_result": {}, "is_final": True}
+        "PUT", f"/scan/{scan_id}/result", {"skyscan_result": {}, "is_final": True}
     )
     assert ret == {}
     print(e.value)
@@ -804,12 +753,12 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=re.escape(
-                f"400 Client Error: `skyscan_result`: (ValueError) type mismatch: 'dict' (value is '{type(bad_val)}') for url: {rc.address}/scan/result/{scan_id}"
+                f"400 Client Error: `skyscan_result`: (ValueError) type mismatch: 'dict' (value is '{type(bad_val)}') for url: {rc.address}/scan/{scan_id}/result"
             ),
         ) as e:
             await rc.request(
                 "PUT",
-                f"/scan/result/{scan_id}",
+                f"/scan/{scan_id}/result",
                 {"skyscan_result": bad_val, "is_final": True},
             )
         print(e.value)
@@ -818,56 +767,36 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(TEST_WAIT_BEFORE_TEARDOWN)
-    manifest = await rc.request("GET", f"/scan/manifest/{scan_id}")
+    manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest["complete"]
 
-    # # no arg
-    with pytest.raises(
-        requests.exceptions.HTTPError,
-        match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/result"
-        ),
-    ) as e:
-        await rc.request("GET", "/scan/result")
-    print(e.value)
-
     #
-    # DELETE MANIFEST
+    # DELETE SCAN
     #
 
     # ERROR
-    # # no arg
+    # # try to delete completed scan
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest"
+            f"400 Client Error: Attempted to delete a completed scan "
+            f"(must use `delete_completed_scan=True`) for url: {rc.address}/scan"
         ),
     ) as e:
-        await rc.request("DELETE", "/scan/manifest")
+        await rc.request("DELETE", f"/scan/{scan_id}", {"delete_completed_scan": False})
     print(e.value)
-
-    # OK
-    await _delete_manifest(rc, event_metadata, scan_id, manifest, result)
-
-    # also OK
-    await _delete_manifest(rc, event_metadata, scan_id, manifest, result)
-
-    #
-    # DELETE RESULT
-    #
-
-    # # no arg
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/result"
+            f"400 Client Error: Attempted to delete a completed scan "
+            f"(must use `delete_completed_scan=True`) for url: {rc.address}/scan"
         ),
     ) as e:
-        await rc.request("DELETE", "/scan/result")
+        await rc.request("DELETE", f"/scan/{scan_id}")
     print(e.value)
 
     # OK
-    await _delete_result(rc, scan_id, result, True)
+    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
 
     # also OK
-    await _delete_result(rc, scan_id, result, True)
+    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
