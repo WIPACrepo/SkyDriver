@@ -416,15 +416,15 @@ async def _delete_scan(
         body["delete_completed_scan"] = True
     resp = await rc.request("DELETE", f"/scan/{scan_id}", body)
     assert resp == {
-        "manifest": dict(
+        "manifest": {
             **resp["manifest"],
             # only checking these fields:
-            scan_id=scan_id,
-            is_deleted=True,
-            progress=last_known_manifest["progress"],
-            complete=last_known_manifest["complete"],
+            "scan_id": scan_id,
+            "is_deleted": True,
+            "progress": last_known_manifest["progress"],
+            "complete": last_known_manifest["complete"],
             # TODO: check more fields in future (hint: ctrl+F this comment)
-        ),
+        },
         "result": {
             "scan_id": scan_id,
             "is_deleted": True,
