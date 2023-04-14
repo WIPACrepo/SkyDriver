@@ -231,7 +231,7 @@ async def _do_patch(
     condor_cluster: StrDict | None = None,
     previous_clusters: list[StrDict] | None = None,
 ) -> StrDict:
-    # do PATCH @ /scan/manifest, assert response
+    # do PATCH @ /scan/{scan_id}/manifest, assert response
     body = {}
     if progress:
         body["progress"] = progress
@@ -675,7 +675,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"400 Client Error: Cannot change an existing event_metadata for url: {rc.address}/scan/manifest"
+            f"400 Client Error: Cannot change an existing event_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
         await _do_patch(
@@ -699,19 +699,19 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest"
+            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
-        await rc.request("PATCH", "/scan/manifest")
+        await rc.request("PATCH", f"/scan/{scan_id}/manifest")
     print(e.value)
     # # no arg w/ body
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest"
+            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
-        await rc.request("PATCH", "/scan/manifest", {"progress": {"a": 1}})
+        await rc.request("PATCH", f"/scan/{scan_id}/manifest", {"progress": {"a": 1}})
     print(e.value)
     # # empty body-arg -- this is okay, it'll silently do nothing
     # with pytest.raises(
@@ -740,7 +740,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"400 Client Error: Cannot change an existing scan_metadata for url: {rc.address}/scan/manifest"
+            f"400 Client Error: Cannot change an existing scan_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
         await _do_patch(rc, scan_id, scan_metadata={"boo": "baz", "bot": "fox"})
@@ -749,10 +749,10 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/manifest"
+            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
-        await rc.request("GET", "/scan/manifest")
+        await rc.request("GET", f"/scan/{scan_id}/manifest")
     print(e.value)
 
     #
@@ -764,19 +764,21 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/result"
+            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/result"
         ),
     ) as e:
-        await rc.request("PUT", "/scan/result")
+        await rc.request("PUT", f"/scan/{scan_id}/result")
     print(e.value)
     # # no arg w/ body
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/result"
+            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/result"
         ),
     ) as e:
-        await rc.request("PUT", "/scan/result", {"skyscan_result": {"bb": 22}})
+        await rc.request(
+            "PUT", f"/scan/{scan_id}/result", {"skyscan_result": {"bb": 22}}
+        )
     print(e.value)
     # # empty body
     with pytest.raises(
@@ -819,10 +821,10 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/result"
+            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/result"
         ),
     ) as e:
-        await rc.request("GET", "/scan/result")
+        await rc.request("GET", f"/scan/{scan_id}/result")
     print(e.value)
 
     #
