@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.74 (2023-04-14)
+### Other
+* Add `/scan/SCANID` + Route Refactors ([#30](https://github.com/WIPACrepo/SkyDriver/issues/30)) ([`05a8a69`](https://github.com/WIPACrepo/SkyDriver/commit/05a8a6906de200defe28f9541618e040d1120c31))
+
 ## v0.0.73 (2023-04-13)
 ### Other
 * Tear Down After Final Result ([#29](https://github.com/WIPACrepo/SkyDriver/issues/29)) ([`7735a38`](https://github.com/WIPACrepo/SkyDriver/commit/7735a3886cb123262112e064e52da93e51a01ec4))
