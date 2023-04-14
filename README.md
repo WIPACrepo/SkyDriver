@@ -15,8 +15,8 @@ One of many workflows may be:
 5. [Make plots](#making-plots-with-a-scans-result-using-the-scan_id)
 
 Another workflow:
-1. Find a scan id for a particular run & event ([GET @ `/scans`](#scans---get))
-2. Get the scan's manifest & result ([GET @ `/scan/SCAN_ID`](#scanscan_id---get))
+1. Find a scan id for a particular run and event ([GET @ `/scans`](#scans---get))
+2. Get the scan's manifest and result ([GET @ `/scan/SCAN_ID`](#scanscan_id---get))
 
 
 
@@ -90,7 +90,7 @@ dict - [Result](#result)
 &nbsp;
 ### `/scan/SCAN_ID` - GET
 -------------------------------------------------------------------------------
-_Retrieve the manifest & result of a scan_
+_Retrieve the manifest and result of a scan_
 
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
@@ -114,7 +114,7 @@ None
 &nbsp;
 ### `/scan/SCAN_ID` - DELETE
 -------------------------------------------------------------------------------
-_Abort a scan and/or mark manifest & result as "deleted"_
+_Abort a scan and/or mark manifest and result as "deleted"_
 
 #### Arguments
 | Argument                  | Type        | Required/Default | Description          |
@@ -123,7 +123,7 @@ _Abort a scan and/or mark manifest & result as "deleted"_
 
 #### SkyDriver Effects
 - The Skymap Scanner instance is stopped and removed
-- The scan's manifest & result are marked as "deleted" in the database
+- The scan's manifest and result are marked as "deleted" in the database
 
 #### Returns
 ```
@@ -139,7 +139,7 @@ _Abort a scan and/or mark manifest & result as "deleted"_
 &nbsp;
 ### `/scans` - GET
 -------------------------------------------------------------------------------
-_Retrieve scan ids corresponding to a specific run & event_
+_Retrieve scan ids corresponding to a specific run and event_
 
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
