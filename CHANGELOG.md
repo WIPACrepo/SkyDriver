@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.75 (2023-04-14)
+### Other
+* <bot> update requirements-tests.txt ([`0c30528`](https://github.com/WIPACrepo/SkyDriver/commit/0c3052878813ce8f24af56e424f1e81f853b4c2b))
+* <bot> update requirements-clientmanager.txt ([`fa56532`](https://github.com/WIPACrepo/SkyDriver/commit/fa56532958bbd39be52710ff6c0197d9c0f9e5b3))
+* Route API Documentation ([#28](https://github.com/WIPACrepo/SkyDriver/issues/28)) ([`a86802a`](https://github.com/WIPACrepo/SkyDriver/commit/a86802a49fa590d30ef0ebf20b561b5c6229d282))
+
 ## v0.0.74 (2023-04-14)
 ### Other
 * Add `/scan/SCANID` + Route Refactors ([#30](https://github.com/WIPACrepo/SkyDriver/issues/30)) ([`05a8a69`](https://github.com/WIPACrepo/SkyDriver/commit/05a8a6906de200defe28f9541618e040d1120c31))
