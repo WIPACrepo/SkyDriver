@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.0.76 (2023-04-17)
+### Other
+* Pre-v0.1 Fixes ([#31](https://github.com/WIPACrepo/SkyDriver/issues/31)) ([`7353019`](https://github.com/WIPACrepo/SkyDriver/commit/73530195877c1a2ac9cd6d96b578fcad5d8a967e))
+
 ## v0.0.75 (2023-04-14)
 ### Other
 * <bot> update requirements-tests.txt ([`0c30528`](https://github.com/WIPACrepo/SkyDriver/commit/0c3052878813ce8f24af56e424f1e81f853b4c2b))
