@@ -31,7 +31,7 @@ def get_rest_client() -> RestClient:
     )
 
 
-def launch_a_scan(rc: RestClient, event_file: Path) -> str:
+def launch_a_scan(rc: RestClient, event_file: Path, n_jobs: int) -> str:
     """Request to SkyDriver to scan an event."""
     body = {
         "reco_algo": "millipede_wilks",
@@ -39,7 +39,7 @@ def launch_a_scan(rc: RestClient, event_file: Path) -> str:
         "nsides": {8: 12, 64: 12, 512: 24},
         "real_or_simulated_event": "simulated",
         "predictive_scanning_threshold": 0.3,
-        "cluster": {"sub-2": 1500},
+        "cluster": {"sub-2": n_jobs},
         "docker_tag": "latest",
     }
     resp = rc.request_seq("POST", "/scan", body)
@@ -53,14 +53,14 @@ def monitor(rc: RestClient, scan_id: str) -> None:
     while True:
         # get progress
         try:
-            progress = rc.request_seq("GET", f"/scan/manifest/{scan_id}")["progress"]
+            progress = rc.request_seq("GET", f"/scan/{scan_id}/manifest")["progress"]
             pprint(progress)
         except Exception as e:  # 404 (scanner not yet online) or KeyError (no progress yet)
             print(e)
 
         # get result
         try:
-            result = rc.request_seq("GET", f"/scan/result/{scan_id}")
+            result = rc.request_seq("GET", f"/scan/{scan_id}/result")
             pprint(result)
             pprint(progress)
             if result["is_final"]:
@@ -85,10 +85,16 @@ def main() -> None:
         type=Path,
         help="the event in realtime's JSON format",
     )
+    parser.add_argument(
+        "--n-jobs",
+        required=True,
+        type=int,
+        help="number of jobs to request",
+    )
     args = parser.parse_args()
 
     rc = get_rest_client()
-    scan_id = launch_a_scan(rc, args.event_file)
+    scan_id = launch_a_scan(rc, args.event_file, args.n_jobs)
     monitor(rc, scan_id)
 
 

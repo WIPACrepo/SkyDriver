@@ -37,7 +37,7 @@ def update_skydriver(
     """Send SkyDriver updates from the `submit_result`."""
     skydriver_rc.request_seq(
         "PATCH",
-        f"/scan/manifest/{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}",
+        f"/scan/{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}/manifest",
         {
             "condor_cluster": {
                 "collector": collector,
