@@ -39,7 +39,7 @@ def main() -> None:
         "--scan-id",
         required=True,
         type=str,
-        help="the event in realtime's JSON format",
+        help="the id of the scan",
     )
     args = parser.parse_args()
 
