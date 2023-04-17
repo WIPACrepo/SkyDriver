@@ -29,7 +29,7 @@ def get_rest_client() -> RestClient:
     )
 
 
-def launch_a_scan(rc: RestClient, event_file: Path) -> str:
+def launch_a_scan(rc: RestClient, event_file: Path, n_jobs: int) -> str:
     """Request to SkyDriver to scan an event."""
     body = {
         "reco_algo": "millipede_wilks",
@@ -37,7 +37,7 @@ def launch_a_scan(rc: RestClient, event_file: Path) -> str:
         "nsides": {8: 12, 64: 12, 512: 24},
         "real_or_simulated_event": "simulated",
         "predictive_scanning_threshold": 0.3,
-        "cluster": {"sub-2": 1500},
+        "cluster": {"sub-2": n_jobs},
         "docker_tag": "latest",
     }
     resp = rc.request_seq("POST", "/scan", body)
@@ -59,13 +59,19 @@ def main() -> None:
         type=Path,
         help="a directory of event files in realtime's JSON format",
     )
+    parser.add_argument(
+        "--n-jobs",
+        required=True,
+        type=int,
+        help="number of jobs to request",
+    )
     args = parser.parse_args()
 
     rc = get_rest_client()
     for event_file in args.event_files.iterdir():
         print("-----------------------")
         print(event_file)
-        scan_id = launch_a_scan(rc, args.event_file)
+        scan_id = launch_a_scan(rc, args.event_file, args.n_jobs)
         print(f"SCAN ID: {scan_id}")
 
 
