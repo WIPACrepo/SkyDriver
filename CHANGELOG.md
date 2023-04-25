@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.1 (2023-04-25)
+### Other
+* <bot> update requirements.txt ([`74e074d`](https://github.com/WIPACrepo/SkyDriver/commit/74e074d317c4031a8709bb0ca3be4bc6e05279cf))
+* <bot> update requirements-tests.txt ([`00d2fb7`](https://github.com/WIPACrepo/SkyDriver/commit/00d2fb732997accfbe38628a31204b54ad14f2d2))
+* <bot> update requirements-clientmanager.txt ([`c97d477`](https://github.com/WIPACrepo/SkyDriver/commit/c97d47722580c36c0ea8eee9c184b49b92c04040))
+* Add K8s Resource Limits ([`6cac3cb`](https://github.com/WIPACrepo/SkyDriver/commit/6cac3cb579bd3b4aea74e03cc43efec70839a3ca))
+* Bump S3 Expiration to 24 Hours ([`2e53a0e`](https://github.com/WIPACrepo/SkyDriver/commit/2e53a0ef77e175592b9ae993a8894bba9ff1d50b))
+
 ## v0.1.0 (2023-04-17)
 
 
