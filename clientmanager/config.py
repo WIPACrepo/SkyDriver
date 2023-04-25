@@ -19,7 +19,7 @@ class EnvConfig:
     EWMS_PILOT_QUARANTINE_TIME: int = 0
     EWMS_TMS_S3_ACCESS_KEY_ID: str = ""
     EWMS_TMS_S3_BUCKET: str = ""
-    EWMS_TMS_S3_EXPIRATION: int = 60 * 24  # seconds
+    EWMS_TMS_S3_EXPIRATION: int = 60 * 60 * 24  # seconds / 1 day
     EWMS_TMS_S3_SECRET_KEY: str = ""
     EWMS_TMS_S3_URL: str = ""
 
