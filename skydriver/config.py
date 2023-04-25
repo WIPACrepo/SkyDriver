@@ -45,6 +45,8 @@ class EnvConfig:
     K8S_BACKOFF_LIMIT: int = 1
     K8S_APPLICATION_NAME: str = ""
     K8S_TTL_SECONDS_AFTER_FINISHED: int = 600
+    K8S_CONTAINER_MEMORY_DEFAULT: str = "64MB"
+    K8S_CONTAINER_MEMORY_SKYSCAN_SERVER: str = "512MB"
 
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""

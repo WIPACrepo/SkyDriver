@@ -148,6 +148,7 @@ class KubeAPITools:
         env: list[kubernetes.client.V1EnvVar],
         args: list[str],
         volumes: dict[str, Path] | None = None,
+        memory: str = ENV.K8S_CONTAINER_MEMORY_DEFAULT,
     ) -> kubernetes.client.V1Container:
         """Make a Container instance."""
         if not volumes:
@@ -161,6 +162,16 @@ class KubeAPITools:
                 kubernetes.client.V1VolumeMount(name=vol, mount_path=str(mnt))
                 for vol, mnt in volumes.items()
             ],
+            resources=kubernetes.client.V1ResourceRequirements(
+                limits={
+                    "memory": memory,
+                    "cpu": "1",
+                },
+                requests={
+                    "memory": memory,
+                    "cpu": "1",
+                },
+            ),
         )
 
     @staticmethod
@@ -283,6 +294,7 @@ class SkymapScannerStarterJob:
             env,
             self.scanner_server_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
+            memory=ENV.K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
         )
         tms_starters = [
             KubeAPITools.create_container(
