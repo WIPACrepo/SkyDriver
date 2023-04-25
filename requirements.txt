@@ -36,7 +36,7 @@ googleapis-common-protos==1.56.2
     # via
     #   opentelemetry-exporter-jaeger-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
-grpcio==1.53.0
+grpcio==1.54.0
     # via opentelemetry-exporter-jaeger-proto-grpc
 humanfriendly==10.0
     # via coloredlogs
@@ -80,11 +80,11 @@ protobuf==3.20.3
     #   googleapis-common-protos
     #   opentelemetry-proto
     #   wipac-telemetry
-pyasn1==0.4.8
+pyasn1==0.5.0
     # via
     #   pyasn1-modules
     #   rsa
-pyasn1-modules==0.2.8
+pyasn1-modules==0.3.0
     # via google-auth
 pycparser==2.21
     # via cffi
@@ -125,7 +125,7 @@ six==1.16.0
     #   thrift
 thrift==0.16.0
     # via opentelemetry-exporter-jaeger-thrift
-tornado==6.2
+tornado==6.3.1
     # via
     #   UNKNOWN (setup.py)
     #   wipac-rest-tools
