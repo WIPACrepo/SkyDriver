@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.2 (2023-04-26)
+### Other
+* <bot> update requirements.txt ([`291b1c4`](https://github.com/WIPACrepo/SkyDriver/commit/291b1c4686b881f2805e352ff56dccbca112a724))
+* <bot> update requirements-tests.txt ([`234f968`](https://github.com/WIPACrepo/SkyDriver/commit/234f9689d0d8ff6d7ee9f2e8c275736ea0388956))
+* <bot> update requirements-clientmanager.txt ([`10fdea3`](https://github.com/WIPACrepo/SkyDriver/commit/10fdea365e54166f690ca0f4abbbf26a1e92613e))
+* Fix K8s Memory Syntax ([`6a766c8`](https://github.com/WIPACrepo/SkyDriver/commit/6a766c85cb07535e64237502f71df8c9dce64484))
+
 ## v0.1.1 (2023-04-25)
 ### Other
 * <bot> update requirements.txt ([`74e074d`](https://github.com/WIPACrepo/SkyDriver/commit/74e074d317c4031a8709bb0ca3be4bc6e05279cf))
