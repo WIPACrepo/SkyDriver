@@ -88,6 +88,8 @@ def main() -> None:
     files = list(args.event_files.iterdir())
     random.shuffle(files)
     for i, event_file in enumerate(files):
+        if event_file.suffix != '.json':
+            continue
         print("-----------------------")
         print(event_file)
         scan_id = launch_a_scan(rc, event_file, args.cluster, args.n_workers)
