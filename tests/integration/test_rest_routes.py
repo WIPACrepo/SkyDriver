@@ -589,8 +589,10 @@ async def test_00(
         },
         docker_tag_input_and_expect[1],
     )
+    assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
     manifest = await _clientmanager_reply(rc, scan_id, [])
+    assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
 
     #
     # ADD PROGRESS
