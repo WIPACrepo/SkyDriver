@@ -106,7 +106,7 @@ POST_SCAN_BODY = {
 }
 
 
-async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) -> str:
+async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) -> dict:
     # launch scan
     resp = await rc.request("POST", "/scan", post_scan_body)
 
@@ -265,7 +265,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
 
     # get scan_id
     assert resp["scan_id"]
-    return resp["scan_id"]  # type: ignore[no-any-return]
+    return resp  # type: ignore[no-any-return]
 
 
 async def _do_patch(
@@ -445,6 +445,11 @@ async def _send_result(
     resp = await rc.request("GET", f"/scan/{scan_id}/result")
     assert resp == result
 
+    # query scan
+    resp = await rc.request("GET", f"/scan/{scan_id}")
+    assert resp["manifest"] == last_known_manifest
+    assert resp["result"] == result
+
     return result
 
 
@@ -580,7 +585,7 @@ async def test_00(
     #
     # LAUNCH SCAN
     #
-    scan_id = await _launch_scan(
+    manifest = await _launch_scan(
         rc,
         {
             **POST_SCAN_BODY,
@@ -589,10 +594,23 @@ async def test_00(
         },
         docker_tag_input_and_expect[1],
     )
+    scan_id = manifest["scan_id"]
+    # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
+    resp = await rc.request("GET", f"/scan/{scan_id}")
+    assert resp["manifest"] == manifest
+    assert resp["result"] == {}
+
+    #
+    # INITIAL UPDATES
+    #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
     manifest = await _clientmanager_reply(rc, scan_id, [])
+    # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
+    resp = await rc.request("GET", f"/scan/{scan_id}")
+    assert resp["manifest"] == manifest
+    assert resp["result"] == {}
 
     #
     # ADD PROGRESS
@@ -700,9 +718,24 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     print(e.value)
 
     # OK
-    scan_id = await _launch_scan(rc, POST_SCAN_BODY, os.environ["LATEST_TAG"])
+    manifest = await _launch_scan(rc, POST_SCAN_BODY, os.environ["LATEST_TAG"])
+    scan_id = manifest["scan_id"]
+    # follow-up query
+    assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
+    resp = await rc.request("GET", f"/scan/{scan_id}")
+    assert resp["manifest"] == manifest
+    assert resp["result"] == {}
+
+    #
+    # INITIAL UPDATES
+    #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
     manifest = await _clientmanager_reply(rc, scan_id, [])
+    # follow-up query
+    assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
+    resp = await rc.request("GET", f"/scan/{scan_id}")
+    assert resp["manifest"] == manifest
+    assert resp["result"] == {}
 
     # ATTEMPT OVERWRITE
     with pytest.raises(
