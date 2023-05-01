@@ -376,7 +376,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Get manifest & result."""
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
-        manifest = await self.manifests.get(scan_id, incl_del)
+        manifest = await self.manifests.get(scan_id, incl_del)  # 404 if missing
 
         # if we don't have a result yet, return {}
         try:
