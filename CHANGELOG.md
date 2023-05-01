@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.3 (2023-05-01)
+### Other
+* Return Empty Dict For Pending Result ([#34](https://github.com/WIPACrepo/SkyDriver/issues/34)) ([`e536f1b`](https://github.com/WIPACrepo/SkyDriver/commit/e536f1b97d858155ef14de1579cd24d54f673d24))
+
 ## v0.1.2 (2023-04-26)
 ### Other
 * <bot> update requirements.txt ([`291b1c4`](https://github.com/WIPACrepo/SkyDriver/commit/291b1c4686b881f2805e352ff56dccbca112a724))
