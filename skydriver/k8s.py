@@ -303,6 +303,7 @@ class SkymapScannerStarterJob:
                 env,
                 args.split(),
                 {common_space_volume_path.name: common_space_volume_path},
+                memory=ENV.K8S_CONTAINER_MEMORY_TMS_STARTER,
             )
             for i, args in enumerate(self.tms_args_list)
         ]
