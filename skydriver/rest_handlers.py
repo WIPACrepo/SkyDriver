@@ -471,9 +471,18 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Get a scan's persisted result."""
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
-        result = await self.results.get(scan_id, incl_del)
+        # if we don't have a result yet,
+        # see if we have a manifest then return {}, else 404
+        try:
+            result = await self.results.get(scan_id, incl_del)
+            result_dict = dc.asdict(result)
+        except web.HTTPError as e:
+            if e.status_code != 404:
+                raise
+            await self.manifests.get(scan_id, incl_del)  # actually raise 404 if missing
+            result_dict = {}
 
-        self.write(dc.asdict(result))
+        self.write(result_dict)
 
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
