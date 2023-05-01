@@ -377,12 +377,20 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
         manifest = await self.manifests.get(scan_id, incl_del)
-        result = await self.results.get(scan_id, incl_del)
+
+        # if we don't have a result yet, return {}
+        try:
+            result = await self.results.get(scan_id, incl_del)
+            result_dict = dc.asdict(result)
+        except web.HTTPError as e:
+            if e.status_code != 404:
+                raise
+            result_dict = {}
 
         self.write(
             {
                 "manifest": dc.asdict(manifest),
-                "result": dc.asdict(result),
+                "result": result_dict,
             }
         )
 
