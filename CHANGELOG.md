@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.4 (2023-05-01)
+### Other
+* Increase K8s Memory for TMS Starter ([`9a261fe`](https://github.com/WIPACrepo/SkyDriver/commit/9a261fef0c3f107341dc8f641d6a16e17629a5d1))
+
 ## v0.1.3 (2023-05-01)
 ### Other
 * Return Empty Dict For Pending Result ([#34](https://github.com/WIPACrepo/SkyDriver/issues/34)) ([`e536f1b`](https://github.com/WIPACrepo/SkyDriver/commit/e536f1b97d858155ef14de1579cd24d54f673d24))
