@@ -433,7 +433,6 @@ async def _send_result(
     )
     assert resp == {
         "scan_id": scan_id,
-        "is_deleted": False,
         "skyscan_result": result,
         "is_final": is_final,
     }
@@ -481,7 +480,6 @@ async def _delete_scan(
         },
         "result": {
             "scan_id": scan_id,
-            "is_deleted": True,
             "is_final": is_final,
             "skyscan_result": last_known_result["skyscan_result"],
         },
