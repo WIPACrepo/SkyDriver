@@ -79,7 +79,7 @@ async def drop_collections(motor_client: AsyncIOMotorClient) -> None:
 
 
 class DataclassCollectionFacade:
-    """Allows specific semantic actions on the collections by Scan ID."""
+    """Motor Client wrapper w/ guardrails & `dataclasses.dataclass` casting."""
 
     def __init__(self, motor_client: AsyncIOMotorClient) -> None:
         # place in a dictionary so there's some safeguarding against bogus collections
