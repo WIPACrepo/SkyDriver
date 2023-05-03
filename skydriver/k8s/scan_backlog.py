@@ -49,7 +49,7 @@ async def loop(
         try:
             resp = KubeAPITools.start_job(api_instance, job_obj)
             LOGGER.info(resp)
-        except Exception as e:
+        except kubernetes.client.exceptions.ApiException as e:
             LOGGER.error(e)
             continue
 

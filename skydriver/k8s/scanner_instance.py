@@ -8,9 +8,10 @@ from typing import Any
 import kubernetes.client  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
-from .. import images, types
+from .. import database, images, types
 from ..config import ENV
 from ..database import schema
+from . import scan_backlog
 from .utils import KubeAPITools
 
 
@@ -57,6 +58,8 @@ class SkymapScannerStarterJob:
     def __init__(
         self,
         api_instance: kubernetes.client.BatchV1Api,
+        scan_backlog: database.interface.ScanBacklogClient,
+        #
         docker_tag: str,
         scan_id: str,
         # scanner
@@ -74,6 +77,9 @@ class SkymapScannerStarterJob:
         rest_address: str,
     ):
         self.api_instance = api_instance
+        self.scan_backlog = scan_backlog
+        self.scan_id = scan_id
+
         common_space_volume_path = Path("/common-space")
 
         # store some data for public access
@@ -284,9 +290,9 @@ class SkymapScannerStarterJob:
 
         return env
 
-    def start_job(self) -> Any:
-        """Start the k8s job."""
-        KubeAPITools.start_job(self.api_instance, self.job_obj)
+    async def enqueue_job(self) -> Any:
+        """Enqueue the k8s job onto the Scan Backlog."""
+        await scan_backlog.enqueue(self.scan_id, self.job_obj, self.scan_backlog)
 
 
 class SkymapScannerStopperJob:

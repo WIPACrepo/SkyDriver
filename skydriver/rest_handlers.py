@@ -76,6 +76,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
         # pylint: disable=W0201
         self.manifests = database.interface.ManifestClient(mongo_client)
         self.results = database.interface.ResultClient(mongo_client)
+        self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
         self.k8s_api = k8s_api
 
 
@@ -286,14 +287,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             k8s_job.env_dict,
         )
 
-        # start skymap scanner instance
+        # enqueue skymap scanner instance to be started in-time
         try:
-            k8s_job.start_job()
-        except kubernetes.client.exceptions.ApiException as e:
+            await k8s_job.enqueue_job()
+        except Exception as e:
             LOGGER.error(e)
             raise web.HTTPError(
                 500,
-                log_message="Failed to launch Kubernetes job for Scanner instance",
+                log_message="Failed to enqueue Kubernetes job for Scanner instance",
             )
 
         self.write(dc.asdict(manifest))
