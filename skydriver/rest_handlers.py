@@ -337,6 +337,40 @@ async def stop_scanner_instance(
 # -----------------------------------------------------------------------------
 
 
+async def get_result_safely(
+    manifests: database.interface.ManifestClient,
+    results: database.interface.ResultClient,
+    scan_id: str,
+    incl_del: bool,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Get the Result (and Manifest) using the incl_del/is_deleted logic.
+
+    Returns objects as dicts
+    """
+    manifest = await manifests.get(scan_id, incl_del)  # 404 if missing
+
+    # check if requestor allows a deleted scan's result
+    if (not incl_del) and manifest.is_deleted:
+        raise web.HTTPError(
+            404,
+            log_message=f"Requested result with deleted manifest: {manifest.scan_id}",
+        )
+
+    # if we don't have a result yet, return {}
+    try:
+        result = await results.get(scan_id)
+        result_dict = dc.asdict(result)
+    except web.HTTPError as e:
+        if e.status_code != 404:
+            raise
+        result_dict = {}
+
+    return result_dict, dc.asdict(manifest)
+
+
+# -----------------------------------------------------------------------------
+
+
 class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles actions on scan's manifest."""
 
@@ -365,7 +399,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
 
         manifest = await self.manifests.mark_as_deleted(scan_id)
-        result = await self.results.get(scan_id, incl_del=True)
+        result = await self.results.get(scan_id)
 
         self.write(
             {
@@ -379,20 +413,16 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Get manifest & result."""
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
-        manifest = await self.manifests.get(scan_id, incl_del)  # 404 if missing
-
-        # if we don't have a result yet, return {}
-        try:
-            result = await self.results.get(scan_id, incl_del)
-            result_dict = dc.asdict(result)
-        except web.HTTPError as e:
-            if e.status_code != 404:
-                raise
-            result_dict = {}
+        result_dict, manifest_dict = await get_result_safely(
+            self.manifests,
+            self.results,
+            scan_id,
+            incl_del,
+        )
 
         self.write(
             {
-                "manifest": dc.asdict(manifest),
+                "manifest": manifest_dict,
                 "result": result_dict,
             }
         )
@@ -474,16 +504,12 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Get a scan's persisted result."""
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
-        # if we don't have a result yet,
-        # see if we have a manifest then return {}, else 404
-        try:
-            result = await self.results.get(scan_id, incl_del)
-            result_dict = dc.asdict(result)
-        except web.HTTPError as e:
-            if e.status_code != 404:
-                raise
-            await self.manifests.get(scan_id, incl_del)  # actually raise 404 if missing
-            result_dict = {}
+        result_dict, _ = await get_result_safely(
+            self.manifests,
+            self.results,
+            scan_id,
+            incl_del,
+        )
 
         self.write(result_dict)
 

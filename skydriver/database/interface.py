@@ -115,12 +115,11 @@ class DataclassCollectionFacade:
         coll: str,
         query: dict[str, Any],
         dclass: Type[DataclassT],
-        incl_del: bool,
     ) -> DataclassT:
         """Get document by 'query'."""
         LOGGER.debug(f"finding: ({coll=}) doc with {query=} for {dclass=}")
         doc = await self._collections[coll].find_one(query)
-        if (not doc) or (doc["is_deleted"] and not incl_del):
+        if not doc:
             raise web.HTTPError(
                 404,
                 log_message=f"Document Not Found: {coll} document ({query})",
@@ -212,11 +211,15 @@ class ManifestClient(DataclassCollectionFacade):
     async def get(self, scan_id: str, incl_del: bool) -> schema.Manifest:
         """Get `schema.Manifest` using `scan_id`."""
         LOGGER.debug(f"getting manifest for {scan_id=}")
+
+        query: dict[str, Any] = {"scan_id": scan_id}
+        if not incl_del:  # if true, we don't care what 'is_deleted' value is
+            query["is_deleted"] = False
+
         manifest = await self._find_one(
             _MANIFEST_COLL_NAME,
-            {"scan_id": scan_id},
+            query,
             schema.Manifest,
-            incl_del,
         )
         return manifest
 
@@ -370,14 +373,13 @@ class ManifestClient(DataclassCollectionFacade):
 class ResultClient(DataclassCollectionFacade):
     """Wraps the attribute for the result of a scan."""
 
-    async def get(self, scan_id: str, incl_del: bool) -> schema.Result:
+    async def get(self, scan_id: str) -> schema.Result:
         """Get `schema.Result` using `scan_id`."""
         LOGGER.debug(f"getting result for {scan_id=}")
         result = await self._find_one(
             _RESULTS_COLL_NAME,
             {"scan_id": scan_id},
             schema.Result,
-            incl_del,
         )
         return result
 
