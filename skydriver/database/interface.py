@@ -40,7 +40,9 @@ def friendly_nested_asdict(value: Any) -> Any:
 _DB_NAME = "SkyDriver_DB"
 _MANIFEST_COLL_NAME = "Manifests"
 _RESULTS_COLL_NAME = "Results"
-D = TypeVar("D", bound=schema.ScanIDDataclass)
+
+
+D = TypeVar("D")
 
 
 async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
