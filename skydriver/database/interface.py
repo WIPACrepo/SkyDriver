@@ -40,7 +40,7 @@ def friendly_nested_asdict(value: Any) -> Any:
 _DB_NAME = "SkyDriver_DB"
 _MANIFEST_COLL_NAME = "Manifests"
 _RESULTS_COLL_NAME = "Results"
-S = TypeVar("S", bound=schema.ScanIDDataclass)
+D = TypeVar("D", bound=schema.ScanIDDataclass)
 
 
 async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
@@ -76,7 +76,7 @@ async def drop_collections(motor_client: AsyncIOMotorClient) -> None:
     await motor_client[_DB_NAME][_RESULTS_COLL_NAME].drop()
 
 
-class ScanIDCollectionFacade:
+class DataclassCollectionFacade:
     """Allows specific semantic actions on the collections by Scan ID."""
 
     def __init__(self, motor_client: AsyncIOMotorClient) -> None:
@@ -87,45 +87,47 @@ class ScanIDCollectionFacade:
         }
 
     async def _find_one(
-        self, coll: str, scan_id: str, scandc_type: Type[S], incl_del: bool
-    ) -> S:
-        """Get document by 'scan_id'."""
-        LOGGER.debug(f"finding: ({coll=}) doc with {scan_id=} for {scandc_type=}")
-        query = {"scan_id": scan_id}
+        self,
+        coll: str,
+        query: dict[str, Any],
+        dclass: Type[D],
+        incl_del: bool,
+    ) -> D:
+        """Get document by 'query'."""
+        LOGGER.debug(f"finding: ({coll=}) doc with {query=} for {dclass=}")
         doc = await self._collections[coll].find_one(query)
         if (not doc) or (doc["is_deleted"] and not incl_del):
             raise web.HTTPError(
                 404,
-                log_message=f"Document Not Found: {coll} document ({scan_id})",
+                log_message=f"Document Not Found: {coll} document ({query})",
             )
-        scandc = from_dict(scandc_type, doc)
+        scandc = from_dict(dclass, doc)
         LOGGER.debug(f"found: ({coll=}) doc {scandc}")
         return scandc  # type: ignore[no-any-return]  # mypy internal bug
 
     async def _upsert(
         self,
         coll: str,
-        scan_id: str,
-        update: schema.StrDict | S,
-        dclass: Type[S] | None = None,
-    ) -> S:
+        query: dict[str, Any],
+        update: schema.StrDict | D,
+        dclass: Type[D] | None = None,
+    ) -> D:
         """Insert/update the doc.
 
         *For partial updates:* pass `update` as a `dict` along with a
-        `scandc_type` (`ScanIDDataclass` class/type). `scandc_type` is
+        `dclass` (`dataclasses.dataclass` class/type). `dclass` is
         used to validate updates against the document's schema and casts
         the returned document.
 
-        *For whole inserts:* pass `update` as a `ScanIDDataclass`
-        instance. `scandc_type` is not needed/used in this case. There
-        is no data validation, since `ScanIDDataclass` does its own on
-        initialization.
+        *For whole inserts:* pass `update` as a `dataclass`
+        instance. `dclass` is not needed/used in this case. There
+        is no data validation--it's assumed this is pre-validated.
         """
-        LOGGER.debug(f"replacing: ({coll=}) doc with {scan_id=} {dclass=}")
+        LOGGER.debug(f"replacing: ({coll=}) doc with {query=} {dclass=}")
 
         async def find_one_and_update(update_dict: schema.StrDict) -> schema.StrDict:
             return await self._collections[coll].find_one_and_update(  # type: ignore[no-any-return]
-                {"scan_id": scan_id},
+                query,
                 {"$set": update_dict},
                 upsert=True,
                 return_document=ReturnDocument.AFTER,
@@ -147,7 +149,7 @@ class ScanIDCollectionFacade:
                     msg = f"Invalid type (field '{key}')"
                     raise web.HTTPError(
                         422,
-                        log_message=msg + f" for {scan_id=}",
+                        log_message=msg + f" for {query=}",
                         reason=msg,
                     )
             # at this point we know all data is type checked, so transform & put in DB
@@ -161,7 +163,7 @@ class ScanIDCollectionFacade:
                 LOGGER.error(e)
                 raise web.HTTPError(
                     422,
-                    log_message=f"Invalid type for {scan_id=}",
+                    log_message=f"Invalid type for {query=}",
                     reason="Invalid type",
                 )
             out_type = type(update)
@@ -170,24 +172,27 @@ class ScanIDCollectionFacade:
         if not doc:
             raise web.HTTPError(
                 500,
-                log_message=f"Failed to insert/update {coll} document ({scan_id})",
+                log_message=f"Failed to insert/update {coll} document ({query})",
             )
         scandc = from_dict(out_type, doc)
         LOGGER.debug(f"replaced: ({coll=}) doc {scandc}")
-        return cast(S, scandc)  # mypy internal bug
+        return cast(D, scandc)  # mypy internal bug
 
 
 # -----------------------------------------------------------------------------
 
 
-class ManifestClient(ScanIDCollectionFacade):
+class ManifestClient(DataclassCollectionFacade):
     """Wraps the attribute for the metadata of a scan."""
 
     async def get(self, scan_id: str, incl_del: bool) -> schema.Manifest:
         """Get `schema.Manifest` using `scan_id`."""
         LOGGER.debug(f"getting manifest for {scan_id=}")
         manifest = await self._find_one(
-            _MANIFEST_COLL_NAME, scan_id, schema.Manifest, incl_del
+            _MANIFEST_COLL_NAME,
+            {"scan_id": scan_id},
+            schema.Manifest,
+            incl_del,
         )
         return manifest
 
@@ -209,7 +214,11 @@ class ManifestClient(ScanIDCollectionFacade):
             tms_args=tms_args_list,
             env_vars=env_vars,
         )
-        manifest = await self._upsert(_MANIFEST_COLL_NAME, manifest.scan_id, manifest)
+        manifest = await self._upsert(
+            _MANIFEST_COLL_NAME,
+            {"scan_id": manifest.scan_id},
+            manifest,
+        )
         return manifest
 
     async def patch(
@@ -285,7 +294,7 @@ class ManifestClient(ScanIDCollectionFacade):
         LOGGER.debug(f"patching manifest for {scan_id=} with {upserting=}")
         manifest = await self._upsert(
             _MANIFEST_COLL_NAME,
-            scan_id,
+            {"scan_id": scan_id},
             upserting,
             schema.Manifest,
         )
@@ -296,7 +305,10 @@ class ManifestClient(ScanIDCollectionFacade):
         LOGGER.debug(f"marking manifest as deleted for {scan_id=}")
 
         manifest = await self._upsert(
-            _MANIFEST_COLL_NAME, scan_id, {"is_deleted": True}, schema.Manifest
+            _MANIFEST_COLL_NAME,
+            {"scan_id": scan_id},
+            {"is_deleted": True},
+            schema.Manifest,
         )
         return manifest
 
@@ -331,14 +343,17 @@ class ManifestClient(ScanIDCollectionFacade):
 # -----------------------------------------------------------------------------
 
 
-class ResultClient(ScanIDCollectionFacade):
+class ResultClient(DataclassCollectionFacade):
     """Wraps the attribute for the result of a scan."""
 
     async def get(self, scan_id: str, incl_del: bool) -> schema.Result:
         """Get `schema.Result` using `scan_id`."""
         LOGGER.debug(f"getting result for {scan_id=}")
         result = await self._find_one(
-            _RESULTS_COLL_NAME, scan_id, schema.Result, incl_del
+            _RESULTS_COLL_NAME,
+            {"scan_id": scan_id},
+            schema.Result,
+            incl_del,
         )
         return result
 
@@ -357,7 +372,11 @@ class ResultClient(ScanIDCollectionFacade):
         result = schema.Result(
             scan_id, False, skyscan_result, is_final
         )  # validates data
-        result = await self._upsert(_RESULTS_COLL_NAME, result.scan_id, result)
+        result = await self._upsert(
+            _RESULTS_COLL_NAME,
+            {"scan_id": result.scan_id},
+            result,
+        )
         return result
 
     async def mark_as_deleted(self, scan_id: str) -> schema.Result:
@@ -365,6 +384,9 @@ class ResultClient(ScanIDCollectionFacade):
         LOGGER.debug(f"marking result as deleted for {scan_id=}")
 
         result = await self._upsert(
-            _RESULTS_COLL_NAME, scan_id, {"is_deleted": True}, schema.Result
+            _RESULTS_COLL_NAME,
+            {"scan_id": scan_id},
+            {"is_deleted": True},
+            schema.Result,
         )
         return result
