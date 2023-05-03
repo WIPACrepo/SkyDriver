@@ -8,17 +8,16 @@ import random
 import re
 import socket
 from typing import Any, AsyncIterator, Callable
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 import pytest_asyncio
 import requests
 import skydriver
 import skydriver.images  # noqa: F401
-from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.client import RestClient
 from skydriver.database.interface import drop_collections
-from skydriver.server import make, mongodb_url
+from skydriver.server import create_mongodb_client, make
 
 skydriver.config.config_logging("debug")
 
@@ -57,7 +56,7 @@ def port() -> int:
 @pytest_asyncio.fixture
 async def mongo_clear() -> Any:
     """Clear the MongoDB after test completes."""
-    motor_client = AsyncIOMotorClient(mongodb_url())
+    motor_client = create_mongodb_client()
     try:
         await drop_collections(motor_client)
         yield
@@ -79,8 +78,7 @@ async def server(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
 
-    with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
-        rs = await make(debug=True)
+    rs = await make(mongo_client=create_mongodb_client(), k8s_api=Mock())
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:
