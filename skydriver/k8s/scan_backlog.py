@@ -22,7 +22,6 @@ async def enqueue(
     """Enqueue k8s job to be started by job-starter thread."""
     entry = database.schema.ScanBacklogEntry(
         scan_id=scan_id,
-        is_deleted=False,
         timestamp=time.time(),
         pickled_k8s_job=bson.Binary(pickle.dumps(job_obj)),
     )
