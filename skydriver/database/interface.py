@@ -17,8 +17,11 @@ from . import schema
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance  # type: ignore[attr-defined]
+else:
+    DataclassInstance = Any
 
-    D = TypeVar("D", bound=DataclassInstance)
+
+D = TypeVar("D", bound=DataclassInstance)
 
 
 def friendly_nested_asdict(value: Any) -> Any:
