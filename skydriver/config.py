@@ -36,6 +36,7 @@ class EnvConfig:
     REST_PORT: int = 8080
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
+    SCAN_BACKLOG_RUNNER_DELAY: int = 5 * 60
 
     CLIENTMANAGER_IMAGE_WITH_TAG: str = ""
 

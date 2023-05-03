@@ -10,7 +10,7 @@ import kubernetes.client  # type: ignore[import]
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore[import]
 
 from .. import database
-from ..config import LOGGER
+from ..config import ENV, LOGGER
 from .utils import KubeAPITools
 
 
@@ -56,7 +56,7 @@ async def startup(
     scan_backlog = database.interface.ScanBacklogClient(mongo_client)
 
     while True:
-        await asyncio.sleep(5 * 60)
+        await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
 
         # get next job
         try:
