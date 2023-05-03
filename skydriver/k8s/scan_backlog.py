@@ -8,9 +8,9 @@ import time
 import bson
 import kubernetes.client  # type: ignore[import]
 
-from .config import LOGGER
-from .database import interface, schema
-from .k8s import KubeAPITools
+from ..config import LOGGER
+from ..database import interface, schema
+from .utils import KubeAPITools
 
 
 async def enqueue(
