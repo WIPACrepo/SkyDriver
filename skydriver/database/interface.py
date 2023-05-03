@@ -12,7 +12,7 @@ from motor.motor_asyncio import (  # type: ignore
 from pymongo import DESCENDING, ReturnDocument
 from tornado import web
 
-from ..config import LOGGER
+from ..config import ENV, LOGGER
 from . import schema
 
 if TYPE_CHECKING:
@@ -48,6 +48,7 @@ def friendly_nested_asdict(value: Any) -> Any:
 _DB_NAME = "SkyDriver_DB"
 _MANIFEST_COLL_NAME = "Manifests"
 _RESULTS_COLL_NAME = "Results"
+_SCAN_BACKLOG_COLL_NAME = "ScanBacklog"
 
 
 async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
@@ -76,11 +77,21 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
         unique=True,
     )
 
+    # SCAN BACKLOG COLL
+    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(
+        "timestamp",
+        name="timestamp_index",
+        unique=False,
+    )
+
 
 async def drop_collections(motor_client: AsyncIOMotorClient) -> None:
     """Drop the "regular" collections -- most useful for testing."""
+    if not ENV.CI_TEST:
+        raise RuntimeError("Cannot drop collections if not in testing mode")
     await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].drop()
     await motor_client[_DB_NAME][_RESULTS_COLL_NAME].drop()
+    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].drop()
 
 
 class DataclassCollectionFacade:
