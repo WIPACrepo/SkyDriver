@@ -7,7 +7,7 @@ import kubernetes.client  # type: ignore[import]
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 from rest_tools.server import RestHandlerSetup, RestServer
 
-from . import database, rest_handlers
+from . import rest_handlers
 from .config import ENV, LOGGER, is_testing
 
 
