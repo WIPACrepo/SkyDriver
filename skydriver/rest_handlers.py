@@ -261,6 +261,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # get the container info ready
         k8s_job = k8s.scanner_instance.SkymapScannerStarterJob(
             api_instance=self.k8s_api,
+            scan_backlog=self.scan_backlog,
+            #
             docker_tag=docker_tag,
             scan_id=scan_id,
             # server
