@@ -454,3 +454,10 @@ class ScanBacklogClient(DataclassCollectionFacade):
             {"scan_id": entry.scan_id}
         )
         return entry
+
+    async def insert(self, entry: schema.ScanBacklogEntry) -> None:
+        """Insert entry, `schema.ScanBacklogEntry`."""
+        LOGGER.debug(f"inserting {entry=}")
+        doc = dc.asdict(entry)
+        await self._collections[_SCAN_BACKLOG_COLL_NAME].insert_one(doc)
+        LOGGER.debug(f"Inserted {doc=}")

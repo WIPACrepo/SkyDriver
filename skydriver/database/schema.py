@@ -23,7 +23,7 @@ class ScanBacklogEntry(ScanIDDataclass):
     """An entry for the scan backlog used for rate-limiting."""
 
     timestamp: float
-    serialized_k8s_job_obj: str
+    pickled_k8s_job: bytes
 
 
 @typechecked

@@ -2,18 +2,30 @@
 
 
 import asyncio
+import pickle
 import time
 
+import bson
 import kubernetes.client  # type: ignore[import]
 
 from .config import LOGGER
-from .database import interface
+from .database import interface, schema
 from .k8s import KubeAPITools
 
 
-def enqueue(job_obj: kubernetes.client.V1Job) -> None:
+async def enqueue(
+    scan_id: str,
+    job_obj: kubernetes.client.V1Job,
+    scan_backlog: interface.ScanBacklogClient,
+) -> None:
     """Enqueue k8s job to be started by job-starter thread."""
-    timestamp = time.time()
+    entry = schema.ScanBacklogEntry(
+        scan_id=scan_id,
+        is_deleted=False,
+        timestamp=time.time(),
+        pickled_k8s_job=bson.Binary(pickle.dumps(job_obj)),
+    )
+    await scan_backlog.insert(entry)
 
 
 async def loop(
@@ -27,7 +39,7 @@ async def loop(
         # get
         try:
             entry = await scan_backlog.peek()
-            job_obj = entry.serialized_k8s_job_obj  # TODO
+            job_obj = pickle.loads(entry.pickled_k8s_job)
         except interface.DocumentNotFoundException:
             continue
 
