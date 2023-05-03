@@ -258,7 +258,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scan_id = uuid.uuid4().hex
 
         # get the container info ready
-        k8s_job = k8s.SkymapScannerStarterJob(
+        k8s_job = k8s.scanner_instance.SkymapScannerStarterJob(
             api_instance=self.k8s_api,
             docker_tag=docker_tag,
             scan_id=scan_id,
@@ -313,7 +313,7 @@ async def stop_scanner_instance(
         return
 
     # get the container info ready
-    k8s_job = k8s.SkymapScannerStopperJob(
+    k8s_job = k8s.scanner_instance.SkymapScannerStopperJob(
         k8s_api,
         scan_id,
         manifest.condor_clusters,

@@ -6,11 +6,9 @@ from typing import Any
 
 import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
-from rest_tools.client import ClientCredentialsAuth
 
-from . import images, types
-from .config import ENV, LOGGER
-from .database import schema
+from ..config import ENV, LOGGER
+from ..database import schema
 
 
 class KubeAPITools:

@@ -1,16 +1,17 @@
-"""An interface to the Kubernetes cluster."""
+"""Tools for creating K8s job objects for interacting with Skymap Scanner
+instances."""
 
 
 from pathlib import Path
 from typing import Any
 
 import kubernetes.client  # type: ignore[import]
-from kubernetes.client.rest import ApiException  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
-from . import images, types
-from .config import ENV, LOGGER
-from .database import schema
+from .. import images, types
+from ..config import ENV
+from ..database import schema
+from .utils import KubeAPITools
 
 
 def get_condor_token_v1envvar() -> kubernetes.client.V1EnvVar:
