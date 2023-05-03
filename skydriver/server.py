@@ -48,5 +48,4 @@ async def make(
         except AttributeError:
             continue
 
-    await database.interface.ensure_indexes(args["mongo_client"])
     return rs

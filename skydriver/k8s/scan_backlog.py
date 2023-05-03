@@ -28,11 +28,12 @@ async def enqueue(
     await scan_backlog.insert(entry)
 
 
-async def loop(
+async def startup(
     api_instance: kubernetes.client.BatchV1Api,
     scan_backlog: database.interface.ScanBacklogClient,
 ) -> None:
     """The main loop."""
+    LOGGER.info("Started scan backlog runner.")
     while True:
         await asyncio.sleep(5 * 60)
 

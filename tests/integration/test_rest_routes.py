@@ -16,8 +16,9 @@ import requests
 import skydriver
 import skydriver.images  # noqa: F401
 from rest_tools.client import RestClient
+from skydriver.database import create_mongodb_client
 from skydriver.database.interface import drop_collections
-from skydriver.server import create_mongodb_client, make
+from skydriver.server import make
 
 skydriver.config.config_logging("debug")
 
@@ -56,7 +57,7 @@ def port() -> int:
 @pytest_asyncio.fixture
 async def mongo_clear() -> Any:
     """Clear the MongoDB after test completes."""
-    motor_client = create_mongodb_client()
+    motor_client = await create_mongodb_client()
     try:
         await drop_collections(motor_client)
         yield
@@ -78,7 +79,10 @@ async def server(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
 
-    rs = await make(mongo_client=create_mongodb_client(), k8s_api=Mock())
+    rs = await make(
+        mongo_client=await create_mongodb_client(),
+        k8s_api=Mock(),
+    )
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:
