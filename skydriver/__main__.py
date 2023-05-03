@@ -19,17 +19,6 @@ async def main() -> None:
     k8s_api = k8s.setup_k8s_client()
     LOGGER.info("K8s client connected.")
 
-    # Scan Backlog Runner
-    LOGGER.info("Starting scan backlog runner...")
-    asyncio.create_task(
-        k8s.scan_backlog.startup(
-            k8s_api,
-            database.interface.ScanBacklogClient(mongo_client),
-        )
-    )
-    await asyncio.sleep(0)  # start up previous task
-
-    # REST Server
     LOGGER.info("Setting up REST server...")
     rs = await server.make(mongo_client, k8s_api)
     rs.startup(address=ENV.REST_HOST, port=ENV.REST_PORT)  # type: ignore[no-untyped-call]
