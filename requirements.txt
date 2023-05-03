@@ -116,7 +116,7 @@ pyyaml==6.0
     # via kubernetes
 qrcode==7.4.2
     # via wipac-rest-tools
-requests==2.30.0
+requests==2.29.0
     # via
     #   UNKNOWN (setup.py)
     #   kubernetes
