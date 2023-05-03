@@ -84,11 +84,6 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
         unique=False,
     )
     await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(
-        "is_deleted",
-        name="is_deleted_index",
-        unique=False,
-    )
-    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(
         "scan_id",
         name="scan_id_index",
         unique=True,
@@ -398,25 +393,11 @@ class ResultClient(DataclassCollectionFacade):
                 log_message=msg + f" for {scan_id=}",
                 reason=msg,
             )
-        result = schema.Result(
-            scan_id, False, skyscan_result, is_final
-        )  # validates data
+        result = schema.Result(scan_id, skyscan_result, is_final)  # validates data
         result = await self._upsert(
             _RESULTS_COLL_NAME,
             {"scan_id": result.scan_id},
             result,
-        )
-        return result
-
-    async def mark_as_deleted(self, scan_id: str) -> schema.Result:
-        """Mark `schema.Result` at doc matching `scan_id` as deleted."""
-        LOGGER.debug(f"marking result as deleted for {scan_id=}")
-
-        result = await self._upsert(
-            _RESULTS_COLL_NAME,
-            {"scan_id": scan_id},
-            {"is_deleted": True},
-            schema.Result,
         )
         return result
 
@@ -437,7 +418,7 @@ class ScanBacklogClient(DataclassCollectionFacade):
 
         doc = (
             await self._collections[_SCAN_BACKLOG_COLL_NAME]
-            .find({"is_deleted": False})
+            .find({})
             .sort([("timestamp", ASCENDING)])
             .limit(1)
         )

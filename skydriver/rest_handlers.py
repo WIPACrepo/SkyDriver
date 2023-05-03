@@ -365,7 +365,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
 
         manifest = await self.manifests.mark_as_deleted(scan_id)
-        result = await self.results.mark_as_deleted(scan_id)
+        result = await self.results.get(scan_id, incl_del=True)
 
         self.write(
             {

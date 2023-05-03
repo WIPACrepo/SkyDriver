@@ -14,7 +14,6 @@ class ScanIDDataclass:
     """A dataclass with a scan id."""
 
     scan_id: str
-    is_deleted: bool
 
 
 @typechecked
@@ -104,6 +103,8 @@ class CondorClutser:
 @dc.dataclass
 class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
+
+    is_deleted: bool
 
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ checksum/hash?
     scanner_server_args: str
