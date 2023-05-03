@@ -1,7 +1,7 @@
 """Database interface for persisted scan data."""
 
 import dataclasses as dc
-from typing import Any, AsyncIterator, Type, TypeVar, cast
+from typing import TYPE_CHECKING, Any, AsyncIterator, Type, TypeVar, cast
 
 import typeguard
 from dacite import from_dict  # type: ignore[attr-defined]
@@ -14,6 +14,11 @@ from tornado import web
 
 from ..config import LOGGER
 from . import schema
+
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance  # type: ignore[attr-defined]
+
+    D = TypeVar("D", bound=DataclassInstance)
 
 
 def friendly_nested_asdict(value: Any) -> Any:
@@ -40,9 +45,6 @@ def friendly_nested_asdict(value: Any) -> Any:
 _DB_NAME = "SkyDriver_DB"
 _MANIFEST_COLL_NAME = "Manifests"
 _RESULTS_COLL_NAME = "Results"
-
-
-D = TypeVar("D")
 
 
 async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
