@@ -189,6 +189,6 @@ class KubeAPITools:
             )
             LOGGER.info(api_response)
         except ApiException as e:
-            LOGGER.error(e)
+            LOGGER.exception(e)
             raise
         return api_response

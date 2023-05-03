@@ -173,7 +173,7 @@ class DataclassCollectionFacade:
                 try:
                     typeguard.check_type(value, fields[key].type)  # TypeError, KeyError
                 except (typeguard.TypeCheckError, KeyError) as e:
-                    LOGGER.error(e)
+                    LOGGER.exception(e)
                     msg = f"Invalid type (field '{key}')"
                     raise web.HTTPError(
                         422,
@@ -188,7 +188,7 @@ class DataclassCollectionFacade:
             try:  # validate via dataclass's `@typechecked` wrapper
                 doc = await find_one_and_update(dc.asdict(update))
             except typeguard.TypeCheckError as e:
-                LOGGER.error(e)
+                LOGGER.exception(e)
                 raise web.HTTPError(
                     422,
                     log_message=f"Invalid type for {query=}",

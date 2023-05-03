@@ -93,7 +93,7 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
     try:
         sha = requests.get(f"{DOCKERHUB_API_URL}/{docker_tag}").json()["digest"]
     except Exception as e:
-        LOGGER.error(e)
+        LOGGER.exception(e)
         raise _error
 
     try:
@@ -102,7 +102,7 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
         else:  # no match
             return docker_tag
     except Exception as e:
-        LOGGER.error(e)
+        LOGGER.exception(e)
         raise _error
 
 
@@ -113,7 +113,7 @@ def tag_exists_on_docker_hub(docker_tag: str) -> bool:
     try:
         return requests.get(f"{DOCKERHUB_API_URL}/{docker_tag}").ok
     except Exception as e:
-        LOGGER.error(e)
+        LOGGER.exception(e)
         raise ValueError("Image tag verification failed")
 
 

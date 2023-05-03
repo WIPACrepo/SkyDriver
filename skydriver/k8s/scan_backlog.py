@@ -51,7 +51,7 @@ async def startup(
             resp = KubeAPITools.start_job(api_instance, job_obj)
             LOGGER.info(resp)
         except kubernetes.client.exceptions.ApiException as e:
-            LOGGER.error(e)
+            LOGGER.exception(e)
             continue
 
         # remove

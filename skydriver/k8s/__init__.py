@@ -21,7 +21,7 @@ def _kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:
         api_response = api_instance.get_api_resources()
         LOGGER.debug(api_response)
     except ApiException as e:
-        LOGGER.error(e)
+        LOGGER.exception(e)
         raise
 
 
