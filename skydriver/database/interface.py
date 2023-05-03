@@ -21,7 +21,7 @@ else:
     DataclassInstance = Any
 
 
-D = TypeVar("D", bound=DataclassInstance)
+DataclassT = TypeVar("DataclassT", bound=DataclassInstance)
 
 
 def friendly_nested_asdict(value: Any) -> Any:
@@ -97,9 +97,9 @@ class DataclassCollectionFacade:
         self,
         coll: str,
         query: dict[str, Any],
-        dclass: Type[D],
+        dclass: Type[DataclassT],
         incl_del: bool,
-    ) -> D:
+    ) -> DataclassT:
         """Get document by 'query'."""
         LOGGER.debug(f"finding: ({coll=}) doc with {query=} for {dclass=}")
         doc = await self._collections[coll].find_one(query)
@@ -116,9 +116,9 @@ class DataclassCollectionFacade:
         self,
         coll: str,
         query: dict[str, Any],
-        update: schema.StrDict | D,
-        dclass: Type[D] | None = None,
-    ) -> D:
+        update: schema.StrDict | DataclassT,
+        dclass: Type[DataclassT] | None = None,
+    ) -> DataclassT:
         """Insert/update the doc.
 
         *For partial updates:* pass `update` as a `dict` along with a
@@ -183,7 +183,7 @@ class DataclassCollectionFacade:
             )
         scandc = from_dict(out_type, doc)
         LOGGER.debug(f"replaced: ({coll=}) doc {scandc}")
-        return cast(D, scandc)  # mypy internal bug
+        return cast(DataclassT, scandc)  # mypy internal bug
 
 
 # -----------------------------------------------------------------------------
