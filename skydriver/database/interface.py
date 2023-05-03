@@ -9,7 +9,7 @@ from motor.motor_asyncio import (  # type: ignore
     AsyncIOMotorClient,
     AsyncIOMotorCollection,
 )
-from pymongo import DESCENDING, ReturnDocument
+from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from tornado import web
 
 from ..config import ENV, LOGGER
@@ -79,9 +79,19 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
 
     # SCAN BACKLOG COLL
     await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(
-        "timestamp",
+        [("timestamp", ASCENDING)],
         name="timestamp_index",
         unique=False,
+    )
+    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(
+        "is_deleted",
+        name="is_deleted_index",
+        unique=False,
+    )
+    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(
+        "scan_id",
+        name="scan_id_index",
+        unique=True,
     )
 
 
@@ -408,3 +418,39 @@ class ResultClient(DataclassCollectionFacade):
             schema.Result,
         )
         return result
+
+
+# -----------------------------------------------------------------------------
+
+
+class DocumentNotFoundException(Exception):
+    """Raised when document is not found for a particular query."""
+
+
+class ScanBacklogClient(DataclassCollectionFacade):
+    """Wraps the attribute for the result of a scan."""
+
+    async def peek(self) -> schema.ScanBacklogEntry:
+        """Get oldest `schema.ScanBacklogEntry`."""
+        LOGGER.debug("peeking ScanBacklogEntry")
+
+        doc = (
+            await self._collections[_SCAN_BACKLOG_COLL_NAME]
+            .find({"is_deleted": False})
+            .sort([("timestamp", ASCENDING)])
+            .limit(1)
+        )
+        if not doc:
+            raise DocumentNotFoundException()
+
+        dc_doc = from_dict(schema.ScanBacklogEntry, doc)
+        LOGGER.debug(f"found: ({_SCAN_BACKLOG_COLL_NAME=}) doc {dc_doc}")
+        return dc_doc  # type: ignore[no-any-return]  # mypy internal bug
+
+    async def remove(self, entry: schema.ScanBacklogEntry) -> schema.ScanBacklogEntry:
+        """Remove entry, `schema.ScanBacklogEntry`."""
+        LOGGER.debug("removing ScanBacklogEntry")
+        await self._collections[_SCAN_BACKLOG_COLL_NAME].delete_one(
+            {"scan_id": entry.scan_id}
+        )
+        return entry

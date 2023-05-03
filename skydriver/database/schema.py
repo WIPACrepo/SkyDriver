@@ -19,6 +19,15 @@ class ScanIDDataclass:
 
 @typechecked
 @dc.dataclass
+class ScanBacklogEntry(ScanIDDataclass):
+    """An entry for the scan backlog used for rate-limiting."""
+
+    timestamp: float
+    serialized_k8s_job_obj: str
+
+
+@typechecked
+@dc.dataclass
 class ProgressProcessingStats:
     """Details about the scan processing."""
 
