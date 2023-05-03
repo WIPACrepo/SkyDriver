@@ -8,18 +8,18 @@ import time
 import bson
 import kubernetes.client  # type: ignore[import]
 
+from .. import database
 from ..config import LOGGER
-from ..database import interface, schema
 from .utils import KubeAPITools
 
 
 async def enqueue(
     scan_id: str,
     job_obj: kubernetes.client.V1Job,
-    scan_backlog: interface.ScanBacklogClient,
+    scan_backlog: database.interface.ScanBacklogClient,
 ) -> None:
     """Enqueue k8s job to be started by job-starter thread."""
-    entry = schema.ScanBacklogEntry(
+    entry = database.schema.ScanBacklogEntry(
         scan_id=scan_id,
         is_deleted=False,
         timestamp=time.time(),
@@ -30,7 +30,7 @@ async def enqueue(
 
 async def loop(
     api_instance: kubernetes.client.BatchV1Api,
-    scan_backlog: interface.ScanBacklogClient,
+    scan_backlog: database.interface.ScanBacklogClient,
 ) -> None:
     """The main loop."""
     while True:
@@ -40,7 +40,7 @@ async def loop(
         try:
             entry = await scan_backlog.peek()
             job_obj = pickle.loads(entry.pickled_k8s_job)
-        except interface.DocumentNotFoundException:
+        except database.interface.DocumentNotFoundException:
             continue
 
         LOGGER.info(f"Starting Scanner Instance: ({entry.timestamp}) {job_obj}")
