@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.5 (2023-05-02)
+### Other
+* <bot> update requirements-clientmanager.txt ([`c22f566`](https://github.com/WIPACrepo/SkyDriver/commit/c22f566b3cbc5231f91ee1f0adf008cb54a53ed7))
+* TMS: Enable HTChirp ([`bf849c2`](https://github.com/WIPACrepo/SkyDriver/commit/bf849c22e897fd5cc90203839f47ca99ed0ce626))
+
 ## v0.1.4 (2023-05-01)
 ### Other
 * Increase K8s Memory for TMS Starter ([`9a261fe`](https://github.com/WIPACrepo/SkyDriver/commit/9a261fef0c3f107341dc8f641d6a16e17629a5d1))
