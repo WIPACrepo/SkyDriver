@@ -443,9 +443,9 @@ class ScanBacklogClient(DataclassCollectionFacade):
         if not doc:
             raise DocumentNotFoundException()
 
-        dc_doc = from_dict(schema.ScanBacklogEntry, doc)
-        LOGGER.debug(f"found: ({_SCAN_BACKLOG_COLL_NAME=}) doc {dc_doc}")
-        return dc_doc  # type: ignore[no-any-return]  # mypy internal bug
+        entry = from_dict(schema.ScanBacklogEntry, doc)
+        LOGGER.debug(f"found: ({_SCAN_BACKLOG_COLL_NAME=}) doc {entry}")
+        return entry  # type: ignore[no-any-return]  # mypy internal bug
 
     async def remove(self, entry: schema.ScanBacklogEntry) -> schema.ScanBacklogEntry:
         """Remove entry, `schema.ScanBacklogEntry`."""
