@@ -112,6 +112,7 @@ class DataclassCollectionFacade:
         self._collections: dict[str, AsyncIOMotorCollection] = {
             _MANIFEST_COLL_NAME: motor_client[_DB_NAME][_MANIFEST_COLL_NAME],
             _RESULTS_COLL_NAME: motor_client[_DB_NAME][_RESULTS_COLL_NAME],
+            _SCAN_BACKLOG_COLL_NAME: motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME],
         }
 
     async def _find_one(
