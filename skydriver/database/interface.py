@@ -450,14 +450,16 @@ class ScanBacklogClient(DataclassCollectionFacade):
     async def remove(self, entry: schema.ScanBacklogEntry) -> schema.ScanBacklogEntry:
         """Remove entry, `schema.ScanBacklogEntry`."""
         LOGGER.debug("removing ScanBacklogEntry")
-        await self._collections[_SCAN_BACKLOG_COLL_NAME].delete_one(
+        res = await self._collections[_SCAN_BACKLOG_COLL_NAME].delete_one(
             {"scan_id": entry.scan_id}
         )
+        LOGGER.debug(f"delete_one result: {res}")
         return entry
 
     async def insert(self, entry: schema.ScanBacklogEntry) -> None:
         """Insert entry, `schema.ScanBacklogEntry`."""
         LOGGER.debug(f"inserting {entry=}")
         doc = dc.asdict(entry)
-        await self._collections[_SCAN_BACKLOG_COLL_NAME].insert_one(doc)
-        LOGGER.debug(f"Inserted {doc=}")
+        res = await self._collections[_SCAN_BACKLOG_COLL_NAME].insert_one(doc)
+        LOGGER.debug(f"insert result: {res}")
+        LOGGER.debug(f"Inserted backlog entry for {entry.scan_id=}")
