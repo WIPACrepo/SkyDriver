@@ -2,6 +2,18 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.6 (2023-05-03)
+### Other
+* <bot> update requirements-clientmanager.txt ([`6fc3e7a`](https://github.com/WIPACrepo/SkyDriver/commit/6fc3e7a91e84e1a9fab22bd203592ed4e2ceb395))
+* [split: fix imports] ([`29b7835`](https://github.com/WIPACrepo/SkyDriver/commit/29b7835fe0b4a34ec98fc061defd4abb3fd3ad2f))
+* [split: trim] ([`563cf42`](https://github.com/WIPACrepo/SkyDriver/commit/563cf422fbdd6b5c85340f2b227af962d49f079c))
+* [split: restore `utils.py`] ([`82f48f2`](https://github.com/WIPACrepo/SkyDriver/commit/82f48f28f7f88af466a005981be6173f5c3d17dc))
+* [split: add `scanner_instance.py`] ([`fb8bd63`](https://github.com/WIPACrepo/SkyDriver/commit/fb8bd638ae8364d79ac45d8308ef666b6921db46))
+* [split: temp] ([`0d4b2b2`](https://github.com/WIPACrepo/SkyDriver/commit/0d4b2b2ba89faaedd6891ec92db8b99a9a570aa8))
+* [split: make `scanner_instance.py`] ([`2f7952a`](https://github.com/WIPACrepo/SkyDriver/commit/2f7952ad4d59dc78f8df4c9e6c9d846b3224d7c2))
+* `git mv k8s.py utils.py` ([`12d82ee`](https://github.com/WIPACrepo/SkyDriver/commit/12d82ee0a168a1ac27187606f830390742f3de50))
+* Add `k8s/` ([`29b9673`](https://github.com/WIPACrepo/SkyDriver/commit/29b9673ecbfa447e0f882709dc3981d0dc072f2f))
+
 ## v0.1.5 (2023-05-02)
 ### Other
 * <bot> update requirements-clientmanager.txt ([`c22f566`](https://github.com/WIPACrepo/SkyDriver/commit/c22f566b3cbc5231f91ee1f0adf008cb54a53ed7))
