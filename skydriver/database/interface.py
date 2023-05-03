@@ -119,9 +119,9 @@ class DataclassCollectionFacade:
                 404,
                 log_message=f"Document Not Found: {coll} document ({query})",
             )
-        scandc = from_dict(dclass, doc)
-        LOGGER.debug(f"found: ({coll=}) doc {scandc}")
-        return scandc  # type: ignore[no-any-return]  # mypy internal bug
+        dc_doc = from_dict(dclass, doc)
+        LOGGER.debug(f"found: ({coll=}) doc {dc_doc}")
+        return dc_doc  # type: ignore[no-any-return]  # mypy internal bug
 
     async def _upsert(
         self,
@@ -192,9 +192,9 @@ class DataclassCollectionFacade:
                 500,
                 log_message=f"Failed to insert/update {coll} document ({query})",
             )
-        scandc = from_dict(out_type, doc)
-        LOGGER.debug(f"replaced: ({coll=}) doc {scandc}")
-        return cast(DataclassT, scandc)  # mypy internal bug
+        dc_doc = from_dict(out_type, doc)
+        LOGGER.debug(f"replaced: ({coll=}) doc {dc_doc}")
+        return cast(DataclassT, dc_doc)  # mypy internal bug
 
 
 # -----------------------------------------------------------------------------
