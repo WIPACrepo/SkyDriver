@@ -102,7 +102,7 @@ pyyaml==6.0
     # via kubernetes
 qrcode==7.4.2
     # via wipac-rest-tools
-requests==2.29.0
+requests==2.30.0
     # via
     #   UNKNOWN (setup.py)
     #   kubernetes
@@ -140,7 +140,7 @@ typing-extensions==4.5.0
     #   typeguard
     #   wipac-dev-tools
     #   wipac-telemetry
-urllib3==1.26.15
+urllib3==2.0.2
     # via
     #   kubernetes
     #   requests
