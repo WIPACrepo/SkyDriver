@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.1.7 (2023-05-09)
+### Other
+* Resolve Dependency Conflicts ([#37](https://github.com/WIPACrepo/SkyDriver/issues/37)) ([`4fdbcf0`](https://github.com/WIPACrepo/SkyDriver/commit/4fdbcf0a5650eac3ab38774ce17496335a389683))
+* <bot> update requirements.txt ([`62b92ab`](https://github.com/WIPACrepo/SkyDriver/commit/62b92abc2cde52944d386f3c8a8157bfe5635e6a))
+* <bot> update requirements-tests.txt ([`fcca0a7`](https://github.com/WIPACrepo/SkyDriver/commit/fcca0a7b522f9288ec690b84d76c5afeb42d9e58))
+* <bot> update requirements-clientmanager.txt ([`cf3643d`](https://github.com/WIPACrepo/SkyDriver/commit/cf3643d9df2804db4fe69c6161374824b5d8836f))
+* TMS: set `EWMS_PILOT_HTCHIRP=True` ([`7db476a`](https://github.com/WIPACrepo/SkyDriver/commit/7db476a590ab5efc1d8c4553aae3a174aec85105))
+
 ## v0.1.6 (2023-05-03)
 ### Other
 * <bot> update requirements-clientmanager.txt ([`6fc3e7a`](https://github.com/WIPACrepo/SkyDriver/commit/6fc3e7a91e84e1a9fab22bd203592ed4e2ceb395))
