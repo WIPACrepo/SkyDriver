@@ -6,9 +6,9 @@
 #
 backoff==2.2.1
     # via opentelemetry-exporter-otlp-proto-http
-boto3==1.26.142
+boto3==1.26.143
     # via UNKNOWN (setup.py)
-botocore==1.29.142
+botocore==1.29.143
     # via
     #   boto3
     #   s3transfer
