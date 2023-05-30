@@ -12,7 +12,7 @@ from wipac_dev_tools import argparse_tools
 
 from . import condor_tools
 from .config import ENV, LOGGER
-from .utils import S3File
+from ..utils import S3File
 
 
 def make_condor_logs_subdir(directory: Path) -> Path:

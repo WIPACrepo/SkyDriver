@@ -5,7 +5,7 @@ import argparse
 
 import htcondor  # type: ignore[import]
 
-from .config import LOGGER
+from ..config import LOGGER
 
 
 def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
