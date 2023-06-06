@@ -21,7 +21,7 @@ async def main() -> None:
 
     # Scan Backlog Runner
     LOGGER.info("Starting scan backlog runner...")
-    asyncio.create_task(k8s.scan_backlog.startup(k8s_api, mongo_client))
+    asyncio.create_task(k8s.scan_backlog.startup(mongo_client, k8s_api))
     await asyncio.sleep(0)  # start up previous task
 
     # REST Server

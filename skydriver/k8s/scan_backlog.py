@@ -46,8 +46,8 @@ async def get_next_job(
 
 
 async def startup(
-    api_instance: kubernetes.client.BatchV1Api,
     mongo_client: AsyncIOMotorClient,
+    api_instance: kubernetes.client.BatchV1Api,
 ) -> None:
     """The main loop."""
     LOGGER.info("Started scan backlog runner.")
