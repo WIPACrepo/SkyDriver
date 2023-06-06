@@ -14,9 +14,10 @@ async def create_mongodb_client() -> AsyncIOMotorClient:
     auth_user = quote_plus(ENV.MONGODB_AUTH_USER)
     auth_pass = quote_plus(ENV.MONGODB_AUTH_PASS)
 
-    url = f"mongodb://{ENV.MONGODB_HOST}:{ENV.MONGODB_PORT}"
     if auth_user and auth_pass:
         url = f"mongodb://{auth_user}:{auth_pass}@{ENV.MONGODB_HOST}:{ENV.MONGODB_PORT}"
+    else:
+        url = f"mongodb://{ENV.MONGODB_HOST}:{ENV.MONGODB_PORT}"
 
     mongo_client = AsyncIOMotorClient(url)
     await interface.ensure_indexes(mongo_client)
