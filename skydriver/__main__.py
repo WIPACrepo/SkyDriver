@@ -4,6 +4,7 @@ import asyncio
 
 from . import database, k8s, server
 from .config import ENV, LOGGER, config_logging
+from .database import interface
 
 
 async def main() -> None:
@@ -12,7 +13,7 @@ async def main() -> None:
     # Mongo client
     LOGGER.info("Setting up Mongo client...")
     mongo_client = await database.create_mongodb_client()
-    asyncio.create_task(database.interface.ensure_indexes(mongo_client))
+    asyncio.create_task(interface.ensure_indexes(mongo_client))
     await asyncio.sleep(0)  # start up previous task
     LOGGER.info("Mongo client connected.")
 
