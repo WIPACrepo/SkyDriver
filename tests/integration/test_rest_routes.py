@@ -14,7 +14,7 @@ import pytest
 import pytest_asyncio
 import requests
 import skydriver
-import skydriver.images  # noqa: F401
+import skydriver.images  # noqa: F401  # export
 from rest_tools.client import RestClient
 from skydriver.database import create_mongodb_client
 from skydriver.database.interface import drop_collections

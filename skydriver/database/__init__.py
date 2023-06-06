@@ -6,6 +6,7 @@ from urllib.parse import quote_plus
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 
 from ..config import ENV
+from . import interface, schema  # noqa: F401  # export
 
 
 async def create_mongodb_client() -> AsyncIOMotorClient:
