@@ -54,7 +54,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     #   directly from cvmfs messes up the paths" -DS
 
     # Build the environment specification for condor
-    env_vars = []
+    env_vars = ["EWMS_PILOT_HTCHIRP=True"]
     # EWMS_* are inherited via condor `getenv`, but we have default in case these are not set.
     if not ENV.EWMS_PILOT_QUARANTINE_TIME:
         env_vars.append("EWMS_PILOT_QUARANTINE_TIME=1800")
