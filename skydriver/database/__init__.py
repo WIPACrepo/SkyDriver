@@ -6,7 +6,6 @@ from urllib.parse import quote_plus
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
 
 from ..config import ENV
-from . import interface
 
 
 async def create_mongodb_client() -> AsyncIOMotorClient:
@@ -20,5 +19,4 @@ async def create_mongodb_client() -> AsyncIOMotorClient:
         url = f"mongodb://{ENV.MONGODB_HOST}:{ENV.MONGODB_PORT}"
 
     mongo_client = AsyncIOMotorClient(url)
-    await interface.ensure_indexes(mongo_client)
     return mongo_client
