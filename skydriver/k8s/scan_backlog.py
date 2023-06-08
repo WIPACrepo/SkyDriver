@@ -28,15 +28,14 @@ async def enqueue(
     await scan_backlog.insert(entry)
 
 
-async def get_next_job(
+async def get_next_backlog_entry(
     scan_backlog: database.interface.ScanBacklogClient,
     manifests: database.interface.ManifestClient,
 ) -> database.schema.ScanBacklogEntry:
-    """Get the next job & remove any jobs that have been cancelled."""
+    """Get the next entry & remove any that have been cancelled."""
     while True:
-        entry = (
-            await scan_backlog.fetch_next_as_pending()
-        )  # raises DocumentNotFoundException
+        # get next up -- raises DocumentNotFoundException if none
+        entry = await scan_backlog.fetch_next_as_pending()
 
         # check if scan was aborted (cancelled)
         manifest = await manifests.get(entry.scan_id, incl_del=True)
@@ -62,7 +61,7 @@ async def startup(
 
         # get next job
         try:
-            entry = await get_next_job(scan_backlog, manifests)
+            entry = await get_next_backlog_entry(scan_backlog, manifests)
         except database.interface.DocumentNotFoundException:
             continue  # empty queue
         job_obj = pickle.loads(entry.pickled_k8s_job)
@@ -72,7 +71,7 @@ async def startup(
         # start job
         try:
             resp = KubeAPITools.start_job(api_instance, job_obj)
-            # job (entry) will be revived & restarted in future `get_next_job()`
+            # job (entry) will be revived & restarted in future iteration
             LOGGER.info(resp)
         except kubernetes.client.exceptions.ApiException as e:
             LOGGER.exception(e)
