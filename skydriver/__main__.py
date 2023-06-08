@@ -12,7 +12,7 @@ async def main() -> None:
     # Mongo client
     LOGGER.info("Setting up Mongo client...")
     mongo_client = await database.create_mongodb_client()
-    asyncio.create_task(database.interface.ensure_indexes(mongo_client))
+    indexing_task = asyncio.create_task(database.interface.ensure_indexes(mongo_client))
     await asyncio.sleep(0)  # start up previous task
     LOGGER.info("Mongo client connected.")
 
@@ -23,7 +23,7 @@ async def main() -> None:
 
     # Scan Backlog Runner
     LOGGER.info("Starting scan backlog runner...")
-    asyncio.create_task(k8s.scan_backlog.startup(mongo_client, k8s_api))
+    backlog_task = asyncio.create_task(k8s.scan_backlog.startup(mongo_client, k8s_api))
     await asyncio.sleep(0)  # start up previous task
 
     # REST Server
@@ -34,6 +34,8 @@ async def main() -> None:
         await asyncio.Event().wait()
     finally:
         await rs.stop()  # type: ignore[no-untyped-call]
+        indexing_task.cancel()
+        backlog_task.cancel()
 
 
 if __name__ == "__main__":
