@@ -72,10 +72,11 @@ async def startup(
         # start job
         try:
             resp = KubeAPITools.start_job(api_instance, job_obj)
+            # job (entry) will be revived & restarted in future `get_next_job()`
             LOGGER.info(resp)
         except kubernetes.client.exceptions.ApiException as e:
             LOGGER.exception(e)
             continue
 
-        # remove from backlog
+        # remove from backlog now that startup succeeded
         await scan_backlog.remove(entry)

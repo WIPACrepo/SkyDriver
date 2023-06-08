@@ -37,6 +37,7 @@ class EnvConfig:
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
     SCAN_BACKLOG_RUNNER_DELAY: int = 5 * 60
+    SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: int = 5 * 60  # entry is revived after N secs
 
     CLIENTMANAGER_IMAGE_WITH_TAG: str = ""
 

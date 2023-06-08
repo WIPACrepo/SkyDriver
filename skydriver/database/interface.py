@@ -1,6 +1,7 @@
 """Database interface for persisted scan data."""
 
 import dataclasses as dc
+import time
 from typing import TYPE_CHECKING, Any, AsyncIterator, Type, TypeVar, cast
 
 import typeguard
@@ -423,8 +424,16 @@ class ScanBacklogClient(DataclassCollectionFacade):
 
         # atomically find & update
         doc = await self._collections[_SCAN_BACKLOG_COLL_NAME].find_one_and_update(
-            {"pending": False},  # other pending entries may be in flight
-            {"$set": {"pending": True}},
+            {
+                # get entries that have never been pending (0.0) and/or
+                # entries that have been pending for too long (parent
+                # process may have died) -- younger pending entries may
+                # still be in flight by other processes)
+                "pending_timestamp": {
+                    "$lt": time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
+                }
+            },
+            {"$set": {"pending_timestamp": time.time()}},
             sort=[("timestamp", ASCENDING)],
             return_document=ReturnDocument.AFTER,
         )
