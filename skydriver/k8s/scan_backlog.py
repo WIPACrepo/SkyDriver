@@ -34,7 +34,9 @@ async def get_next_job(
 ) -> database.schema.ScanBacklogEntry:
     """Get the next job & remove any jobs that have been cancelled."""
     while True:
-        entry = await scan_backlog.peek()  # raises DocumentNotFoundException
+        entry = (
+            await scan_backlog.fetch_next_as_pending()
+        )  # raises DocumentNotFoundException
 
         # check if scan was aborted (cancelled)
         manifest = await manifests.get(entry.scan_id, incl_del=True)

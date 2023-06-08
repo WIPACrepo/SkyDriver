@@ -23,6 +23,7 @@ class ScanBacklogEntry(ScanIDDataclass):
 
     timestamp: float
     pickled_k8s_job: bytes
+    pending: bool = False
 
     def __repr__(self) -> str:
         dicto = dc.asdict(self)

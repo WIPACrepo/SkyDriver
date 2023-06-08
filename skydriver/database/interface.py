@@ -414,21 +414,25 @@ class DocumentNotFoundException(Exception):
 class ScanBacklogClient(DataclassCollectionFacade):
     """Wraps the attribute for the result of a scan."""
 
-    async def peek(self) -> schema.ScanBacklogEntry:
-        """Get oldest `schema.ScanBacklogEntry`."""
-        LOGGER.debug("peeking ScanBacklogEntry")
+    async def fetch_next_as_pending(self) -> schema.ScanBacklogEntry:
+        """Fetch the next ready entry and mark as pending.
 
-        doc = (
-            await self._collections[_SCAN_BACKLOG_COLL_NAME]
-            .find({})
-            .sort([("timestamp", ASCENDING)])
-            .limit(1)
+        This for when the container is restarted (process is killed).
+        """
+        LOGGER.debug("fetching & marking top backlog entry as a pending")
+
+        # atomically find & update
+        doc = await self._collections[_SCAN_BACKLOG_COLL_NAME].find_one_and_update(
+            {"pending": False},  # other pending entries may be in flight
+            {"$set": {"pending": True}},
+            sort=[("timestamp", ASCENDING)],
+            return_document=ReturnDocument.AFTER,
         )
         if not doc:
             raise DocumentNotFoundException()
 
         entry = from_dict(schema.ScanBacklogEntry, doc)
-        LOGGER.debug(f"found: ({_SCAN_BACKLOG_COLL_NAME=}) doc {entry}")
+        LOGGER.debug(f"Pending backlog entry for {entry.scan_id=}")
         return entry  # type: ignore[no-any-return]  # mypy internal bug
 
     async def remove(self, entry: schema.ScanBacklogEntry) -> schema.ScanBacklogEntry:
