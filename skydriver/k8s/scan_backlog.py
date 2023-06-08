@@ -59,12 +59,18 @@ async def startup(
     while True:
         await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
 
-        # get next job
+        # get next entry
         try:
             entry = await get_next_backlog_entry(scan_backlog, manifests)
         except database.interface.DocumentNotFoundException:
             continue  # empty queue
-        job_obj = pickle.loads(entry.pickled_k8s_job)
+
+        # get k8s job object
+        try:
+            job_obj = pickle.loads(entry.pickled_k8s_job)
+        except Exception as e:
+            LOGGER.exception(e)
+            continue
 
         LOGGER.info(f"Starting Scanner Instance: ({entry.timestamp}) {job_obj}")
 
