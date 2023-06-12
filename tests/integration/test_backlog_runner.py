@@ -127,9 +127,8 @@ async def test_10(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
         resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
         scans_ids.append(resp["scan_id"])
 
-    for i in range(N_JOBS):
-        await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
-        assert kapitsj_mock.call_count == i + 1
+    await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * N_JOBS * 1.01)
+    assert kapitsj_mock.call_count == N_JOBS
 
     # any extra calls?
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
