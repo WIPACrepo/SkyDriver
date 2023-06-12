@@ -114,10 +114,6 @@ async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     # need a rest route for seeing backlog
 
 
-@mock.patch(
-    "skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY",
-    new_callable=mock.PropertyMock,
-)
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 async def test_10(
     kapitsj_mock: Mock,
