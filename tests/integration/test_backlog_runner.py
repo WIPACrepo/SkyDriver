@@ -136,7 +136,11 @@ async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
 
     for i in range(N_JOBS):
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
-        kapitsj_mock.call_count = i + 1
+        assert kapitsj_mock.call_count == i + 1
+
+    # any extra calls?
+    await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
+    assert kapitsj_mock.call_count == N_JOBS
 
     # need a rest route for seeing backlog
 
@@ -156,6 +160,10 @@ async def test_10(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
 
     for i in range(N_JOBS - (N_JOBS // 2)):
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
-        kapitsj_mock.call_count = i + 1
+        assert kapitsj_mock.call_count == i + 1
+
+    # any extra calls?
+    await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
+    assert kapitsj_mock.call_count == N_JOBS - (N_JOBS // 2)
 
     # need a rest route for seeing backlog
