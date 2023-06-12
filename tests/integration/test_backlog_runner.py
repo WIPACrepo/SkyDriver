@@ -3,7 +3,6 @@
 # pylint: disable=redefined-outer-name
 
 import asyncio
-import random
 import socket
 from typing import Any, AsyncIterator, Callable
 from unittest import mock
