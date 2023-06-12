@@ -129,6 +129,27 @@ class RunEventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
+class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles looking at backlog."""
+
+    ROUTE = r"/scans/backlog$"
+
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    async def get(self) -> None:
+        """Get all scan id(s) in the backlog."""
+        entries = await self.scan_backlog.get_all()
+
+        self.write({"entries": entries})
+
+    #
+    # NOTE - 'ScanBacklogHandler' needs to stay user-read-only b/c
+    #         it's indirectly updated by the launching of a new scan
+    #
+
+
+# -----------------------------------------------------------------------------
+
+
 class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles starting new scans."""
 

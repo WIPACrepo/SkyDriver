@@ -460,3 +460,16 @@ class ScanBacklogClient(DataclassCollectionFacade):
         res = await self._collections[_SCAN_BACKLOG_COLL_NAME].insert_one(doc)
         LOGGER.debug(f"insert result: {res}")
         LOGGER.debug(f"Inserted backlog entry for {entry.scan_id=}")
+
+    async def get_all(self) -> list[dict]:
+        """Get all entries in backlog."""
+        LOGGER.debug("getting all entries in backlog")
+
+        # atomically find & update
+        docs = await self._collections[_SCAN_BACKLOG_COLL_NAME].find(
+            {},
+            sort=[("timestamp", ASCENDING)],
+        )
+        if not docs:
+            return []
+        return docs  # type: ignore[no-any-return]

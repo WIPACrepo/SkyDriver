@@ -36,6 +36,7 @@ async def make(
 
     for klass in [
         rest_handlers.RunEventMappingHandler,
+        rest_handlers.ScanBacklogHandler,
         rest_handlers.MainHandler,
         rest_handlers.ScanHandler,
         rest_handlers.ScanManifestHandler,
