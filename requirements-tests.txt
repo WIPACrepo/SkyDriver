@@ -6,9 +6,9 @@
 #
 backoff==2.2.1
     # via opentelemetry-exporter-otlp-proto-http
-boto3==1.26.150
+boto3==1.26.152
     # via UNKNOWN (setup.py)
-botocore==1.29.150
+botocore==1.29.152
     # via
     #   boto3
     #   s3transfer
@@ -124,7 +124,7 @@ pymongo==4.3.3
     #   motor
 pypng==0.20220715.0
     # via qrcode
-pytest==7.3.1
+pytest==7.3.2
     # via
     #   UNKNOWN (setup.py)
     #   pytest-asyncio
@@ -187,7 +187,7 @@ urllib3==1.26.16
     #   google-auth
     #   kubernetes
     #   requests
-websocket-client==1.5.2
+websocket-client==1.5.3
     # via kubernetes
 wipac-dev-tools==1.6.16
     # via
