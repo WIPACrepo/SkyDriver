@@ -466,10 +466,11 @@ class ScanBacklogClient(DataclassCollectionFacade):
         LOGGER.debug("getting all entries in backlog")
 
         # atomically find & update
-        docs = await self._collections[_SCAN_BACKLOG_COLL_NAME].find(
-            {},
-            sort=[("timestamp", ASCENDING)],
-        )
-        if not docs:
-            return []
-        return docs  # type: ignore[no-any-return]
+        docs = [
+            d
+            async for d in self._collections[_SCAN_BACKLOG_COLL_NAME].find(
+                {},
+                sort=[("timestamp", ASCENDING)],
+            )
+        ]
+        return docs
