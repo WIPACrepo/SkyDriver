@@ -6,8 +6,8 @@ env:
   CI_TEST: 'yes'
   CLIENTMANAGER_IMAGE_WITH_TAG: 'ghcr.io/wipacrepo/skydriver:latest'
   EWMS_PILOT_SUBPROC_TIMEOUT: 999
-  SCAN_BACKLOG_RUNNER_DELAY: 5
-  SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: 5
+  SCAN_BACKLOG_RUNNER_DELAY: 1
+  SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: 2
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
