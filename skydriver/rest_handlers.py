@@ -399,12 +399,18 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
 
         manifest = await self.manifests.mark_as_deleted(scan_id)
-        result = await self.results.get(scan_id)
+
+        try:
+            result_dict = dc.asdict(await self.results.get(scan_id))
+        except web.HTTPError as e:
+            if e.status_code != 404:
+                raise
+            result_dict = {}
 
         self.write(
             {
                 "manifest": dc.asdict(manifest),
-                "result": dc.asdict(result),
+                "result": result_dict,
             }
         )
 
