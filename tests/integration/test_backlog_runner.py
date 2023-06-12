@@ -112,12 +112,27 @@ POST_SCAN_BODY = {
 
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
-async def test_000(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
+async def test_00(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     """Test backlog job starting."""
     rc = server()
     await rc.request("POST", "/scan", POST_SCAN_BODY)
 
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.1)
     kapitsj_mock.assert_called_once()
+
+    # need a rest route for seeing backlog
+
+
+@mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
+async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
+    """Test backlog job starting."""
+    rc = server()
+
+    for _ in range(5):
+        await rc.request("POST", "/scan", POST_SCAN_BODY)
+
+    for _ in range(5):
+        await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.1)
+        kapitsj_mock.assert_called_once()
 
     # need a rest route for seeing backlog
