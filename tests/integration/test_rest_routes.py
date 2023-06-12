@@ -6,7 +6,6 @@ import asyncio
 import os
 import random
 import re
-import socket
 from typing import Any, AsyncIterator, Callable
 from unittest.mock import Mock
 
@@ -17,7 +16,6 @@ import skydriver
 import skydriver.images  # noqa: F401  # export
 from rest_tools.client import RestClient
 from skydriver.database import create_mongodb_client
-from skydriver.database.interface import drop_collections
 from skydriver.server import make
 
 skydriver.config.config_logging("debug")
@@ -40,29 +38,6 @@ SCHEDD_LOOKUP = {
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 TEST_WAIT_BEFORE_TEARDOWN = 2
-
-
-@pytest.fixture
-def port() -> int:
-    """Get an ephemeral port number."""
-    # unix.stackexchange.com/a/132524
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("", 0))
-    addr = s.getsockname()
-    ephemeral_port = addr[1]
-    s.close()
-    return ephemeral_port
-
-
-@pytest_asyncio.fixture
-async def mongo_clear() -> Any:
-    """Clear the MongoDB after test completes."""
-    motor_client = await create_mongodb_client()
-    try:
-        await drop_collections(motor_client)
-        yield
-    finally:
-        await drop_collections(motor_client)
 
 
 @pytest_asyncio.fixture
