@@ -153,17 +153,17 @@ async def test_10(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
 
     for _ in range(N_JOBS):
         resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
+        await rc.request("DELETE", f"/scan/{resp['scan_id']}")
+    for _ in range(N_JOBS):
+        resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
         scans_ids.append(resp["scan_id"])
-    for _ in range(N_JOBS // 2):
-        scans_ids.remove(scan_id := random.choice(scans_ids))
-        await rc.request("DELETE", f"/scan/{scan_id}")
 
-    for i in range(N_JOBS - (N_JOBS // 2)):
+    for i in range(N_JOBS):
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
         assert kapitsj_mock.call_count == i + 1
 
     # any extra calls?
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
-    assert kapitsj_mock.call_count == N_JOBS - (N_JOBS // 2)
+    assert kapitsj_mock.call_count == N_JOBS
 
     # need a rest route for seeing backlog
