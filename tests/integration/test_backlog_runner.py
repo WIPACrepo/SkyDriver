@@ -124,7 +124,7 @@ async def test_10(
 
     for i in range(N_JOBS + 1):
         resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
-        if i == 1:
+        if i == N_JOBS - 2:  # late enough that it won't be started yet by runner
             await rc.request("DELETE", f"/scan/{resp['scan_id']}")
 
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * N_JOBS * 1.01)
