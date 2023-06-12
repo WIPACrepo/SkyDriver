@@ -5,7 +5,7 @@
 import asyncio
 from typing import Any, AsyncIterator, Callable
 from unittest import mock
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest_asyncio
 import skydriver
