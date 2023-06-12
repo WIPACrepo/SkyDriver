@@ -121,13 +121,11 @@ async def test_10(
 ) -> None:
     """Test backlog job starting with multiple cancels."""
     rc = server()
-    scans_ids = []
 
     for i in range(N_JOBS + 1):
         resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
-        if i == 0:
+        if i == 1:
             await rc.request("DELETE", f"/scan/{resp['scan_id']}")
-        scans_ids.append(resp["scan_id"])
 
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * N_JOBS * 1.01)
     assert kapitsj_mock.call_count == N_JOBS
