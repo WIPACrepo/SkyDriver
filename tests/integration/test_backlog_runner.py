@@ -3,6 +3,7 @@
 # pylint: disable=redefined-outer-name
 
 import asyncio
+import random
 import socket
 from typing import Any, AsyncIterator, Callable
 from unittest import mock
@@ -110,6 +111,8 @@ POST_SCAN_BODY = {
     "docker_tag": "latest",
 }
 
+N_JOBS = 5
+
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 async def test_00(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
@@ -125,13 +128,33 @@ async def test_00(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
-    """Test backlog job starting."""
+    """Test backlog job starting with multiple."""
     rc = server()
 
-    for _ in range(5):
+    for _ in range(N_JOBS):
         await rc.request("POST", "/scan", POST_SCAN_BODY)
 
-    for i in range(5):
+    for i in range(N_JOBS):
+        await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
+        kapitsj_mock.call_count = i + 1
+
+    # need a rest route for seeing backlog
+
+
+@mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
+async def test_10(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
+    """Test backlog job starting with multiple cancels."""
+    rc = server()
+    scans_ids = []
+
+    for _ in range(N_JOBS):
+        resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
+        scans_ids.append(resp["scan_id"])
+    for _ in range(N_JOBS // 2):
+        scans_ids.remove(scan_id := random.choice(scans_ids))
+        await rc.request("DELETE", f"/scan/{scan_id}")
+
+    for i in range(N_JOBS - (N_JOBS // 2)):
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
         kapitsj_mock.call_count = i + 1
 
