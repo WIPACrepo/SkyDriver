@@ -117,12 +117,9 @@ async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 async def test_10(
     kapitsj_mock: Mock,
-    delay_mock: Mock,
     server: Callable[[], RestClient],
 ) -> None:
     """Test backlog job starting with multiple cancels."""
-    delay_mock.return_value = 3
-
     rc = server()
     scans_ids = []
 
