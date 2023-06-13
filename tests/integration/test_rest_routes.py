@@ -6,19 +6,17 @@ import asyncio
 import os
 import random
 import re
-import socket
 from typing import Any, AsyncIterator, Callable
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 import pytest_asyncio
 import requests
 import skydriver
-import skydriver.images  # noqa: F401
-from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
+import skydriver.images  # noqa: F401  # export
 from rest_tools.client import RestClient
-from skydriver.database.interface import drop_collections
-from skydriver.server import make, mongodb_url
+from skydriver.database import create_mongodb_client
+from skydriver.server import make
 
 skydriver.config.config_logging("debug")
 
@@ -42,29 +40,6 @@ IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 TEST_WAIT_BEFORE_TEARDOWN = 2
 
 
-@pytest.fixture
-def port() -> int:
-    """Get an ephemeral port number."""
-    # unix.stackexchange.com/a/132524
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("", 0))
-    addr = s.getsockname()
-    ephemeral_port = addr[1]
-    s.close()
-    return ephemeral_port
-
-
-@pytest_asyncio.fixture
-async def mongo_clear() -> Any:
-    """Clear the MongoDB after test completes."""
-    motor_client = AsyncIOMotorClient(mongodb_url())
-    try:
-        await drop_collections(motor_client)
-        yield
-    finally:
-        await drop_collections(motor_client)
-
-
 @pytest_asyncio.fixture
 async def server(
     monkeypatch: Any,
@@ -79,8 +54,10 @@ async def server(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
 
-    with patch("skydriver.server.setup_k8s_client", return_value=Mock()):
-        rs = await make(debug=True)
+    rs = await make(
+        mongo_client=await create_mongodb_client(),
+        k8s_api=Mock(),
+    )
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:
@@ -431,7 +408,6 @@ async def _send_result(
     )
     assert resp == {
         "scan_id": scan_id,
-        "is_deleted": False,
         "skyscan_result": result,
         "is_final": is_final,
     }
@@ -479,7 +455,6 @@ async def _delete_scan(
         },
         "result": {
             "scan_id": scan_id,
-            "is_deleted": True,
             "is_final": is_final,
             "skyscan_result": last_known_result["skyscan_result"],
         },

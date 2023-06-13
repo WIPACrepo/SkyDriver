@@ -2,6 +2,17 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.0 (2023-06-13)
+
+
+
+## v0.1.8 (2023-05-30)
+### Other
+
+* <bot> update requirements.txt ([`2f84163`](https://github.com/WIPACrepo/SkyDriver/commit/2f84163e1a0a7fb228c080ac4bec4b9782228252))
+* <bot> update requirements-tests.txt ([`f0a875e`](https://github.com/WIPACrepo/SkyDriver/commit/f0a875e61a6ec600c9cd37d88cf5d261282c77c9))
+* Bump py-versions CI release v2.1 ([#41](https://github.com/WIPACrepo/SkyDriver/issues/41)) ([`3dd6477`](https://github.com/WIPACrepo/SkyDriver/commit/3dd6477af1f69d265dd7ac4832da6e61879737a2))
+
 ## v0.1.7 (2023-05-09)
 ### Other
 * Resolve Dependency Conflicts ([#37](https://github.com/WIPACrepo/SkyDriver/issues/37)) ([`4fdbcf0`](https://github.com/WIPACrepo/SkyDriver/commit/4fdbcf0a5650eac3ab38774ce17496335a389683))
