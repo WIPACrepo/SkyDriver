@@ -19,7 +19,7 @@ skydriver.config.config_logging("debug")
 
 
 def print_it(obj: Any) -> None:
-    print(json.dumps(obj))
+    print(json.dumps(obj, indent=4))
 
 
 ########################################################################################
@@ -136,6 +136,8 @@ async def test_10(
     await rc.request("DELETE", f"/scan/{resp['scan_id']}")
 
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * N_JOBS * 1.01)
+    entries = (await rc.request("GET", "/scans/backlog"))["entries"]
+    print_it(entries)
     assert kapitsj_mock.call_count == N_JOBS - 1
 
     # any extra calls?
