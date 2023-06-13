@@ -142,22 +142,26 @@ async def test_10(
         resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
         entries = (await rc.request("GET", "/scans/backlog"))["entries"]
         print_it(entries)
-        assert len(entries) == i + 1
-
-    # delete
-    print_it(await rc.request("DELETE", f"/scan/{resp['scan_id']}"))
-    await asyncio.sleep(0)  # allow backlog runner to do its thing
+        if i <= 1:
+            assert len(entries) == i + 1
+        elif i <= 3:
+            assert len(entries) == i + 1 - 1
+        else:
+            assert len(entries) == i + 1 - 2
+        # delete
+        if i in [1, 3]:
+            print_it(await rc.request("DELETE", f"/scan/{resp['scan_id']}"))
 
     # inspect
     print_it(await rc.request("GET", "/scans/backlog"))
-    for i in range(N_JOBS - 1):
+    for i in range(N_JOBS - 2):
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
         print_it(await rc.request("GET", "/scans/backlog"))
         assert kapitsj_mock.call_count >= i + 1  # in case runner is faster
-    assert kapitsj_mock.call_count == N_JOBS - 1
+    assert kapitsj_mock.call_count == N_JOBS - 2
 
     # any extra calls?
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
-    assert kapitsj_mock.call_count == N_JOBS - 1
+    assert kapitsj_mock.call_count == N_JOBS - 2
     print_it(await rc.request("GET", "/scans/backlog"))
     assert not (await rc.request("GET", "/scans/backlog"))["entries"]
