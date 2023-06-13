@@ -117,7 +117,8 @@ async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     for i in range(N_JOBS):
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
         print_it(await rc.request("GET", "/scans/backlog"))
-        assert kapitsj_mock.call_count == i + 1
+        assert kapitsj_mock.call_count >= i + 1  # in case runner is faster
+    assert kapitsj_mock.call_count == N_JOBS
 
     # any extra calls?
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
