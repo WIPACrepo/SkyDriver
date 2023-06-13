@@ -17,7 +17,7 @@ def _get_log_fpath(logs_subdir: Path) -> Path:
 def make_k8s_job_desc(  # pylint: disable=too-many-argument
     # k8s args
     namespace: str,
-    name: str,
+    job_name: str,
     memory: str,
     n_jobs: int,
     n_cores: int,
@@ -37,7 +37,7 @@ def make_k8s_job_desc(  # pylint: disable=too-many-argument
             k8s_job_dict = json.load(f)
     # Setting namespace
     k8s_job_dict["metadata"]["namespace"] = namespace
-    k8s_job_dict["metadata"]["name"] = name
+    k8s_job_dict["metadata"]["name"] = job_name
 
     # Setting parallelism
     k8s_job_dict["spec"]["completions"] = n_jobs
@@ -64,6 +64,7 @@ def make_k8s_job_desc(  # pylint: disable=too-many-argument
 def start(
     k8s_client: kubernetes.client.ApiClient,
     namespace: str,
+    job_name: str,
     job_count: int,
     core_count: int,
     client_args: list[tuple[str, str]],
@@ -72,13 +73,13 @@ def start(
     client_startup_json_s3: S3File,
     dryrun: bool,
     cpu_arch: str = "x64",
-) -> list:
+) -> dict:
     """Main logic."""
 
     # make k8s job description
     k8s_job_dict = make_k8s_job_desc(
         namespace,
-        name,
+        job_name,
         # condor args
         memory,
         job_count,

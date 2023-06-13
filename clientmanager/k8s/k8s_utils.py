@@ -1,18 +1,15 @@
 """Util functions wrapping common htcondor actions."""
 
 
-# pylint:disable=no-member
-
-
 from typing import Any
 
 import kubernetes  # type: ignore[import]
 
 from .config import LOGGER
 
+
 def update_skydriver_k8s(
     skydriver_rc: RestClient,
-
 ) -> None:
     """Send SkyDriver updates from the `submit_result`."""
     skydriver_rc.request_seq(

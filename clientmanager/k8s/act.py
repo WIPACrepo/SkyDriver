@@ -22,7 +22,8 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
             # start
             submit_result_obj = starter.start(
                 k8s_client,
-                args.namespace,
+                ENV.WORKER_K8S_NAMESPACE,
+                ENV.SKYSCAN_SKYDRIVER_SCAN_ID,
                 args.name,
                 args.n_jobs,
                 args.client_args,
@@ -42,7 +43,8 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
             LOGGER.info("Sent cluster info to SkyDriver")
         case "stop":
             stopper.stop(
-                args,
+                ENV.WORKER_K8S_NAMESPACE,
+                ENV.SKYSCAN_SKYDRIVER_SCAN_ID,
                 k8s_client,
             )
         case _:

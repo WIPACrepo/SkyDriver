@@ -102,11 +102,6 @@ class OrchestratorArgs:
             default="",
             help="k8s cluster config to run as a yaml file",
         )
-        sub_parser.add_argument(
-            "--namespace",
-            default="",
-            help="namespace to use",
-        )
 
 
 class ActionArgs:
