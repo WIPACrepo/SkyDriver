@@ -38,7 +38,7 @@ deprecated==1.2.14
     #   opentelemetry-exporter-otlp-proto-http
 dnspython==2.3.0
     # via pymongo
-google-auth==2.19.1
+google-auth==2.20.0
     # via kubernetes
 googleapis-common-protos==1.56.2
     # via
