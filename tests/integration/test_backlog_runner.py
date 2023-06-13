@@ -133,11 +133,12 @@ async def test_10(
         print_it(entries)
         assert len(entries) == i + 1
 
-    await rc.request("DELETE", f"/scan/{resp['scan_id']}")
+    print_it(await rc.request("DELETE", f"/scan/{resp['scan_id']}"))
+    print_it(await rc.request("GET", "/scans/backlog"))
 
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * N_JOBS * 1.01)
-    entries = (await rc.request("GET", "/scans/backlog"))["entries"]
-    print_it(entries)
+
+    print_it(await rc.request("GET", "/scans/backlog"))
     assert kapitsj_mock.call_count == N_JOBS - 1
 
     # any extra calls?

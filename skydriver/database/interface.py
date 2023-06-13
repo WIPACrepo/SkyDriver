@@ -462,10 +462,11 @@ class ScanBacklogClient(DataclassCollectionFacade):
         LOGGER.debug(f"Inserted backlog entry for {entry.scan_id=}")
 
     async def get_all(self) -> list[dict]:
-        """Get all entries in backlog."""
-        LOGGER.debug("getting all entries in backlog")
+        """Get all entries in backlog.
 
-        # atomically find & update
+        Doesn't include all fields.
+        """
+        LOGGER.debug("getting all entries in backlog")
         docs = [
             d
             async for d in self._collections[_SCAN_BACKLOG_COLL_NAME].find(
