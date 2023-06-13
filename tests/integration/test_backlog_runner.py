@@ -3,6 +3,7 @@
 # pylint: disable=redefined-outer-name
 
 import asyncio
+import json
 from typing import Any, AsyncIterator, Callable
 from unittest import mock
 from unittest.mock import Mock
@@ -15,6 +16,10 @@ from skydriver.database import create_mongodb_client
 from skydriver.server import make
 
 skydriver.config.config_logging("debug")
+
+
+def print_it(obj: Any) -> None:
+    print(json.dumps(obj))
 
 
 ########################################################################################
@@ -124,7 +129,9 @@ async def test_10(
 
     for i in range(N_JOBS + 1):
         resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
-        print(await rc.request("GET", "/scans/backlog"))
+        entries = await rc.request("GET", "/scans/backlog")
+        print_it(entries)
+        assert len(entries) == i + 1
         if i == N_JOBS - 2:  # late enough that it won't be started yet by runner
             await rc.request("DELETE", f"/scan/{resp['scan_id']}")
 
