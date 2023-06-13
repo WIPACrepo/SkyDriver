@@ -88,7 +88,6 @@ POST_SCAN_BODY = {
 N_JOBS = 5
 
 
-@mock.patch("skydriver.k8s.scanner_instance.SkymapScannerStopperJob.do_job", new=Mock())
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 async def test_00(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     """Test backlog job starting."""
@@ -103,7 +102,6 @@ async def test_00(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     print_it(await rc.request("GET", "/scans/backlog"))
 
 
-@mock.patch("skydriver.k8s.scanner_instance.SkymapScannerStopperJob.do_job", new=Mock())
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     """Test backlog job starting with multiple."""
@@ -127,6 +125,7 @@ async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     print_it(await rc.request("GET", "/scans/backlog"))
 
 
+# mock skydriver.k8s.scanner_instance.SkymapScannerStopperJob.do_job b/c it calls start_job
 @mock.patch("skydriver.k8s.scanner_instance.SkymapScannerStopperJob.do_job", new=Mock())
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 async def test_10(
