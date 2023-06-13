@@ -1,7 +1,8 @@
 """Database interface for persisted scan data."""
 
 import dataclasses as dc
-from typing import Any, AsyncIterator, Type, TypeVar, cast
+import time
+from typing import TYPE_CHECKING, Any, AsyncIterator, Type, TypeVar, cast
 
 import typeguard
 from dacite import from_dict  # type: ignore[attr-defined]
@@ -9,11 +10,19 @@ from motor.motor_asyncio import (  # type: ignore
     AsyncIOMotorClient,
     AsyncIOMotorCollection,
 )
-from pymongo import DESCENDING, ReturnDocument
+from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from tornado import web
 
-from ..config import LOGGER
+from ..config import ENV, LOGGER
 from . import schema
+
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance  # type: ignore[attr-defined]
+else:
+    DataclassInstance = Any
+
+
+DataclassT = TypeVar("DataclassT", bound=DataclassInstance)
 
 
 def friendly_nested_asdict(value: Any) -> Any:
@@ -40,7 +49,7 @@ def friendly_nested_asdict(value: Any) -> Any:
 _DB_NAME = "SkyDriver_DB"
 _MANIFEST_COLL_NAME = "Manifests"
 _RESULTS_COLL_NAME = "Results"
-S = TypeVar("S", bound=schema.ScanIDDataclass)
+_SCAN_BACKLOG_COLL_NAME = "ScanBacklog"
 
 
 async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
@@ -69,63 +78,80 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
         unique=True,
     )
 
+    # SCAN BACKLOG COLL
+    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(
+        [("timestamp", ASCENDING)],
+        name="timestamp_index",
+        unique=False,
+    )
+    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(
+        "scan_id",
+        name="scan_id_index",
+        unique=True,
+    )
+
 
 async def drop_collections(motor_client: AsyncIOMotorClient) -> None:
     """Drop the "regular" collections -- most useful for testing."""
+    if not ENV.CI_TEST:
+        raise RuntimeError("Cannot drop collections if not in testing mode")
     await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].drop()
     await motor_client[_DB_NAME][_RESULTS_COLL_NAME].drop()
+    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].drop()
 
 
-class ScanIDCollectionFacade:
-    """Allows specific semantic actions on the collections by Scan ID."""
+class DataclassCollectionFacade:
+    """Motor Client wrapper w/ guardrails & `dataclasses.dataclass` casting."""
 
     def __init__(self, motor_client: AsyncIOMotorClient) -> None:
         # place in a dictionary so there's some safeguarding against bogus collections
         self._collections: dict[str, AsyncIOMotorCollection] = {
             _MANIFEST_COLL_NAME: motor_client[_DB_NAME][_MANIFEST_COLL_NAME],
             _RESULTS_COLL_NAME: motor_client[_DB_NAME][_RESULTS_COLL_NAME],
+            _SCAN_BACKLOG_COLL_NAME: motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME],
         }
 
     async def _find_one(
-        self, coll: str, scan_id: str, scandc_type: Type[S], incl_del: bool
-    ) -> S:
-        """Get document by 'scan_id'."""
-        LOGGER.debug(f"finding: ({coll=}) doc with {scan_id=} for {scandc_type=}")
-        query = {"scan_id": scan_id}
+        self,
+        coll: str,
+        query: dict[str, Any],
+        dclass: Type[DataclassT],
+    ) -> DataclassT:
+        """Get document by 'query'."""
+        LOGGER.debug(f"finding: ({coll=}) doc with {query=} for {dclass=}")
         doc = await self._collections[coll].find_one(query)
-        if (not doc) or (doc["is_deleted"] and not incl_del):
+        if not doc:
             raise web.HTTPError(
                 404,
-                log_message=f"Document Not Found: {coll} document ({scan_id})",
+                log_message=f"Document Not Found: {coll} document ({query})",
             )
-        scandc = from_dict(scandc_type, doc)
-        LOGGER.debug(f"found: ({coll=}) doc {scandc}")
-        return scandc  # type: ignore[no-any-return]  # mypy internal bug
+        dc_doc = from_dict(dclass, doc)
+        LOGGER.debug(f"found: ({coll=}) doc {dc_doc}")
+        return dc_doc  # type: ignore[no-any-return]  # mypy internal bug
 
     async def _upsert(
         self,
         coll: str,
-        scan_id: str,
-        update: schema.StrDict | S,
-        dclass: Type[S] | None = None,
-    ) -> S:
+        query: dict[str, Any],
+        update: schema.StrDict | DataclassT,
+        dclass: Type[DataclassT] | None = None,
+    ) -> DataclassT:
         """Insert/update the doc.
 
         *For partial updates:* pass `update` as a `dict` along with a
-        `scandc_type` (`ScanIDDataclass` class/type). `scandc_type` is
+        `dclass` (`dataclasses.dataclass` class/type). `dclass` is
         used to validate updates against the document's schema and casts
         the returned document.
 
-        *For whole inserts:* pass `update` as a `ScanIDDataclass`
-        instance. `scandc_type` is not needed/used in this case. There
-        is no data validation, since `ScanIDDataclass` does its own on
-        initialization.
+        *For whole inserts:* pass `update` as a `dataclass`
+        instance. `dclass` is not needed/used in this case. There
+        is no data validation--it's assumed this is pre-validated.
         """
-        LOGGER.debug(f"replacing: ({coll=}) doc with {scan_id=} {dclass=}")
+        LOGGER.debug(f"replacing: ({coll=}) doc with {query=} {dclass=}")
 
         async def find_one_and_update(update_dict: schema.StrDict) -> schema.StrDict:
             return await self._collections[coll].find_one_and_update(  # type: ignore[no-any-return]
-                {"scan_id": scan_id},
+                query,
                 {"$set": update_dict},
                 upsert=True,
                 return_document=ReturnDocument.AFTER,
@@ -143,11 +169,11 @@ class ScanIDCollectionFacade:
                 try:
                     typeguard.check_type(value, fields[key].type)  # TypeError, KeyError
                 except (typeguard.TypeCheckError, KeyError) as e:
-                    LOGGER.error(e)
+                    LOGGER.exception(e)
                     msg = f"Invalid type (field '{key}')"
                     raise web.HTTPError(
                         422,
-                        log_message=msg + f" for {scan_id=}",
+                        log_message=msg + f" for {query=}",
                         reason=msg,
                     )
             # at this point we know all data is type checked, so transform & put in DB
@@ -158,10 +184,10 @@ class ScanIDCollectionFacade:
             try:  # validate via dataclass's `@typechecked` wrapper
                 doc = await find_one_and_update(dc.asdict(update))
             except typeguard.TypeCheckError as e:
-                LOGGER.error(e)
+                LOGGER.exception(e)
                 raise web.HTTPError(
                     422,
-                    log_message=f"Invalid type for {scan_id=}",
+                    log_message=f"Invalid type for {query=}",
                     reason="Invalid type",
                 )
             out_type = type(update)
@@ -170,24 +196,31 @@ class ScanIDCollectionFacade:
         if not doc:
             raise web.HTTPError(
                 500,
-                log_message=f"Failed to insert/update {coll} document ({scan_id})",
+                log_message=f"Failed to insert/update {coll} document ({query})",
             )
-        scandc = from_dict(out_type, doc)
-        LOGGER.debug(f"replaced: ({coll=}) doc {scandc}")
-        return cast(S, scandc)  # mypy internal bug
+        dc_doc = from_dict(out_type, doc)
+        LOGGER.debug(f"replaced: ({coll=}) doc {dc_doc}")
+        return cast(DataclassT, dc_doc)  # mypy internal bug
 
 
 # -----------------------------------------------------------------------------
 
 
-class ManifestClient(ScanIDCollectionFacade):
+class ManifestClient(DataclassCollectionFacade):
     """Wraps the attribute for the metadata of a scan."""
 
     async def get(self, scan_id: str, incl_del: bool) -> schema.Manifest:
         """Get `schema.Manifest` using `scan_id`."""
         LOGGER.debug(f"getting manifest for {scan_id=}")
+
+        query: dict[str, Any] = {"scan_id": scan_id}
+        if not incl_del:  # if true, we don't care what 'is_deleted' value is
+            query["is_deleted"] = False
+
         manifest = await self._find_one(
-            _MANIFEST_COLL_NAME, scan_id, schema.Manifest, incl_del
+            _MANIFEST_COLL_NAME,
+            query,
+            schema.Manifest,
         )
         return manifest
 
@@ -209,7 +242,11 @@ class ManifestClient(ScanIDCollectionFacade):
             tms_args=tms_args_list,
             env_vars=env_vars,
         )
-        manifest = await self._upsert(_MANIFEST_COLL_NAME, manifest.scan_id, manifest)
+        manifest = await self._upsert(
+            _MANIFEST_COLL_NAME,
+            {"scan_id": manifest.scan_id},
+            manifest,
+        )
         return manifest
 
     async def patch(
@@ -285,7 +322,7 @@ class ManifestClient(ScanIDCollectionFacade):
         LOGGER.debug(f"patching manifest for {scan_id=} with {upserting=}")
         manifest = await self._upsert(
             _MANIFEST_COLL_NAME,
-            scan_id,
+            {"scan_id": scan_id},
             upserting,
             schema.Manifest,
         )
@@ -296,7 +333,10 @@ class ManifestClient(ScanIDCollectionFacade):
         LOGGER.debug(f"marking manifest as deleted for {scan_id=}")
 
         manifest = await self._upsert(
-            _MANIFEST_COLL_NAME, scan_id, {"is_deleted": True}, schema.Manifest
+            _MANIFEST_COLL_NAME,
+            {"scan_id": scan_id},
+            {"is_deleted": True},
+            schema.Manifest,
         )
         return manifest
 
@@ -331,14 +371,16 @@ class ManifestClient(ScanIDCollectionFacade):
 # -----------------------------------------------------------------------------
 
 
-class ResultClient(ScanIDCollectionFacade):
+class ResultClient(DataclassCollectionFacade):
     """Wraps the attribute for the result of a scan."""
 
-    async def get(self, scan_id: str, incl_del: bool) -> schema.Result:
+    async def get(self, scan_id: str) -> schema.Result:
         """Get `schema.Result` using `scan_id`."""
         LOGGER.debug(f"getting result for {scan_id=}")
         result = await self._find_one(
-            _RESULTS_COLL_NAME, scan_id, schema.Result, incl_del
+            _RESULTS_COLL_NAME,
+            {"scan_id": scan_id},
+            schema.Result,
         )
         return result
 
@@ -354,17 +396,83 @@ class ResultClient(ScanIDCollectionFacade):
                 log_message=msg + f" for {scan_id=}",
                 reason=msg,
             )
-        result = schema.Result(
-            scan_id, False, skyscan_result, is_final
-        )  # validates data
-        result = await self._upsert(_RESULTS_COLL_NAME, result.scan_id, result)
-        return result
-
-    async def mark_as_deleted(self, scan_id: str) -> schema.Result:
-        """Mark `schema.Result` at doc matching `scan_id` as deleted."""
-        LOGGER.debug(f"marking result as deleted for {scan_id=}")
-
+        result = schema.Result(scan_id, skyscan_result, is_final)  # validates data
         result = await self._upsert(
-            _RESULTS_COLL_NAME, scan_id, {"is_deleted": True}, schema.Result
+            _RESULTS_COLL_NAME,
+            {"scan_id": result.scan_id},
+            result,
         )
         return result
+
+
+# -----------------------------------------------------------------------------
+
+
+class DocumentNotFoundException(Exception):
+    """Raised when document is not found for a particular query."""
+
+
+class ScanBacklogClient(DataclassCollectionFacade):
+    """Wraps the attribute for the result of a scan."""
+
+    async def fetch_next_as_pending(self) -> schema.ScanBacklogEntry:
+        """Fetch the next ready entry and mark as pending.
+
+        This for when the container is restarted (process is killed).
+        """
+        LOGGER.debug("fetching & marking top backlog entry as a pending")
+
+        # atomically find & update
+        doc = await self._collections[_SCAN_BACKLOG_COLL_NAME].find_one_and_update(
+            {
+                # get entries that have never been pending (0.0) and/or
+                # entries that have been pending for too long (parent
+                # process may have died) -- younger pending entries may
+                # still be in flight by other processes)
+                "pending_timestamp": {
+                    "$lt": time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
+                }
+            },
+            {"$set": {"pending_timestamp": time.time()}},
+            sort=[("timestamp", ASCENDING)],
+            return_document=ReturnDocument.AFTER,
+        )
+        if not doc:
+            raise DocumentNotFoundException()
+
+        entry = from_dict(schema.ScanBacklogEntry, doc)
+        LOGGER.debug(f"Pending backlog entry for {entry.scan_id=}")
+        return entry  # type: ignore[no-any-return]  # mypy internal bug
+
+    async def remove(self, entry: schema.ScanBacklogEntry) -> schema.ScanBacklogEntry:
+        """Remove entry, `schema.ScanBacklogEntry`."""
+        LOGGER.debug("removing ScanBacklogEntry")
+        res = await self._collections[_SCAN_BACKLOG_COLL_NAME].delete_one(
+            {"scan_id": entry.scan_id}
+        )
+        LOGGER.debug(f"delete_one result: {res}")
+        return entry
+
+    async def insert(self, entry: schema.ScanBacklogEntry) -> None:
+        """Insert entry, `schema.ScanBacklogEntry`."""
+        LOGGER.debug(f"inserting {entry=}")
+        doc = dc.asdict(entry)
+        res = await self._collections[_SCAN_BACKLOG_COLL_NAME].insert_one(doc)
+        LOGGER.debug(f"insert result: {res}")
+        LOGGER.debug(f"Inserted backlog entry for {entry.scan_id=}")
+
+    async def get_all(self) -> list[dict]:
+        """Get all entries in backlog.
+
+        Doesn't include all fields.
+        """
+        LOGGER.debug("getting all entries in backlog")
+        docs = [
+            d
+            async for d in self._collections[_SCAN_BACKLOG_COLL_NAME].find(
+                {},
+                {"_id": False, "pickled_k8s_job": False},
+                sort=[("timestamp", ASCENDING)],
+            )
+        ]
+        return docs

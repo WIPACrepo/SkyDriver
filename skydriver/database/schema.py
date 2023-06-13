@@ -14,7 +14,24 @@ class ScanIDDataclass:
     """A dataclass with a scan id."""
 
     scan_id: str
-    is_deleted: bool
+
+
+@typechecked
+@dc.dataclass
+class ScanBacklogEntry(ScanIDDataclass):
+    """An entry for the scan backlog used for rate-limiting."""
+
+    timestamp: float
+    pickled_k8s_job: bytes
+    pending_timestamp: float = 0.0
+
+    def __repr__(self) -> str:
+        dicto = dc.asdict(self)
+        dicto.pop("pickled_k8s_job")
+        # shorten b/c this is a LARGE binary (that is, at least a large string)
+        dicto["pickled_k8s_job_HASH"] = hash(str(self.pickled_k8s_job))
+        rep = f"{self.__class__.__name__}{dicto}"
+        return rep
 
 
 @typechecked
@@ -87,6 +104,8 @@ class CondorClutser:
 @dc.dataclass
 class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
+
+    is_deleted: bool
 
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ checksum/hash?
     scanner_server_args: str

@@ -162,6 +162,32 @@ None
 
 
 &nbsp;
+### `/scans/backlog` - GET
+-------------------------------------------------------------------------------
+_Retrieve entire backlog list_
+
+#### Arguments
+None
+
+#### SkyDriver Effects
+None
+
+#### Returns
+```
+{
+    "entries": [
+        {
+            "scan_id": str,
+            "timestamp": float,
+            "pending_timestamp": float
+        },
+        ...
+    ]
+}
+```
+
+
+&nbsp;
 ### Return Types
 -------------------------------------------------------------------------------
 #### Manifest

@@ -6,9 +6,9 @@
 #
 backoff==2.2.1
     # via opentelemetry-exporter-otlp-proto-http
-boto3==1.26.143
+boto3==1.26.152
     # via UNKNOWN (setup.py)
-botocore==1.29.143
+botocore==1.29.152
     # via
     #   boto3
     #   s3transfer
@@ -28,7 +28,7 @@ coloredlogs==15.0.1
     # via
     #   UNKNOWN (setup.py)
     #   wipac-telemetry
-cryptography==40.0.2
+cryptography==41.0.1
     # via pyjwt
 dacite==1.8.1
     # via UNKNOWN (setup.py)
@@ -38,7 +38,7 @@ deprecated==1.2.14
     #   opentelemetry-exporter-otlp-proto-http
 dnspython==2.3.0
     # via pymongo
-google-auth==2.19.0
+google-auth==2.20.0
     # via kubernetes
 googleapis-common-protos==1.56.2
     # via
@@ -46,7 +46,7 @@ googleapis-common-protos==1.56.2
     #   opentelemetry-exporter-otlp-proto-http
 grpcio==1.54.2
     # via opentelemetry-exporter-jaeger-proto-grpc
-htcondor==10.3.0
+htcondor==10.5.0
     # via UNKNOWN (setup.py)
 humanfriendly==10.0
     # via coloredlogs
@@ -153,7 +153,7 @@ tornado==6.3.2
     #   wipac-rest-tools
 typeguard==4.0.0
     # via UNKNOWN (setup.py)
-typing-extensions==4.6.2
+typing-extensions==4.6.3
     # via
     #   opentelemetry-sdk
     #   qrcode
@@ -166,7 +166,7 @@ urllib3==1.26.16
     #   google-auth
     #   kubernetes
     #   requests
-websocket-client==1.5.2
+websocket-client==1.5.3
     # via kubernetes
 wipac-dev-tools==1.6.16
     # via
