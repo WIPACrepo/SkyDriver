@@ -470,7 +470,7 @@ class ScanBacklogClient(DataclassCollectionFacade):
             d
             async for d in self._collections[_SCAN_BACKLOG_COLL_NAME].find(
                 {},
-                {"_id": False},
+                {"_id": False, "pickled_k8s_job": False},
                 sort=[("timestamp", ASCENDING)],
             )
         ]
