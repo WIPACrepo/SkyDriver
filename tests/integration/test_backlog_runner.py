@@ -129,7 +129,7 @@ async def test_10(
 
     for i in range(N_JOBS + 1):
         resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
-        entries = await rc.request("GET", "/scans/backlog")["entries"]
+        entries = (await rc.request("GET", "/scans/backlog"))["entries"]
         print_it(entries)
         assert len(entries) == i + 1
         if i == N_JOBS - 2:
