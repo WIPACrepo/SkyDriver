@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.2.1 (2023-06-13)
+
+### Other
+
+* <bot> update requirements.txt ([`be16ac2`](https://github.com/WIPACrepo/SkyDriver/commit/be16ac2c1cad67bfd4d57e6656d73a573a2e69e9))
+* <bot> update requirements-tests.txt ([`a76f7ad`](https://github.com/WIPACrepo/SkyDriver/commit/a76f7add78c822672b0bb2ef12b0f3dd7b6abd37))
+* Update README (appease argocd bot) ([`d2b0b08`](https://github.com/WIPACrepo/SkyDriver/commit/d2b0b08ca3845102f8c7450d3bc796c62f0d5d49))
+
 ## v0.2.0 (2023-06-13)
 
 
