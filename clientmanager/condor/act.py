@@ -12,7 +12,7 @@ from . import starter, stopper
 
 def act(
     args: argparse.Namespace,
-    schedd_obj: htcondor.Schedd,  # pylint:disable=no-member
+    schedd_obj: htcondor.Schedd,
 ) -> None:
     """Do the action."""
     match args.action:

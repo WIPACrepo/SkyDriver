@@ -17,7 +17,7 @@ def stop(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
     # Remove jobs -- may not be instantaneous
     LOGGER.info("Requesting removal...")
     act_obj = schedd_obj.act(
-        htcondor.JobAction.Remove,  # pylint:disable=no-member
+        htcondor.JobAction.Remove,
         f"ClusterId == {args.cluster_id}",
         reason="Requested by SkyDriver",
     )

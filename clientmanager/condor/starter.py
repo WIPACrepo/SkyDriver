@@ -34,7 +34,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     singularity_image: str,
     client_startup_json_s3: S3File,
     client_args_string: str,
-) -> htcondor.Submit:  # pylint:disable=no-member
+) -> htcondor.Submit:
     """Make the condor job description (submit object)."""
 
     # NOTE:
@@ -94,11 +94,11 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     if accounting_group:
         submit_dict["+AccountingGroup"] = f"{accounting_group}.{getpass.getuser()}"
 
-    return htcondor.Submit(submit_dict)  # pylint:disable=no-member
+    return htcondor.Submit(submit_dict)
 
 
 def start(
-    schedd_obj: htcondor.Schedd,  # pylint:disable=no-member
+    schedd_obj: htcondor.Schedd,
     job_count: int,
     logs_directory: Path | None,
     client_args: list[tuple[str, str]],
@@ -107,7 +107,7 @@ def start(
     singularity_image: str,
     client_startup_json_s3: S3File,
     dryrun: bool,
-) -> htcondor.SubmitResult:  # pylint:disable=no-member
+) -> htcondor.SubmitResult:
     """Main logic."""
     if logs_directory:
         logs_subdir = make_condor_logs_subdir(logs_directory)

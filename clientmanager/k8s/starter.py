@@ -27,7 +27,7 @@ def make_k8s_job_desc(  # pylint: disable=too-many-argument
     add_client_args: list[tuple[str, str]],
     # special args for the cloud
     cpu_arch: str = "x64",
-) -> dict:  # pylint:disable=no-member
+) -> dict:
     """Make the k8s job description (submit object)."""
     if cpu_arch == "arm":
         with open("k8s_job_arm_stub.json", "r") as f:
@@ -97,9 +97,9 @@ def start(
     if dryrun:
         LOGGER.info(k8s_job_dict)
         LOGGER.error("Script Aborted: K8s job not submitted")
-        return
+        return k8s_job_dict
 
     # submit
     kubernetes.utils.create_from_dict(k8s_client, k8s_job_dict, namespace=namespace)
 
-    return k8s_result_obj
+    return k8s_job_dict

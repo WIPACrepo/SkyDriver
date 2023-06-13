@@ -47,7 +47,7 @@ def main() -> None:
     logging_tools.set_level(
         "DEBUG",  # os.getenv("SKYSCAN_LOG", "INFO"),  # type: ignore[arg-type]
         first_party_loggers=LOGGER,
-        third_party_level=ENV.SKYSCAN_LOG_THIRD_PARTY,
+        third_party_level=ENV.SKYSCAN_LOG_THIRD_PARTY,  # type: ignore[arg-type]
         use_coloredlogs=True,  # for formatting
         future_third_parties=["boto3", "botocore"],
     )
@@ -56,6 +56,7 @@ def main() -> None:
     # Go!
     match args.orchestrator:
         case "condor":
+            # condor auth
             with htcondor.SecMan() as secman:
                 secman.setToken(htcondor.Token(ENV.CONDOR_TOKEN))
                 schedd_obj = condor.condor_tools.get_schedd_obj(
@@ -65,11 +66,10 @@ def main() -> None:
         case "k8s":
             # Creating K8S cluster client
             k8s_client_config = kubernetes.client.Configuration()
-            k8s_client_config.host = ENV.K8S_SERVER
-            k8s_client_config.api_key["authorization"] = ENV.K8S_TOKEN
+            k8s_client_config.host = ENV.WORKER_K8S_SERVER
+            k8s_client_config.api_key["authorization"] = ENV.WORKER_K8S_TOKEN
             with kubernetes.client.ApiClient(k8s_client_config) as k8s_api_client:
-                # Go!
-                k8s.act(args, k8s_api_client, namespace)
+                k8s.act(args, k8s_api_client, ENV.WORKER_K8S_NAMESPACE)
         case other:
             raise RuntimeError(f"Not supported orchestrator: {other}")
 
@@ -143,14 +143,6 @@ class ActionArgs:
             required=True,
             type=int,
             help="number of jobs to start",
-        )
-        sub_parser.add_argument(
-            "--accounting-group",
-            default="",
-            help=(
-                "the accounting group to use, ex: 1_week. "
-                "By default no accounting group is used."
-            ),
         )
         sub_parser.add_argument(
             "--memory",

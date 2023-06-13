@@ -30,7 +30,7 @@ def connect_to_skydriver() -> RestClient:
 
 def update_skydriver(
     skydriver_rc: RestClient,
-    submit_result_obj: htcondor.SubmitResult,  # pylint:disable=no-member
+    submit_result_obj: htcondor.SubmitResult,
     collector: str,
     schedd: str,
 ) -> None:
