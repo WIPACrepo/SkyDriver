@@ -344,7 +344,7 @@ async def stop_scanner_instance(
     )
 
     try:
-        k8s_job.start_job()
+        k8s_job.do_job()
     except kubernetes.client.exceptions.ApiException as e:
         LOGGER.exception(e)
         raise web.HTTPError(

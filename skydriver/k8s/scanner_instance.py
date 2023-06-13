@@ -331,7 +331,7 @@ class SkymapScannerStopperJob:
             ENV.K8S_NAMESPACE,
         )
 
-    def start_job(self) -> Any:
+    def do_job(self) -> Any:
         """Start the k8s job."""
 
         # TODO: stop first k8s job (server & clientmanager-starter)
