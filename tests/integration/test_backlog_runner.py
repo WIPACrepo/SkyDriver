@@ -106,6 +106,7 @@ async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     rc = server()
 
     for _ in range(N_JOBS):
+        await asyncio.sleep(0)  # allow backlog runner to do its thing
         await rc.request("POST", "/scan", POST_SCAN_BODY)
 
     for i in range(N_JOBS):
@@ -128,12 +129,15 @@ async def test_10(
     rc = server()
 
     for i in range(N_JOBS):
+        await asyncio.sleep(0)  # allow backlog runner to do its thing
         resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
         entries = (await rc.request("GET", "/scans/backlog"))["entries"]
         print_it(entries)
         assert len(entries) == i + 1
 
     print_it(await rc.request("DELETE", f"/scan/{resp['scan_id']}"))
+    await asyncio.sleep(0)  # allow backlog runner to do its thing
+
     print_it(await rc.request("GET", "/scans/backlog"))
 
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * N_JOBS * 1.01)
