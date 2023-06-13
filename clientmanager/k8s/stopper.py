@@ -1,11 +1,11 @@
-"""For stopping Skymap Scanner clients on an HTCondor cluster."""
+"""For stopping Skymap Scanner clients on a K8s cluster."""
 
 
 import argparse
 
 import kubernetes  # type: ignore[import]
 
-from .config import LOGGER
+from ..config import LOGGER
 
 
 def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
@@ -17,8 +17,7 @@ def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
     )
 
 
-def stop(args: argparse.Namespace, 
-         k8s_client) -> None:
+def stop(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> None:
     """Main logic."""
     LOGGER.info(
         f"Stopping Skymap Scanner client jobs on {args.cluster_id} / {args.collector} / {args.schedd}"
@@ -29,10 +28,13 @@ def stop(args: argparse.Namespace,
     k8s_response = k8s_client.delete_namespaced_job(
         name=JOB_NAME,
         namespace="default",
-        body=client.V1DeleteOptions(
-            propagation_policy='Foreground',
-            grace_period_seconds=5))
+        body=kubernetes.client.V1DeleteOptions(
+            propagation_policy="Foreground", grace_period_seconds=5
+        ),
+    )
     LOGGER.debug("Job deleted. status='%s'" % str(k8s_response.status))
-    LOGGER.info(f"Removed jobs: {args.job_name} in namespace {args.namespace} with response {k8s_response.status} ")
+    LOGGER.info(
+        f"Removed jobs: {args.job_name} in namespace {args.namespace} with response {k8s_response.status} "
+    )
 
     # TODO: get/forward job logs

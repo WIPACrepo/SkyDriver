@@ -8,15 +8,6 @@ import htcondor  # type: ignore[import]
 from ..config import LOGGER
 
 
-def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
-    """Add args to subparser."""
-    sub_parser.add_argument(
-        "--cluster-id",
-        required=True,
-        help="the cluster id of the jobs to be stopped/removed",
-    )
-
-
 def stop(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
     """Main logic."""
     LOGGER.info(
