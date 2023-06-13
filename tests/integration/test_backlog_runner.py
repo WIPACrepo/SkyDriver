@@ -94,10 +94,12 @@ async def test_00(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     rc = server()
     await rc.request("POST", "/scan", POST_SCAN_BODY)
 
+    print_it(await rc.request("GET", "/scans/backlog"))
+
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
     kapitsj_mock.assert_called_once()
 
-    # need a rest route for seeing backlog
+    print_it(await rc.request("GET", "/scans/backlog"))
 
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
@@ -105,19 +107,22 @@ async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     """Test backlog job starting with multiple."""
     rc = server()
 
+    # request jobs
     for _ in range(N_JOBS):
         await asyncio.sleep(0)  # allow backlog runner to do its thing
         await rc.request("POST", "/scan", POST_SCAN_BODY)
 
+    # inspect
+    print_it(await rc.request("GET", "/scans/backlog"))
     for i in range(N_JOBS):
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
+        print_it(await rc.request("GET", "/scans/backlog"))
         assert kapitsj_mock.call_count == i + 1
 
     # any extra calls?
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
     assert kapitsj_mock.call_count == N_JOBS
-
-    # need a rest route for seeing backlog
+    print_it(await rc.request("GET", "/scans/backlog"))
 
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
@@ -128,6 +133,7 @@ async def test_10(
     """Test backlog job starting with multiple cancels."""
     rc = server()
 
+    # request jobs
     for i in range(N_JOBS):
         await asyncio.sleep(0)  # allow backlog runner to do its thing
         resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
@@ -135,18 +141,20 @@ async def test_10(
         print_it(entries)
         assert len(entries) == i + 1
 
+    # delete
     print_it(await rc.request("DELETE", f"/scan/{resp['scan_id']}"))
     await asyncio.sleep(0)  # allow backlog runner to do its thing
 
+    # inspect
     print_it(await rc.request("GET", "/scans/backlog"))
-
-    await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * N_JOBS * 1.01)
-
-    print_it(await rc.request("GET", "/scans/backlog"))
+    for i in range(N_JOBS - 1):
+        await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
+        print_it(await rc.request("GET", "/scans/backlog"))
+        assert kapitsj_mock.call_count == i + 1
     assert kapitsj_mock.call_count == N_JOBS - 1
 
     # any extra calls?
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
     assert kapitsj_mock.call_count == N_JOBS - 1
-
+    print_it(await rc.request("GET", "/scans/backlog"))
     assert not (await rc.request("GET", "/scans/backlog"))["entries"]
