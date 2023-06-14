@@ -38,9 +38,10 @@ def act(
             # report to SkyDriver
             utils.update_skydriver(
                 skydriver_rc,
-                submit_result_obj,
                 args.collector,
                 args.schedd,
+                cluster_id=submit_result_obj.cluster(),
+                n_jobs=submit_result_obj.num_procs(),
             )
             LOGGER.info("Sent cluster info to SkyDriver")
         case "stop":

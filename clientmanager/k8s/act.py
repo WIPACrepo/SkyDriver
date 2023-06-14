@@ -2,6 +2,7 @@
 
 
 import argparse
+import time
 
 import kubernetes  # type: ignore[import]
 
@@ -20,10 +21,11 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
             # make connections -- do now so we don't have any surprises downstream
             skydriver_rc = utils.connect_to_skydriver()
             # start
-            k8s_job_dict = starter.start(
+            cluster_id = f"{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}-{int(time.time())}"  # TODO: make more unique
+            starter.start(
                 k8s_client,
                 ENV.WORKER_K8S_NAMESPACE,
-                ENV.SKYSCAN_SKYDRIVER_SCAN_ID,
+                cluster_id,
                 args.name,
                 args.n_jobs,
                 args.client_args,
@@ -36,15 +38,16 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
             # report to SkyDriver
             utils.update_skydriver(
                 skydriver_rc,
-                k8s_job_dict,
                 args.collector,
                 args.schedd,
+                cluster_id,
+                args.n_jobs,
             )
             LOGGER.info("Sent cluster info to SkyDriver")
         case "stop":
             stopper.stop(
                 ENV.WORKER_K8S_NAMESPACE,
-                ENV.SKYSCAN_SKYDRIVER_SCAN_ID,
+                args.cluster_id,
                 k8s_client,
             )
         case _:

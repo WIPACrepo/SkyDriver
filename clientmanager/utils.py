@@ -30,9 +30,10 @@ def connect_to_skydriver() -> RestClient:
 
 def update_skydriver(
     skydriver_rc: RestClient,
-    submit_result_obj: htcondor.SubmitResult,
     collector: str,
     schedd: str,
+    cluster_id: str,
+    n_jobs: int,
 ) -> None:
     """Send SkyDriver updates from the `submit_result`."""
 
@@ -45,8 +46,8 @@ def update_skydriver(
             "condor_cluster": {
                 "collector": collector,
                 "schedd": schedd,
-                "cluster_id": submit_result_obj.cluster(),
-                "jobs": submit_result_obj.num_procs(),
+                "cluster_id": cluster_id,
+                "jobs": n_jobs,
             }
         },
     )

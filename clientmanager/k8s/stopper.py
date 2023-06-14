@@ -8,7 +8,7 @@ from ..config import LOGGER
 
 def stop(
     namespace: str,
-    job_name: str,
+    cluster_id: str,
     k8s_client: kubernetes.client.ApiClient,
 ) -> None:
     """Main logic."""
@@ -17,7 +17,7 @@ def stop(
     # Remove jobs -- may not be instantaneous
     LOGGER.info("Requesting removal...")
     k8s_response = k8s_client.delete_namespaced_job(
-        name=job_name,
+        name=cluster_id,
         namespace=namespace,
         body=kubernetes.client.V1DeleteOptions(
             propagation_policy="Foreground", grace_period_seconds=5
@@ -25,7 +25,7 @@ def stop(
     )
     LOGGER.debug("Job deleted. status='%s'" % str(k8s_response.status))
     LOGGER.info(
-        f"Removed jobs: {job_name} in namespace {namespace} with response {k8s_response.status} "
+        f"Removed jobs: {cluster_id} in namespace {namespace} with response {k8s_response.status} "
     )
 
     # TODO: get/forward job logs
