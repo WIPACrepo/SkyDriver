@@ -323,13 +323,24 @@ class SkymapScannerStopperJob:
         # make a container per cluster
         containers = []
         for i, cluster in enumerate(clusters):
-            args = (
-                f"python -m clientmanager "
-                f" --collector {cluster.collector} "
-                f" --schedd {cluster.schedd} "
-                f" stop "
-                f" --cluster-id {cluster.cluster_id} "
-            )
+            args = "python -m clientmanager "
+            match cluster.orchestrator:
+                case "condor":
+                    args += (
+                        f" condor "  # type: ignore[union-attr]
+                        f" --collector {cluster.location.collector} "
+                        f" --schedd {cluster.location.schedd} "
+                    )
+                case "k8s":
+                    args += (
+                        f" k8s "  # type: ignore[union-attr]
+                        f" --host {cluster.location.host} "
+                        f" --namespace {cluster.location.namespace} "
+                    )
+                case other:
+                    raise ValueError(f"Unknown cluster orchestrator: {other}")
+            args += f" stop --cluster-id {cluster.cluster_id} "
+
             containers.append(
                 KubeAPITools.create_container(
                     f"tms-stopper-{i}-{scan_id}",
