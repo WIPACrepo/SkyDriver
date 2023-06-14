@@ -743,7 +743,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
 
     # OK
     manifest = await _launch_scan(
-        rc, POST_SCAN_BODY_FOR_TEST_01s, os.environ["LATEST_TAG"]
+        rc, POST_SCAN_BODY_FOR_TEST_01, os.environ["LATEST_TAG"]
     )
     scan_id = manifest["scan_id"]
     # follow-up query
