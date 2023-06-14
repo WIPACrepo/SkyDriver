@@ -46,7 +46,9 @@ def act(
             LOGGER.info("Sent cluster info to SkyDriver")
         case "stop":
             stopper.stop(
-                args,
+                args.collector,
+                args.schedd,
+                args.cluster_id,
                 schedd_obj,
             )
         case _:
