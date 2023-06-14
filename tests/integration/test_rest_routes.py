@@ -480,14 +480,19 @@ def get_tms_args(clusters: list | dict, docker_tag_expected: str) -> list[str]:
             cluster[0],
             KNOWN_K8S_CLUSTERS.get(cluster[0]),
         )
+        image = (
+            f"/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:{docker_tag_expected}"
+            if cluster[0] in KNOWN_CONDOR_CLUSTERS
+            else f"icecube/skymap_scanner:{docker_tag_expected}"
+        )
         tms_args += [
             f"python -m clientmanager "
             f" {orchestrator} "
-            f" {f'--{k} {v}' for k,v in location.items()} "  # type: ignore[union-attr]
+            f" {' '.join(f'--{k} {v}' for k,v in location.items())} "  # type: ignore[union-attr]
             f" start "
             f" --n-workers {cluster[1]} "
             f" --memory 8GB "
-            f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{docker_tag_expected} "
+            f" --image {image} "
             f" --client-startup-json /common-space/startup.json "
             # f" --logs-directory /common-space "
         ]
