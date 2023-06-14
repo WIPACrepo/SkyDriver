@@ -5,7 +5,7 @@ from typing import Any
 
 import htcondor  # type: ignore[import]
 
-from .config import LOGGER
+from ..config import LOGGER
 
 
 def get_schedd_obj(collector: str, schedd: str) -> htcondor.Schedd:
