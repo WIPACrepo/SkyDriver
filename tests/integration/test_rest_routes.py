@@ -485,7 +485,7 @@ def get_tms_args(clusters: list | dict, docker_tag_expected: str) -> list[str]:
             f" {orchestrator} "
             f" {f'--{k} {v}' for k,v in location.items()} "  # type: ignore[union-attr]
             f" start "
-            f" --n-workers {clusters[0][1]} "
+            f" --n-workers {cluster[1]} "
             f" --memory 8GB "
             f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{docker_tag_expected} "
             f" --client-startup-json /common-space/startup.json "
