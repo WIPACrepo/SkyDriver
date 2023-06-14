@@ -91,11 +91,11 @@ class EventMetadata:
 
 @typechecked
 @dc.dataclass
-class CondorClutser:
-    """Stores information provided by HTCondor."""
+class Cluster:
+    """Stores information for a worker cluster."""
 
-    collector: str
-    schedd: str
+    orchestrator: str
+    location: HTCondorLocation | KubernetesLocation
     cluster_id: int
     n_workers: int
 
@@ -112,7 +112,7 @@ class Manifest(ScanIDDataclass):
     tms_args: list[str]
     env_vars: dict[str, StrDict]
 
-    condor_clusters: list[CondorClutser] = dc.field(default_factory=list)
+    clusters: list[Cluster] = dc.field(default_factory=list)
 
     # found/created during first few seconds of scanning
     event_metadata: EventMetadata | None = None

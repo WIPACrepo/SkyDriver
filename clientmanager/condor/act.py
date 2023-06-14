@@ -38,8 +38,11 @@ def act(
             # report to SkyDriver
             utils.update_skydriver(
                 skydriver_rc,
-                args.collector,
-                args.schedd,
+                "condor",
+                location={
+                    "collector": args.collector,
+                    "schedd": args.schedd,
+                },
                 cluster_id=submit_result_obj.cluster(),
                 n_workers=submit_result_obj.num_procs(),
             )

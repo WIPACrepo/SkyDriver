@@ -340,7 +340,7 @@ async def stop_scanner_instance(
     k8s_job = k8s.scanner_instance.SkymapScannerStopperJob(
         k8s_api,
         scan_id,
-        manifest.condor_clusters,
+        manifest.clusters,
     )
 
     try:
@@ -501,9 +501,9 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=dict,
             default={},
         )
-        condor_cluster = self.get_argument(
-            "condor_cluster",
-            type=lambda x: from_dict_wrapper_or_none(database.schema.CondorClutser, x),
+        cluster = self.get_argument(
+            "cluster",
+            type=lambda x: from_dict_wrapper_or_none(database.schema.Cluster, x),
             default=None,
         )
 
@@ -512,7 +512,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             progress,
             event_metadata,
             scan_metadata,
-            condor_cluster,
+            cluster,
         )
 
         self.write(dc.asdict(manifest))

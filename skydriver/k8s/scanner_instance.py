@@ -302,13 +302,13 @@ class SkymapScannerStopperJob:
         self,
         api_instance: kubernetes.client.BatchV1Api,
         scan_id: str,
-        condor_clusters: list[schema.CondorClutser],
+        clusters: list[schema.Cluster],
     ):
         self.api_instance = api_instance
 
         # make a container per cluster
         containers = []
-        for i, cluster in enumerate(condor_clusters):
+        for i, cluster in enumerate(clusters):
             args = (
                 f"python -m clientmanager "
                 f" --collector {cluster.collector} "

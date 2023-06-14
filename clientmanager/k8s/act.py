@@ -38,10 +38,13 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
             # report to SkyDriver
             utils.update_skydriver(
                 skydriver_rc,
-                args.host,
-                ENV.WORKER_K8S_NAMESPACE,
-                cluster_id,
-                args.n_workers,
+                "k8s",
+                location={
+                    "host": args.host,
+                    "namespace": ENV.WORKER_K8S_NAMESPACE,
+                },
+                cluster_id=cluster_id,
+                n_workers=args.n_workers,
             )
             LOGGER.info("Sent cluster info to SkyDriver")
         case "stop":

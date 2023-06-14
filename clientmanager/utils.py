@@ -29,22 +29,19 @@ def connect_to_skydriver() -> RestClient:
 
 def update_skydriver(
     skydriver_rc: RestClient,
-    collector: str,
-    schedd: str,
+    orchestrator: str,
+    location: dict[str, str],
     cluster_id: str,
     n_workers: int,
 ) -> None:
     """Send SkyDriver updates from the `submit_result`."""
-
-    # TODO: unify k8s & condor args (or add match-case)
-
     skydriver_rc.request_seq(
         "PATCH",
         f"/scan/{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}/manifest",
         {
-            "condor_cluster": {
-                "collector": collector,
-                "schedd": schedd,
+            "cluster": {
+                "orchestrator": orchestrator,
+                "location": location,
                 "cluster_id": cluster_id,
                 "n_workers": n_workers,
             }

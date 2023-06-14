@@ -202,7 +202,7 @@ Pseudo-code:
     tms_args: list[str],
     env_vars: dict[str, dict],
 
-    condor_clusters: [
+    clusters: [
         {
             collector: str,
             schedd: str,

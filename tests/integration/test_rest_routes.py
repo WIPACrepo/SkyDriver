@@ -177,7 +177,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         event_i3live_json_dict=post_scan_body["event_i3live_json"],
         event_metadata=None,
         scan_metadata=None,
-        condor_clusters=[],
+        clusters=[],
         progress=None,
         scanner_server_args=resp["scanner_server_args"],  # see below
         tms_args=resp["tms_args"],  # see below
@@ -251,7 +251,7 @@ async def _do_patch(
     progress: StrDict | None = None,
     event_metadata: StrDict | None = None,
     scan_metadata: StrDict | None = None,
-    condor_cluster: StrDict | None = None,
+    cluster: StrDict | None = None,
     previous_clusters: list[StrDict] | None = None,
 ) -> StrDict:
     # do PATCH @ /scan/{scan_id}/manifest, assert response
@@ -262,8 +262,8 @@ async def _do_patch(
         body["event_metadata"] = event_metadata
     if scan_metadata:
         body["scan_metadata"] = scan_metadata
-    if condor_cluster:
-        body["condor_cluster"] = condor_cluster
+    if cluster:
+        body["cluster"] = cluster
         assert isinstance(previous_clusters, list)  # gotta include this one too
     assert body
 
@@ -274,10 +274,10 @@ async def _do_patch(
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         event_metadata=event_metadata if event_metadata else resp["event_metadata"],
         scan_metadata=scan_metadata if scan_metadata else resp["scan_metadata"],
-        condor_clusters=(
-            previous_clusters + [condor_cluster]  # type: ignore[operator]  # see assert ^^^^
-            if condor_cluster
-            else resp["condor_clusters"]  # not checking
+        clusters=(
+            previous_clusters + [cluster]  # type: ignore[operator]  # see assert ^^^^
+            if cluster
+            else resp["clusters"]  # not checking
         ),
         progress=(
             {  # inject the auto-filled args
@@ -375,9 +375,12 @@ async def _clientmanager_reply(
     rc: RestClient, scan_id: str, previous_clusters: list[StrDict]
 ) -> StrDict:
     # reply as the clientmanager with a new condor cluster
-    condor_cluster = dict(
-        collector="for-sure.a-collector.edu",
-        schedd="this.schedd.edu",
+    cluster = dict(
+        orchestrator="condor",
+        location=dict(
+            collector="for-sure.a-collector.edu",
+            schedd="this.schedd.edu",
+        ),
         cluster_id=random.randint(1, 10000),
         n_workers=random.randint(1, 10000),
     )
@@ -385,7 +388,7 @@ async def _clientmanager_reply(
     manifest = await _do_patch(
         rc,
         scan_id,
-        condor_cluster=condor_cluster,
+        cluster=cluster,
         previous_clusters=previous_clusters,
     )
     return manifest
@@ -599,7 +602,7 @@ async def test_00(
     result = await _send_result(rc, scan_id, manifest, False)
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
     # NEXT, spun up more workers in condor
-    manifest = await _clientmanager_reply(rc, scan_id, manifest["condor_clusters"])
+    manifest = await _clientmanager_reply(rc, scan_id, manifest["clusters"])
     # THEN, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
