@@ -98,6 +98,11 @@ class OrchestratorArgs:
             help="the host server address to connect to for running workers",
         )
         sub_parser.add_argument(
+            "--namespace",
+            required=True,
+            help="the k8s namespace to use for running workers",
+        )
+        sub_parser.add_argument(
             "--cluster-config",
             default="",
             help="k8s cluster config to connect as a yaml file",

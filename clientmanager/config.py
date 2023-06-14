@@ -17,7 +17,6 @@ class EnvConfig:
     CLIENT_STARTER_WAIT_FOR_STARTUP_JSON: int = 60
     CONDOR_TOKEN: str = ""
     WORKER_K8S_TOKEN: str = ""
-    WORKER_K8S_NAMESPACE: str = ""
     EWMS_PILOT_QUARANTINE_TIME: int = 0
     EWMS_TMS_S3_ACCESS_KEY_ID: str = ""
     EWMS_TMS_S3_BUCKET: str = ""
