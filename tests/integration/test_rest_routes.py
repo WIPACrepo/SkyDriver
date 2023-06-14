@@ -398,7 +398,7 @@ async def _clientmanager_reply(
         ),
         location=KNOWN_CONDOR_CLUSTERS.get(
             cluster_name__n_workers[0],
-            KNOWN_K8S_CLUSTERS[cluster_name__n_workers[0]],
+            KNOWN_K8S_CLUSTERS.get(cluster_name__n_workers[0]),
         ),
         cluster_id=f"cluster-{random.randint(1, 10000)}",
         n_workers=cluster_name__n_workers[1],
