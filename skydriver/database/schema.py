@@ -97,7 +97,7 @@ class CondorClutser:
     collector: str
     schedd: str
     cluster_id: int
-    jobs: int
+    n_workers: int
 
 
 @typechecked
@@ -121,7 +121,7 @@ class Manifest(ScanIDDataclass):
     # updated during scanning, multiple times
     progress: Progress | None = None
 
-    # signifies k8s jobs and condor cluster(s) are done
+    # signifies k8s workers and condor cluster(s) are done
     complete: bool = False
 
     # logs  # TODO

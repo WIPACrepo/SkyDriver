@@ -108,7 +108,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
                 f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
                 f" start "
-                f" --n-jobs {clusters[0][1]} "
+                f" --n-workers {clusters[0][1]} "
                 f" --memory 8GB "
                 f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
@@ -120,7 +120,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
                 f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
                 f" start "
-                f" --n-jobs {clusters[0][1]} "
+                f" --n-workers {clusters[0][1]} "
                 f" --memory 8GB "
                 f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
@@ -130,7 +130,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 f" --collector {SCHEDD_LOOKUP[clusters[1][0]]['collector']} "
                 f" --schedd {SCHEDD_LOOKUP[clusters[1][0]]['schedd']} "
                 f" start "
-                f" --n-jobs {clusters[1][1]} "
+                f" --n-workers {clusters[1][1]} "
                 f" --memory 8GB "
                 f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
@@ -142,7 +142,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
                 f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
                 f" start "
-                f" --n-jobs {clusters[0][1]} "
+                f" --n-workers {clusters[0][1]} "
                 f" --memory 8GB "
                 f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
@@ -152,7 +152,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 f" --collector {SCHEDD_LOOKUP[clusters[1][0]]['collector']} "
                 f" --schedd {SCHEDD_LOOKUP[clusters[1][0]]['schedd']} "
                 f" start "
-                f" --n-jobs {clusters[1][1]} "
+                f" --n-workers {clusters[1][1]} "
                 f" --memory 8GB "
                 f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
@@ -162,7 +162,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 f" --collector {SCHEDD_LOOKUP[clusters[2][0]]['collector']} "
                 f" --schedd {SCHEDD_LOOKUP[clusters[2][0]]['schedd']} "
                 f" start "
-                f" --n-jobs {clusters[2][1]} "
+                f" --n-workers {clusters[2][1]} "
                 f" --memory 8GB "
                 f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
@@ -379,7 +379,7 @@ async def _clientmanager_reply(
         collector="for-sure.a-collector.edu",
         schedd="this.schedd.edu",
         cluster_id=random.randint(1, 10000),
-        jobs=random.randint(1, 10000),
+        workers=random.randint(1, 10000),
     )
 
     manifest = await _do_patch(
@@ -663,8 +663,8 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         {},
         {"collector": "a"},
         {"schedd": "a"},
-        {"collector": "a", "schedd": "a"},  # missing njobs
-        {"collector": "a", "schedd": "a", "njobs": "not-a-number"},
+        {"collector": "a", "schedd": "a"},  # missing n_workers
+        {"collector": "a", "schedd": "a", "n_workers": "not-a-number"},
     ]:
         print(f"[{bad_val}]")
         with pytest.raises(

@@ -19,7 +19,7 @@ def make_k8s_job_desc(  # pylint: disable=too-many-argument
     namespace: str,
     cluster_id: str,
     memory: str,
-    n_jobs: int,
+    n_workers: int,
     n_cores: int,
     # skymap scanner args
     container_image: str,
@@ -40,8 +40,8 @@ def make_k8s_job_desc(  # pylint: disable=too-many-argument
     k8s_job_dict["metadata"]["name"] = cluster_id
 
     # Setting parallelism
-    k8s_job_dict["spec"]["completions"] = n_jobs
-    k8s_job_dict["spec"]["parallelism"] = n_jobs
+    k8s_job_dict["spec"]["completions"] = n_workers
+    k8s_job_dict["spec"]["parallelism"] = n_workers
 
     # Setting JSON input file
     k8s_job_dict["spec"]["template"]["spec"]["initContainers"][0]["env"][0][
@@ -65,7 +65,7 @@ def start(
     k8s_client: kubernetes.client.ApiClient,
     namespace: str,
     cluster_id: str,
-    job_count: int,
+    n_workers: int,
     core_count: int,
     client_args: list[tuple[str, str]],
     memory: str,
@@ -82,7 +82,7 @@ def start(
         cluster_id,
         # condor args
         memory,
-        job_count,
+        n_workers,
         core_count,
         # skymap scanner args
         container_image,

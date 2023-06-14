@@ -12,4 +12,4 @@ class RequestorInputCluster:
 
     collector: str
     schedd: str
-    njobs: int  # = 0  # TODO: make optional when using "smart starter"
+    n_workers: int  # = 0  # TODO: make optional when using "smart starter"

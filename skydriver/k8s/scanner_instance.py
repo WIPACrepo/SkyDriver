@@ -178,7 +178,7 @@ class SkymapScannerStarterJob:
             f" --collector {request_cluster.collector} "
             f" --schedd {request_cluster.schedd} "
             f" start "
-            f" --n-jobs {request_cluster.njobs} "
+            f" --n-workers {request_cluster.n_workers} "
             # f" --dryrun"
             # f" --logs-directory "  # see below
             # f" --accounting-group "

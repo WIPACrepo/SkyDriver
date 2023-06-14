@@ -133,7 +133,7 @@ class ActionArgs:
             "--dryrun",
             default=False,
             action="store_true",
-            help="does everything except submitting the condor job(s)",
+            help="does everything except submitting the worker(s)",
         )
         sub_parser.add_argument(
             "--logs-directory",
@@ -144,10 +144,10 @@ class ActionArgs:
 
         # condor args
         sub_parser.add_argument(
-            "--n-jobs",
+            "--n-workers",
             required=True,
             type=int,
-            help="number of jobs to start",
+            help="number of worker to start",
         )
         sub_parser.add_argument(
             "--memory",
@@ -188,5 +188,5 @@ class ActionArgs:
         sub_parser.add_argument(
             "--cluster-id",
             required=True,
-            help="the cluster id of the jobs to be stopped/removed",
+            help="the cluster id of the workers to be stopped/removed",
         )

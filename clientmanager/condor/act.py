@@ -18,14 +18,14 @@ def act(
     match args.action:
         case "start":
             LOGGER.info(
-                f"Starting {args.n_jobs} Skymap Scanner client jobs on {args.collector} / {args.schedd}"
+                f"Starting {args.n_workers} Skymap Scanner client workers on {args.collector} / {args.schedd}"
             )
             # make connections -- do now so we don't have any surprises downstream
             skydriver_rc = utils.connect_to_skydriver()
             # start
             submit_result_obj = starter.start(
                 schedd_obj,
-                args.n_jobs,
+                args.n_workers,
                 args.logs_directory if args.logs_directory else None,
                 args.client_args,
                 args.memory,
@@ -41,7 +41,7 @@ def act(
                 args.collector,
                 args.schedd,
                 cluster_id=submit_result_obj.cluster(),
-                n_jobs=submit_result_obj.num_procs(),
+                n_workers=submit_result_obj.num_procs(),
             )
             LOGGER.info("Sent cluster info to SkyDriver")
         case "stop":

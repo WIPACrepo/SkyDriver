@@ -107,7 +107,7 @@ async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     """Test backlog job starting with multiple."""
     rc = server()
 
-    # request jobs
+    # request workers
     for _ in range(N_JOBS):
         await asyncio.sleep(0)  # allow backlog runner to do its thing
         await rc.request("POST", "/scan", POST_SCAN_BODY)
@@ -136,7 +136,7 @@ async def test_10(
     """Test backlog job starting with multiple cancels."""
     rc = server()
 
-    # request jobs
+    # request workers
     for i in range(N_JOBS):
         await asyncio.sleep(0)  # allow backlog runner to do its thing
         resp = await rc.request("POST", "/scan", POST_SCAN_BODY)

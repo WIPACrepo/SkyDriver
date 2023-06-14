@@ -99,7 +99,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
 
 def start(
     schedd_obj: htcondor.Schedd,
-    job_count: int,
+    n_workers: int,
     logs_directory: Path | None,
     client_args: list[tuple[str, str]],
     memory: str,
@@ -151,14 +151,14 @@ def start(
     # submit
     submit_result_obj = schedd_obj.submit(
         submit_obj,
-        count=job_count,  # submit N jobs
+        count=n_workers,  # submit N workers
         spool=spool,  # for transferring logs & files
     )
     LOGGER.info(submit_result_obj)
     if spool:
         jobs = condor_tools.get_job_classads(
             submit_obj,
-            job_count,
+            n_workers,
             submit_result_obj.cluster(),
         )
         schedd_obj.spool(jobs)

@@ -32,7 +32,7 @@ def update_skydriver(
     collector: str,
     schedd: str,
     cluster_id: str,
-    n_jobs: int,
+    n_workers: int,
 ) -> None:
     """Send SkyDriver updates from the `submit_result`."""
 
@@ -46,7 +46,7 @@ def update_skydriver(
                 "collector": collector,
                 "schedd": schedd,
                 "cluster_id": cluster_id,
-                "jobs": n_jobs,
+                "n_workers": n_workers,
             }
         },
     )

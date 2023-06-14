@@ -16,7 +16,7 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
     match args.action:
         case "start":
             LOGGER.info(
-                f"Starting {args.n_jobs} Skymap Scanner client jobs on {args.collector} / {args.schedd}"
+                f"Starting {args.n_workers} Skymap Scanner client workers on {args.collector} / {args.schedd}"
             )
             # make connections -- do now so we don't have any surprises downstream
             skydriver_rc = utils.connect_to_skydriver()
@@ -27,7 +27,7 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
                 ENV.WORKER_K8S_NAMESPACE,
                 cluster_id,
                 args.name,
-                args.n_jobs,
+                args.n_workers,
                 args.client_args,
                 args.memory,
                 args.image,
@@ -41,7 +41,7 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
                 args.host,
                 ENV.WORKER_K8S_NAMESPACE,
                 cluster_id,
-                args.n_jobs,
+                args.n_workers,
             )
             LOGGER.info("Sent cluster info to SkyDriver")
         case "stop":
