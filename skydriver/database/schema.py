@@ -91,6 +91,24 @@ class EventMetadata:
 
 @typechecked
 @dc.dataclass
+class HTCondorLocation:
+    """Stores location metadata for a HTCondor cluster."""
+
+    collector: str
+    schedd: str
+
+
+@typechecked
+@dc.dataclass
+class KubernetesLocation:
+    """Stores location metadata for a Kubernetes cluster."""
+
+    host: str
+    namespace: str
+
+
+@typechecked
+@dc.dataclass
 class Cluster:
     """Stores information for a worker cluster."""
 
