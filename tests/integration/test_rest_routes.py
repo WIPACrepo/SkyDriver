@@ -107,6 +107,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         case 1:
             tms_args = [
                 f"python -m clientmanager "
+                f" condor "
                 f" --collector {KNOWN_CONDOR_CLUSTERS[clusters[0][0]]['collector']} "
                 f" --schedd {KNOWN_CONDOR_CLUSTERS[clusters[0][0]]['schedd']} "
                 f" start "
@@ -119,6 +120,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         case 2:
             tms_args = [
                 f"python -m clientmanager "
+                f" condor "
                 f" --collector {KNOWN_CONDOR_CLUSTERS[clusters[0][0]]['collector']} "
                 f" --schedd {KNOWN_CONDOR_CLUSTERS[clusters[0][0]]['schedd']} "
                 f" start "
@@ -129,6 +131,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 # f" --logs-directory /common-space "
                 ,
                 f"python -m clientmanager "
+                f" condor "
                 f" --collector {KNOWN_CONDOR_CLUSTERS[clusters[1][0]]['collector']} "
                 f" --schedd {KNOWN_CONDOR_CLUSTERS[clusters[1][0]]['schedd']} "
                 f" start "
@@ -141,6 +144,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         case 3:
             tms_args = [
                 f"python -m clientmanager "
+                f" condor "
                 f" --collector {KNOWN_CONDOR_CLUSTERS[clusters[0][0]]['collector']} "
                 f" --schedd {KNOWN_CONDOR_CLUSTERS[clusters[0][0]]['schedd']} "
                 f" start "
@@ -151,6 +155,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 # f" --logs-directory /common-space "
                 ,
                 f"python -m clientmanager "
+                f" condor "
                 f" --collector {KNOWN_CONDOR_CLUSTERS[clusters[1][0]]['collector']} "
                 f" --schedd {KNOWN_CONDOR_CLUSTERS[clusters[1][0]]['schedd']} "
                 f" start "
@@ -161,6 +166,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 # f" --logs-directory /common-space "
                 ,
                 f"python -m clientmanager "
+                f" condor "
                 f" --collector {KNOWN_CONDOR_CLUSTERS[clusters[2][0]]['collector']} "
                 f" --schedd {KNOWN_CONDOR_CLUSTERS[clusters[2][0]]['schedd']} "
                 f" start "
