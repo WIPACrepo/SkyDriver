@@ -120,9 +120,15 @@ class Cluster:
     def __post_init__(self) -> None:
         match self.orchestrator:
             case "condor":
-                pass
+                if not isinstance(self.location, HTCondorLocation):
+                    raise TypeError(
+                        "condor orchestrator must use condor sub-fields for 'location'"
+                    )
             case "k8s":
-                pass
+                if not isinstance(self.location, KubernetesLocation):
+                    raise TypeError(
+                        "k8s orchestrator must use k8s sub-fields for 'location'"
+                    )
             case other:
                 raise ValueError(f"Unknown cluster orchestrator: {other}")
 
