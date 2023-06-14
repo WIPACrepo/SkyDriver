@@ -117,6 +117,15 @@ class Cluster:
     n_workers: int
     cluster_id: str = ""  # "" is a non-started cluster
 
+    def __post_init__(self) -> None:
+        match self.orchestrator:
+            case "condor":
+                pass
+            case "k8s":
+                pass
+            case other:
+                raise ValueError(f"Unknown cluster orchestrator: {other}")
+
 
 @typechecked
 @dc.dataclass

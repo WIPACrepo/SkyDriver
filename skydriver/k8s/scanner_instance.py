@@ -93,9 +93,7 @@ class SkymapScannerStarterJob:
         self.tms_args_list = list(
             self.get_tms_starter_args(
                 common_space_volume_path=common_space_volume_path,
-                worker_image=images.get_skyscan_cvmfs_singularity_image(
-                    docker_tag
-                ),
+                docker_tag=docker_tag,
                 memory=memory,
                 request_cluster=c,
                 debug_mode=debug_mode,
@@ -163,7 +161,7 @@ class SkymapScannerStarterJob:
     @staticmethod
     def get_tms_starter_args(
         common_space_volume_path: Path,
-        worker_image: Path,
+        docker_tag: str,
         memory: str,
         request_cluster: schema.Cluster,
         debug_mode: bool,
@@ -173,10 +171,27 @@ class SkymapScannerStarterJob:
         This also includes any client args not added by the
         clientmanager.
         """
-        args = (
-            f"python -m clientmanager "
-            f" --collector {request_cluster.collector} "
-            f" --schedd {request_cluster.schedd} "
+        worker_image = images.get_skyscan_cvmfs_singularity_image(docker_tag)
+
+        args = "python -m clientmanager "
+
+        match request_cluster.orchestrator:
+            case "condor":
+                args += (
+                    f" condor "  # type: ignore[union-attr]
+                    f" --collector {request_cluster.location.collector} "
+                    f" --schedd {request_cluster.location.schedd} "
+                )
+            case "k8s":
+                args += (
+                    f" k8s "  # type: ignore[union-attr]
+                    f" --host {request_cluster.location.host} "
+                    f" --namespace {request_cluster.location.namespace} "
+                )
+            case other:
+                raise ValueError(f"Unknown cluster orchestrator: {other}")
+
+        args += (
             f" start "
             f" --n-workers {request_cluster.n_workers} "
             # f" --dryrun"
