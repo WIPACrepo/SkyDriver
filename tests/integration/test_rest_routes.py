@@ -379,7 +379,7 @@ async def _clientmanager_reply(
         collector="for-sure.a-collector.edu",
         schedd="this.schedd.edu",
         cluster_id=random.randint(1, 10000),
-        workers=random.randint(1, 10000),
+        n_workers=random.randint(1, 10000),
     )
 
     manifest = await _do_patch(
