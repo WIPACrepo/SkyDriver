@@ -34,6 +34,12 @@ KNOWN_CONDOR_CLUSTERS = {
         "schedd": "a-schedd.edu",
     },
 }
+KNOWN_K8S_CLUSTERS = {
+    "cloud": {
+        "host": "cumulus.nimbus.com",
+        "namespace": "stratus",
+    },
+}
 
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
@@ -51,6 +57,9 @@ async def server(
     # patch at directly named import that happens before running the test
     monkeypatch.setattr(
         skydriver.rest_handlers, "KNOWN_CONDOR_CLUSTERS", KNOWN_CONDOR_CLUSTERS
+    )
+    monkeypatch.setattr(
+        skydriver.rest_handlers, "KNOWN_K8S_CLUSTERS", KNOWN_K8S_CLUSTERS
     )
     monkeypatch.setattr(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
@@ -380,17 +389,22 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
 
 
 async def _clientmanager_reply(
-    rc: RestClient, scan_id: str, previous_clusters: list[StrDict]
+    rc: RestClient,
+    scan_id: str,
+    cluster_name__n_workers: tuple[str, int],
+    previous_clusters: list[StrDict],
 ) -> StrDict:
     # reply as the clientmanager with a new condor cluster
     cluster = dict(
-        orchestrator="condor",
-        location=dict(
-            collector="for-sure.a-collector.edu",
-            schedd="this.schedd.edu",
+        orchestrator=(
+            "condor" if cluster_name__n_workers[0] in KNOWN_CONDOR_CLUSTERS else "k8s"
+        ),
+        location=KNOWN_CONDOR_CLUSTERS.get(
+            cluster_name__n_workers[0],
+            KNOWN_K8S_CLUSTERS[cluster_name__n_workers[0]],
         ),
         cluster_id=f"cluster-{random.randint(1, 10000)}",
-        n_workers=random.randint(1, 10000),
+        n_workers=cluster_name__n_workers[1],
     )
 
     manifest = await _do_patch(
@@ -556,8 +570,14 @@ async def _delete_scan(
     "clusters",
     [
         {"foobar": 1},
-        {"foobar": 1, "a-schedd": 999},
-        [["foobar", 1], ["a-schedd", 999], ["a-schedd", 1234]],
+        {"foobar": 1, "a-schedd": 999, "cloud": 4568},
+        [
+            ["foobar", 1],
+            ["a-schedd", 999],
+            ["cloud", 5845],
+            ["a-schedd", 1234],
+            ["cloud", 6548],
+        ],
     ],
 )
 async def test_00(
@@ -591,7 +611,7 @@ async def test_00(
     # INITIAL UPDATES
     #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    manifest = await _clientmanager_reply(rc, scan_id, [])
+    manifest = await _clientmanager_reply(rc, scan_id, list(clusters)[0], [])
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -610,7 +630,10 @@ async def test_00(
     result = await _send_result(rc, scan_id, manifest, False)
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
     # NEXT, spun up more workers in condor
-    manifest = await _clientmanager_reply(rc, scan_id, manifest["clusters"])
+    for cluster_name__n_workers in list(clusters)[1:]:
+        manifest = await _clientmanager_reply(
+            rc, scan_id, cluster_name__n_workers, manifest["clusters"]
+        )
     # THEN, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
@@ -716,7 +739,9 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # INITIAL UPDATES
     #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    manifest = await _clientmanager_reply(rc, scan_id, [])
+    manifest = await _clientmanager_reply(
+        rc, scan_id, ("foobar", random.randint(1, 10000)), []
+    )
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
