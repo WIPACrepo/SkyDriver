@@ -31,7 +31,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     memory: str,
     accounting_group: str,
     # skymap scanner args
-    singularity_image: str,
+    image: str,
     client_startup_json_s3: S3File,
     client_args_string: str,
 ) -> htcondor.Submit:
@@ -64,7 +64,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     submit_dict = {
         "executable": "/bin/bash",
         "arguments": f"/usr/local/icetray/env-shell.sh python -m skymap_scanner.client {client_args_string} --client-startup-json ./{client_startup_json_s3.fname}",
-        "+SingularityImage": f'"{singularity_image}"',  # must be quoted
+        "+SingularityImage": f'"{image}"',  # must be quoted
         "Requirements": "HAS_CVMFS_icecube_opensciencegrid_org && has_avx && has_avx2",
         "getenv": "SKYSCAN_*, EWMS_*",
         "environment": f'"{environment}"',  # must be quoted
@@ -104,7 +104,7 @@ def start(
     client_args: list[tuple[str, str]],
     memory: str,
     accounting_group: str,
-    singularity_image: str,
+    image: str,
     client_startup_json_s3: S3File,
     dryrun: bool,
 ) -> htcondor.SubmitResult:
@@ -137,7 +137,7 @@ def start(
         memory,
         accounting_group,
         # skymap scanner args
-        singularity_image,
+        image,
         client_startup_json_s3,
         client_args_string,
     )

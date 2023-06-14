@@ -110,7 +110,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 f" start "
                 f" --n-jobs {clusters[0][1]} "
                 f" --memory 8GB "
-                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
                 # f" --logs-directory /common-space "
             ]
@@ -122,7 +122,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 f" start "
                 f" --n-jobs {clusters[0][1]} "
                 f" --memory 8GB "
-                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
                 # f" --logs-directory /common-space "
                 ,
@@ -132,7 +132,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 f" start "
                 f" --n-jobs {clusters[1][1]} "
                 f" --memory 8GB "
-                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
                 # f" --logs-directory /common-space "
             ]
@@ -144,7 +144,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 f" start "
                 f" --n-jobs {clusters[0][1]} "
                 f" --memory 8GB "
-                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
                 # f" --logs-directory /common-space "
                 ,
@@ -154,7 +154,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 f" start "
                 f" --n-jobs {clusters[1][1]} "
                 f" --memory 8GB "
-                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
                 # f" --logs-directory /common-space "
                 ,
@@ -164,7 +164,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 f" start "
                 f" --n-jobs {clusters[2][1]} "
                 f" --memory 8GB "
-                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
+                f" --image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
                 f" --client-startup-json /common-space/startup.json "
                 # f" --logs-directory /common-space "
             ]

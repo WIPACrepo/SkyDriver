@@ -158,9 +158,9 @@ class ActionArgs:
 
         # client args
         sub_parser.add_argument(
-            "--singularity-image",
+            "--image",
             required=True,
-            help="a path or url to the singularity image",
+            help="a path or url to the workers' image",
         )
         sub_parser.add_argument(
             "--client-startup-json",

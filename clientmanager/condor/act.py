@@ -30,7 +30,7 @@ def act(
                 args.client_args,
                 args.memory,
                 args.accounting_group,
-                args.singularity_image,
+                args.image,
                 # put client_startup_json in S3 bucket
                 utils.s3ify(args.client_startup_json),
                 args.dryrun,

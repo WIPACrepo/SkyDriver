@@ -30,7 +30,7 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
                 args.n_jobs,
                 args.client_args,
                 args.memory,
-                args.singularity_image,
+                args.image,
                 # put client_startup_json in S3 bucket
                 utils.s3ify(args.client_startup_json),
                 args.dryrun,

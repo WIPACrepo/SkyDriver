@@ -183,7 +183,7 @@ class SkymapScannerStarterJob:
             # f" --logs-directory "  # see below
             # f" --accounting-group "
             f" --memory {memory} "
-            f" --singularity-image {singularity_image} "
+            f" --image {singularity_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
