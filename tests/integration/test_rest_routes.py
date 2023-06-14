@@ -83,9 +83,6 @@ async def server(
 ########################################################################################
 
 POST_SCAN_BODY = {
-    "cluster": {
-        "foobar": 1,
-    },
     "reco_algo": "anything",
     "event_i3live_json": {"a": 22},
     "nsides": {1: 2, 3: 4},
@@ -394,7 +391,7 @@ async def _clientmanager_reply(
     cluster_name__n_workers: tuple[str, int],
     previous_clusters: list[StrDict],
 ) -> StrDict:
-    # reply as the clientmanager with a new condor cluster
+    # reply as the clientmanager with a new cluster
     cluster = dict(
         orchestrator=(
             "condor" if cluster_name__n_workers[0] in KNOWN_CONDOR_CLUSTERS else "k8s"
@@ -611,7 +608,12 @@ async def test_00(
     # INITIAL UPDATES
     #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    manifest = await _clientmanager_reply(rc, scan_id, list(clusters)[0], [])
+    manifest = await _clientmanager_reply(
+        rc,
+        scan_id,
+        clusters[0] if isinstance(clusters, list) else list(clusters.items())[0],
+        [],
+    )
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -629,8 +631,10 @@ async def test_00(
     # FIRST, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
-    # NEXT, spun up more workers in condor
-    for cluster_name__n_workers in list(clusters)[1:]:
+    # NEXT, spin up more workers in clusters
+    for cluster_name__n_workers in (
+        clusters[1:] if isinstance(clusters, list) else list(clusters.items())[1:]
+    ):
         manifest = await _clientmanager_reply(
             rc, scan_id, cluster_name__n_workers, manifest["clusters"]
         )
@@ -652,6 +656,9 @@ async def test_00(
     # DELETE SCAN
     #
     await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
+
+
+POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
 async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
@@ -679,19 +686,21 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         await rc.request("POST", "/scan", {})
     print(e.value)
     # # bad-type body-arg
-    for arg in POST_SCAN_BODY:
+    for arg in POST_SCAN_BODY_FOR_TEST_01:
         for bad_val in [
             "",
             "  ",
             "\t",
-            "string" if not isinstance(POST_SCAN_BODY[arg], str) else None,
+            "string" if not isinstance(POST_SCAN_BODY_FOR_TEST_01[arg], str) else None,
         ]:
             print(f"{arg}: [{bad_val}]")
             with pytest.raises(
                 requests.exceptions.HTTPError,
                 match=rf"400 Client Error: `{arg}`: \(ValueError\) .+ for url: {rc.address}/scan",
             ) as e:
-                await rc.request("POST", "/scan", {**POST_SCAN_BODY, arg: bad_val})
+                await rc.request(
+                    "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, arg: bad_val}
+                )
             print(e.value)
     for bad_val in [  # type: ignore[assignment]
         {},
@@ -705,17 +714,21 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
             requests.exceptions.HTTPError,
             match=rf"400 Client Error: `cluster`: \(ValueError\) .+ for url: {rc.address}/scan",
         ) as e:
-            await rc.request("POST", "/scan", {**POST_SCAN_BODY, "cluster": bad_val})
+            await rc.request(
+                "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "cluster": bad_val}
+            )
     print(e.value)
     # # missing arg
-    for arg in POST_SCAN_BODY:
+    for arg in POST_SCAN_BODY_FOR_TEST_01:
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=rf"400 Client Error: `{arg}`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
         ) as e:
             # remove arg from body
             await rc.request(
-                "POST", "/scan", {k: v for k, v in POST_SCAN_BODY.items() if k != arg}
+                "POST",
+                "/scan",
+                {k: v for k, v in POST_SCAN_BODY_FOR_TEST_01.items() if k != arg},
             )
         print(e.value)
     # # bad docker tag
@@ -723,11 +736,15 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         requests.exceptions.HTTPError,
         match=rf"400 Client Error: `docker_tag`: \(ValueError\) .+ for url: {rc.address}/scan",
     ) as e:
-        await rc.request("POST", "/scan", {**POST_SCAN_BODY, "docker_tag": "foo"})
+        await rc.request(
+            "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "docker_tag": "foo"}
+        )
     print(e.value)
 
     # OK
-    manifest = await _launch_scan(rc, POST_SCAN_BODY, os.environ["LATEST_TAG"])
+    manifest = await _launch_scan(
+        rc, POST_SCAN_BODY_FOR_TEST_01s, os.environ["LATEST_TAG"]
+    )
     scan_id = manifest["scan_id"]
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
