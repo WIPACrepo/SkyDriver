@@ -114,8 +114,8 @@ class Cluster:
 
     orchestrator: str
     location: HTCondorLocation | KubernetesLocation
-    cluster_id: int
     n_workers: int
+    cluster_id: str = ""  # "" is a non-started cluster
 
 
 @typechecked

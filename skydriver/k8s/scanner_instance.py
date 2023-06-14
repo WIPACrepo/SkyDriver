@@ -8,7 +8,7 @@ from typing import Any
 import kubernetes.client  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
-from .. import database, images, types
+from .. import database, images
 from ..config import ENV
 from ..database import schema
 from . import scan_backlog
@@ -69,7 +69,7 @@ class SkymapScannerStarterJob:
         predictive_scanning_threshold: float,
         # tms
         memory: str,
-        request_clusters: list[types.RequestorInputCluster],
+        request_clusters: list[schema.Cluster],
         max_pixel_reco_time: int | None,
         # universal
         debug_mode: bool,
@@ -93,7 +93,7 @@ class SkymapScannerStarterJob:
         self.tms_args_list = list(
             self.get_tms_starter_args(
                 common_space_volume_path=common_space_volume_path,
-                singularity_image=images.get_skyscan_cvmfs_singularity_image(
+                worker_image=images.get_skyscan_cvmfs_singularity_image(
                     docker_tag
                 ),
                 memory=memory,
@@ -163,9 +163,9 @@ class SkymapScannerStarterJob:
     @staticmethod
     def get_tms_starter_args(
         common_space_volume_path: Path,
-        singularity_image: Path,
+        worker_image: Path,
         memory: str,
-        request_cluster: types.RequestorInputCluster,
+        request_cluster: schema.Cluster,
         debug_mode: bool,
     ) -> str:
         """Make the starter container args.
@@ -181,9 +181,8 @@ class SkymapScannerStarterJob:
             f" --n-workers {request_cluster.n_workers} "
             # f" --dryrun"
             # f" --logs-directory "  # see below
-            # f" --accounting-group "
             f" --memory {memory} "
-            f" --image {singularity_image} "
+            f" --image {worker_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )

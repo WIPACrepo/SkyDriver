@@ -24,7 +24,7 @@ def print_it(obj: Any) -> None:
 
 ########################################################################################
 
-SCHEDD_LOOKUP = {
+KNOWN_CONDOR_CLUSTERS = {
     "foobar": {
         "collector": "for-sure.a-collector.edu",
         "schedd": "foobar.schedd.edu",
@@ -48,7 +48,9 @@ async def server(
     """Startup server in this process, yield RestClient func, then clean up."""
 
     # patch at directly named import that happens before running the test
-    monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CONDORS", SCHEDD_LOOKUP)
+    monkeypatch.setattr(
+        skydriver.rest_handlers, "KNOWN_CONDOR_CLUSTERS", KNOWN_CONDOR_CLUSTERS
+    )
     monkeypatch.setattr(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )

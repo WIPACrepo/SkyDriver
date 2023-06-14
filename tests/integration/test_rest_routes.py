@@ -24,7 +24,7 @@ StrDict = dict[str, Any]
 
 ########################################################################################
 
-SCHEDD_LOOKUP = {
+KNOWN_CONDOR_CLUSTERS = {
     "foobar": {
         "collector": "for-sure.a-collector.edu",
         "schedd": "foobar.schedd.edu",
@@ -49,7 +49,9 @@ async def server(
     """Startup server in this process, yield RestClient func, then clean up."""
 
     # patch at directly named import that happens before running the test
-    monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CONDORS", SCHEDD_LOOKUP)
+    monkeypatch.setattr(
+        skydriver.rest_handlers, "KNOWN_CONDOR_CLUSTERS", KNOWN_CONDOR_CLUSTERS
+    )
     monkeypatch.setattr(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
@@ -105,8 +107,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         case 1:
             tms_args = [
                 f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
-                f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
+                f" --collector {KNOWN_CONDOR_CLUSTERS[clusters[0][0]]['collector']} "
+                f" --schedd {KNOWN_CONDOR_CLUSTERS[clusters[0][0]]['schedd']} "
                 f" start "
                 f" --n-workers {clusters[0][1]} "
                 f" --memory 8GB "
@@ -117,8 +119,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         case 2:
             tms_args = [
                 f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
-                f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
+                f" --collector {KNOWN_CONDOR_CLUSTERS[clusters[0][0]]['collector']} "
+                f" --schedd {KNOWN_CONDOR_CLUSTERS[clusters[0][0]]['schedd']} "
                 f" start "
                 f" --n-workers {clusters[0][1]} "
                 f" --memory 8GB "
@@ -127,8 +129,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 # f" --logs-directory /common-space "
                 ,
                 f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP[clusters[1][0]]['collector']} "
-                f" --schedd {SCHEDD_LOOKUP[clusters[1][0]]['schedd']} "
+                f" --collector {KNOWN_CONDOR_CLUSTERS[clusters[1][0]]['collector']} "
+                f" --schedd {KNOWN_CONDOR_CLUSTERS[clusters[1][0]]['schedd']} "
                 f" start "
                 f" --n-workers {clusters[1][1]} "
                 f" --memory 8GB "
@@ -139,8 +141,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         case 3:
             tms_args = [
                 f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
-                f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
+                f" --collector {KNOWN_CONDOR_CLUSTERS[clusters[0][0]]['collector']} "
+                f" --schedd {KNOWN_CONDOR_CLUSTERS[clusters[0][0]]['schedd']} "
                 f" start "
                 f" --n-workers {clusters[0][1]} "
                 f" --memory 8GB "
@@ -149,8 +151,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 # f" --logs-directory /common-space "
                 ,
                 f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP[clusters[1][0]]['collector']} "
-                f" --schedd {SCHEDD_LOOKUP[clusters[1][0]]['schedd']} "
+                f" --collector {KNOWN_CONDOR_CLUSTERS[clusters[1][0]]['collector']} "
+                f" --schedd {KNOWN_CONDOR_CLUSTERS[clusters[1][0]]['schedd']} "
                 f" start "
                 f" --n-workers {clusters[1][1]} "
                 f" --memory 8GB "
@@ -159,8 +161,8 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
                 # f" --logs-directory /common-space "
                 ,
                 f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP[clusters[2][0]]['collector']} "
-                f" --schedd {SCHEDD_LOOKUP[clusters[2][0]]['schedd']} "
+                f" --collector {KNOWN_CONDOR_CLUSTERS[clusters[2][0]]['collector']} "
+                f" --schedd {KNOWN_CONDOR_CLUSTERS[clusters[2][0]]['schedd']} "
                 f" start "
                 f" --n-workers {clusters[2][1]} "
                 f" --memory 8GB "

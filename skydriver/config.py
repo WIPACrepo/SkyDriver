@@ -13,10 +13,16 @@ LOGGER = logging.getLogger("skydriver")
 # Constants
 
 
-KNOWN_CONDORS = {
+KNOWN_CONDOR_CLUSTERS = {
     "sub-2": {
         "collector": "glidein-cm.icecube.wisc.edu",
         "schedd": "sub-2.icecube.wisc.edu",
+    }
+}
+KNOWN_K8S_CLUSTERS = {
+    "abc": {
+        "host": "foo.aws.com",
+        "namespace": "bar",
     }
 }
 
