@@ -171,8 +171,6 @@ class SkymapScannerStarterJob:
         This also includes any client args not added by the
         clientmanager.
         """
-        worker_image = images.get_skyscan_cvmfs_singularity_image(docker_tag)
-
         args = "python -m clientmanager "
 
         match request_cluster.orchestrator:
@@ -182,12 +180,14 @@ class SkymapScannerStarterJob:
                     f" --collector {request_cluster.location.collector} "
                     f" --schedd {request_cluster.location.schedd} "
                 )
+                worker_image = images.get_skyscan_cvmfs_singularity_image(docker_tag)
             case "k8s":
                 args += (
                     f" k8s "  # type: ignore[union-attr]
                     f" --host {request_cluster.location.host} "
                     f" --namespace {request_cluster.location.namespace} "
                 )
+                worker_image = images.get_skyscan_docker_image(docker_tag)
             case other:
                 raise ValueError(f"Unknown cluster orchestrator: {other}")
 
