@@ -23,17 +23,17 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
             # start
             cluster_id = f"{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}-{int(time.time())}"  # TODO: make more unique
             starter.start(
-                k8s_client,
-                args.namespace,
-                cluster_id,
-                args.name,
-                args.n_workers,
-                args.client_args,
-                args.memory,
-                args.image,
+                k8s_client=k8s_client,
+                namespace=args.namespace,
+                cluster_id=cluster_id,
+                n_workers=args.n_workers,
+                core_count=1,
+                client_args=args.client_args,
+                memory=args.memory,
+                container_image=args.image,
                 # put client_startup_json in S3 bucket
-                utils.s3ify(args.client_startup_json),
-                args.dryrun,
+                client_startup_json_s3=utils.s3ify(args.client_startup_json),
+                dryrun=args.dryrun,
             )
             # report to SkyDriver
             utils.update_skydriver(
