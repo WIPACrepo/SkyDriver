@@ -5,7 +5,6 @@ import dataclasses as dc
 from pathlib import Path
 
 import boto3  # type: ignore[import]
-import htcondor  # type: ignore[import]
 import requests
 from rest_tools.client import RestClient
 

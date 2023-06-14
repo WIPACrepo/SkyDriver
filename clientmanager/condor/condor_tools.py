@@ -1,9 +1,6 @@
 """Util functions wrapping common htcondor actions."""
 
 
-
-
-
 from typing import Any
 
 import htcondor  # type: ignore[import]
