@@ -38,8 +38,8 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
             # report to SkyDriver
             utils.update_skydriver(
                 skydriver_rc,
-                args.collector,
-                args.schedd,
+                args.host,
+                ENV.WORKER_K8S_NAMESPACE,
                 cluster_id,
                 args.n_jobs,
             )

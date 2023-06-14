@@ -66,10 +66,10 @@ def main() -> None:
         case "k8s":
             # Creating K8S cluster client
             k8s_client_config = kubernetes.client.Configuration()
-            k8s_client_config.host = ENV.WORKER_K8S_SERVER
+            k8s_client_config.host = args.host
             k8s_client_config.api_key["authorization"] = ENV.WORKER_K8S_TOKEN
             with kubernetes.client.ApiClient(k8s_client_config) as k8s_api_client:
-                k8s.act(args, k8s_api_client, ENV.WORKER_K8S_NAMESPACE)
+                k8s.act(args, k8s_api_client)
         case other:
             raise RuntimeError(f"Not supported orchestrator: {other}")
 
@@ -92,6 +92,11 @@ class OrchestratorArgs:
     @staticmethod
     def k8s(sub_parser: argparse.ArgumentParser) -> None:
         """Add args to subparser."""
+        sub_parser.add_argument(
+            "--host",
+            required=True,
+            help="the host server address to connect to for running workers",
+        )
         sub_parser.add_argument(
             "--cluster-config",
             default="",

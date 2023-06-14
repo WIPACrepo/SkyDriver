@@ -16,7 +16,6 @@ class EnvConfig:
     # pylint:disable=invalid-name
     CLIENT_STARTER_WAIT_FOR_STARTUP_JSON: int = 60
     CONDOR_TOKEN: str = ""
-    WORKER_K8S_SERVER: str = ""
     WORKER_K8S_TOKEN: str = ""
     WORKER_K8S_NAMESPACE: str = ""
     EWMS_PILOT_QUARANTINE_TIME: int = 0
