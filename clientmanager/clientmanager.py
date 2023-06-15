@@ -56,7 +56,7 @@ def main() -> None:
     # Go!
     match args.orchestrator:
         case "condor":
-            # condor auth
+            # condor auth & go
             with htcondor.SecMan() as secman:
                 secman.setToken(htcondor.Token(ENV.CONDOR_TOKEN))
                 schedd_obj = condor.condor_tools.get_schedd_obj(
@@ -66,8 +66,14 @@ def main() -> None:
         case "k8s":
             # Creating K8S cluster client
             k8s_client_config = kubernetes.client.Configuration()
-            k8s_client_config.host = args.host
-            k8s_client_config.api_key["authorization"] = ENV.WORKER_K8S_TOKEN
+            if args.host == "local":
+                # use *this* pod's service account
+                kubernetes.config.load_incluster_config(k8s_client_config)
+            else:
+                # connect to remote host
+                k8s_client_config.host = args.host
+                k8s_client_config.api_key["authorization"] = ENV.WORKER_K8S_TOKEN
+            # connect & go
             with kubernetes.client.ApiClient(k8s_client_config) as k8s_api_client:
                 k8s.act(args, k8s_api_client)
         case other:

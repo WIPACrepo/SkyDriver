@@ -13,6 +13,14 @@ from . import starter, stopper
 
 def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> None:
     """Do the action."""
+    try:
+        LOGGER.debug("testing k8s credentials")
+        api_response = kubernetes.client.BatchV1Api(k8s_client).get_api_resources()
+        LOGGER.debug(api_response)
+    except kubernetes.client.rest.ApiException as e:
+        LOGGER.exception(e)
+        raise
+
     match args.action:
         case "start":
             LOGGER.info(
@@ -24,6 +32,7 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
             cluster_id = f"{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}-{int(time.time())}"  # TODO: make more unique
             starter.start(
                 k8s_client=k8s_client,
+                host=args.host,
                 namespace=args.namespace,
                 cluster_id=cluster_id,
                 n_workers=args.n_workers,

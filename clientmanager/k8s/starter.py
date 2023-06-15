@@ -6,7 +6,7 @@ from pathlib import Path
 
 import kubernetes  # type: ignore[import]
 
-from ..config import LOGGER
+from ..config import ENV, LOGGER
 from ..utils import S3File
 
 
@@ -16,6 +16,7 @@ def _get_log_fpath(logs_subdir: Path) -> Path:
 
 def make_k8s_job_desc(
     # k8s args
+    host: str,
     namespace: str,
     cluster_id: str,
     memory: str,
@@ -29,14 +30,17 @@ def make_k8s_job_desc(
     cpu_arch: str,
 ) -> dict:
     """Make the k8s job description (submit object)."""
-    with open("k8s_job_stub.json", "r") as f:
+    with open(ENV.WORKER_K8S_JOB_STUB_FPATH, "r") as f:
         k8s_job_dict = json.load(f)
+
+    # multiple different variations add to these...
+    for meta_field in ["labels", "annotations"]:
+        if meta_field not in k8s_job_dict["metadata"]:
+            k8s_job_dict["metadata"][meta_field] = {}
 
     # ARM-specific fields
     if cpu_arch == "arm":
         # labels
-        if "labels" not in k8s_job_dict["metadata"]:
-            k8s_job_dict["metadata"]["labels"] = {}
         k8s_job_dict["metadata"]["labels"].update({"beta.kubernetes.io/arch": "arm64"})
         # affinity
         k8s_job_dict["spec"]["template"]["spec"]["affinity"] = {
@@ -61,11 +65,24 @@ def make_k8s_job_desc(
     k8s_job_dict["metadata"]["namespace"] = namespace
     k8s_job_dict["metadata"]["name"] = cluster_id
 
+    if host == "local":
+        k8s_job_dict["metadata"]["labels"].update(
+            {
+                # https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/
+                "app.kubernetes.io/instance": ENV.WORKER_K8S_LOCAL_APPLICATION_NAME,
+            }
+        )
+        k8s_job_dict["metadata"]["annotations"].update(
+            {
+                "argocd.argoproj.io/sync-options": "Prune=false"  # don't want argocd to prune this job
+            }
+        )
+
     # Setting parallelism
     k8s_job_dict["spec"]["completions"] = n_workers
     k8s_job_dict["spec"]["parallelism"] = n_workers
 
-    # Setting JSON input file
+    # Setting JSON input file url
     k8s_job_dict["spec"]["template"]["spec"]["initContainers"][0]["env"][0][
         "value"
     ] = client_startup_json_s3
@@ -85,6 +102,7 @@ def make_k8s_job_desc(
 
 def start(
     k8s_client: kubernetes.client.ApiClient,
+    host: str,
     namespace: str,
     cluster_id: str,
     n_workers: int,
@@ -97,9 +115,15 @@ def start(
     cpu_arch: str,
 ) -> dict:
     """Main logic."""
+    if host == "local" and n_workers > ENV.WORKER_K8S_MAX_LOCAL_WORKERS:
+        LOGGER.warning(
+            f"Requested more workers ({n_workers}) than the max allowed {ENV.WORKER_K8S_MAX_LOCAL_WORKERS}. Using the maximum instead."
+        )
+        n_workers = ENV.WORKER_K8S_MAX_LOCAL_WORKERS
 
     # make k8s job description
     k8s_job_dict = make_k8s_job_desc(
+        host,
         namespace,
         cluster_id,
         # condor args
