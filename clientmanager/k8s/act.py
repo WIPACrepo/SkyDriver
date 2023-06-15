@@ -34,6 +34,7 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
                 # put client_startup_json in S3 bucket
                 client_startup_json_s3=utils.s3ify(args.client_startup_json),
                 dryrun=args.dryrun,
+                cpu_arch=args.cpu_arch,
             )
             # report to SkyDriver
             utils.update_skydriver(

@@ -103,6 +103,11 @@ class OrchestratorArgs:
             help="the k8s namespace to use for running workers",
         )
         sub_parser.add_argument(
+            "--cpu-arch",
+            default="x64",
+            help="which CPU architecture to use for running workers",
+        )
+        sub_parser.add_argument(
             "--cluster-config",
             default="",
             help="k8s cluster config to connect as a yaml file",
