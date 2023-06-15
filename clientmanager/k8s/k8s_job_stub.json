@@ -32,13 +32,13 @@
               "command": [
                 "wget", 
                 "-O",
-                "/download/startup.json",
+                "/skymap-scanner-startup-config/startup.json",
                 "$(URL_EVENT_STARTUP_JSON)"
               ],
               "volumeMounts": [
                 {
                   "name": "startup-config-mount",
-                  "mountPath": "/download"
+                  "mountPath": "/skymap-scanner-startup-config"
                 }
               ]
             }
