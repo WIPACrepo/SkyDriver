@@ -29,6 +29,7 @@ def act(
                 args.logs_directory if args.logs_directory else None,
                 args.client_args,
                 args.memory,
+                args.n_cores,
                 args.accounting_group,
                 args.image,
                 # put client_startup_json in S3 bucket

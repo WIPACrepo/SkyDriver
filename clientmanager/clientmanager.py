@@ -171,6 +171,12 @@ class ActionArgs:
             help="amount of memory",
             # default="8GB",
         )
+        sub_parser.add_argument(
+            "--n-cores",
+            default=1,
+            type=int,
+            help="number of cores per worker",
+        )
 
         # client args
         sub_parser.add_argument(

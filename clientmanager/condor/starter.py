@@ -29,6 +29,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     logs_subdir: Path | None,
     # condor args
     memory: str,
+    n_cores: int,
     accounting_group: str,
     # skymap scanner args
     image: str,
@@ -71,7 +72,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         "+FileSystemDomain": '"blah"',  # must be quoted
         "should_transfer_files": "YES",
         "transfer_input_files": client_startup_json_s3.url,
-        "request_cpus": "1",
+        "request_cpus": str(n_cores),
         "request_memory": memory,
         "notification": "Error",
         "+WantIOProxy": "true",  # for HTChirp
@@ -103,6 +104,7 @@ def start(
     logs_directory: Path | None,
     client_args: list[tuple[str, str]],
     memory: str,
+    n_cores: int,
     accounting_group: str,
     image: str,
     client_startup_json_s3: S3File,
@@ -135,6 +137,7 @@ def start(
         logs_subdir,
         # condor args
         memory,
+        n_cores,
         accounting_group,
         # skymap scanner args
         image,

@@ -36,7 +36,7 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
                 namespace=args.namespace,
                 cluster_id=cluster_id,
                 n_workers=args.n_workers,
-                core_count=1,
+                n_cores=args.n_cores,
                 client_args=args.client_args,
                 memory=args.memory,
                 container_image=args.image,

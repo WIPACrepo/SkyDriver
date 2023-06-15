@@ -82,6 +82,18 @@ def make_k8s_job_desc(
     k8s_job_dict["spec"]["completions"] = n_workers
     k8s_job_dict["spec"]["parallelism"] = n_workers
 
+    # set memory & # cores
+    k8s_job_dict["spec"]["template"]["spec"]["containers"][0]["resources"] = {
+        "limits": {
+            "cpu": str(n_cores),
+            "memory": memory,  # TODO: give a bit more just in case?
+        },
+        "requests": {
+            "cpu": str(n_cores),
+            "memory": memory,
+        },
+    }
+
     # Setting JSON input file url
     k8s_job_dict["spec"]["template"]["spec"]["initContainers"][0]["env"][0][
         "value"
@@ -106,7 +118,7 @@ def start(
     namespace: str,
     cluster_id: str,
     n_workers: int,
-    core_count: int,
+    n_cores: int,
     client_args: list[tuple[str, str]],
     memory: str,
     container_image: str,
@@ -129,7 +141,7 @@ def start(
         # condor args
         memory,
         n_workers,
-        core_count,
+        n_cores,
         # skymap scanner args
         container_image,
         client_startup_json_s3,
