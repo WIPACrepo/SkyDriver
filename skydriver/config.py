@@ -13,14 +13,6 @@ LOGGER = logging.getLogger("skydriver")
 # Constants
 
 
-KNOWN_CONDORS = {
-    "sub-2": {
-        "collector": "glidein-cm.icecube.wisc.edu",
-        "schedd": "sub-2.icecube.wisc.edu",
-    }
-}
-
-
 @dc.dataclass(frozen=True)
 class EnvConfig:
     """Environment variables."""
@@ -85,6 +77,21 @@ class EnvConfig:
 
 
 ENV = from_environment_as_dataclass(EnvConfig)
+
+
+# known cluster locations
+KNOWN_CONDOR_CLUSTERS = {
+    "sub-2": {
+        "collector": "glidein-cm.icecube.wisc.edu",
+        "schedd": "sub-2.icecube.wisc.edu",
+    }
+}
+KNOWN_K8S_CLUSTERS = {
+    "local": {
+        "host": "local",
+        "namespace": ENV.K8S_NAMESPACE,
+    }
+}
 
 
 def is_testing() -> bool:

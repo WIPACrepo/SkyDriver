@@ -8,7 +8,7 @@ from typing import Any
 import kubernetes.client  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
-from .. import database, images, types
+from .. import database, images
 from ..config import ENV
 from ..database import schema
 from . import scan_backlog
@@ -69,7 +69,7 @@ class SkymapScannerStarterJob:
         predictive_scanning_threshold: float,
         # tms
         memory: str,
-        request_clusters: list[types.RequestorInputCluster],
+        request_clusters: list[schema.Cluster],
         max_pixel_reco_time: int | None,
         # universal
         debug_mode: bool,
@@ -93,9 +93,7 @@ class SkymapScannerStarterJob:
         self.tms_args_list = list(
             self.get_tms_starter_args(
                 common_space_volume_path=common_space_volume_path,
-                singularity_image=images.get_skyscan_cvmfs_singularity_image(
-                    docker_tag
-                ),
+                docker_tag=docker_tag,
                 memory=memory,
                 request_cluster=c,
                 debug_mode=debug_mode,
@@ -163,9 +161,9 @@ class SkymapScannerStarterJob:
     @staticmethod
     def get_tms_starter_args(
         common_space_volume_path: Path,
-        singularity_image: Path,
+        docker_tag: str,
         memory: str,
-        request_cluster: types.RequestorInputCluster,
+        request_cluster: schema.Cluster,
         debug_mode: bool,
     ) -> str:
         """Make the starter container args.
@@ -173,17 +171,33 @@ class SkymapScannerStarterJob:
         This also includes any client args not added by the
         clientmanager.
         """
-        args = (
-            f"python -m clientmanager "
-            f" --collector {request_cluster.collector} "
-            f" --schedd {request_cluster.schedd} "
+        args = "python -m clientmanager "
+
+        match request_cluster.orchestrator:
+            case "condor":
+                args += (
+                    f" condor "  # type: ignore[union-attr]
+                    f" --collector {request_cluster.location.collector} "
+                    f" --schedd {request_cluster.location.schedd} "
+                )
+                worker_image = images.get_skyscan_cvmfs_singularity_image(docker_tag)
+            case "k8s":
+                args += (
+                    f" k8s "  # type: ignore[union-attr]
+                    f" --host {request_cluster.location.host} "
+                    f" --namespace {request_cluster.location.namespace} "
+                )
+                worker_image = images.get_skyscan_docker_image(docker_tag)
+            case other:
+                raise ValueError(f"Unknown cluster orchestrator: {other}")
+
+        args += (
             f" start "
-            f" --n-jobs {request_cluster.njobs} "
+            f" --n-workers {request_cluster.n_workers} "
             # f" --dryrun"
             # f" --logs-directory "  # see below
-            # f" --accounting-group "
             f" --memory {memory} "
-            f" --singularity-image {singularity_image} "
+            f" --image {worker_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
@@ -237,6 +251,8 @@ class SkymapScannerStarterJob:
             #
             "EWMS_TMS_S3_BUCKET": ENV.EWMS_TMS_S3_BUCKET,
             "EWMS_TMS_S3_URL": ENV.EWMS_TMS_S3_URL,
+            #
+            "WORKER_K8S_LOCAL_APPLICATION_NAME": ENV.K8S_APPLICATION_NAME,
         }
         env.extend(
             [
@@ -302,20 +318,31 @@ class SkymapScannerStopperJob:
         self,
         api_instance: kubernetes.client.BatchV1Api,
         scan_id: str,
-        condor_clusters: list[schema.CondorClutser],
+        clusters: list[schema.Cluster],
     ):
         self.api_instance = api_instance
 
         # make a container per cluster
         containers = []
-        for i, cluster in enumerate(condor_clusters):
-            args = (
-                f"python -m clientmanager "
-                f" --collector {cluster.collector} "
-                f" --schedd {cluster.schedd} "
-                f" stop "
-                f" --cluster-id {cluster.cluster_id} "
-            )
+        for i, cluster in enumerate(clusters):
+            args = "python -m clientmanager "
+            match cluster.orchestrator:
+                case "condor":
+                    args += (
+                        f" condor "  # type: ignore[union-attr]
+                        f" --collector {cluster.location.collector} "
+                        f" --schedd {cluster.location.schedd} "
+                    )
+                case "k8s":
+                    args += (
+                        f" k8s "  # type: ignore[union-attr]
+                        f" --host {cluster.location.host} "
+                        f" --namespace {cluster.location.namespace} "
+                    )
+                case other:
+                    raise ValueError(f"Unknown cluster orchestrator: {other}")
+            args += f" stop --cluster-id {cluster.cluster_id} "
+
             containers.append(
                 KubeAPITools.create_container(
                     f"tms-stopper-{i}-{scan_id}",

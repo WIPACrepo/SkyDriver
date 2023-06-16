@@ -24,7 +24,7 @@ StrDict = dict[str, Any]
 
 ########################################################################################
 
-SCHEDD_LOOKUP = {
+KNOWN_CONDOR_CLUSTERS = {
     "foobar": {
         "collector": "for-sure.a-collector.edu",
         "schedd": "foobar.schedd.edu",
@@ -32,6 +32,12 @@ SCHEDD_LOOKUP = {
     "a-schedd": {
         "collector": "the-collector.edu",
         "schedd": "a-schedd.edu",
+    },
+}
+KNOWN_K8S_CLUSTERS = {
+    "cloud": {
+        "host": "cumulus.nimbus.com",
+        "namespace": "stratus",
     },
 }
 
@@ -49,7 +55,12 @@ async def server(
     """Startup server in this process, yield RestClient func, then clean up."""
 
     # patch at directly named import that happens before running the test
-    monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CONDORS", SCHEDD_LOOKUP)
+    monkeypatch.setattr(
+        skydriver.rest_handlers, "KNOWN_CONDOR_CLUSTERS", KNOWN_CONDOR_CLUSTERS
+    )
+    monkeypatch.setattr(
+        skydriver.rest_handlers, "KNOWN_K8S_CLUSTERS", KNOWN_K8S_CLUSTERS
+    )
     monkeypatch.setattr(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
@@ -72,9 +83,6 @@ async def server(
 ########################################################################################
 
 POST_SCAN_BODY = {
-    "cluster": {
-        "foobar": 1,
-    },
     "reco_algo": "anything",
     "event_i3live_json": {"a": 22},
     "nsides": {1: 2, 3: 4},
@@ -83,7 +91,9 @@ POST_SCAN_BODY = {
 }
 
 
-async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) -> dict:
+async def _launch_scan(
+    rc: RestClient, post_scan_body: dict, tms_args: list[str]
+) -> dict:
     # launch scan
     resp = await rc.request("POST", "/scan", post_scan_body)
 
@@ -97,87 +107,13 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         f"--predictive-scanning-threshold 1.0 "  # the default
     )
 
-    clusters = post_scan_body["cluster"]
-    if isinstance(clusters, dict):
-        clusters = list(clusters.items())
-    match len(clusters):
-        # doing things manually here so we don't duplicate the same method used in the app
-        case 1:
-            tms_args = [
-                f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
-                f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
-                f" start "
-                f" --n-jobs {clusters[0][1]} "
-                f" --memory 8GB "
-                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
-                f" --client-startup-json /common-space/startup.json "
-                # f" --logs-directory /common-space "
-            ]
-        case 2:
-            tms_args = [
-                f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
-                f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
-                f" start "
-                f" --n-jobs {clusters[0][1]} "
-                f" --memory 8GB "
-                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
-                f" --client-startup-json /common-space/startup.json "
-                # f" --logs-directory /common-space "
-                ,
-                f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP[clusters[1][0]]['collector']} "
-                f" --schedd {SCHEDD_LOOKUP[clusters[1][0]]['schedd']} "
-                f" start "
-                f" --n-jobs {clusters[1][1]} "
-                f" --memory 8GB "
-                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
-                f" --client-startup-json /common-space/startup.json "
-                # f" --logs-directory /common-space "
-            ]
-        case 3:
-            tms_args = [
-                f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP[clusters[0][0]]['collector']} "
-                f" --schedd {SCHEDD_LOOKUP[clusters[0][0]]['schedd']} "
-                f" start "
-                f" --n-jobs {clusters[0][1]} "
-                f" --memory 8GB "
-                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
-                f" --client-startup-json /common-space/startup.json "
-                # f" --logs-directory /common-space "
-                ,
-                f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP[clusters[1][0]]['collector']} "
-                f" --schedd {SCHEDD_LOOKUP[clusters[1][0]]['schedd']} "
-                f" start "
-                f" --n-jobs {clusters[1][1]} "
-                f" --memory 8GB "
-                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
-                f" --client-startup-json /common-space/startup.json "
-                # f" --logs-directory /common-space "
-                ,
-                f"python -m clientmanager "
-                f" --collector {SCHEDD_LOOKUP[clusters[2][0]]['collector']} "
-                f" --schedd {SCHEDD_LOOKUP[clusters[2][0]]['schedd']} "
-                f" start "
-                f" --n-jobs {clusters[2][1]} "
-                f" --memory 8GB "
-                f" --singularity-image {skydriver.images._SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH/'skymap_scanner'}:{expected_tag} "
-                f" --client-startup-json /common-space/startup.json "
-                # f" --logs-directory /common-space "
-            ]
-        case _:
-            raise RuntimeError("need more cases")
-
     assert resp == dict(
         scan_id=resp["scan_id"],
         is_deleted=False,
         event_i3live_json_dict=post_scan_body["event_i3live_json"],
         event_metadata=None,
         scan_metadata=None,
-        condor_clusters=[],
+        clusters=[],
         progress=None,
         scanner_server_args=resp["scanner_server_args"],  # see below
         tms_args=resp["tms_args"],  # see below
@@ -207,6 +143,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         "SKYSCAN_SKYDRIVER_ADDRESS",
         "SKYSCAN_SKYDRIVER_AUTH",
         "SKYSCAN_SKYDRIVER_SCAN_ID",
+        "WORKER_K8S_LOCAL_APPLICATION_NAME",
     }
     # check env vars, more closely
     assert set(  # these have `value`s
@@ -222,6 +159,7 @@ async def _launch_scan(rc: RestClient, post_scan_body: dict, expected_tag: str) 
         "SKYSCAN_SKYDRIVER_ADDRESS",
         "SKYSCAN_SKYDRIVER_AUTH",
         "SKYSCAN_SKYDRIVER_SCAN_ID",
+        "WORKER_K8S_LOCAL_APPLICATION_NAME",
     }
     assert set(  # these have `value_from`s
         k
@@ -251,7 +189,7 @@ async def _do_patch(
     progress: StrDict | None = None,
     event_metadata: StrDict | None = None,
     scan_metadata: StrDict | None = None,
-    condor_cluster: StrDict | None = None,
+    cluster: StrDict | None = None,
     previous_clusters: list[StrDict] | None = None,
 ) -> StrDict:
     # do PATCH @ /scan/{scan_id}/manifest, assert response
@@ -262,8 +200,8 @@ async def _do_patch(
         body["event_metadata"] = event_metadata
     if scan_metadata:
         body["scan_metadata"] = scan_metadata
-    if condor_cluster:
-        body["condor_cluster"] = condor_cluster
+    if cluster:
+        body["cluster"] = cluster
         assert isinstance(previous_clusters, list)  # gotta include this one too
     assert body
 
@@ -274,10 +212,10 @@ async def _do_patch(
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         event_metadata=event_metadata if event_metadata else resp["event_metadata"],
         scan_metadata=scan_metadata if scan_metadata else resp["scan_metadata"],
-        condor_clusters=(
-            previous_clusters + [condor_cluster]  # type: ignore[operator]  # see assert ^^^^
-            if condor_cluster
-            else resp["condor_clusters"]  # not checking
+        clusters=(
+            previous_clusters + [cluster]  # type: ignore[operator]  # see assert ^^^^
+            if cluster
+            else resp["clusters"]  # not checking
         ),
         progress=(
             {  # inject the auto-filled args
@@ -372,20 +310,28 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
 
 
 async def _clientmanager_reply(
-    rc: RestClient, scan_id: str, previous_clusters: list[StrDict]
+    rc: RestClient,
+    scan_id: str,
+    cluster_name__n_workers: tuple[str, int],
+    previous_clusters: list[StrDict],
 ) -> StrDict:
-    # reply as the clientmanager with a new condor cluster
-    condor_cluster = dict(
-        collector="for-sure.a-collector.edu",
-        schedd="this.schedd.edu",
-        cluster_id=random.randint(1, 10000),
-        jobs=random.randint(1, 10000),
+    # reply as the clientmanager with a new cluster
+    cluster = dict(
+        orchestrator=(
+            "condor" if cluster_name__n_workers[0] in KNOWN_CONDOR_CLUSTERS else "k8s"
+        ),
+        location=KNOWN_CONDOR_CLUSTERS.get(
+            cluster_name__n_workers[0],
+            KNOWN_K8S_CLUSTERS.get(cluster_name__n_workers[0]),
+        ),
+        cluster_id=f"cluster-{random.randint(1, 10000)}",
+        n_workers=cluster_name__n_workers[1],
     )
 
     manifest = await _do_patch(
         rc,
         scan_id,
-        condor_cluster=condor_cluster,
+        cluster=cluster,
         previous_clusters=previous_clusters,
     )
     return manifest
@@ -528,11 +474,39 @@ async def _delete_scan(
     assert resp["scan_ids"] == [scan_id]
 
 
+def get_tms_args(clusters: list | dict, docker_tag_expected: str) -> list[str]:
+    tms_args = []
+    for cluster in clusters if isinstance(clusters, list) else list(clusters.items()):
+        orchestrator = "condor" if cluster[0] in KNOWN_CONDOR_CLUSTERS else "k8s"
+        location = KNOWN_CONDOR_CLUSTERS.get(
+            cluster[0],
+            KNOWN_K8S_CLUSTERS.get(cluster[0]),
+        )
+        image = (
+            f"/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:{docker_tag_expected}"
+            if cluster[0] in KNOWN_CONDOR_CLUSTERS
+            else f"icecube/skymap_scanner:{docker_tag_expected}"
+        )
+        tms_args += [
+            f"python -m clientmanager "
+            f" {orchestrator} "
+            f" {' '.join(f'--{k} {v}' for k,v in location.items())} "  # type: ignore[union-attr]
+            f" start "
+            f" --n-workers {cluster[1]} "
+            f" --memory 8GB "
+            f" --image {image} "
+            f" --client-startup-json /common-space/startup.json "
+            # f" --logs-directory /common-space "
+        ]
+
+    return tms_args
+
+
 ########################################################################################
 
 
 @pytest.mark.parametrize(
-    "docker_tag_input_and_expect",
+    "docker_tag_input,docker_tag_expected",
     [
         ("latest", os.environ["LATEST_TAG"]),
         ("3.4.0", "3.4.0"),
@@ -545,13 +519,20 @@ async def _delete_scan(
     "clusters",
     [
         {"foobar": 1},
-        {"foobar": 1, "a-schedd": 999},
-        [["foobar", 1], ["a-schedd", 999], ["a-schedd", 1234]],
+        {"foobar": 1, "a-schedd": 999, "cloud": 4568},
+        [
+            ["foobar", 1],
+            ["a-schedd", 999],
+            ["cloud", 5845],
+            ["a-schedd", 1234],
+            ["cloud", 6548],
+        ],
     ],
 )
 async def test_00(
     clusters: list | dict,
-    docker_tag_input_and_expect: tuple[str, str],
+    docker_tag_input: str,
+    docker_tag_expected: str,
     server: Callable[[], RestClient],
 ) -> None:
     """Test normal scan creation and retrieval."""
@@ -564,10 +545,10 @@ async def test_00(
         rc,
         {
             **POST_SCAN_BODY,
-            "docker_tag": docker_tag_input_and_expect[0],
+            "docker_tag": docker_tag_input,
             "cluster": clusters,
         },
-        docker_tag_input_and_expect[1],
+        get_tms_args(clusters, docker_tag_expected),
     )
     scan_id = manifest["scan_id"]
     # follow-up query
@@ -580,7 +561,12 @@ async def test_00(
     # INITIAL UPDATES
     #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    manifest = await _clientmanager_reply(rc, scan_id, [])
+    manifest = await _clientmanager_reply(
+        rc,
+        scan_id,
+        clusters[0] if isinstance(clusters, list) else list(clusters.items())[0],
+        [],
+    )
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -598,8 +584,13 @@ async def test_00(
     # FIRST, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
-    # NEXT, spun up more workers in condor
-    manifest = await _clientmanager_reply(rc, scan_id, manifest["condor_clusters"])
+    # NEXT, spin up more workers in clusters
+    for cluster_name__n_workers in (
+        clusters[1:] if isinstance(clusters, list) else list(clusters.items())[1:]
+    ):
+        manifest = await _clientmanager_reply(
+            rc, scan_id, cluster_name__n_workers, manifest["clusters"]
+        )
     # THEN, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
@@ -618,6 +609,9 @@ async def test_00(
     # DELETE SCAN
     #
     await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
+
+
+POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
 async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
@@ -645,43 +639,49 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         await rc.request("POST", "/scan", {})
     print(e.value)
     # # bad-type body-arg
-    for arg in POST_SCAN_BODY:
+    for arg in POST_SCAN_BODY_FOR_TEST_01:
         for bad_val in [
             "",
             "  ",
             "\t",
-            "string" if not isinstance(POST_SCAN_BODY[arg], str) else None,
+            "string" if not isinstance(POST_SCAN_BODY_FOR_TEST_01[arg], str) else None,
         ]:
             print(f"{arg}: [{bad_val}]")
             with pytest.raises(
                 requests.exceptions.HTTPError,
                 match=rf"400 Client Error: `{arg}`: \(ValueError\) .+ for url: {rc.address}/scan",
             ) as e:
-                await rc.request("POST", "/scan", {**POST_SCAN_BODY, arg: bad_val})
+                await rc.request(
+                    "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, arg: bad_val}
+                )
             print(e.value)
     for bad_val in [  # type: ignore[assignment]
         {},
         {"collector": "a"},
         {"schedd": "a"},
-        {"collector": "a", "schedd": "a"},  # missing njobs
-        {"collector": "a", "schedd": "a", "njobs": "not-a-number"},
+        {"collector": "a", "schedd": "a"},  # missing n_workers
+        {"collector": "a", "schedd": "a", "n_workers": "not-a-number"},
     ]:
         print(f"[{bad_val}]")
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=rf"400 Client Error: `cluster`: \(ValueError\) .+ for url: {rc.address}/scan",
         ) as e:
-            await rc.request("POST", "/scan", {**POST_SCAN_BODY, "cluster": bad_val})
+            await rc.request(
+                "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "cluster": bad_val}
+            )
     print(e.value)
     # # missing arg
-    for arg in POST_SCAN_BODY:
+    for arg in POST_SCAN_BODY_FOR_TEST_01:
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=rf"400 Client Error: `{arg}`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
         ) as e:
             # remove arg from body
             await rc.request(
-                "POST", "/scan", {k: v for k, v in POST_SCAN_BODY.items() if k != arg}
+                "POST",
+                "/scan",
+                {k: v for k, v in POST_SCAN_BODY_FOR_TEST_01.items() if k != arg},
             )
         print(e.value)
     # # bad docker tag
@@ -689,11 +689,17 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
         requests.exceptions.HTTPError,
         match=rf"400 Client Error: `docker_tag`: \(ValueError\) .+ for url: {rc.address}/scan",
     ) as e:
-        await rc.request("POST", "/scan", {**POST_SCAN_BODY, "docker_tag": "foo"})
+        await rc.request(
+            "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "docker_tag": "foo"}
+        )
     print(e.value)
 
     # OK
-    manifest = await _launch_scan(rc, POST_SCAN_BODY, os.environ["LATEST_TAG"])
+    manifest = await _launch_scan(
+        rc,
+        POST_SCAN_BODY_FOR_TEST_01,
+        get_tms_args(POST_SCAN_BODY_FOR_TEST_01["cluster"], os.environ["LATEST_TAG"]),  # type: ignore[arg-type]
+    )
     scan_id = manifest["scan_id"]
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
@@ -705,7 +711,9 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # INITIAL UPDATES
     #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    manifest = await _clientmanager_reply(rc, scan_id, [])
+    manifest = await _clientmanager_reply(
+        rc, scan_id, ("foobar", random.randint(1, 10000)), []
+    )
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")

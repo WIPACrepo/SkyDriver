@@ -16,7 +16,13 @@ class EnvConfig:
     # pylint:disable=invalid-name
     CLIENT_STARTER_WAIT_FOR_STARTUP_JSON: int = 60
     CONDOR_TOKEN: str = ""
+    #
+    WORKER_K8S_TOKEN: str = ""
+    WORKER_K8S_LOCAL_APPLICATION_NAME: str = ""
+    WORKER_K8S_MAX_LOCAL_WORKERS: int = 3  # don't want too many *local* workers
+    #
     EWMS_PILOT_QUARANTINE_TIME: int = 0
+    #
     EWMS_TMS_S3_ACCESS_KEY_ID: str = ""
     EWMS_TMS_S3_BUCKET: str = ""
     EWMS_TMS_S3_EXPIRATION: int = 60 * 60 * 24  # seconds / 1 day

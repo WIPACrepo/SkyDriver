@@ -31,9 +31,9 @@ VERSION_REGEX_PREFIX_V = re.compile(r"(v|V)\d+(\.\d+(\.\d+)?)?")
 # getters
 
 
-def get_skyscan_cvmfs_singularity_image(tag: str) -> Path:
+def get_skyscan_cvmfs_singularity_image(tag: str) -> str:
     """Get the singularity image path for 'tag' (assumes it exists)."""
-    return _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH / f"{_IMAGE}:{tag}"
+    return str(_SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH / f"{_IMAGE}:{tag}")
 
 
 def get_skyscan_docker_image(tag: str) -> str:

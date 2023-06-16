@@ -91,13 +91,46 @@ class EventMetadata:
 
 @typechecked
 @dc.dataclass
-class CondorClutser:
-    """Stores information provided by HTCondor."""
+class HTCondorLocation:
+    """Stores location metadata for a HTCondor cluster."""
 
     collector: str
     schedd: str
-    cluster_id: int
-    jobs: int
+
+
+@typechecked
+@dc.dataclass
+class KubernetesLocation:
+    """Stores location metadata for a Kubernetes cluster."""
+
+    host: str
+    namespace: str
+
+
+@typechecked
+@dc.dataclass
+class Cluster:
+    """Stores information for a worker cluster."""
+
+    orchestrator: str
+    location: HTCondorLocation | KubernetesLocation
+    n_workers: int
+    cluster_id: str = ""  # "" is a non-started cluster
+
+    def __post_init__(self) -> None:
+        match self.orchestrator:
+            case "condor":
+                if not isinstance(self.location, HTCondorLocation):
+                    raise TypeError(
+                        "condor orchestrator must use condor sub-fields for 'location'"
+                    )
+            case "k8s":
+                if not isinstance(self.location, KubernetesLocation):
+                    raise TypeError(
+                        "k8s orchestrator must use k8s sub-fields for 'location'"
+                    )
+            case other:
+                raise ValueError(f"Unknown cluster orchestrator: {other}")
 
 
 @typechecked
@@ -112,7 +145,7 @@ class Manifest(ScanIDDataclass):
     tms_args: list[str]
     env_vars: dict[str, StrDict]
 
-    condor_clusters: list[CondorClutser] = dc.field(default_factory=list)
+    clusters: list[Cluster] = dc.field(default_factory=list)
 
     # found/created during first few seconds of scanning
     event_metadata: EventMetadata | None = None
@@ -121,7 +154,7 @@ class Manifest(ScanIDDataclass):
     # updated during scanning, multiple times
     progress: Progress | None = None
 
-    # signifies k8s jobs and condor cluster(s) are done
+    # signifies k8s workers and condor cluster(s) are done
     complete: bool = False
 
     # logs  # TODO

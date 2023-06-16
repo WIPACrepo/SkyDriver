@@ -14,8 +14,8 @@ from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore[import]
 from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
 from tornado import web
 
-from . import database, images, k8s, types
-from .config import KNOWN_CONDORS, LOGGER, is_testing
+from . import database, images, k8s
+from .config import KNOWN_CONDOR_CLUSTERS, KNOWN_K8S_CLUSTERS, LOGGER, is_testing
 
 WAIT_BEFORE_TEARDOWN = 60
 
@@ -150,6 +150,32 @@ class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
+def cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
+    """Grab the Cluster object known using `name`."""
+    if cluster := KNOWN_CONDOR_CLUSTERS.get(name):
+        return database.schema.Cluster(
+            orchestrator="condor",
+            location=database.schema.HTCondorLocation(
+                collector=cluster["collector"],
+                schedd=cluster["schedd"],
+            ),
+            n_workers=n_workers,
+        )
+    elif cluster := KNOWN_K8S_CLUSTERS.get(name):
+        return database.schema.Cluster(
+            orchestrator="k8s",
+            location=database.schema.KubernetesLocation(
+                host=cluster["host"],
+                namespace=cluster["namespace"],
+            ),
+            n_workers=n_workers,
+        )
+    raise TypeError(
+        f"requested unknown cluster: {name} (available:"
+        f" {', '.join(list(KNOWN_CONDOR_CLUSTERS.keys())+list(KNOWN_K8S_CLUSTERS.keys()))})"
+    )
+
+
 class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles starting new scans."""
 
@@ -181,12 +207,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             raise _error
 
         def _dict_or_list_to_request_clusters(
-            val: Any,
-        ) -> list[types.RequestorInputCluster]:
+            val: dict | list,
+        ) -> list[database.schema.Cluster]:
             _error = TypeError(
-                "must be a dict of schedd name and number of jobs, Ex: {'sub-2': 1500, ...}"
-                " (to request a schedd more than once, provide a list of 2-lists instead),"
-                # TODO: make N_JOBS optional when using "TMS smart starter"
+                "must be a dict of cluster location and number of workers, Ex: {'sub-2': 1500, ...}"
+                " (to request a cluster location more than once, provide a list of 2-lists instead),"
+                # TODO: make n_workers optional when using "TMS smart starter"
             )
             if isinstance(val, dict):
                 val = list(val.items())  # {'a': 1, 'b': 2} -> [('a', 1), ('b', 2)}
@@ -198,22 +224,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             if not all(isinstance(a, list | tuple) and len(a) == 2 for a in val):
                 raise _error
             #
-            clusters = []
-            for entry in val:
-                try:
-                    clusters.append(
-                        types.RequestorInputCluster(
-                            collector=KNOWN_CONDORS[entry[0]]["collector"],
-                            schedd=KNOWN_CONDORS[entry[0]]["schedd"],
-                            njobs=entry[1],
-                        )
-                    )
-                except KeyError as e:
-                    raise TypeError(
-                        f"requested unknown schedd: {entry[0]}"
-                        f" (available: {', '.join(KNOWN_CONDORS.keys())})"
-                    ) from e
-            return clusters
+            return [cluster_lookup(name, n_workers) for name, n_workers in val]
 
         def _optional_int(val: Any) -> int | None:
             if val is None:
@@ -340,7 +351,7 @@ async def stop_scanner_instance(
     k8s_job = k8s.scanner_instance.SkymapScannerStopperJob(
         k8s_api,
         scan_id,
-        manifest.condor_clusters,
+        manifest.clusters,
     )
 
     try:
@@ -501,9 +512,9 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=dict,
             default={},
         )
-        condor_cluster = self.get_argument(
-            "condor_cluster",
-            type=lambda x: from_dict_wrapper_or_none(database.schema.CondorClutser, x),
+        cluster = self.get_argument(
+            "cluster",
+            type=lambda x: from_dict_wrapper_or_none(database.schema.Cluster, x),
             default=None,
         )
 
@@ -512,7 +523,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             progress,
             event_metadata,
             scan_metadata,
-            condor_cluster,
+            cluster,
         )
 
         self.write(dc.asdict(manifest))

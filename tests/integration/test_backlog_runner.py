@@ -24,7 +24,7 @@ def print_it(obj: Any) -> None:
 
 ########################################################################################
 
-SCHEDD_LOOKUP = {
+KNOWN_CONDOR_CLUSTERS = {
     "foobar": {
         "collector": "for-sure.a-collector.edu",
         "schedd": "foobar.schedd.edu",
@@ -48,7 +48,9 @@ async def server(
     """Startup server in this process, yield RestClient func, then clean up."""
 
     # patch at directly named import that happens before running the test
-    monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CONDORS", SCHEDD_LOOKUP)
+    monkeypatch.setattr(
+        skydriver.rest_handlers, "KNOWN_CONDOR_CLUSTERS", KNOWN_CONDOR_CLUSTERS
+    )
     monkeypatch.setattr(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
@@ -107,7 +109,7 @@ async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     """Test backlog job starting with multiple."""
     rc = server()
 
-    # request jobs
+    # request workers
     for _ in range(N_JOBS):
         await asyncio.sleep(0)  # allow backlog runner to do its thing
         await rc.request("POST", "/scan", POST_SCAN_BODY)
@@ -136,7 +138,7 @@ async def test_10(
     """Test backlog job starting with multiple cancels."""
     rc = server()
 
-    # request jobs
+    # request workers
     for i in range(N_JOBS):
         await asyncio.sleep(0)  # allow backlog runner to do its thing
         resp = await rc.request("POST", "/scan", POST_SCAN_BODY)

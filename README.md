@@ -18,7 +18,7 @@ Another workflow:
 1. Find a scan id for a particular run and event ([GET @ `/scans`](#scans---get))
 2. Get the scan's manifest and result ([GET @ `/scan/SCAN_ID`](#scanscan_id---get))
 
-For more examples see: [examples/](./examples/)
+For more examples see [examples](#examples)
 
 
 &nbsp;
@@ -202,7 +202,7 @@ Pseudo-code:
     tms_args: list[str],
     env_vars: dict[str, dict],
 
-    condor_clusters: [
+    clusters: [
         {
             collector: str,
             schedd: str,

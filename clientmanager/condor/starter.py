@@ -1,18 +1,15 @@
 """For starting Skymap Scanner clients on an HTCondor cluster."""
 
 
-import argparse
 import datetime as dt
 import getpass
-import time
 from pathlib import Path
 
 import htcondor  # type: ignore[import]
-from wipac_dev_tools import argparse_tools
 
+from ..config import ENV, LOGGER
+from ..utils import S3File
 from . import condor_tools
-from .config import ENV, LOGGER
-from .utils import S3File
 
 
 def make_condor_logs_subdir(directory: Path) -> Path:
@@ -32,12 +29,13 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     logs_subdir: Path | None,
     # condor args
     memory: str,
+    n_cores: int,
     accounting_group: str,
     # skymap scanner args
-    singularity_image: str,
+    image: str,
     client_startup_json_s3: S3File,
     client_args_string: str,
-) -> htcondor.Submit:  # pylint:disable=no-member
+) -> htcondor.Submit:
     """Make the condor job description (submit object)."""
 
     # NOTE:
@@ -67,14 +65,14 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     submit_dict = {
         "executable": "/bin/bash",
         "arguments": f"/usr/local/icetray/env-shell.sh python -m skymap_scanner.client {client_args_string} --client-startup-json ./{client_startup_json_s3.fname}",
-        "+SingularityImage": f'"{singularity_image}"',  # must be quoted
+        "+SingularityImage": f'"{image}"',  # must be quoted
         "Requirements": "HAS_CVMFS_icecube_opensciencegrid_org && has_avx && has_avx2",
         "getenv": "SKYSCAN_*, EWMS_*",
         "environment": f'"{environment}"',  # must be quoted
         "+FileSystemDomain": '"blah"',  # must be quoted
         "should_transfer_files": "YES",
         "transfer_input_files": client_startup_json_s3.url,
-        "request_cpus": "1",
+        "request_cpus": str(n_cores),
         "request_memory": memory,
         "notification": "Error",
         "+WantIOProxy": "true",  # for HTChirp
@@ -97,100 +95,21 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     if accounting_group:
         submit_dict["+AccountingGroup"] = f"{accounting_group}.{getpass.getuser()}"
 
-    return htcondor.Submit(submit_dict)  # pylint:disable=no-member
-
-
-def attach_sub_parser_args(sub_parser: argparse.ArgumentParser) -> None:
-    """Add args to subparser."""
-
-    def wait_for_file(waitee: Path, wait_time: int) -> Path:
-        """Wait for `waitee` to exist, then return fullly-resolved path."""
-        elapsed_time = 0
-        sleep = 5
-        while not waitee.exists():
-            LOGGER.info(f"waiting for {waitee} ({sleep}s intervals)...")
-            time.sleep(sleep)
-            elapsed_time += sleep
-            if elapsed_time >= wait_time:
-                raise argparse.ArgumentTypeError(
-                    f"FileNotFoundError: waited {wait_time}s [{waitee}]"
-                )
-        return waitee.resolve()
-
-    # helper args
-    sub_parser.add_argument(
-        "--dryrun",
-        default=False,
-        action="store_true",
-        help="does everything except submitting the condor job(s)",
-    )
-    sub_parser.add_argument(
-        "--logs-directory",
-        default=None,
-        type=Path,
-        help="where to save logs (if not given, logs are not saved)",
-    )
-
-    # condor args
-    sub_parser.add_argument(
-        "--n-jobs",
-        required=True,
-        type=int,
-        help="number of jobs to start",
-    )
-    sub_parser.add_argument(
-        "--accounting-group",
-        default="",
-        help=(
-            "the accounting group to use, ex: 1_week. "
-            "By default no accounting group is used."
-        ),
-    )
-    sub_parser.add_argument(
-        "--memory",
-        required=True,
-        help="amount of memory",
-        # default="8GB",
-    )
-
-    # client args
-    sub_parser.add_argument(
-        "--singularity-image",
-        required=True,
-        help="a path or url to the singularity image",
-    )
-    sub_parser.add_argument(
-        "--client-startup-json",
-        help="The 'startup.json' file to startup each client",
-        type=lambda x: wait_for_file(
-            Path(x),
-            ENV.CLIENT_STARTER_WAIT_FOR_STARTUP_JSON,
-        ),
-    )
-    sub_parser.add_argument(
-        "--client-args",
-        required=False,
-        nargs="*",
-        type=lambda x: argparse_tools.validate_arg(
-            x.split(":", maxsplit=1),
-            len(x.split(":", maxsplit=1)) == 2,
-            ValueError('must " "-delimited series of "clientarg:value"-tuples'),
-        ),
-        help="n 'key:value' pairs containing the python CL arguments to pass to skymap_scanner.client",
-    )
+    return htcondor.Submit(submit_dict)
 
 
 def start(
-    schedd_obj: htcondor.Schedd,  # pylint:disable=no-member
-    job_count: int,
+    schedd_obj: htcondor.Schedd,
+    n_workers: int,
     logs_directory: Path | None,
     client_args: list[tuple[str, str]],
     memory: str,
+    n_cores: int,
     accounting_group: str,
-    singularity_image: str,
+    image: str,
     client_startup_json_s3: S3File,
     dryrun: bool,
-) -> htcondor.SubmitResult:  # pylint:disable=no-member
+) -> htcondor.SubmitResult:
     """Main logic."""
     if logs_directory:
         logs_subdir = make_condor_logs_subdir(logs_directory)
@@ -218,9 +137,10 @@ def start(
         logs_subdir,
         # condor args
         memory,
+        n_cores,
         accounting_group,
         # skymap scanner args
-        singularity_image,
+        image,
         client_startup_json_s3,
         client_args_string,
     )
@@ -234,14 +154,14 @@ def start(
     # submit
     submit_result_obj = schedd_obj.submit(
         submit_obj,
-        count=job_count,  # submit N jobs
+        count=n_workers,  # submit N workers
         spool=spool,  # for transferring logs & files
     )
     LOGGER.info(submit_result_obj)
     if spool:
         jobs = condor_tools.get_job_classads(
             submit_obj,
-            job_count,
+            n_workers,
             submit_result_obj.cluster(),
         )
         schedd_obj.spool(jobs)

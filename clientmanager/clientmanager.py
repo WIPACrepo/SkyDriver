@@ -2,37 +2,43 @@
 
 
 import argparse
+import time
+from pathlib import Path
 
-import htcondor  # type: ignore[import]
-from wipac_dev_tools import logging_tools
+from wipac_dev_tools import argparse_tools, logging_tools
 
-from . import condor_tools, starter, stopper, utils
+from . import condor, k8s
 from .config import ENV, LOGGER
 
 
 def main() -> None:
     """Main."""
     parser = argparse.ArgumentParser(
-        description="Manage Skymap Scanner clients as HTCondor jobs",
+        description="Manage Skymap Scanner client workers",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+
+    # orchestrator
+    subparsers = parser.add_subparsers(
+        required=True,
+        dest="orchestrator",
+        help="the resource orchestration tool to use for worker scheduling",
+    )
+    OrchestratorArgs.condor(
+        subparsers.add_parser("condor", help="orchestrate with HTCondor")
+    )
+    OrchestratorArgs.k8s(
+        subparsers.add_parser("k8s", help="orchestrate with Kubernetes")
+    )
+
+    # action
     subparsers = parser.add_subparsers(
         required=True,
         dest="action",
-        help="clientmanager action",
+        help="the action to perform on the worker cluster",
     )
-    parser.add_argument(
-        "--collector",
-        default="",
-        help="the full URL address of the HTCondor collector server. Ex: foo-bar.icecube.wisc.edu",
-    )
-    parser.add_argument(
-        "--schedd",
-        default="",
-        help="the full DNS name of the HTCondor Schedd server. Ex: baz.icecube.wisc.edu",
-    )
-    starter.attach_sub_parser_args(subparsers.add_parser("start", help="start jobs"))
-    stopper.attach_sub_parser_args(subparsers.add_parser("stop", help="stop jobs"))
+    ActionArgs.starter(subparsers.add_parser("start", help="start workers"))
+    ActionArgs.stopper(subparsers.add_parser("stop", help="stop workers"))
 
     # parse args & set up logging
     args = parser.parse_args()
@@ -45,49 +51,147 @@ def main() -> None:
     )
     logging_tools.log_argparse_args(args, logger=LOGGER, level="WARNING")
 
-    ####################################################################################
-
     # Go!
-    with htcondor.SecMan() as secman:
-        secman.setToken(htcondor.Token(ENV.CONDOR_TOKEN))
-        schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
-        act(args, schedd_obj)
+    match args.orchestrator:
+        case "condor":
+            condor.act(args)
+        case "k8s":
+            k8s.act(args)
+        case other:
+            raise RuntimeError(f"Orchestrator not supported: {other}")
 
 
-def act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
-    """Do the action."""
-    match args.action:
-        case "start":
-            LOGGER.info(
-                f"Starting {args.n_jobs} Skymap Scanner client jobs on {args.collector} / {args.schedd}"
-            )
-            # make connections -- do now so we don't have any surprises downstream
-            skydriver_rc = utils.connect_to_skydriver()
-            # start
-            submit_result_obj = starter.start(
-                schedd_obj,
-                args.n_jobs,
-                args.logs_directory if args.logs_directory else None,
-                args.client_args,
-                args.memory,
-                args.accounting_group,
-                args.singularity_image,
-                # put client_startup_json in S3 bucket
-                utils.s3ify(args.client_startup_json),
-                args.dryrun,
-            )
-            # report to SkyDriver
-            utils.update_skydriver(
-                skydriver_rc,
-                submit_result_obj,
-                args.collector,
-                args.schedd,
-            )
-            LOGGER.info("Sent cluster info to SkyDriver")
-        case "stop":
-            stopper.stop(
-                args,
-                schedd_obj,
-            )
-        case _:
-            raise RuntimeError(f"Unknown action: {args.action}")
+class OrchestratorArgs:
+    @staticmethod
+    def condor(sub_parser: argparse.ArgumentParser) -> None:
+        """Add args to subparser."""
+        sub_parser.add_argument(
+            "--collector",
+            default="",
+            help="the full URL address of the HTCondor collector server. Ex: foo-bar.icecube.wisc.edu",
+        )
+        sub_parser.add_argument(
+            "--schedd",
+            default="",
+            help="the full DNS name of the HTCondor Schedd server. Ex: baz.icecube.wisc.edu",
+        )
+
+    @staticmethod
+    def k8s(sub_parser: argparse.ArgumentParser) -> None:
+        """Add args to subparser."""
+        sub_parser.add_argument(
+            "--host",
+            required=True,
+            help="the host server address to connect to for running workers",
+        )
+        sub_parser.add_argument(
+            "--namespace",
+            required=True,
+            help="the k8s namespace to use for running workers",
+        )
+        sub_parser.add_argument(
+            "--cpu-arch",
+            default="x64",
+            help="which CPU architecture to use for running workers",
+        )
+        sub_parser.add_argument(
+            "--cluster-config",
+            type=Path,
+            default=None,
+            help="worker k8s cluster config file to connect (yaml)",
+        )
+        sub_parser.add_argument(
+            "--job-config-stub",
+            type=Path,
+            default=Path("resources/worker_k8s_job_stub.json"),
+            help="worker k8s job config file to dynamically complete, then run (json)",
+        )
+
+
+class ActionArgs:
+    @staticmethod
+    def starter(sub_parser: argparse.ArgumentParser) -> None:
+        """Add args to subparser."""
+
+        def wait_for_file(waitee: Path, wait_time: int) -> Path:
+            """Wait for `waitee` to exist, then return fullly-resolved path."""
+            elapsed_time = 0
+            sleep = 5
+            while not waitee.exists():
+                LOGGER.info(f"waiting for {waitee} ({sleep}s intervals)...")
+                time.sleep(sleep)
+                elapsed_time += sleep
+                if elapsed_time >= wait_time:
+                    raise argparse.ArgumentTypeError(
+                        f"FileNotFoundError: waited {wait_time}s [{waitee}]"
+                    )
+            return waitee.resolve()
+
+        # helper args
+        sub_parser.add_argument(
+            "--dryrun",
+            default=False,
+            action="store_true",
+            help="does everything except submitting the worker(s)",
+        )
+        sub_parser.add_argument(
+            "--logs-directory",
+            default=None,
+            type=Path,
+            help="where to save logs (if not given, logs are not saved)",
+        )
+
+        # condor args
+        sub_parser.add_argument(
+            "--n-workers",
+            required=True,
+            type=int,
+            help="number of worker to start",
+        )
+        sub_parser.add_argument(
+            "--memory",
+            required=True,
+            help="amount of memory",
+            # default="8GB",
+        )
+        sub_parser.add_argument(
+            "--n-cores",
+            default=1,
+            type=int,
+            help="number of cores per worker",
+        )
+
+        # client args
+        sub_parser.add_argument(
+            "--image",
+            required=True,
+            help="a path or url to the workers' image",
+        )
+        sub_parser.add_argument(
+            "--client-startup-json",
+            help="The 'startup.json' file to startup each client",
+            type=lambda x: wait_for_file(
+                Path(x),
+                ENV.CLIENT_STARTER_WAIT_FOR_STARTUP_JSON,
+            ),
+        )
+        sub_parser.add_argument(
+            "--client-args",
+            required=False,
+            nargs="*",
+            type=lambda x: argparse_tools.validate_arg(
+                x.split(":", maxsplit=1),
+                len(x.split(":", maxsplit=1)) == 2,
+                ValueError('must " "-delimited series of "clientarg:value"-tuples'),
+            ),
+            help="n 'key:value' pairs containing the python CL arguments to pass to skymap_scanner.client",
+        )
+
+    @staticmethod
+    def stopper(sub_parser: argparse.ArgumentParser) -> None:
+        """Add args to subparser."""
+        sub_parser.add_argument(
+            "--cluster-id",
+            required=True,
+            help="the cluster id of the workers to be stopped/removed",
+        )

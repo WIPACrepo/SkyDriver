@@ -255,7 +255,7 @@ class ManifestClient(DataclassCollectionFacade):
         progress: schema.Progress | None = None,
         event_metadata: schema.EventMetadata | None = None,
         scan_metadata: schema.StrDict | None = None,
-        condor_cluster: schema.CondorClutser | None = None,
+        cluster: schema.Cluster | None = None,
         complete: bool | None = None,
     ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
@@ -265,7 +265,7 @@ class ManifestClient(DataclassCollectionFacade):
             progress
             or event_metadata
             or scan_metadata
-            or condor_cluster
+            or cluster
             or complete is not None  # True/False is ok
         ):
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
@@ -301,11 +301,11 @@ class ManifestClient(DataclassCollectionFacade):
                 reason=msg,
             )
 
-        # condor_cluster / condor_clusters
-        if not condor_cluster:
+        # cluster / clusters
+        if not cluster:
             pass  # don't put in DB
         else:
-            upserting["condor_clusters"] = in_db.condor_clusters + [condor_cluster]
+            upserting["clusters"] = in_db.clusters + [cluster]
 
         # complete
         if complete is not None:

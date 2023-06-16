@@ -1,14 +1,11 @@
 """Util functions wrapping common htcondor actions."""
 
 
-# pylint:disable=no-member
-
-
 from typing import Any
 
 import htcondor  # type: ignore[import]
 
-from .config import LOGGER
+from ..config import LOGGER
 
 
 def get_schedd_obj(collector: str, schedd: str) -> htcondor.Schedd:
@@ -28,9 +25,9 @@ def get_schedd_obj(collector: str, schedd: str) -> htcondor.Schedd:
 
 def get_job_classads(
     submit_obj: htcondor.Submit,
-    njobs: int,
+    n_workers: int,
     clusterid: int,
 ) -> list[Any]:
     """Get list of (simulated) job ClassAds."""
-    job_ads = submit_obj.jobs(count=njobs, clusterid=clusterid)
+    job_ads = submit_obj.workers(count=n_workers, clusterid=clusterid)
     return list(job_ads)

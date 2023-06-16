@@ -5,7 +5,6 @@ import dataclasses as dc
 from pathlib import Path
 
 import boto3  # type: ignore[import]
-import htcondor  # type: ignore[import]
 import requests
 from rest_tools.client import RestClient
 
@@ -30,20 +29,21 @@ def connect_to_skydriver() -> RestClient:
 
 def update_skydriver(
     skydriver_rc: RestClient,
-    submit_result_obj: htcondor.SubmitResult,  # pylint:disable=no-member
-    collector: str,
-    schedd: str,
+    orchestrator: str,
+    location: dict[str, str],
+    cluster_id: str,
+    n_workers: int,
 ) -> None:
     """Send SkyDriver updates from the `submit_result`."""
     skydriver_rc.request_seq(
         "PATCH",
         f"/scan/{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}/manifest",
         {
-            "condor_cluster": {
-                "collector": collector,
-                "schedd": schedd,
-                "cluster_id": submit_result_obj.cluster(),
-                "jobs": submit_result_obj.num_procs(),
+            "cluster": {
+                "orchestrator": orchestrator,
+                "location": location,
+                "cluster_id": cluster_id,
+                "n_workers": n_workers,
             }
         },
     )
