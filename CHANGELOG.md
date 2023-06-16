@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.2 (2023-06-16)
+
+### Other
+
+* Misc Follow-up Fixes ([`236a249`](https://github.com/WIPACrepo/SkyDriver/commit/236a249c955857570ec2231fe69c9628b791d589))
+
 ## v0.3.1 (2023-06-16)
 
 ### Other
