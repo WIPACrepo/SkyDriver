@@ -420,7 +420,7 @@ class ScanBacklogClient(DataclassCollectionFacade):
 
         This for when the container is restarted (process is killed).
         """
-        LOGGER.debug("fetching & marking top backlog entry as a pending")
+        LOGGER.debug("fetching & marking top backlog entry as a pending...")
 
         # atomically find & update
         doc = await self._collections[_SCAN_BACKLOG_COLL_NAME].find_one_and_update(
@@ -438,10 +438,17 @@ class ScanBacklogClient(DataclassCollectionFacade):
             return_document=ReturnDocument.AFTER,
         )
         if not doc:
+            LOGGER.debug("no backlog entry found")
             raise DocumentNotFoundException()
 
         entry = from_dict(schema.ScanBacklogEntry, doc)
-        LOGGER.debug(f"Pending backlog entry for {entry.scan_id=}")
+        LOGGER.debug(f"got backlog entry & marked as pending ({entry.scan_id=})")
+        if (
+            entry.pending_timestamp
+            < time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
+            # inequality should still be valid if revival time >> O(ms)
+        ):
+            LOGGER.debug(f"backlog entry ready for revival ({entry.scan_id=})")
         return entry  # type: ignore[no-any-return]  # mypy internal bug
 
     async def remove(self, entry: schema.ScanBacklogEntry) -> schema.ScanBacklogEntry:

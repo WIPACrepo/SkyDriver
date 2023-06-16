@@ -36,10 +36,12 @@ async def get_next_backlog_entry(
     while True:
         # get next up -- raises DocumentNotFoundException if none
         entry = await scan_backlog.fetch_next_as_pending()
+        LOGGER.info(f"Got backlog entry ({entry.scan_id=})")
 
         # check if scan was aborted (cancelled)
         manifest = await manifests.get(entry.scan_id, incl_del=True)
         if manifest.is_deleted:
+            LOGGER.info(f"Backlog entry was aborted ({entry.scan_id=})")
             await scan_backlog.remove(entry)
             continue
         else:
@@ -72,7 +74,9 @@ async def startup(
             LOGGER.exception(e)
             continue
 
-        LOGGER.info(f"Starting Scanner Instance: ({entry.timestamp}) {job_obj}")
+        LOGGER.info(
+            f"Starting Scanner Instance: ({entry.scan_id=}) ({entry.timestamp}) {job_obj}"
+        )
 
         # start job
         try:

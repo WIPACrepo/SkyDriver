@@ -19,26 +19,31 @@ def main() -> None:
     )
 
     # orchestrator
-    subparsers = parser.add_subparsers(
+    orch_subparsers = parser.add_subparsers(
         required=True,
         dest="orchestrator",
         help="the resource orchestration tool to use for worker scheduling",
     )
     OrchestratorArgs.condor(
-        subparsers.add_parser("condor", help="orchestrate with HTCondor")
+        orch_condor_parser := orch_subparsers.add_parser(
+            "condor", help="orchestrate with HTCondor"
+        )
     )
     OrchestratorArgs.k8s(
-        subparsers.add_parser("k8s", help="orchestrate with Kubernetes")
+        orch_k8s_parser := orch_subparsers.add_parser(
+            "k8s", help="orchestrate with Kubernetes"
+        )
     )
 
-    # action
-    subparsers = parser.add_subparsers(
-        required=True,
-        dest="action",
-        help="the action to perform on the worker cluster",
-    )
-    ActionArgs.starter(subparsers.add_parser("start", help="start workers"))
-    ActionArgs.stopper(subparsers.add_parser("stop", help="stop workers"))
+    # action -- add sub-parser to each sub-parser (can't add multiple sub-parsers)
+    for p in [orch_condor_parser, orch_k8s_parser]:
+        act_subparsers = p.add_subparsers(
+            required=True,
+            dest="action",
+            help="the action to perform on the worker cluster",
+        )
+        ActionArgs.starter(act_subparsers.add_parser("start", help="start workers"))
+        ActionArgs.stopper(act_subparsers.add_parser("stop", help="stop workers"))
 
     # parse args & set up logging
     args = parser.parse_args()
