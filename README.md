@@ -37,17 +37,17 @@ _Launch a new scan of an event_
 | Argument                          | Type         | Required/Default | Description          |
 | --------------------------------- | ------------ | ---------------- | -------------------- |
 | `"docker_tag"`                    | str          | *[REQUIRED]*     | the docker tag of the Skymap Scanner image (must be in CVMFS). Ex: `v3.1.4`, `v3.5`, `v3`, `latest`, `eqscan-6207146` (branch-based tag)
-| `"cluster"`                       | dict or list | *[REQUIRED]*     | the HTCondor cluster(s) to use along with the number of jobs for each: Example: `{"sub-2": 1234}`. NOTE: To request a schedd more than once, provide a list of 2-lists instead (Ex: `[ ["sub-2", 56], ["sub-2", 1234] ]`)
+| `"cluster"`                       | dict or list | *[REQUIRED]*     | the worker cluster(s) to use *along with the number of workers for each:* Example: `{"sub-2": 1234}`. NOTE: To request a schedd more than once, provide a list of 2-lists instead (Ex: `[ ["sub-2", 56], ["sub-2", 1234] ]`)
 | `"reco_algo"`                     | bool         | *[REQUIRED]*     | which reco algorithm to use (see [Skymap Scanner](https://github.com/icecube/skymap_scanner/tree/main/skymap_scanner/recos))
 | `"event_i3live_json"`             | dict or str  | *[REQUIRED]*     | Realtime's JSON event format
 | `"nsides"`                        | dict         | *[REQUIRED]*     | the nside progression to use (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"real_or_simulated_event"`       | str          | *[REQUIRED]*     | whether this event is real or simulated. Ex: `real`, `simulated`
-| `"memory"`                        | str          | default: `8GB`   | how much memory per condor worker to request
+| `"memory"`                        | str          | default: `8GB`   | how much memory per client worker to request
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"max_pixel_reco_time"`                 | int          | default: `None`  | the max amount of time each pixel's reco should take
 
 #### SkyDriver Effects
-- Creates and starts a new Skymap Scanner instance spread across many HTCondor workers
+- Creates and starts a new Skymap Scanner instance spread across many client workers
 - The new scanner will send updates routinely and when the scan completes (see [GET (manifest)](#scanscan_idmanifest-get) and [GET (result)](#scanscan_idresult-get))
 
 #### Returns
@@ -200,14 +200,26 @@ Pseudo-code:
     event_i3live_json_dict: dict,
     scanner_server_args: str,
     tms_args: list[str],
-    env_vars: dict[str, dict],
+    env_vars: dict[str, dict[str, Any]],
 
-    clusters: [
+    clusters: [  # 2 types: condor & k8s -- different 'location' sub-fields
         {
-            collector: str,
-            schedd: str,
+            orchestrator: 'condor',
+            location: {
+                collector: str,
+                schedd: str,
+            },
             cluster_id: int,
-            jobs: int,
+            n_workers: int,
+        },
+        {
+            orchestrator: 'k8s',
+            location: {
+                host: str,
+                namespace: str,
+            },
+            cluster_id: int,
+            n_workers: int,
         },
         ...
     ],
@@ -239,7 +251,7 @@ Pseudo-code:
         last_updated: str,
     },
 
-    # signifies k8s jobs and condor cluster(s) are done
+    # signifies scanner is done (server and worker cluster(s))
     complete: bool,
 }
 ```
