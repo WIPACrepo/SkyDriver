@@ -3,7 +3,6 @@
 
 import dataclasses as dc
 import logging
-from pathlib import Path
 
 from wipac_dev_tools import from_environment_as_dataclass
 
@@ -19,7 +18,6 @@ class EnvConfig:
     CONDOR_TOKEN: str = ""
     #
     WORKER_K8S_TOKEN: str = ""
-    WORKER_K8S_JOB_STUB_FPATH: Path = Path("k8s_job_stub.json")
     WORKER_K8S_LOCAL_APPLICATION_NAME: str = ""
     WORKER_K8S_MAX_LOCAL_WORKERS: int = 3  # don't want too many *local* workers
     #

@@ -15,6 +15,7 @@ def _get_log_fpath(logs_subdir: Path) -> Path:
 
 
 def make_k8s_job_desc(
+    job_config_stub: Path,
     # k8s args
     host: str,
     namespace: str,
@@ -30,7 +31,7 @@ def make_k8s_job_desc(
     cpu_arch: str,
 ) -> dict:
     """Make the k8s job description (submit object)."""
-    with open(ENV.WORKER_K8S_JOB_STUB_FPATH, "r") as f:
+    with open(job_config_stub, "r") as f:
         k8s_job_dict = json.load(f)
 
     # multiple different variations add to these...
@@ -114,6 +115,7 @@ def make_k8s_job_desc(
 
 def start(
     k8s_client: kubernetes.client.ApiClient,
+    job_config_stub: Path,
     host: str,
     namespace: str,
     cluster_id: str,
@@ -135,6 +137,7 @@ def start(
 
     # make k8s job description
     k8s_job_dict = make_k8s_job_desc(
+        job_config_stub,
         host,
         namespace,
         cluster_id,

@@ -71,6 +71,8 @@ def main() -> None:
                 kubernetes.config.load_incluster_config(k8s_client_config)
             else:
                 # connect to remote host
+                if args.cluster_config:
+                    kubernetes.config.load_kube_config(args.cluster_config)
                 k8s_client_config.host = args.host
                 k8s_client_config.api_key["authorization"] = ENV.WORKER_K8S_TOKEN
             # connect & go
@@ -113,16 +115,17 @@ class OrchestratorArgs:
             default="x64",
             help="which CPU architecture to use for running workers",
         )
-        # TODO: use these...
         sub_parser.add_argument(
             "--cluster-config",
-            default="",
-            help="k8s cluster config to connect as a yaml file",
+            type=Path,
+            default=None,
+            help="worker k8s cluster config file to connect (yaml)",
         )
         sub_parser.add_argument(
-            "--job-config",
-            default="",
-            help="k8s cluster config to run as a yaml file",
+            "--job-config-stub",
+            type=Path,
+            default=Path("k8s_job_stub.json"),
+            help="worker k8s job config file to dynamically complete, then run (json)",
         )
 
 

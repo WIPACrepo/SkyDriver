@@ -32,6 +32,7 @@ def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> No
             cluster_id = f"{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}-{int(time.time())}"  # TODO: make more unique
             starter.start(
                 k8s_client=k8s_client,
+                job_config_stub=args.job_config_stub,
                 host=args.host,
                 namespace=args.namespace,
                 cluster_id=cluster_id,
