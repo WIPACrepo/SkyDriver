@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.1 (2023-06-16)
+
+### Other
+
+* K8s Scanner Client Workers - README Updates ([`f508f19`](https://github.com/WIPACrepo/SkyDriver/commit/f508f19d2d40f552c160e640ea65cd80139867a8))
+
 ## v0.3.0 (2023-06-16)
 
 ### Other
