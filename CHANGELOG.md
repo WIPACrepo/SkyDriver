@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.0 (2023-06-16)
+
+### Other
+
+* <bot> update requirements.txt ([`a960180`](https://github.com/WIPACrepo/SkyDriver/commit/a96018073cf1df9c0edfcda87767882fc0b6d224))
+* <bot> update requirements-tests.txt ([`62ad148`](https://github.com/WIPACrepo/SkyDriver/commit/62ad148f63ab5078d4fb28eb5a41fb6ec44c30b2))
+
 ## v0.2.1 (2023-06-13)
 
 ### Other
