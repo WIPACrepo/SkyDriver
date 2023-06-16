@@ -72,7 +72,10 @@ def main() -> None:
             else:
                 # connect to remote host
                 if args.cluster_config:
-                    kubernetes.config.load_kube_config(args.cluster_config)
+                    kubernetes.config.load_kube_config(
+                        config_file=args.cluster_config,
+                        client_configuration=k8s_client_config,
+                    )
                 k8s_client_config.host = args.host
                 k8s_client_config.api_key["authorization"] = ENV.WORKER_K8S_TOKEN
             # connect & go
