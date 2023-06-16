@@ -11,16 +11,37 @@ from ..config import ENV, LOGGER
 from . import starter, stopper
 
 
-def act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> None:
+def act(args: argparse.Namespace) -> None:
     """Do the action."""
-    try:
-        LOGGER.debug("testing k8s credentials")
-        api_response = kubernetes.client.BatchV1Api(k8s_client).get_api_resources()
-        LOGGER.debug(api_response)
-    except kubernetes.client.rest.ApiException as e:
-        LOGGER.exception(e)
-        raise
 
+    # Creating K8S cluster client
+    k8s_client_config = kubernetes.client.Configuration()
+    if args.host == "local":
+        # use *this* pod's service account
+        kubernetes.config.load_incluster_config(k8s_client_config)
+    else:
+        # connect to remote host
+        if args.cluster_config:
+            kubernetes.config.load_kube_config(
+                config_file=args.cluster_config,
+                client_configuration=k8s_client_config,
+            )
+        k8s_client_config.host = args.host
+        k8s_client_config.api_key["authorization"] = ENV.WORKER_K8S_TOKEN
+
+    # connect & go
+    with kubernetes.client.ApiClient(k8s_client_config) as k8s_client:
+        try:
+            LOGGER.debug("testing k8s credentials")
+            api_response = kubernetes.client.BatchV1Api(k8s_client).get_api_resources()
+            LOGGER.debug(api_response)
+        except kubernetes.client.rest.ApiException as e:
+            LOGGER.exception(e)
+            raise
+        _act(args, k8s_client)
+
+
+def _act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> None:
     match args.action:
         case "start":
             LOGGER.info(

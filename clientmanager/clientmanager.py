@@ -5,8 +5,6 @@ import argparse
 import time
 from pathlib import Path
 
-import htcondor  # type: ignore[import]
-import kubernetes  # type: ignore[import]
 from wipac_dev_tools import argparse_tools, logging_tools
 
 from . import condor, k8s
@@ -56,33 +54,11 @@ def main() -> None:
     # Go!
     match args.orchestrator:
         case "condor":
-            # condor auth & go
-            with htcondor.SecMan() as secman:
-                secman.setToken(htcondor.Token(ENV.CONDOR_TOKEN))
-                schedd_obj = condor.condor_tools.get_schedd_obj(
-                    args.collector, args.schedd
-                )
-                condor.act(args, schedd_obj)
+            condor.act(args)
         case "k8s":
-            # Creating K8S cluster client
-            k8s_client_config = kubernetes.client.Configuration()
-            if args.host == "local":
-                # use *this* pod's service account
-                kubernetes.config.load_incluster_config(k8s_client_config)
-            else:
-                # connect to remote host
-                if args.cluster_config:
-                    kubernetes.config.load_kube_config(
-                        config_file=args.cluster_config,
-                        client_configuration=k8s_client_config,
-                    )
-                k8s_client_config.host = args.host
-                k8s_client_config.api_key["authorization"] = ENV.WORKER_K8S_TOKEN
-            # connect & go
-            with kubernetes.client.ApiClient(k8s_client_config) as k8s_api_client:
-                k8s.act(args, k8s_api_client)
+            k8s.act(args)
         case other:
-            raise RuntimeError(f"Not supported orchestrator: {other}")
+            raise RuntimeError(f"Orchestrator not supported: {other}")
 
 
 class OrchestratorArgs:

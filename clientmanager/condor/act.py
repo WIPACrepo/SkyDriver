@@ -6,15 +6,20 @@ import argparse
 import htcondor  # type: ignore[import]
 
 from .. import utils
-from ..config import LOGGER
-from . import starter, stopper
+from ..config import ENV, LOGGER
+from . import condor_tools, starter, stopper
 
 
-def act(
-    args: argparse.Namespace,
-    schedd_obj: htcondor.Schedd,
-) -> None:
+def act(args: argparse.Namespace) -> None:
     """Do the action."""
+    # condor auth & go
+    with htcondor.SecMan() as secman:
+        secman.setToken(htcondor.Token(ENV.CONDOR_TOKEN))
+        schedd_obj = condor_tools.get_schedd_obj(args.collector, args.schedd)
+        _act(args, schedd_obj)
+
+
+def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
     match args.action:
         case "start":
             LOGGER.info(
