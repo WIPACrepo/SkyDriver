@@ -124,7 +124,7 @@ class OrchestratorArgs:
         sub_parser.add_argument(
             "--job-config-stub",
             type=Path,
-            default=Path("k8s_job_stub.json"),
+            default=Path("resources/worker_k8s_job_stub.json"),
             help="worker k8s job config file to dynamically complete, then run (json)",
         )
 
