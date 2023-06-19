@@ -98,7 +98,7 @@ def make_k8s_job_desc(
     # Setting JSON input file url
     k8s_job_dict["spec"]["template"]["spec"]["initContainers"][0]["env"][0][
         "value"
-    ] = client_startup_json_s3
+    ] = client_startup_json_s3.url
 
     # Container image
     k8s_job_dict["spec"]["template"]["spec"]["containers"][0]["image"] = container_image
