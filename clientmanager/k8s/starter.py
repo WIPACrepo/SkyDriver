@@ -86,11 +86,12 @@ def make_k8s_job_desc(
     k8s_job_dict["spec"]["template"]["spec"]["containers"][0]["resources"] = {
         "limits": {
             "cpu": str(n_cores),
-            "memory": memory,  # TODO: give a bit more just in case?
+            # TODO: give a bit more just in case?
+            "memory": memory.upper().replace("B", ""),  # 4Gb -> 4G
         },
         "requests": {
             "cpu": str(n_cores),
-            "memory": memory,
+            "memory": memory.upper().replace("B", ""),  # 4Gb -> 4G
         },
     }
 
