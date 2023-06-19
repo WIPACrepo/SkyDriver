@@ -59,7 +59,7 @@ def _act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> N
                 cluster_id=cluster_id,
                 n_workers=args.n_workers,
                 n_cores=args.n_cores,
-                client_args=args.client_args,
+                client_args=args.client_args if args.client_args else [],
                 memory=args.memory,
                 container_image=args.image,
                 # put client_startup_json in S3 bucket
