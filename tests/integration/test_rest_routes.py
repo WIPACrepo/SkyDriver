@@ -144,6 +144,7 @@ async def _launch_scan(
         "SKYSCAN_SKYDRIVER_AUTH",
         "SKYSCAN_SKYDRIVER_SCAN_ID",
         "WORKER_K8S_LOCAL_APPLICATION_NAME",
+        "K8S_SKYSCAN_JOBS_SERVICE_ACCOUNT",
     }
     # check env vars, more closely
     assert set(  # these have `value`s
@@ -160,6 +161,7 @@ async def _launch_scan(
         "SKYSCAN_SKYDRIVER_AUTH",
         "SKYSCAN_SKYDRIVER_SCAN_ID",
         "WORKER_K8S_LOCAL_APPLICATION_NAME",
+        "K8S_SKYSCAN_JOBS_SERVICE_ACCOUNT",
     }
     assert set(  # these have `value_from`s
         k

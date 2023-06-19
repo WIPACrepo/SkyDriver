@@ -37,6 +37,7 @@ class EnvConfig:
     K8S_NAMESPACE: str = ""
     K8S_SECRET_NAME: str = ""
     K8S_BACKOFF_LIMIT: int = 1
+    K8S_SKYSCAN_JOBS_SERVICE_ACCOUNT: str = ""
     K8S_APPLICATION_NAME: str = ""
     K8S_TTL_SECONDS_AFTER_FINISHED: int = 600
     K8S_CONTAINER_MEMORY_DEFAULT: str = "64M"

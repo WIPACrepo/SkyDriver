@@ -252,6 +252,7 @@ class SkymapScannerStarterJob:
             "EWMS_TMS_S3_BUCKET": ENV.EWMS_TMS_S3_BUCKET,
             "EWMS_TMS_S3_URL": ENV.EWMS_TMS_S3_URL,
             #
+            "WORKER_K8S_LOCAL_SERVICE_ACCOUNT": ENV.K8S_SKYSCAN_JOBS_SERVICE_ACCOUNT,
             "WORKER_K8S_LOCAL_APPLICATION_NAME": ENV.K8S_APPLICATION_NAME,
         }
         env.extend(

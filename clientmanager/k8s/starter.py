@@ -62,10 +62,9 @@ def make_k8s_job_desc(
             }
         }
 
-    # Setting namespace
+    # Setting metadata
     k8s_job_dict["metadata"]["namespace"] = namespace
     k8s_job_dict["metadata"]["name"] = cluster_id
-
     if host == "local":
         k8s_job_dict["metadata"]["labels"].update(
             {
@@ -78,6 +77,11 @@ def make_k8s_job_desc(
                 "argocd.argoproj.io/sync-options": "Prune=false"  # don't want argocd to prune this job
             }
         )
+
+    # set service account
+    k8s_job_dict["spec"]["template"]["spec"][
+        "serviceAccountName"
+    ] = ENV.WORKER_K8S_LOCAL_SERVICE_ACCOUNT
 
     # Setting parallelism
     k8s_job_dict["spec"]["completions"] = n_workers
@@ -129,11 +133,11 @@ def start(
     cpu_arch: str,
 ) -> dict:
     """Main logic."""
-    if host == "local" and n_workers > ENV.WORKER_K8S_MAX_LOCAL_WORKERS:
+    if host == "local" and n_workers > ENV.WORKER_K8S_LOCAL_WORKERS_MAX:
         LOGGER.warning(
-            f"Requested more workers ({n_workers}) than the max allowed {ENV.WORKER_K8S_MAX_LOCAL_WORKERS}. Using the maximum instead."
+            f"Requested more workers ({n_workers}) than the max allowed {ENV.WORKER_K8S_LOCAL_WORKERS_MAX}. Using the maximum instead."
         )
-        n_workers = ENV.WORKER_K8S_MAX_LOCAL_WORKERS
+        n_workers = ENV.WORKER_K8S_LOCAL_WORKERS_MAX
 
     # make k8s job description
     k8s_job_dict = make_k8s_job_desc(
@@ -151,12 +155,10 @@ def start(
         client_args,
         cpu_arch,
     )
-
-    # LOGGER.info(k8s_job_dict)
+    LOGGER.info(json.dumps(k8s_job_dict, indent=4))
 
     # dryrun?
     if dryrun:
-        LOGGER.info(k8s_job_dict)
         LOGGER.error("Script Aborted: K8s job not submitted")
         return k8s_job_dict
 

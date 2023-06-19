@@ -2,8 +2,8 @@
     "apiVersion": "batch/v1",
     "kind": "Job",
     "metadata": {
-      "name": "skydriver-worker",
-      "namespace": "icecube-skymap-scanner"
+      "name": "X",
+      "namespace": "X"
     },
     "spec": {
       "completions": 200,
@@ -11,6 +11,7 @@
       "ttlSecondsAfterFinished": 7200,
       "template": {
         "spec": {
+          "serviceAccountName": "X",
           "restartPolicy": "OnFailure",
           "tolerations": [
             {
@@ -25,7 +26,7 @@
               "env": [
                 {
                   "name": "URL_EVENT_STARTUP_JSON",
-                  "value": ""
+                  "value": "X"
                 }
               ],
               "image": "busybox",
@@ -72,7 +73,7 @@
                   "value": "600"
                 }
               ],
-              "image": "icecube/skymap_scanner:3.0.68",
+              "image": "icecube/skymap_scanner:X.Y.Z",
               "imagePullPolicy": "Always",
               "name": "skydriver-worker",
               "command": [
@@ -90,16 +91,7 @@
                 "--auth-token",
                 "$(SKYDRIVER_TOKEN)"
               ],
-              "resources": {
-                "limits": {
-                  "cpu": "2250m",
-                  "memory": "6Gi"
-                },
-                "requests": {
-                  "cpu": "1500m",
-                  "memory": "5Gi"
-                }
-              },
+              "resources": "X",
               "volumeMounts": [
                 {
                   "mountPath": "/skymap-scanner-startup-config/",
