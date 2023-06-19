@@ -1,11 +1,14 @@
 """Init."""
 
+import logging
+
 import kubernetes.client  # type: ignore[import]
 from kubernetes import config
 from kubernetes.client.rest import ApiException  # type: ignore[import]
 
-from ..config import LOGGER
 from . import scanner_instance, utils  # noqa: F401  # export
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:

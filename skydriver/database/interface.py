@@ -13,8 +13,8 @@ from motor.motor_asyncio import (  # type: ignore
 from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from tornado import web
 
-from ..config import ENV, LOGGER
-from . import schema
+from ..config import ENV
+from . import LOGGER, schema
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance  # type: ignore[attr-defined]

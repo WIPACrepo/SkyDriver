@@ -2,6 +2,7 @@
 
 
 import asyncio
+import logging
 import pickle
 import time
 
@@ -10,8 +11,10 @@ import kubernetes.client  # type: ignore[import]
 from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore[import]
 
 from .. import database
-from ..config import ENV, LOGGER
+from ..config import ENV
 from .utils import KubeAPITools
+
+LOGGER = logging.getLogger(__name__)
 
 
 async def enqueue(
