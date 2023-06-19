@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.4 (2023-06-19)
+
+### Other
+
+* Misc Follow-up Fixes Pt-3 ([`770c53e`](https://github.com/WIPACrepo/SkyDriver/commit/770c53e7a639576a92bee57a73dd3f0d0512d46e))
+
 ## v0.3.3 (2023-06-19)
 
 ### Other
