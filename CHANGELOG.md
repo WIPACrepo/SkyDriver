@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.6 (2023-06-19)
+
+### Other
+
+* <bot> update requirements.txt ([`6ecb766`](https://github.com/WIPACrepo/SkyDriver/commit/6ecb76690404e4c5183dddaa4352e25ba15b4e06))
+* <bot> update requirements-tests.txt ([`a792719`](https://github.com/WIPACrepo/SkyDriver/commit/a792719ce55a6e5deba56fc94da0f84dddb444f1))
+* K8s Follow-up Fixes Pt-4 ([`0ea7e50`](https://github.com/WIPACrepo/SkyDriver/commit/0ea7e50d5237d3d6ae29fd98ad5da4fbd617566c))
+* K8s Follow-up Fixes Pt-3 ([`ea92f94`](https://github.com/WIPACrepo/SkyDriver/commit/ea92f940b54bc74a2e71fe3d087058874ff67fc2))
+* Nested loggers ([`bac80e5`](https://github.com/WIPACrepo/SkyDriver/commit/bac80e56d9e482312693dae129191f83fd7ed868))
+
 ## v0.3.5 (2023-06-19)
 
 ### Other
