@@ -1,6 +1,7 @@
 """Database interface for persisted scan data."""
 
 import dataclasses as dc
+import logging
 import time
 from typing import TYPE_CHECKING, Any, AsyncIterator, Type, TypeVar, cast
 
@@ -14,7 +15,7 @@ from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from tornado import web
 
 from ..config import ENV
-from . import LOGGER, schema
+from . import schema
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance  # type: ignore[attr-defined]
@@ -23,6 +24,9 @@ else:
 
 
 DataclassT = TypeVar("DataclassT", bound=DataclassInstance)
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def friendly_nested_asdict(value: Any) -> Any:
