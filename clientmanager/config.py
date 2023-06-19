@@ -18,7 +18,6 @@ class EnvConfig:
     CONDOR_TOKEN: str = ""
     #
     WORKER_K8S_TOKEN: str = ""
-    WORKER_K8S_LOCAL_SERVICE_ACCOUNT: str = ""
     WORKER_K8S_LOCAL_APPLICATION_NAME: str = ""
     WORKER_K8S_LOCAL_WORKERS_MAX: int = 3  # don't want too many *local* workers
     #

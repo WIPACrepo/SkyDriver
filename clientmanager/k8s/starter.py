@@ -78,11 +78,6 @@ def make_k8s_job_desc(
             }
         )
 
-    # set service account
-    k8s_job_dict["spec"]["template"]["spec"][
-        "serviceAccountName"
-    ] = ENV.WORKER_K8S_LOCAL_SERVICE_ACCOUNT
-
     # Setting parallelism
     k8s_job_dict["spec"]["completions"] = n_workers
     k8s_job_dict["spec"]["parallelism"] = n_workers

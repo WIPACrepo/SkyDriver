@@ -122,6 +122,7 @@ class KubeAPITools:
         )
         # Make Pod Spec
         template.template.spec = kubernetes.client.V1PodSpec(
+            service_account_name=ENV.K8S_SKYSCAN_JOBS_SERVICE_ACCOUNT,
             containers=containers,
             restart_policy="Never",
             volumes=[
