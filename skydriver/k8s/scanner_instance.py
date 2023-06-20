@@ -349,6 +349,7 @@ class SkymapScannerStopperJob:
                     ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
                     env=[get_condor_token_v1envvar()],
                     args=args.split(),
+                    memory=ENV.K8S_CONTAINER_MEMORY_TMS_STOPPER,
                 )
             )
 

@@ -50,7 +50,7 @@ def _act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> N
             # make connections -- do now so we don't have any surprises downstream
             skydriver_rc = utils.connect_to_skydriver()
             # start
-            cluster_id = f"{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}-{int(time.time())}"  # TODO: make more unique
+            cluster_id = f"skyscan-worker-{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}-{int(time.time())}"  # TODO: make more unique
             starter.start(
                 k8s_client=k8s_client,
                 job_config_stub=args.job_config_stub,
