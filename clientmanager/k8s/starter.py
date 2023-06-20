@@ -3,6 +3,7 @@
 
 import json
 import os
+import pprint
 from pathlib import Path
 
 import kubernetes  # type: ignore[import]
@@ -112,7 +113,7 @@ def make_k8s_job_desc(
         x
         for x in k8s_job_dict["spec"]["template"]["spec"]["containers"][0]["env"]
         if x["name"] not in forwarded_env_vars
-    ] + [{"name": x, "value": os.environ[x]} for x in forwarded_env_vars]
+    ] + [{"name": v, "value": os.environ[v]} for v in forwarded_env_vars]
 
     # {
     #     "name": "SKYDRIVER_TOKEN",
@@ -172,7 +173,11 @@ def start(
         client_args,
         cpu_arch,
     )
-    LOGGER.info(json.dumps(k8s_job_dict, indent=4))
+    try:
+        LOGGER.info(json.dumps(k8s_job_dict, indent=4))
+    except json.decoder.JSONDecodeError:
+        LOGGER.info(pprint.pformat(k8s_job_dict, indent=4))
+        raise
 
     # dryrun?
     if dryrun:
