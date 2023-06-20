@@ -12,11 +12,10 @@ def stop(
     k8s_client: kubernetes.client.ApiClient,
 ) -> None:
     """Main logic."""
-    LOGGER.info(f"Stopping Skymap Scanner client workers on {1}")
 
     # Remove workers -- may not be instantaneous
     LOGGER.info("Requesting removal...")
-    k8s_response = k8s_client.delete_namespaced_job(
+    k8s_response = kubernetes.client.BatchV1Api(k8s_client).delete_namespaced_job(
         name=cluster_id,
         namespace=namespace,
         body=kubernetes.client.V1DeleteOptions(

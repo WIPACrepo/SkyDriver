@@ -44,13 +44,14 @@ def act(args: argparse.Namespace) -> None:
 def _act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> None:
     match args.action:
         case "start":
+            cluster_id = f"skyscan-worker-{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}-{int(time.time())}"  # TODO: make more unique
             LOGGER.info(
-                f"Starting {args.n_workers} Skymap Scanner client workers on {args.host} / {args.namespace}"
+                f"Starting {args.n_workers} Skymap Scanner client workers on "
+                f"{args.host}/{args.namespace}/{cluster_id}"
             )
             # make connections -- do now so we don't have any surprises downstream
             skydriver_rc = utils.connect_to_skydriver()
             # start
-            cluster_id = f"skyscan-worker-{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}-{int(time.time())}"  # TODO: make more unique
             starter.start(
                 k8s_client=k8s_client,
                 job_config_stub=args.job_config_stub,
@@ -80,6 +81,10 @@ def _act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> N
             )
             LOGGER.info("Sent cluster info to SkyDriver")
         case "stop":
+            LOGGER.info(
+                f"Stopping Skymap Scanner client workers on "
+                f"{args.host}/{args.namespace}/{args.cluster_id}"
+            )
             stopper.stop(
                 args.namespace,
                 args.cluster_id,
