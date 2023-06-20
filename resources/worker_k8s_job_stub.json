@@ -11,7 +11,7 @@
       "ttlSecondsAfterFinished": 7200,
       "template": {
         "spec": {
-          "restartPolicy": "OnFailure",
+          "restartPolicy": "Never",
           "tolerations": [
             {
               "effect": "NoSchedule",
