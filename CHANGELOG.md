@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.10 (2023-06-20)
+
+### Other
+
+* K8s Workers - Forward Env Vars Pt-2 ([`e6ed94a`](https://github.com/WIPACrepo/SkyDriver/commit/e6ed94a2b52fca483a82c1b30b4ac43fd36235cf))
+
 ## v0.3.9 (2023-06-20)
 
 ### Other
