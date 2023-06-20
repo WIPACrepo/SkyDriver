@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.15 (2023-06-20)
+
+### Other
+
+* K8s Follow-up Fixes Pt-10 ([`02dc025`](https://github.com/WIPACrepo/SkyDriver/commit/02dc025315d70afdc4326b556d6972b18bf5b655))
+
 ## v0.3.14 (2023-06-20)
 
 ### Other
