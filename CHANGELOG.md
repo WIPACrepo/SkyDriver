@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.13 (2023-06-20)
+
+### Other
+
+* <bot> update requirements.txt ([`b2b95e1`](https://github.com/WIPACrepo/SkyDriver/commit/b2b95e177411557b1d30417ba16305ecf5ce3a8f))
+* <bot> update requirements-tests.txt ([`e6a401d`](https://github.com/WIPACrepo/SkyDriver/commit/e6a401d2498aafcba7a8cf06f86e2bde73f041ed))
+* K8s Follow-up Fixes Pt-8 ([`bf02b25`](https://github.com/WIPACrepo/SkyDriver/commit/bf02b25e1f68b4d829c4f5858da0398d63e985c8))
+
 ## v0.3.12 (2023-06-20)
 
 ### Other
