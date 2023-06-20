@@ -2,11 +2,12 @@
 
 
 import json
+import os
 from pathlib import Path
 
 import kubernetes  # type: ignore[import]
 
-from ..config import ENV, LOGGER
+from ..config import ENV, FORWARDED_ENV_VAR_PREFIXES, LOGGER
 from ..utils import S3File
 
 
@@ -99,6 +100,26 @@ def make_k8s_job_desc(
     k8s_job_dict["spec"]["template"]["spec"]["initContainers"][0]["env"][0][
         "value"
     ] = client_startup_json_s3.url
+
+    # Forward all env vars: ex. SKYSCAN_* & EWMS_*
+    forwarded_env_vars = []
+    for pref in FORWARDED_ENV_VAR_PREFIXES:
+        for var in os.environ:
+            if var.startswith(pref):
+                forwarded_env_vars.append(var)
+    # override any vars in stub file
+    k8s_job_dict["spec"]["template"]["spec"]["containers"][0]["env"] = [
+        x
+        for x in k8s_job_dict["spec"]["template"]["spec"]["containers"][0]["env"]
+        if x["name"] not in forwarded_env_vars
+    ] + [{"name": x, "value": os.environ[x]} for x in forwarded_env_vars]
+
+    # {
+    #     "name": "SKYDRIVER_TOKEN",
+    #     "valueFrom": {
+    #         "secretKeyRef": {"name": "pulsar-300-token-admin", "key": "TOKEN"}
+    #     },
+    # }
 
     # Container image
     k8s_job_dict["spec"]["template"]["spec"]["containers"][0]["image"] = container_image

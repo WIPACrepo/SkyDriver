@@ -8,6 +8,8 @@ from wipac_dev_tools import from_environment_as_dataclass
 
 LOGGER = logging.getLogger("clientmanager")
 
+FORWARDED_ENV_VAR_PREFIXES = ["SKYSCAN_", "EWMS_"]
+
 
 @dc.dataclass(frozen=True)
 class EnvConfig:

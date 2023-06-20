@@ -47,17 +47,8 @@
             {
               "env": [
                 {
-                  "name": "SKYDRIVER_TOKEN",
-                  "valueFrom": {
-                    "secretKeyRef": {
-                      "name": "pulsar-300-token-admin",
-                      "key": "TOKEN"
-                    }
-                  }
-                },
-                {
                   "name": "SKYSCAN_BROKER_ADDRESS",
-                  "value": "34.72.37.204"
+                  "value": "X"
                 },
                 {
                   "name": "I3_TESTDATA",
@@ -85,10 +76,6 @@
                 "skymap_scanner.client",
                 "--startup-json-dir",
                 "/skymap-scanner-startup-config/",
-                "--broker",
-                "$(SKYDRIVER_MQ_SERVER)",
-                "--auth-token",
-                "$(SKYDRIVER_TOKEN)"
               ],
               "resources": "X",
               "volumeMounts": [
