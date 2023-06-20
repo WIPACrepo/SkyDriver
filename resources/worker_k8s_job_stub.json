@@ -75,7 +75,7 @@
                 "-m",
                 "skymap_scanner.client",
                 "--startup-json-dir",
-                "/skymap-scanner-startup-config/",
+                "/skymap-scanner-startup-config/"
               ],
               "resources": "X",
               "volumeMounts": [
