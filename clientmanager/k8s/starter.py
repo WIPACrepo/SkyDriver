@@ -185,10 +185,11 @@ def start(
         return k8s_job_dict
 
     # create namespace
-    kubernetes.client.CoreV1Api(k8s_client).create_namespace(
-        kubernetes.client.V1Namespace(
-            metadata=kubernetes.client.V1ObjectMeta(name=namespace)
-        )
+    # kubernetes.client.CoreV1Api(k8s_client).create_namespace(
+    #     kubernetes.client.V1Namespace(
+    #         metadata=kubernetes.client.V1ObjectMeta(name=namespace)
+    #     )
+    # )
     )
     # submit jobs
     kubernetes.utils.create_from_dict(k8s_client, k8s_job_dict, namespace=namespace)
