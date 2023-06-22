@@ -115,9 +115,9 @@ def make_k8s_job_desc(
         ] + new_env_dicts
 
     # Forward all env vars: ex. SKYSCAN_* & EWMS_*
-    forwarded_env_vars = [
-        {"name": var, "value": os.environ[var]} for var in FORWARDED_ENV_VARS
-    ]
+    add_override_env(
+        [{"name": var, "value": os.environ[var]} for var in FORWARDED_ENV_VARS]
+    )
     # now add/override any env vars that need to be in a secret
     add_override_env(
         [
