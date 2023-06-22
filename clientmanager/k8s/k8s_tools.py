@@ -6,6 +6,10 @@ import kubernetes.client  # type: ignore[import]
 from ..config import LOGGER
 
 
+def get_worker_k8s_secret_name(cluster_id: str) -> str:
+    return f"{cluster_id}-secret"
+
+
 def patch_or_create_namespaced_secret(
     api_instance: kubernetes.client.BatchV1Api,
     namespace: str,

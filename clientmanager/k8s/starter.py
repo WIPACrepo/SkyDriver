@@ -12,7 +12,7 @@ import kubernetes  # type: ignore[import]
 
 from ..config import ENV, FORWARDED_ENV_VARS, LOGGER, SECRET_FORWARDED_ENV_VARS
 from ..utils import S3File
-from . import get_worker_k8s_secret_name, k8s_tools
+from . import k8s_tools
 
 
 def _get_log_fpath(logs_subdir: Path) -> Path:
@@ -125,7 +125,7 @@ def make_k8s_job_desc(
                 "name": v,  # "SKYDRIVER_TOKEN"
                 "valueFrom": {
                     "secretKeyRef": {
-                        "name": get_worker_k8s_secret_name(cluster_id),
+                        "name": k8s_tools.get_worker_k8s_secret_name(cluster_id),
                         "key": v.lower(),  # "skydriver_token"
                     }
                 },
@@ -208,7 +208,7 @@ def start(
     k8s_tools.patch_or_create_namespaced_secret(
         kubernetes.client.BatchV1Api(k8s_client),
         namespace,
-        get_worker_k8s_secret_name(cluster_id),
+        k8s_tools.get_worker_k8s_secret_name(cluster_id),
         "opaque",
         {
             var: base64.b64encode(os.environ[var].encode("ascii")).decode("utf-8")
