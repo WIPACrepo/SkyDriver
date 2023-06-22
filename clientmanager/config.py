@@ -17,6 +17,7 @@ FORWARDED_ENV_VARS = [
     if not any(var.startswith(p) for p in _NONFORWARDED_ENV_VAR_PREFIXES)
     and any(var.startswith(p) for p in _FORWARDED_ENV_VAR_PREFIXES)
 ]
+SECRET_FORWARDED_ENV_VARS = ["SKYSCAN_SKYDRIVER_AUTH", "SKYSCAN_BROKER_AUTH"]
 
 
 @dc.dataclass(frozen=True)

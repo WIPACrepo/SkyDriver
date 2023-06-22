@@ -10,7 +10,7 @@ from typing import Any
 
 import kubernetes  # type: ignore[import]
 
-from ..config import ENV, FORWARDED_ENV_VARS, LOGGER
+from ..config import ENV, FORWARDED_ENV_VARS, LOGGER, SECRET_FORWARDED_ENV_VARS
 from ..utils import S3File
 from . import get_worker_k8s_secret_name, k8s_tools
 
@@ -169,8 +169,6 @@ def start(
         )
         n_workers = ENV.WORKER_K8S_LOCAL_WORKERS_MAX
 
-    secret_env_vars = []
-
     # make k8s job description
     k8s_job_dict = make_k8s_job_desc(
         job_config_stub,
@@ -187,7 +185,7 @@ def start(
         client_args,
         cpu_arch,
         # env vars for secrets
-        secret_env_vars,
+        SECRET_FORWARDED_ENV_VARS,
     )
     try:
         LOGGER.info(json.dumps(k8s_job_dict, indent=4))
@@ -214,7 +212,7 @@ def start(
         "opaque",
         {
             var: base64.b64encode(os.environ[var].encode("ascii")).decode("utf-8")
-            for var in secret_env_vars
+            for var in SECRET_FORWARDED_ENV_VARS
         },
     )
     # submit jobs
