@@ -91,7 +91,7 @@ KNOWN_CONDOR_CLUSTERS = {
 KNOWN_K8S_CLUSTERS = {
     "local": {
         "host": "local",
-        "namespace": ENV.K8S_NAMESPACE,
+        "namespace": f"worker-{ENV.K8S_NAMESPACE}",  # must be different than K8S_NAMESPACE
     }
 }
 
