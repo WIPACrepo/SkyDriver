@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.20 (2023-06-22)
+
+### Other
+
+* Speed up initial backlog pt-2 ([`96d1d85`](https://github.com/WIPACrepo/SkyDriver/commit/96d1d85b2210c10c0563a03282c45915e4c1ee77))
+* Speed up initial backlog ([`9ba0953`](https://github.com/WIPACrepo/SkyDriver/commit/9ba095332f41d701431c9213ad566ffaa4580de2))
+* K8s Workers - Separate Secret Forwarded Env Vars Pt-3 ([`741d48f`](https://github.com/WIPACrepo/SkyDriver/commit/741d48f447f9ecb3eeeef9feebfdb37853d009f9))
+
 ## v0.3.19 (2023-06-22)
 
 ### Other
