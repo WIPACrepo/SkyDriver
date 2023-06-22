@@ -7,7 +7,7 @@ from pathlib import Path
 
 import htcondor  # type: ignore[import]
 
-from ..config import ENV, FORWARDED_ENV_VAR_PREFIXES, LOGGER
+from ..config import ENV, FORWARDED_ENV_VARS, LOGGER
 from ..utils import S3File
 from . import condor_tools
 
@@ -67,9 +67,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         "arguments": f"/usr/local/icetray/env-shell.sh python -m skymap_scanner.client {client_args_string} --client-startup-json ./{client_startup_json_s3.fname}",
         "+SingularityImage": f'"{image}"',  # must be quoted
         "Requirements": "HAS_CVMFS_icecube_opensciencegrid_org && has_avx && has_avx2",
-        "getenv": ", ".join(
-            f"{x}*" for x in FORWARDED_ENV_VAR_PREFIXES
-        ),  # "SKYSCAN_*, EWMS_*"
+        "getenv": ", ".join(FORWARDED_ENV_VARS),
         "environment": f'"{environment}"',  # must be quoted
         "+FileSystemDomain": '"blah"',  # must be quoted
         "should_transfer_files": "YES",

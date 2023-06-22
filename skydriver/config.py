@@ -93,7 +93,7 @@ KNOWN_K8S_CLUSTERS = {
         "host": "local",
         "namespace": ENV.K8S_NAMESPACE,
     }
-    # icecube-skymap-scanners
+    # icecube-skymap-scanner
 }
 
 

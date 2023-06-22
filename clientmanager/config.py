@@ -3,12 +3,20 @@
 
 import dataclasses as dc
 import logging
+import os
 
 from wipac_dev_tools import from_environment_as_dataclass
 
 LOGGER = logging.getLogger("clientmanager")
 
-FORWARDED_ENV_VAR_PREFIXES = ["SKYSCAN_", "EWMS_"]
+_FORWARDED_ENV_VAR_PREFIXES = ["SKYSCAN_", "EWMS_"]
+_NONFORWARDED_ENV_VAR_PREFIXES = ["EWMS_TMS_"]
+FORWARDED_ENV_VARS = [
+    var
+    for var in os.environ
+    if not any(var.startswith(p) for p in _NONFORWARDED_ENV_VAR_PREFIXES)
+    and any(var.startswith(p) for p in _FORWARDED_ENV_VAR_PREFIXES)
+]
 
 
 @dc.dataclass(frozen=True)

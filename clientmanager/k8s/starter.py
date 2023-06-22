@@ -10,7 +10,7 @@ from typing import Any
 
 import kubernetes  # type: ignore[import]
 
-from ..config import ENV, FORWARDED_ENV_VAR_PREFIXES, LOGGER
+from ..config import ENV, FORWARDED_ENV_VARS, LOGGER
 from ..utils import S3File
 from . import get_worker_k8s_secret_name, k8s_tools
 
@@ -115,13 +115,9 @@ def make_k8s_job_desc(
         ] + new_env_dicts
 
     # Forward all env vars: ex. SKYSCAN_* & EWMS_*
-    forwarded_env_vars = []
-    for pref in FORWARDED_ENV_VAR_PREFIXES:
-        for var in os.environ:
-            if var.startswith(pref):
-                forwarded_env_vars.append({"name": var, "value": os.environ[var]})
-    add_override_env(forwarded_env_vars)
-
+    forwarded_env_vars = [
+        {"name": var, "value": os.environ[var]} for var in FORWARDED_ENV_VARS
+    ]
     # now add/override any env vars that need to be in a secret
     add_override_env(
         [
