@@ -61,12 +61,18 @@ async def startup(
     manifests = database.interface.ManifestClient(mongo_client)
     scan_backlog = database.interface.ScanBacklogClient(mongo_client)
 
+    first = True  # don't wait for full delay after first starting up (helpful for testing new changes)
+
     while True:
-        await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
+        if first:
+            await asyncio.sleep(15)
+        else:
+            await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
 
         # get next entry
         try:
             entry = await get_next_backlog_entry(scan_backlog, manifests)
+            first = False
         except database.interface.DocumentNotFoundException:
             continue  # empty queue
 
