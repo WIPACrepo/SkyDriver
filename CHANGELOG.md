@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.16 (2023-06-22)
+
+### Other
+
+* <bot> update requirements.txt ([`26276e1`](https://github.com/WIPACrepo/SkyDriver/commit/26276e1ef9106bcf8850f7e600e6189b39f3062b))
+* <bot> update requirements-tests.txt ([`1d8e306`](https://github.com/WIPACrepo/SkyDriver/commit/1d8e30603c32144cca28722253a1c5184630a048))
+* K8s Workers - Separate Namespace ([`0d6c786`](https://github.com/WIPACrepo/SkyDriver/commit/0d6c7866d2aff6ced67e2a140f1def693107cdcc))
+
 ## v0.3.15 (2023-06-20)
 
 ### Other
