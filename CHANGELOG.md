@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.17 (2023-06-22)
+
+### Other
+
+* K8s Workers - Separate Namespace Pt-2 ([`81aaf2b`](https://github.com/WIPACrepo/SkyDriver/commit/81aaf2b6cfc9a09d6586c4338e863ef79d5a233c))
+
 ## v0.3.16 (2023-06-22)
 
 ### Other
