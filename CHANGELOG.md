@@ -2,6 +2,18 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.18 (2023-06-22)
+
+### Other
+
+* <bot> update requirements.txt ([`692aa5d`](https://github.com/WIPACrepo/SkyDriver/commit/692aa5d8af6fba7891626fd424be4d4745c01587))
+* <bot> update requirements-tests.txt ([`41ce25a`](https://github.com/WIPACrepo/SkyDriver/commit/41ce25a466cc13bfccfefab447f61e719d77aa10))
+* K8s Workers - Separate Secret Forwarded Env Vars ([`20fe945`](https://github.com/WIPACrepo/SkyDriver/commit/20fe945a4152497ecd12f0d76e1e78ba9eec6cef))
+* K8s Workers - Filter Forwarded Env Vars Pt-2 ([`40193cf`](https://github.com/WIPACrepo/SkyDriver/commit/40193cf160d3d507af9021d35baeb0641168174f))
+* K8s Workers - Filter Forwarded Env Vars ([`6d4a4ad`](https://github.com/WIPACrepo/SkyDriver/commit/6d4a4ad8618bca306386751fcbb5a5c1fd14f6aa))
+* K8s Workers - Separate Secrets ([`32ec4f8`](https://github.com/WIPACrepo/SkyDriver/commit/32ec4f84a4a21e11f0d2210440f1e40e93ccf5b0))
+* K8s Workers - Revert Separate Namespace ([`b629a72`](https://github.com/WIPACrepo/SkyDriver/commit/b629a72a2e1d525c425daeb31678a27be9b9baa3))
+
 ## v0.3.17 (2023-06-22)
 
 ### Other
