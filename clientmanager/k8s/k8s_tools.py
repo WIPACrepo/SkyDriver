@@ -3,7 +3,7 @@
 
 import kubernetes.client  # type: ignore[import]
 
-from ..config import LOGGER
+from ..config import ENV, LOGGER
 
 
 def get_worker_k8s_secret_name(cluster_id: str) -> str:
@@ -12,17 +12,33 @@ def get_worker_k8s_secret_name(cluster_id: str) -> str:
 
 def patch_or_create_namespaced_secret(
     api_instance: kubernetes.client.CoreV1Api,
+    host: str,
     namespace: str,
     secret_name: str,
     secret_type: str,
     encoded_secret_data: dict[str, str],
 ) -> None:
     """Patch secret and if not exist create."""
+
+    if host == "local":
+        metadata = kubernetes.client.V1ObjectMeta(
+            name=secret_name,
+            labels={
+                # https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/
+                "app.kubernetes.io/instance": ENV.WORKER_K8S_LOCAL_APPLICATION_NAME,
+            },
+            annotations={
+                "argocd.argoproj.io/sync-options": "Prune=false"  # don't want argocd to prune this job
+            },
+        )
+    else:
+        metadata = kubernetes.client.V1ObjectMeta(name=secret_name)
+
     # Instantiate the Secret object
     body = kubernetes.client.V1Secret(
         data=encoded_secret_data,
         type=secret_type,
-        metadata=kubernetes.client.V1ObjectMeta(name=secret_name),
+        metadata=metadata,
     )
 
     # try to patch first

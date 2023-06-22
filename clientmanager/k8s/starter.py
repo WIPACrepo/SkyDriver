@@ -207,6 +207,7 @@ def start(
     # create secret
     k8s_tools.patch_or_create_namespaced_secret(
         kubernetes.client.CoreV1Api(k8s_client),
+        host,
         namespace,
         k8s_tools.get_worker_k8s_secret_name(cluster_id),
         "opaque",
