@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.21 (2023-06-22)
+
+### Other
+
+* K8s Workers - Separate Secret Forwarded Env Vars Pt-4 ([`ab2c450`](https://github.com/WIPACrepo/SkyDriver/commit/ab2c450b2b046fa7fb4cd2e658c822b2dbcfe0f0))
+
 ## v0.3.20 (2023-06-22)
 
 ### Other
