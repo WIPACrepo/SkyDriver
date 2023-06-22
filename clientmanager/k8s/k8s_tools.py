@@ -11,7 +11,7 @@ def get_worker_k8s_secret_name(cluster_id: str) -> str:
 
 
 def patch_or_create_namespaced_secret(
-    api_instance: kubernetes.client.BatchV1Api,
+    api_instance: kubernetes.client.CoreV1Api,
     namespace: str,
     secret_name: str,
     secret_type: str,

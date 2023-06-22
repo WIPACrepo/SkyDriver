@@ -206,7 +206,7 @@ def start(
     # )
     # create secret
     k8s_tools.patch_or_create_namespaced_secret(
-        kubernetes.client.BatchV1Api(k8s_client),
+        kubernetes.client.CoreV1Api(k8s_client),
         namespace,
         k8s_tools.get_worker_k8s_secret_name(cluster_id),
         "opaque",
