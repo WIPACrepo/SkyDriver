@@ -211,8 +211,8 @@ def start(
         k8s_tools.get_worker_k8s_secret_name(cluster_id),
         "opaque",
         {
-            var: base64.b64encode(os.environ[var].encode("ascii")).decode("utf-8")
-            for var in SECRET_FORWARDED_ENV_VARS
+            v.lower(): base64.b64encode(os.environ[v].encode("ascii")).decode("utf-8")
+            for v in SECRET_FORWARDED_ENV_VARS
         },
     )
     # submit jobs
