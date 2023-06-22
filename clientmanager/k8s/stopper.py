@@ -4,6 +4,7 @@
 import kubernetes  # type: ignore[import]
 
 from ..config import LOGGER
+from . import get_worker_k8s_secret_name
 
 
 def stop(
@@ -15,16 +16,27 @@ def stop(
 
     # Remove workers -- may not be instantaneous
     LOGGER.info("Requesting removal...")
-    k8s_response = kubernetes.client.BatchV1Api(k8s_client).delete_namespaced_job(
+    resp = kubernetes.client.BatchV1Api(k8s_client).delete_namespaced_job(
         name=cluster_id,
         namespace=namespace,
         body=kubernetes.client.V1DeleteOptions(
             propagation_policy="Foreground", grace_period_seconds=5
         ),
     )
-    LOGGER.debug("Job deleted. status='%s'" % str(k8s_response.status))
     LOGGER.info(
-        f"Removed workers: {cluster_id} in namespace {namespace} with response {k8s_response.status} "
+        f"Removed workers: {cluster_id} in namespace {namespace} with response {resp.status} "
+    )
+
+    # Remove secret -- may not be instantaneous
+    resp = kubernetes.client.CoreV1Api(k8s_client).delete_namespaced_secret(
+        name=get_worker_k8s_secret_name(cluster_id),
+        namespace=namespace,
+        body=kubernetes.client.V1DeleteOptions(
+            propagation_policy="Foreground", grace_period_seconds=5
+        ),
+    )
+    LOGGER.info(
+        f"Removed secret: {get_worker_k8s_secret_name(cluster_id)} in namespace {namespace} with response {resp.status} "
     )
 
     # TODO: get/forward job logs

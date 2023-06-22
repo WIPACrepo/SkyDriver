@@ -1,15 +1,18 @@
 """For starting Skymap Scanner clients on an K8s cluster."""
 
 
+import base64
 import json
 import os
 import pprint
 from pathlib import Path
+from typing import Any
 
 import kubernetes  # type: ignore[import]
 
 from ..config import ENV, FORWARDED_ENV_VAR_PREFIXES, LOGGER
 from ..utils import S3File
+from . import get_worker_k8s_secret_name, k8s_tools
 
 
 def _get_log_fpath(logs_subdir: Path) -> Path:
@@ -31,6 +34,8 @@ def make_k8s_job_desc(
     add_client_args: list[tuple[str, str]],
     # special args for the cloud
     cpu_arch: str,
+    # env vars for secrets
+    secret_env_vars: list[str],
 ) -> dict:
     """Make the k8s job description (submit object)."""
     with open(job_config_stub, "r") as f:
@@ -102,25 +107,36 @@ def make_k8s_job_desc(
         "value"
     ] = client_startup_json_s3.url
 
+    def add_override_env(new_env_dicts: list[dict[str, Any]]) -> None:
+        k8s_job_dict["spec"]["template"]["spec"]["containers"][0]["env"] = [
+            x
+            for x in k8s_job_dict["spec"]["template"]["spec"]["containers"][0]["env"]
+            if x["name"] not in new_env_dicts
+        ] + new_env_dicts
+
     # Forward all env vars: ex. SKYSCAN_* & EWMS_*
     forwarded_env_vars = []
     for pref in FORWARDED_ENV_VAR_PREFIXES:
         for var in os.environ:
             if var.startswith(pref):
-                forwarded_env_vars.append(var)
-    # override any vars in stub file
-    k8s_job_dict["spec"]["template"]["spec"]["containers"][0]["env"] = [
-        x
-        for x in k8s_job_dict["spec"]["template"]["spec"]["containers"][0]["env"]
-        if x["name"] not in forwarded_env_vars
-    ] + [{"name": v, "value": os.environ[v]} for v in forwarded_env_vars]
+                forwarded_env_vars.append({"name": var, "value": os.environ[var]})
+    add_override_env(forwarded_env_vars)
 
-    # {
-    #     "name": "SKYDRIVER_TOKEN",
-    #     "valueFrom": {
-    #         "secretKeyRef": {"name": "pulsar-300-token-admin", "key": "TOKEN"}
-    #     },
-    # }
+    # now add/override any env vars that need to be in a secret
+    add_override_env(
+        [
+            {
+                "name": v,  # "SKYDRIVER_TOKEN"
+                "valueFrom": {
+                    "secretKeyRef": {
+                        "name": get_worker_k8s_secret_name(cluster_id),
+                        "key": v.lower(),  # "skydriver_token"
+                    }
+                },
+            }
+            for v in secret_env_vars
+        ]
+    )
 
     # Container image
     k8s_job_dict["spec"]["template"]["spec"]["containers"][0]["image"] = container_image
@@ -157,6 +173,8 @@ def start(
         )
         n_workers = ENV.WORKER_K8S_LOCAL_WORKERS_MAX
 
+    secret_env_vars = []
+
     # make k8s job description
     k8s_job_dict = make_k8s_job_desc(
         job_config_stub,
@@ -172,6 +190,8 @@ def start(
         client_startup_json_s3,
         client_args,
         cpu_arch,
+        # env vars for secrets
+        secret_env_vars,
     )
     try:
         LOGGER.info(json.dumps(k8s_job_dict, indent=4))
@@ -190,6 +210,16 @@ def start(
     #         metadata=kubernetes.client.V1ObjectMeta(name=namespace)
     #     )
     # )
+    # create secret
+    k8s_tools.patch_or_create_namespaced_secret(
+        kubernetes.client.BatchV1Api(k8s_client),
+        namespace,
+        get_worker_k8s_secret_name(cluster_id),
+        "opaque",
+        {
+            var: base64.b64encode(os.environ[var].encode("ascii")).decode("utf-8")
+            for var in secret_env_vars
+        },
     )
     # submit jobs
     kubernetes.utils.create_from_dict(k8s_client, k8s_job_dict, namespace=namespace)
