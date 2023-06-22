@@ -65,7 +65,7 @@ async def startup(
 
     while True:
         if first:
-            await asyncio.sleep(15)
+            await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_INITIAL_DELAY)
         else:
             await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
 
