@@ -2,6 +2,15 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.22 (2023-06-23)
+
+### Other
+
+* <bot> update requirements.txt ([`6dfc2b1`](https://github.com/WIPACrepo/SkyDriver/commit/6dfc2b1d9048bb2dd36aa458bedc3339dd6f0321))
+* <bot> update requirements-tests.txt ([`b1d69fd`](https://github.com/WIPACrepo/SkyDriver/commit/b1d69fd833eb96d8031ece3c06e2b614bfd7a638))
+* K8s Workers - add `LOCAL_K8S_HOST` ([`2dc5033`](https://github.com/WIPACrepo/SkyDriver/commit/2dc5033dcc336d26c2570c7afd5e8497b90546d0))
+* K8s Workers - Add argocd metadata to secret for local host ([`3f51edb`](https://github.com/WIPACrepo/SkyDriver/commit/3f51edb0d13e9cdf2f1766cd7735bed3b2ca7a1f))
+
 ## v0.3.21 (2023-06-22)
 
 ### Other
