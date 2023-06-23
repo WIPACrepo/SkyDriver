@@ -234,7 +234,7 @@ class ManifestClient(DataclassCollectionFacade):
         scan_id: str,
         scanner_server_args: str,
         tms_args_list: list[str],
-        env_vars: dict[str, schema.StrDict],
+        env_vars: dict[str, Any],
     ) -> schema.Manifest:
         """Create `schema.Manifest` doc."""
         LOGGER.debug("creating new manifest")

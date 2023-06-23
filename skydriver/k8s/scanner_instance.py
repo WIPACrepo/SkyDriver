@@ -143,7 +143,7 @@ class SkymapScannerStarterJob:
                     memory=ENV.K8S_CONTAINER_MEMORY_TMS_STARTER,
                 )
             )
-        self.tms_args_list = [c.args for c in tms_starters]
+        self.tms_args_list = [" ".join(c.args) for c in tms_starters]
         self.env_dict["tms_starters"] = [c.env.to_dict() for c in tms_starters]
 
         # job
