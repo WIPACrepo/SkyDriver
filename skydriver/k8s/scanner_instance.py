@@ -15,17 +15,32 @@ from . import scan_backlog
 from .utils import KubeAPITools
 
 
-def get_condor_token_v1envvar() -> kubernetes.client.V1EnvVar:
-    """Get the `V1EnvVar` for `CONDOR_TOKEN`."""
-    return kubernetes.client.V1EnvVar(
-        name="CONDOR_TOKEN",
-        value_from=kubernetes.client.V1EnvVarSource(
-            secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                name=ENV.K8S_SECRET_NAME,
-                key="condor_token_sub2",
+def get_cluster_auth_v1envvar(orchestrator: str) -> kubernetes.client.V1EnvVar:
+    """Get the `V1EnvVar`s for workers' auth."""
+    # TODO: take cluster host & map that to the env by changing the token
+    match orchestrator:
+        case "condor":
+            return kubernetes.client.V1EnvVar(
+                name="CONDOR_TOKEN",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name=ENV.K8S_SECRET_NAME,
+                        key="condor_token_sub2",
+                    )
+                ),
             )
-        ),
-    )
+        case "k8s":
+            return kubernetes.client.V1EnvVar(
+                name="WORKER_K8S_CONFIG_FILE_BASE64",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name=ENV.K8S_SECRET_NAME,
+                        key="worker_k8s_config_file_base64",
+                    )
+                ),
+            )
+        case other:
+            raise ValueError(f"Unknown cluster orchestrator: {other}")
 
 
 def get_tms_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
@@ -228,6 +243,7 @@ class SkymapScannerStarterJob:
     def make_v1_env_vars(
         rest_address: str,
         scan_id: str,
+        orchestrator: str,
         max_pixel_reco_time: int | None,
     ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to all containers.
@@ -238,7 +254,7 @@ class SkymapScannerStarterJob:
 
         # 1. start w/ secrets
         # NOTE: the values come from an existing secret in the current namespace
-        env.append(get_condor_token_v1envvar())
+        env.append(get_cluster_auth_v1envvar(orchestrator))
         env.extend(get_tms_s3_v1envvars())
 
         # 2. add required env vars
@@ -347,7 +363,7 @@ class SkymapScannerStopperJob:
                 KubeAPITools.create_container(
                     f"tms-stopper-{i}-{scan_id}",
                     ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
-                    env=[get_condor_token_v1envvar()],
+                    env=[get_cluster_auth_v1envvar(cluster.orchestrator)],
                     args=args.split(),
                     memory=ENV.K8S_CONTAINER_MEMORY_TMS_STOPPER,
                 )
