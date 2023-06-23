@@ -135,9 +135,9 @@ async def _launch_scan(
     # check env vars, more closely
     # "scanner_server"
     assert set(  # these have `value`s
-        k
-        for k, v in resp["env_vars"]["scanner_server"].items()
-        if v["value"] is not None and v["value_from"] is None
+        e["name"]
+        for e in resp["env_vars"]["scanner_server"]
+        if e["value"] is not None and e["value_from"] is None
     ) == {
         "SKYSCAN_BROKER_ADDRESS",
         "SKYSCAN_BROKER_AUTH",
@@ -147,9 +147,9 @@ async def _launch_scan(
     }
     assert (
         set(  # these have `value_from`s
-            k
-            for k, v in resp["env_vars"]["scanner_server"].items()
-            if v["value_from"] is not None and v["value"] is None
+            e
+            for e in resp["env_vars"]["scanner_server"]
+            if e["value_from"] is not None and e["value"] is None
         )
         == {}
     )
@@ -157,9 +157,9 @@ async def _launch_scan(
     # "tms_starters"
     for env_dicts in resp["env_vars"]["tms_starters"]:
         assert set(  # these have `value`s
-            k
-            for k, v in env_dicts.items()
-            if v["value"] is not None and v["value_from"] is None
+            e
+            for e in env_dicts.items()
+            if e["value"] is not None and e["value_from"] is None
         ) == {
             "EWMS_PILOT_SUBPROC_TIMEOUT",  # set by CI runner
             "EWMS_TMS_S3_BUCKET",
@@ -172,9 +172,9 @@ async def _launch_scan(
             "WORKER_K8S_LOCAL_APPLICATION_NAME",
         }
         assert set(  # these have `value_from`s
-            k
-            for k, v in env_dicts.items()
-            if v["value_from"] is not None and v["value"] is None
+            e
+            for e in env_dicts.items()
+            if e["value_from"] is not None and e["value"] is None
         ) == {
             "CONDOR_TOKEN",
             "EWMS_TMS_S3_ACCESS_KEY_ID",
@@ -185,12 +185,28 @@ async def _launch_scan(
     for env_dicts in [resp["env_vars"]["scanner_server"]] + resp["env_vars"][
         "tms_starters"
     ]:
-        assert env_dicts["SKYSCAN_BROKER_ADDRESS"]["value"] == "localhost"
+        assert (
+            next(filter(lambda x: x["name"] == "SKYSCAN_BROKER_ADDRESS", env_dicts))[
+                "value"
+            ]
+            == "localhost"
+        )
         assert re.match(
             r"http://localhost:[0-9]+",
-            env_dicts["SKYSCAN_SKYDRIVER_ADDRESS"]["value"],
+            next(filter(lambda x: x["name"] == "SKYSCAN_SKYDRIVER_ADDRESS", env_dicts))[
+                "value"
+            ],
         )
-        assert len(env_dicts["SKYSCAN_SKYDRIVER_SCAN_ID"]["value"]) == 32
+        assert (
+            len(
+                next(
+                    filter(
+                        lambda x: x["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID", env_dicts
+                    )
+                )["value"]
+            )
+            == 32
+        )
 
     # get scan_id
     assert resp["scan_id"]
