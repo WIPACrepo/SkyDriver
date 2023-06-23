@@ -2,6 +2,7 @@
 
 
 import argparse
+import base64
 import time
 
 import kubernetes  # type: ignore[import]
@@ -21,11 +22,14 @@ def act(args: argparse.Namespace) -> None:
         kubernetes.config.load_incluster_config(k8s_client_config)
     else:
         # connect to remote host
-        if args.cluster_config:
-            kubernetes.config.load_kube_config(
-                config_file=args.cluster_config,
-                client_configuration=k8s_client_config,
-            )
+        with open("./worker_k8s_config_file.yaml", "w") as f:
+            f.write(base64.b64decode(ENV.WORKER_K8S_CONFIG_FILE_BASE64).decode("utf-8"))
+        with open("./worker_k8s_config_file.yaml", "r") as f:
+            LOGGER.info(f.read())
+        kubernetes.config.load_kube_config(
+            config_file="./worker_k8s_config_file.yaml",
+            client_configuration=k8s_client_config,
+        )
         k8s_client_config.host = args.host
         k8s_client_config.api_key["authorization"] = ENV.WORKER_K8S_TOKEN
 

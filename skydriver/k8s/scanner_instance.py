@@ -15,17 +15,32 @@ from . import scan_backlog
 from .utils import KubeAPITools
 
 
-def get_condor_token_v1envvar() -> kubernetes.client.V1EnvVar:
-    """Get the `V1EnvVar` for `CONDOR_TOKEN`."""
-    return kubernetes.client.V1EnvVar(
-        name="CONDOR_TOKEN",
-        value_from=kubernetes.client.V1EnvVarSource(
-            secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                name=ENV.K8S_SECRET_NAME,
-                key="condor_token_sub2",
+def get_cluster_auth_v1envvar(orchestrator: str) -> kubernetes.client.V1EnvVar:
+    """Get the `V1EnvVar`s for workers' auth."""
+    # TODO: take cluster host & map that to the env by changing the token
+    match orchestrator:
+        case "condor":
+            return kubernetes.client.V1EnvVar(
+                name="CONDOR_TOKEN",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name=ENV.K8S_SECRET_NAME,
+                        key="condor_token_sub2",
+                    )
+                ),
             )
-        ),
-    )
+        case "k8s":
+            return kubernetes.client.V1EnvVar(
+                name="WORKER_K8S_CONFIG_FILE_BASE64",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name=ENV.K8S_SECRET_NAME,
+                        key="worker_k8s_config_file_base64_gke",
+                    )
+                ),
+            )
+        case other:
+            raise ValueError(f"Unknown cluster orchestrator: {other}")
 
 
 def get_tms_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
@@ -79,10 +94,11 @@ class SkymapScannerStarterJob:
         self.api_instance = api_instance
         self.scan_backlog = scan_backlog
         self.scan_id = scan_id
+        self.env_dict = {}
 
         common_space_volume_path = Path("/common-space")
 
-        # store some data for public access
+        # CONTAINER: SkyScan Server
         self.scanner_server_args = self.get_scanner_server_args(
             common_space_volume_path=common_space_volume_path,
             reco_algo=reco_algo,
@@ -90,45 +106,48 @@ class SkymapScannerStarterJob:
             is_real_event=is_real_event,
             predictive_scanning_threshold=predictive_scanning_threshold,
         )
-        self.tms_args_list = list(
-            self.get_tms_starter_args(
-                common_space_volume_path=common_space_volume_path,
-                docker_tag=docker_tag,
-                memory=memory,
-                request_cluster=c,
-                debug_mode=debug_mode,
-            )
-            for c in request_clusters
-        )
-        env = self.make_v1_env_vars(
-            rest_address=rest_address,
-            scan_id=scan_id,
-            max_pixel_reco_time=max_pixel_reco_time,
-        )
-        self.env_dict = {  # promote `e.name` to a key of a dict (instead of an attr in list element)
-            e.name: {k: v for k, v in e.to_dict().items() if k != "name"} for e in env
-        }
-
-        # containers
         scanner_server = KubeAPITools.create_container(
             f"skyscan-server-{scan_id}",
             images.get_skyscan_docker_image(docker_tag),
-            env,
+            self.make_skyscan_server_v1envvars(
+                rest_address=rest_address,
+                scan_id=scan_id,
+            ),
             self.scanner_server_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
             memory=ENV.K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
         )
-        tms_starters = [
-            KubeAPITools.create_container(
-                f"tms-starter-{i}-{scan_id}",
-                ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
-                env,
-                args.split(),
-                {common_space_volume_path.name: common_space_volume_path},
-                memory=ENV.K8S_CONTAINER_MEMORY_TMS_STARTER,
+        self.env_dict["scanner_server"] = [e.to_dict() for e in scanner_server.env]
+
+        # CONTAINER(S): TMS Starter(s)
+        tms_starters = []
+        for i, cluster in enumerate(request_clusters):
+            tms_starters.append(
+                KubeAPITools.create_container(
+                    f"tms-starter-{i}-{scan_id}",
+                    ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
+                    env=self.make_tms_starter_v1envvars(
+                        rest_address=rest_address,
+                        scan_id=scan_id,
+                        orchestrator=cluster.orchestrator,
+                        max_pixel_reco_time=max_pixel_reco_time,
+                    ),
+                    args=self.get_tms_starter_args(
+                        common_space_volume_path=common_space_volume_path,
+                        docker_tag=docker_tag,
+                        memory=memory,
+                        request_cluster=cluster,
+                        debug_mode=debug_mode,
+                    ),
+                    volumes={common_space_volume_path.name: common_space_volume_path},
+                    memory=ENV.K8S_CONTAINER_MEMORY_TMS_STARTER,
+                )
             )
-            for i, args in enumerate(self.tms_args_list)
+        self.tms_args_list = [" ".join(c.args) for c in tms_starters]
+        self.env_dict["tms_starters"] = [
+            [e.to_dict() for e in c.env] for c in tms_starters
         ]
+
         # job
         self.job_obj = KubeAPITools.kube_create_job_object(
             f"skyscan-{scan_id}",
@@ -165,7 +184,7 @@ class SkymapScannerStarterJob:
         memory: str,
         request_cluster: schema.Cluster,
         debug_mode: bool,
-    ) -> str:
+    ) -> list[str]:
         """Make the starter container args.
 
         This also includes any client args not added by the
@@ -205,7 +224,7 @@ class SkymapScannerStarterJob:
         if debug_mode:
             args += f" --logs-directory {common_space_volume_path} "  # TODO unique
 
-        return args
+        return args.split()
 
     @staticmethod
     def _get_token_from_keycloak(
@@ -225,9 +244,79 @@ class SkymapScannerStarterJob:
         return token
 
     @staticmethod
-    def make_v1_env_vars(
+    def make_skyscan_server_v1envvars(
         rest_address: str,
         scan_id: str,
+    ) -> list[kubernetes.client.V1EnvVar]:
+        """Get the environment variables provided to the skyscan server.
+
+        Also, get the secrets' keys & their values.
+        """
+        env = []
+
+        # 1. start w/ secrets
+        # NOTE: the values come from an existing secret in the current namespace
+        # *none*
+
+        # 2. add required env vars
+        required = {
+            # broker/mq vars
+            "SKYSCAN_BROKER_ADDRESS": ENV.SKYSCAN_BROKER_ADDRESS,
+            # skydriver vars
+            "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
+            "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
+        }
+        env.extend(
+            [
+                kubernetes.client.V1EnvVar(name=k, value=str(v))
+                for k, v in required.items()
+            ]
+        )
+
+        # 3. add extra env vars, then filter out if 'None'
+        prefiltered = {
+            "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
+            "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
+            "SKYSCAN_MQ_TIMEOUT_TO_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
+            "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
+            "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
+            "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
+        }
+        env.extend(
+            [
+                kubernetes.client.V1EnvVar(name=k, value=str(v))
+                for k, v in prefiltered.items()
+                if v  # skip any env vars that are Falsy
+            ]
+        )
+
+        # 4. generate & add auth tokens
+        tokens = {
+            "SKYSCAN_BROKER_AUTH": SkymapScannerStarterJob._get_token_from_keycloak(
+                ENV.KEYCLOAK_OIDC_URL,
+                ENV.KEYCLOAK_CLIENT_ID_BROKER,
+                ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
+            ),
+            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerStarterJob._get_token_from_keycloak(
+                ENV.KEYCLOAK_OIDC_URL,
+                ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
+                ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
+            ),
+        }
+        env.extend(
+            [
+                kubernetes.client.V1EnvVar(name=k, value=str(v))
+                for k, v in tokens.items()
+            ]
+        )
+
+        return env
+
+    @staticmethod
+    def make_tms_starter_v1envvars(
+        rest_address: str,
+        scan_id: str,
+        orchestrator: str,
         max_pixel_reco_time: int | None,
     ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to all containers.
@@ -238,7 +327,7 @@ class SkymapScannerStarterJob:
 
         # 1. start w/ secrets
         # NOTE: the values come from an existing secret in the current namespace
-        env.append(get_condor_token_v1envvar())
+        env.append(get_cluster_auth_v1envvar(orchestrator))
         env.extend(get_tms_s3_v1envvars())
 
         # 2. add required env vars
@@ -263,8 +352,6 @@ class SkymapScannerStarterJob:
 
         # 3. add extra env vars, then filter out if 'None'
         prefiltered = {
-            "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
-            "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
             "SKYSCAN_MQ_TIMEOUT_TO_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
@@ -347,7 +434,7 @@ class SkymapScannerStopperJob:
                 KubeAPITools.create_container(
                     f"tms-stopper-{i}-{scan_id}",
                     ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
-                    env=[get_condor_token_v1envvar()],
+                    env=[get_cluster_auth_v1envvar(cluster.orchestrator)],
                     args=args.split(),
                     memory=ENV.K8S_CONTAINER_MEMORY_TMS_STOPPER,
                 )
