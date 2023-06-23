@@ -97,7 +97,11 @@ class SkymapScannerStarterJob:
 
         common_space_volume_path = Path("/common-space")
 
-        # store some data for public access
+        self.env_dict = {  # promote `e.name` to a key of a dict (instead of an attr in list element)
+            e.name: {k: v for k, v in e.to_dict().items() if k != "name"} for e in env
+        }
+
+        # CONTAINER: SkyScan Server
         self.scanner_server_args = self.get_scanner_server_args(
             common_space_volume_path=common_space_volume_path,
             reco_algo=reco_algo,
@@ -105,45 +109,44 @@ class SkymapScannerStarterJob:
             is_real_event=is_real_event,
             predictive_scanning_threshold=predictive_scanning_threshold,
         )
-        self.tms_args_list = list(
-            self.get_tms_starter_args(
-                common_space_volume_path=common_space_volume_path,
-                docker_tag=docker_tag,
-                memory=memory,
-                request_cluster=c,
-                debug_mode=debug_mode,
-            )
-            for c in request_clusters
-        )
-        env = self.make_v1_env_vars(
-            rest_address=rest_address,
-            scan_id=scan_id,
-            max_pixel_reco_time=max_pixel_reco_time,
-        )
-        self.env_dict = {  # promote `e.name` to a key of a dict (instead of an attr in list element)
-            e.name: {k: v for k, v in e.to_dict().items() if k != "name"} for e in env
-        }
-
-        # containers
         scanner_server = KubeAPITools.create_container(
             f"skyscan-server-{scan_id}",
             images.get_skyscan_docker_image(docker_tag),
-            env,
+            self.make_skyscan_server_v1envvars(
+                rest_address=rest_address,
+                scan_id=scan_id,
+            ),
             self.scanner_server_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
             memory=ENV.K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
         )
-        tms_starters = [
-            KubeAPITools.create_container(
-                f"tms-starter-{i}-{scan_id}",
-                ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
-                env,
-                args.split(),
-                {common_space_volume_path.name: common_space_volume_path},
-                memory=ENV.K8S_CONTAINER_MEMORY_TMS_STARTER,
+
+        # CONTAINER(S): TMS Starter(s)
+        tms_starters = []
+        for i, cluster in enumerate(request_clusters):
+            tms_starters.append(
+                KubeAPITools.create_container(
+                    f"tms-starter-{i}-{scan_id}",
+                    ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
+                    env=self.make_tms_starter_v1envvars(
+                        rest_address=rest_address,
+                        scan_id=scan_id,
+                        orchestrator=cluster.orchestrator,
+                        max_pixel_reco_time=max_pixel_reco_time,
+                    ),
+                    args=self.get_tms_starter_args(
+                        common_space_volume_path=common_space_volume_path,
+                        docker_tag=docker_tag,
+                        memory=memory,
+                        request_cluster=cluster,
+                        debug_mode=debug_mode,
+                    ),
+                    volumes={common_space_volume_path.name: common_space_volume_path},
+                    memory=ENV.K8S_CONTAINER_MEMORY_TMS_STARTER,
+                )
             )
-            for i, args in enumerate(self.tms_args_list)
-        ]
+        self.tms_args_list = [c.args for c in tms_starters]
+
         # job
         self.job_obj = KubeAPITools.kube_create_job_object(
             f"skyscan-{scan_id}",
@@ -180,7 +183,7 @@ class SkymapScannerStarterJob:
         memory: str,
         request_cluster: schema.Cluster,
         debug_mode: bool,
-    ) -> str:
+    ) -> list[str]:
         """Make the starter container args.
 
         This also includes any client args not added by the
@@ -220,7 +223,7 @@ class SkymapScannerStarterJob:
         if debug_mode:
             args += f" --logs-directory {common_space_volume_path} "  # TODO unique
 
-        return args
+        return args.split()
 
     @staticmethod
     def _get_token_from_keycloak(
@@ -240,7 +243,76 @@ class SkymapScannerStarterJob:
         return token
 
     @staticmethod
-    def make_v1_env_vars(
+    def make_skyscan_server_v1envvars(
+        rest_address: str,
+        scan_id: str,
+    ) -> list[kubernetes.client.V1EnvVar]:
+        """Get the environment variables provided to the skyscan server.
+
+        Also, get the secrets' keys & their values.
+        """
+        env = []
+
+        # 1. start w/ secrets
+        # NOTE: the values come from an existing secret in the current namespace
+        # *none*
+
+        # 2. add required env vars
+        required = {
+            # broker/mq vars
+            "SKYSCAN_BROKER_ADDRESS": ENV.SKYSCAN_BROKER_ADDRESS,
+            # skydriver vars
+            "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
+            "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
+        }
+        env.extend(
+            [
+                kubernetes.client.V1EnvVar(name=k, value=str(v))
+                for k, v in required.items()
+            ]
+        )
+
+        # 3. add extra env vars, then filter out if 'None'
+        prefiltered = {
+            "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
+            "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
+            "SKYSCAN_MQ_TIMEOUT_TO_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
+            "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
+            "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
+            "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
+        }
+        env.extend(
+            [
+                kubernetes.client.V1EnvVar(name=k, value=str(v))
+                for k, v in prefiltered.items()
+                if v  # skip any env vars that are Falsy
+            ]
+        )
+
+        # 4. generate & add auth tokens
+        tokens = {
+            "SKYSCAN_BROKER_AUTH": SkymapScannerStarterJob._get_token_from_keycloak(
+                ENV.KEYCLOAK_OIDC_URL,
+                ENV.KEYCLOAK_CLIENT_ID_BROKER,
+                ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
+            ),
+            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerStarterJob._get_token_from_keycloak(
+                ENV.KEYCLOAK_OIDC_URL,
+                ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
+                ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
+            ),
+        }
+        env.extend(
+            [
+                kubernetes.client.V1EnvVar(name=k, value=str(v))
+                for k, v in tokens.items()
+            ]
+        )
+
+        return env
+
+    @staticmethod
+    def make_tms_starter_v1envvars(
         rest_address: str,
         scan_id: str,
         orchestrator: str,
@@ -279,8 +351,6 @@ class SkymapScannerStarterJob:
 
         # 3. add extra env vars, then filter out if 'None'
         prefiltered = {
-            "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
-            "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
             "SKYSCAN_MQ_TIMEOUT_TO_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
