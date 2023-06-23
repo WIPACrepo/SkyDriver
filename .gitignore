@@ -132,3 +132,5 @@ dmypy.json
 
 *-token
 *.token
+
+gke-cluster-config.yaml
