@@ -179,6 +179,14 @@ async def _launch_scan(
             "CONDOR_TOKEN",
             "EWMS_TMS_S3_ACCESS_KEY_ID",
             "EWMS_TMS_S3_SECRET_KEY",
+        } or set(  # these have `value_from`s
+            e["name"]
+            for e in env_dicts
+            if e["value_from"] is not None and e["value"] is None
+        ) == {
+            "WORKER_K8S_CONFIG_FILE_BASE64",
+            "EWMS_TMS_S3_ACCESS_KEY_ID",
+            "EWMS_TMS_S3_SECRET_KEY",
         }
 
     # check env vars, even MORE closely
@@ -186,24 +194,25 @@ async def _launch_scan(
         "tms_starters"
     ]:
         assert (
-            next(filter(lambda x: x["name"] == "SKYSCAN_BROKER_ADDRESS", env_dicts))[
-                "value"
-            ]
+            next(x["value"] for x in env_dicts if x["name"] == "SKYSCAN_BROKER_ADDRESS")
             == "localhost"
         )
+
         assert re.match(
             r"http://localhost:[0-9]+",
-            next(filter(lambda x: x["name"] == "SKYSCAN_SKYDRIVER_ADDRESS", env_dicts))[
-                "value"
-            ],
+            next(
+                x["value"]
+                for x in env_dicts
+                if x["name"] == "SKYSCAN_SKYDRIVER_ADDRESS"
+            ),
         )
         assert (
             len(
                 next(
-                    filter(
-                        lambda x: x["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID", env_dicts
-                    )
-                )["value"]
+                    x["value"]
+                    for x in env_dicts
+                    if x["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID"
+                )
             )
             == 32
         )
