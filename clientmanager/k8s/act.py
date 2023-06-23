@@ -7,7 +7,7 @@ import time
 import kubernetes  # type: ignore[import]
 
 from .. import utils
-from ..config import ENV, LOGGER
+from ..config import ENV, LOCAL_K8S_HOST, LOGGER
 from . import starter, stopper
 
 
@@ -16,7 +16,7 @@ def act(args: argparse.Namespace) -> None:
 
     # Creating K8S cluster client
     k8s_client_config = kubernetes.client.Configuration()
-    if args.host == "local":
+    if args.host == LOCAL_K8S_HOST:
         # use *this* pod's service account
         kubernetes.config.load_incluster_config(k8s_client_config)
     else:

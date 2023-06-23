@@ -10,7 +10,13 @@ from typing import Any
 
 import kubernetes  # type: ignore[import]
 
-from ..config import ENV, FORWARDED_ENV_VARS, LOGGER, SECRET_FORWARDED_ENV_VARS
+from ..config import (
+    ENV,
+    FORWARDED_ENV_VARS,
+    LOCAL_K8S_HOST,
+    LOGGER,
+    SECRET_FORWARDED_ENV_VARS,
+)
 from ..utils import S3File
 from . import k8s_tools
 
@@ -72,7 +78,7 @@ def make_k8s_job_desc(
     # Setting metadata
     k8s_job_dict["metadata"]["namespace"] = namespace
     k8s_job_dict["metadata"]["name"] = cluster_id
-    if host == "local":
+    if host == LOCAL_K8S_HOST:
         k8s_job_dict["metadata"]["labels"].update(
             {
                 # https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/
@@ -163,7 +169,7 @@ def start(
     cpu_arch: str,
 ) -> dict:
     """Main logic."""
-    if host == "local" and n_workers > ENV.WORKER_K8S_LOCAL_WORKERS_MAX:
+    if host == LOCAL_K8S_HOST and n_workers > ENV.WORKER_K8S_LOCAL_WORKERS_MAX:
         LOGGER.warning(
             f"Requested more workers ({n_workers}) than the max allowed {ENV.WORKER_K8S_LOCAL_WORKERS_MAX}. Using the maximum instead."
         )

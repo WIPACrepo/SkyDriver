@@ -9,6 +9,8 @@ from wipac_dev_tools import from_environment_as_dataclass
 
 LOGGER = logging.getLogger("clientmanager")
 
+LOCAL_K8S_HOST = "local"
+
 _FORWARDED_ENV_VAR_PREFIXES = ["SKYSCAN_", "EWMS_"]
 _NONFORWARDED_ENV_VAR_PREFIXES = ["EWMS_TMS_"]
 FORWARDED_ENV_VARS = [

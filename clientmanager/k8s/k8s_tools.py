@@ -3,7 +3,7 @@
 
 import kubernetes.client  # type: ignore[import]
 
-from ..config import ENV, LOGGER
+from ..config import ENV, LOCAL_K8S_HOST, LOGGER
 
 
 def get_worker_k8s_secret_name(cluster_id: str) -> str:
@@ -20,7 +20,7 @@ def patch_or_create_namespaced_secret(
 ) -> None:
     """Patch secret and if not exist create."""
 
-    if host == "local":
+    if host == LOCAL_K8S_HOST:
         metadata = kubernetes.client.V1ObjectMeta(
             name=secret_name,
             labels={
