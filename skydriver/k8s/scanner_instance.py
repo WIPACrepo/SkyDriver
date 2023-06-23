@@ -117,7 +117,7 @@ class SkymapScannerStarterJob:
             {common_space_volume_path.name: common_space_volume_path},
             memory=ENV.K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
         )
-        self.env_dict["scanner_server"] = scanner_server.env.to_dict()
+        self.env_dict["scanner_server"] = [e.to_dict() for e in scanner_server.env]
 
         # CONTAINER(S): TMS Starter(s)
         tms_starters = []
@@ -144,7 +144,9 @@ class SkymapScannerStarterJob:
                 )
             )
         self.tms_args_list = [" ".join(c.args) for c in tms_starters]
-        self.env_dict["tms_starters"] = [c.env.to_dict() for c in tms_starters]
+        self.env_dict["tms_starters"] = [
+            [e.to_dict() for e in c.env] for c in tms_starters
+        ]
 
         # job
         self.job_obj = KubeAPITools.kube_create_job_object(
