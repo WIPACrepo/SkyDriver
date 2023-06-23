@@ -131,45 +131,56 @@ async def _launch_scan(
 
     # check env vars
     print(resp["env_vars"])
-    assert set(resp["env_vars"].keys()) == {
-        "CONDOR_TOKEN",
-        "EWMS_PILOT_SUBPROC_TIMEOUT",  # set by CI runner
-        "EWMS_TMS_S3_ACCESS_KEY_ID",
-        "EWMS_TMS_S3_BUCKET",
-        "EWMS_TMS_S3_SECRET_KEY",
-        "EWMS_TMS_S3_URL",
-        "SKYSCAN_BROKER_ADDRESS",
-        "SKYSCAN_BROKER_AUTH",
-        "SKYSCAN_SKYDRIVER_ADDRESS",
-        "SKYSCAN_SKYDRIVER_AUTH",
-        "SKYSCAN_SKYDRIVER_SCAN_ID",
-        "WORKER_K8S_LOCAL_APPLICATION_NAME",
-    }
+    assert set(resp["env_vars"].keys()) == {"scanner_server", "tms_starters"}
     # check env vars, more closely
+    # "scanner_server"
     assert set(  # these have `value`s
         k
-        for k, v in resp["env_vars"].items()
+        for k, v in resp["env_vars"]["scanner_server"].items()
         if v["value"] is not None and v["value_from"] is None
     ) == {
-        "EWMS_PILOT_SUBPROC_TIMEOUT",  # set by CI runner
-        "EWMS_TMS_S3_BUCKET",
-        "EWMS_TMS_S3_URL",
         "SKYSCAN_BROKER_ADDRESS",
         "SKYSCAN_BROKER_AUTH",
         "SKYSCAN_SKYDRIVER_ADDRESS",
         "SKYSCAN_SKYDRIVER_AUTH",
         "SKYSCAN_SKYDRIVER_SCAN_ID",
-        "WORKER_K8S_LOCAL_APPLICATION_NAME",
     }
-    assert set(  # these have `value_from`s
-        k
-        for k, v in resp["env_vars"].items()
-        if v["value_from"] is not None and v["value"] is None
-    ) == {
-        "CONDOR_TOKEN",
-        "EWMS_TMS_S3_ACCESS_KEY_ID",
-        "EWMS_TMS_S3_SECRET_KEY",
-    }
+    assert (
+        set(  # these have `value_from`s
+            k
+            for k, v in resp["env_vars"]["scanner_server"].items()
+            if v["value_from"] is not None and v["value"] is None
+        )
+        == {}
+    )
+
+    # "tms_starters"
+    for env_dicts in resp["env_vars"]["tms_starters"]:
+        assert set(  # these have `value`s
+            k
+            for k, v in env_dicts.items()
+            if v["value"] is not None and v["value_from"] is None
+        ) == {
+            "EWMS_PILOT_SUBPROC_TIMEOUT",  # set by CI runner
+            "EWMS_TMS_S3_BUCKET",
+            "EWMS_TMS_S3_URL",
+            "SKYSCAN_BROKER_ADDRESS",
+            "SKYSCAN_BROKER_AUTH",
+            "SKYSCAN_SKYDRIVER_ADDRESS",
+            "SKYSCAN_SKYDRIVER_AUTH",
+            "SKYSCAN_SKYDRIVER_SCAN_ID",
+            "WORKER_K8S_LOCAL_APPLICATION_NAME",
+        }
+        assert set(  # these have `value_from`s
+            k
+            for k, v in env_dicts.items()
+            if v["value_from"] is not None and v["value"] is None
+        ) == {
+            "CONDOR_TOKEN",
+            "EWMS_TMS_S3_ACCESS_KEY_ID",
+            "EWMS_TMS_S3_SECRET_KEY",
+        }
+
     # check env vars, even MORE closely
     assert resp["env_vars"]["SKYSCAN_BROKER_ADDRESS"]["value"] == "localhost"
     assert re.match(
