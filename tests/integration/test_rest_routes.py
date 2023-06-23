@@ -182,12 +182,15 @@ async def _launch_scan(
         }
 
     # check env vars, even MORE closely
-    assert resp["env_vars"]["SKYSCAN_BROKER_ADDRESS"]["value"] == "localhost"
-    assert re.match(
-        r"http://localhost:[0-9]+",
-        resp["env_vars"]["SKYSCAN_SKYDRIVER_ADDRESS"]["value"],
-    )
-    assert len(resp["env_vars"]["SKYSCAN_SKYDRIVER_SCAN_ID"]["value"]) == 32
+    for env_dicts in [resp["env_vars"]["scanner_server"]] + resp["env_vars"][
+        "tms_starters"
+    ]:
+        assert env_dicts["SKYSCAN_BROKER_ADDRESS"]["value"] == "localhost"
+        assert re.match(
+            r"http://localhost:[0-9]+",
+            env_dicts["SKYSCAN_SKYDRIVER_ADDRESS"]["value"],
+        )
+        assert len(env_dicts["SKYSCAN_SKYDRIVER_SCAN_ID"]["value"]) == 32
 
     # get scan_id
     assert resp["scan_id"]
