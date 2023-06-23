@@ -157,8 +157,8 @@ async def _launch_scan(
     # "tms_starters"
     for env_dicts in resp["env_vars"]["tms_starters"]:
         assert set(  # these have `value`s
-            e
-            for e in env_dicts.items()
+            e["name"]
+            for e in env_dicts
             if e["value"] is not None and e["value_from"] is None
         ) == {
             "EWMS_PILOT_SUBPROC_TIMEOUT",  # set by CI runner
@@ -172,8 +172,8 @@ async def _launch_scan(
             "WORKER_K8S_LOCAL_APPLICATION_NAME",
         }
         assert set(  # these have `value_from`s
-            e
-            for e in env_dicts.items()
+            e["name"]
+            for e in env_dicts
             if e["value_from"] is not None and e["value"] is None
         ) == {
             "CONDOR_TOKEN",
