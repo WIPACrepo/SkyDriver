@@ -132,6 +132,7 @@ async def _launch_scan(
     # check env vars
     print(resp["env_vars"])
     assert set(resp["env_vars"].keys()) == {"scanner_server", "tms_starters"}
+
     # check env vars, more closely
     # "scanner_server"
     assert set(  # these have `value`s
@@ -153,7 +154,6 @@ async def _launch_scan(
         )
         == set()
     )
-
     # "tms_starters"
     for env_dicts in resp["env_vars"]["tms_starters"]:
         assert set(  # these have `value`s
@@ -197,7 +197,6 @@ async def _launch_scan(
             next(x["value"] for x in env_dicts if x["name"] == "SKYSCAN_BROKER_ADDRESS")
             == "localhost"
         )
-
         assert re.match(
             r"http://localhost:[0-9]+",
             next(

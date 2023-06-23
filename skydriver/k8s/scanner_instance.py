@@ -35,7 +35,7 @@ def get_cluster_auth_v1envvar(orchestrator: str) -> kubernetes.client.V1EnvVar:
                 value_from=kubernetes.client.V1EnvVarSource(
                     secret_key_ref=kubernetes.client.V1SecretKeySelector(
                         name=ENV.K8S_SECRET_NAME,
-                        key="worker_k8s_config_file_base64",
+                        key="worker_k8s_config_file_base64_gke",
                     )
                 ),
             )
