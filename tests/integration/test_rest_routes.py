@@ -151,7 +151,7 @@ async def _launch_scan(
             for e in resp["env_vars"]["scanner_server"]
             if e["value_from"] is not None and e["value"] is None
         )
-        == {}
+        == set()
     )
 
     # "tms_starters"
