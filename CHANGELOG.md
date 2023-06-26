@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.25 (2023-06-26)
+
+### Other
+
+* Add GKE Cluster: `gke-2306` ([`7279ca3`](https://github.com/WIPACrepo/SkyDriver/commit/7279ca3db600a6c5c6aaef74d3892752902e4de2))
+* Update Auth Handling Pt-6 ([`287dc6c`](https://github.com/WIPACrepo/SkyDriver/commit/287dc6cfc87d92ac0369d62677dde304b488c06b))
+
 ## v0.3.24 (2023-06-26)
 
 ### Other
