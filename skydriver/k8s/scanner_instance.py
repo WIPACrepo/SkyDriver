@@ -10,7 +10,7 @@ import kubernetes.client  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
 from .. import database, images
-from ..config import ENV, KNOWN_CLUSTERS
+from ..config import ENV, KNOWN_CLUSTERS, LOGGER
 from ..database import schema
 from . import scan_backlog
 from .utils import KubeAPITools
@@ -18,6 +18,7 @@ from .utils import KubeAPITools
 
 def get_cluster_auth_v1envvar(cluster: schema.Cluster) -> kubernetes.client.V1EnvVar:
     """Get the `V1EnvVar`s for workers' auth."""
+    LOGGER.debug(f"getting auth secret env var for {cluster=}")
     info = next(
         x
         for x in KNOWN_CLUSTERS.values()
@@ -82,6 +83,7 @@ class SkymapScannerStarterJob:
         # env
         rest_address: str,
     ):
+        LOGGER.info(f"making k8s job for {scan_id=}")
         self.api_instance = api_instance
         self.scan_backlog = scan_backlog
         self.scan_id = scan_id
@@ -243,6 +245,7 @@ class SkymapScannerStarterJob:
 
         Also, get the secrets' keys & their values.
         """
+        LOGGER.debug(f"making scanner server env vars for {scan_id=}")
         env = []
 
         # 1. start w/ secrets
@@ -314,6 +317,7 @@ class SkymapScannerStarterJob:
 
         Also, get the secrets' keys & their values.
         """
+        LOGGER.debug(f"making tms starter env vars for {scan_id=}")
         env = []
 
         # 1. start w/ secrets
@@ -386,6 +390,7 @@ class SkymapScannerStarterJob:
 
     async def enqueue_job(self) -> Any:
         """Enqueue the k8s job onto the Scan Backlog."""
+        LOGGER.info(f"enqueuing k8s job for {self.scan_id=}")
         await scan_backlog.enqueue(self.scan_id, self.job_obj, self.scan_backlog)
 
 
@@ -398,7 +403,9 @@ class SkymapScannerStopperJob:
         scan_id: str,
         clusters: list[schema.Cluster],
     ):
+        LOGGER.info(f"making k8s STOPPER job for {scan_id=}")
         self.api_instance = api_instance
+        self.scan_id = scan_id
 
         # make a container per cluster
         containers = []
@@ -439,6 +446,7 @@ class SkymapScannerStopperJob:
 
     def do_job(self) -> Any:
         """Start the k8s job."""
+        LOGGER.info(f"starting k8s STOPPER job for {self.scan_id=}")
 
         # TODO: stop first k8s job (server & clientmanager-starter)
 
