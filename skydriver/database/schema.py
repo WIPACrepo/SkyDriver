@@ -112,7 +112,6 @@ class KubernetesLocation:
 class Cluster:
     """Stores information for a worker cluster."""
 
-
     orchestrator: str
     location: HTCondorLocation | KubernetesLocation
     n_workers: int
