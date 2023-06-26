@@ -7,6 +7,7 @@ import os
 import random
 import re
 from typing import Any, AsyncIterator, Callable
+from unittest import mock
 from unittest.mock import Mock
 
 import pytest
@@ -54,6 +55,7 @@ TEST_WAIT_BEFORE_TEARDOWN = 2
 
 
 @pytest_asyncio.fixture
+@mock.patch("skydriver.config.KNOWN_CLUSTERS", KNOWN_CLUSTERS)
 async def server(
     monkeypatch: Any,
     port: int,
@@ -62,7 +64,6 @@ async def server(
     """Startup server in this process, yield RestClient func, then clean up."""
 
     # patch at directly named import that happens before running the test
-    monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
     monkeypatch.setattr(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
