@@ -461,10 +461,10 @@ def get_tms_args(
     tms_args = []
     for cluster in clusters if isinstance(clusters, list) else list(clusters.items()):
         orchestrator = known_clusters[cluster[0]]["orchestrator"]
-        location = known_clusters["location"]
+        location = known_clusters[cluster[0]]["location"]
         image = (
             f"/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:{docker_tag_expected}"
-            if known_clusters[cluster[0]]["orchestrator"] == "condor"
+            if orchestrator == "condor"
             else f"icecube/skymap_scanner:{docker_tag_expected}"
         )
         tms_args += [
