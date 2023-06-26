@@ -24,20 +24,27 @@ StrDict = dict[str, Any]
 
 ########################################################################################
 
-KNOWN_CONDOR_CLUSTERS = {
+KNOWN_CLUSTERS = {
     "foobar": {
-        "collector": "for-sure.a-collector.edu",
-        "schedd": "foobar.schedd.edu",
+        "orchestrator": "condor",
+        "location": {
+            "collector": "for-sure.a-collector.edu",
+            "schedd": "foobar.schedd.edu",
+        },
     },
     "a-schedd": {
-        "collector": "the-collector.edu",
-        "schedd": "a-schedd.edu",
+        "orchestrator": "condor",
+        "location": {
+            "collector": "the-collector.edu",
+            "schedd": "a-schedd.edu",
+        },
     },
-}
-KNOWN_K8S_CLUSTERS = {
     "cloud": {
-        "host": "cumulus.nimbus.com",
-        "namespace": "stratus",
+        "orchestrator": "k8s",
+        "location": {
+            "host": "cumulus.nimbus.com",
+            "namespace": "stratus",
+        },
     },
 }
 
@@ -55,12 +62,7 @@ async def server(
     """Startup server in this process, yield RestClient func, then clean up."""
 
     # patch at directly named import that happens before running the test
-    monkeypatch.setattr(
-        skydriver.rest_handlers, "KNOWN_CONDOR_CLUSTERS", KNOWN_CONDOR_CLUSTERS
-    )
-    monkeypatch.setattr(
-        skydriver.rest_handlers, "KNOWN_K8S_CLUSTERS", KNOWN_K8S_CLUSTERS
-    )
+    monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
     monkeypatch.setattr(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
@@ -355,13 +357,8 @@ async def _clientmanager_reply(
 ) -> StrDict:
     # reply as the clientmanager with a new cluster
     cluster = dict(
-        orchestrator=(
-            "condor" if cluster_name__n_workers[0] in KNOWN_CONDOR_CLUSTERS else "k8s"
-        ),
-        location=KNOWN_CONDOR_CLUSTERS.get(
-            cluster_name__n_workers[0],
-            KNOWN_K8S_CLUSTERS.get(cluster_name__n_workers[0]),
-        ),
+        orchestrator=KNOWN_CLUSTERS[cluster_name__n_workers[0]]["orchestrator"],
+        location=KNOWN_CLUSTERS["location"],
         cluster_id=f"cluster-{random.randint(1, 10000)}",
         n_workers=cluster_name__n_workers[1],
     )
@@ -515,20 +512,17 @@ async def _delete_scan(
 def get_tms_args(clusters: list | dict, docker_tag_expected: str) -> list[str]:
     tms_args = []
     for cluster in clusters if isinstance(clusters, list) else list(clusters.items()):
-        orchestrator = "condor" if cluster[0] in KNOWN_CONDOR_CLUSTERS else "k8s"
-        location = KNOWN_CONDOR_CLUSTERS.get(
-            cluster[0],
-            KNOWN_K8S_CLUSTERS.get(cluster[0]),
-        )
+        orchestrator = KNOWN_CLUSTERS[cluster[0]]["orchestrator"]
+        location = KNOWN_CLUSTERS["location"]
         image = (
             f"/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:{docker_tag_expected}"
-            if cluster[0] in KNOWN_CONDOR_CLUSTERS
+            if KNOWN_CLUSTERS[cluster[0]]["orchestrator"] == "condor"
             else f"icecube/skymap_scanner:{docker_tag_expected}"
         )
         tms_args += [
             f"python -m clientmanager "
             f" {orchestrator} "
-            f" {' '.join(f'--{k} {v}' for k,v in location.items())} "  # type: ignore[union-attr]
+            f" {' '.join(f'--{k} {v}' for k,v in location.items())} "
             f" start "
             f" --n-workers {cluster[1]} "
             f" --memory 8GB "

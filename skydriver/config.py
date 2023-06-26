@@ -81,19 +81,29 @@ class EnvConfig:
 
 ENV = from_environment_as_dataclass(EnvConfig)
 
+LOCAL_K8S_HOST = "local"
 
 # known cluster locations
-KNOWN_CONDOR_CLUSTERS = {
+KNOWN_CLUSTERS = {
     "sub-2": {
-        "collector": "glidein-cm.icecube.wisc.edu",
-        "schedd": "sub-2.icecube.wisc.edu",
+        "orchestrator": "condor",
+        "location": {
+            "collector": "glidein-cm.icecube.wisc.edu",
+            "schedd": "sub-2.icecube.wisc.edu",
+        },
+        "env_var_dest": "CONDOR_TOKEN",
+        "secret_key": "condor_token_sub2",
+    },
+    LOCAL_K8S_HOST: {
+        "orchestrator": "k8s",
+        "location": {
+            "host": LOCAL_K8S_HOST,
+            "namespace": ENV.K8S_NAMESPACE,
+        },
+        "env_var_dest": "WORKER_K8S_CONFIG_FILE_BASE64",
+        "secret_key": "worker_k8s_config_file_base64_gke",
     }
-}
-KNOWN_K8S_CLUSTERS = {
-    "local": {
-        "host": "local",
-        "namespace": ENV.K8S_NAMESPACE,
-    }
+    # gke
     # icecube-skymap-scanner
 }
 

@@ -15,7 +15,7 @@ from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
 from tornado import web
 
 from . import database, images, k8s
-from .config import KNOWN_CONDOR_CLUSTERS, KNOWN_K8S_CLUSTERS, LOGGER, is_testing
+from .config import KNOWN_CLUSTERS, LOGGER, is_testing
 
 WAIT_BEFORE_TEARDOWN = 60
 
@@ -152,27 +152,22 @@ class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
 def cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
     """Grab the Cluster object known using `name`."""
-    if cluster := KNOWN_CONDOR_CLUSTERS.get(name):
-        return database.schema.Cluster(
-            orchestrator="condor",
-            location=database.schema.HTCondorLocation(
-                collector=cluster["collector"],
-                schedd=cluster["schedd"],
-            ),
-            n_workers=n_workers,
-        )
-    elif cluster := KNOWN_K8S_CLUSTERS.get(name):
-        return database.schema.Cluster(
-            orchestrator="k8s",
-            location=database.schema.KubernetesLocation(
-                host=cluster["host"],
-                namespace=cluster["namespace"],
-            ),
-            n_workers=n_workers,
-        )
+    if cluster := KNOWN_CLUSTERS.get(name):
+        if cluster["orchestrator"] == "condor":
+            return database.schema.Cluster(
+                orchestrator=cluster["orchestrator"],
+                location=database.schema.HTCondorLocation(**cluster["location"]),
+                n_workers=n_workers,
+            )
+        elif cluster["orchestrator"] == "k8s":
+            return database.schema.Cluster(
+                orchestrator=cluster["orchestrator"],
+                location=database.schema.KubernetesLocation(**cluster["location"]),
+                n_workers=n_workers,
+            )
     raise TypeError(
         f"requested unknown cluster: {name} (available:"
-        f" {', '.join(list(KNOWN_CONDOR_CLUSTERS.keys())+list(KNOWN_K8S_CLUSTERS.keys()))})"
+        f" {', '.join(KNOWN_CLUSTERS.keys())})"
     )
 
 

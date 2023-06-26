@@ -11,6 +11,8 @@ from .. import utils
 from ..config import ENV, LOCAL_K8S_HOST, LOGGER
 from . import starter, stopper
 
+WORKER_K8S_CONFIG_FILEPATH = "./worker_k8s_config_file.yaml"
+
 
 def act(args: argparse.Namespace) -> None:
     """Do the action."""
@@ -22,12 +24,12 @@ def act(args: argparse.Namespace) -> None:
         kubernetes.config.load_incluster_config(k8s_client_config)
     else:
         # connect to remote host
-        with open("./worker_k8s_config_file.yaml", "w") as f:
+        with open(WORKER_K8S_CONFIG_FILEPATH, "w") as f:
             f.write(base64.b64decode(ENV.WORKER_K8S_CONFIG_FILE_BASE64).decode("utf-8"))
-        with open("./worker_k8s_config_file.yaml", "r") as f:
+        with open(WORKER_K8S_CONFIG_FILEPATH, "r") as f:
             LOGGER.info(f.read())
         kubernetes.config.load_kube_config(
-            config_file="./worker_k8s_config_file.yaml",
+            config_file=WORKER_K8S_CONFIG_FILEPATH,
             client_configuration=k8s_client_config,
         )
         k8s_client_config.host = args.host

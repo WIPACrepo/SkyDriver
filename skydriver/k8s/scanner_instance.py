@@ -2,6 +2,7 @@
 instances."""
 
 
+import dataclasses as dc
 from pathlib import Path
 from typing import Any
 
@@ -9,38 +10,26 @@ import kubernetes.client  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
 from .. import database, images
-from ..config import ENV
+from ..config import ENV, KNOWN_CLUSTERS
 from ..database import schema
 from . import scan_backlog
 from .utils import KubeAPITools
 
 
-def get_cluster_auth_v1envvar(orchestrator: str) -> kubernetes.client.V1EnvVar:
+def get_cluster_auth_v1envvar(cluster: schema.Cluster) -> kubernetes.client.V1EnvVar:
     """Get the `V1EnvVar`s for workers' auth."""
-    # TODO: take cluster host & map that to the env by changing the token
-    match orchestrator:
-        case "condor":
-            return kubernetes.client.V1EnvVar(
-                name="CONDOR_TOKEN",
-                value_from=kubernetes.client.V1EnvVarSource(
-                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                        name=ENV.K8S_SECRET_NAME,
-                        key="condor_token_sub2",
-                    )
-                ),
+    info = next(
+        x for x in KNOWN_CLUSTERS if x["location"] == dc.asdict(cluster.location)
+    )
+    return kubernetes.client.V1EnvVar(
+        name=info["env_var_dest"],
+        value_from=kubernetes.client.V1EnvVarSource(
+            secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                name=ENV.K8S_SECRET_NAME,
+                key=info["secret_key"],
             )
-        case "k8s":
-            return kubernetes.client.V1EnvVar(
-                name="WORKER_K8S_CONFIG_FILE_BASE64",
-                value_from=kubernetes.client.V1EnvVarSource(
-                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                        name=ENV.K8S_SECRET_NAME,
-                        key="worker_k8s_config_file_base64_gke",
-                    )
-                ),
-            )
-        case other:
-            raise ValueError(f"Unknown cluster orchestrator: {other}")
+        ),
+    )
 
 
 def get_tms_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
@@ -129,7 +118,7 @@ class SkymapScannerStarterJob:
                     env=self.make_tms_starter_v1envvars(
                         rest_address=rest_address,
                         scan_id=scan_id,
-                        orchestrator=cluster.orchestrator,
+                        cluster=cluster,
                         max_pixel_reco_time=max_pixel_reco_time,
                     ),
                     args=self.get_tms_starter_args(
@@ -316,7 +305,7 @@ class SkymapScannerStarterJob:
     def make_tms_starter_v1envvars(
         rest_address: str,
         scan_id: str,
-        orchestrator: str,
+        cluster: schema.Cluster,
         max_pixel_reco_time: int | None,
     ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to all containers.
@@ -327,7 +316,7 @@ class SkymapScannerStarterJob:
 
         # 1. start w/ secrets
         # NOTE: the values come from an existing secret in the current namespace
-        env.append(get_cluster_auth_v1envvar(orchestrator))
+        env.append(get_cluster_auth_v1envvar(cluster))
         env.extend(get_tms_s3_v1envvars())
 
         # 2. add required env vars
