@@ -100,12 +100,6 @@ class OrchestratorArgs:
             help="which CPU architecture to use for running workers",
         )
         sub_parser.add_argument(
-            "--cluster-config",
-            type=Path,
-            default=None,
-            help="worker k8s cluster config file to connect (yaml)",
-        )
-        sub_parser.add_argument(
             "--job-config-stub",
             type=Path,
             default=Path("resources/worker_k8s_job_stub.json"),

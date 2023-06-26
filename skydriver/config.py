@@ -100,6 +100,8 @@ KNOWN_CLUSTERS = {
             "host": LOCAL_K8S_HOST,
             "namespace": ENV.K8S_NAMESPACE,
         },
+        "env_var_dest": "",
+        "secret_key": "",
         "env_var_dest": "WORKER_K8S_CONFIG_FILE_BASE64",
         "secret_key": "worker_k8s_config_file_base64_gke",
     }
