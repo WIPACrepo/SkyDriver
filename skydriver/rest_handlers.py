@@ -155,12 +155,14 @@ def cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
     if cluster := KNOWN_CLUSTERS.get(name):
         if cluster["orchestrator"] == "condor":
             return database.schema.Cluster(
+                name=name,
                 orchestrator=cluster["orchestrator"],  # type: ignore[arg-type]
                 location=database.schema.HTCondorLocation(**cluster["location"]),  # type: ignore[arg-type]
                 n_workers=n_workers,
             )
         elif cluster["orchestrator"] == "k8s":
             return database.schema.Cluster(
+                name=name,
                 orchestrator=cluster["orchestrator"],  # type: ignore[arg-type]
                 location=database.schema.KubernetesLocation(**cluster["location"]),  # type: ignore[arg-type]
                 n_workers=n_workers,
