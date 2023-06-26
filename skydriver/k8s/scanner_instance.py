@@ -2,6 +2,7 @@
 instances."""
 
 
+import dataclasses as dc
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +19,11 @@ from .utils import KubeAPITools
 def get_cluster_auth_v1envvar(cluster: schema.Cluster) -> kubernetes.client.V1EnvVar:
     """Get the `V1EnvVar`s for workers' auth."""
     LOGGER.debug(f"getting auth secret env var for {cluster=}")
-    info = KNOWN_CLUSTERS[cluster.name]
+    info = next(
+        x
+        for x in KNOWN_CLUSTERS.values()
+        if x["location"] == dc.asdict(cluster.location)
+    )
     return kubernetes.client.V1EnvVar(
         name=info["env_var_dest"],
         value_from=kubernetes.client.V1EnvVarSource(
