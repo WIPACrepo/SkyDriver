@@ -4,78 +4,19 @@
 
 import asyncio
 import json
-from typing import Any, AsyncIterator, Callable
+from typing import Any, Callable
 from unittest import mock
 from unittest.mock import Mock
 
-import pytest_asyncio
 import skydriver
 import skydriver.images  # noqa: F401  # export
 from rest_tools.client import RestClient
-from skydriver.database import create_mongodb_client
-from skydriver.server import make
 
 skydriver.config.config_logging("debug")
 
 
 def print_it(obj: Any) -> None:
     print(json.dumps(obj, indent=4))
-
-
-########################################################################################
-
-KNOWN_CLUSTERS = {
-    "foobar": {
-        "orchestrator": "condor",
-        "location": {
-            "collector": "for-sure.a-collector.edu",
-            "schedd": "foobar.schedd.edu",
-        },
-    },
-    "a-schedd": {
-        "orchestrator": "condor",
-        "location": {
-            "collector": "the-collector.edu",
-            "schedd": "a-schedd.edu",
-        },
-    },
-}
-
-
-TEST_WAIT_BEFORE_TEARDOWN = 2
-
-
-@pytest_asyncio.fixture
-async def server(
-    monkeypatch: Any,
-    port: int,
-    mongo_clear: Any,  # pylint:disable=unused-argument
-) -> AsyncIterator[Callable[[], RestClient]]:
-    """Startup server in this process, yield RestClient func, then clean up."""
-
-    # patch at directly named import that happens before running the test
-    monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
-    monkeypatch.setattr(
-        skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
-    )
-
-    mongo_client = await create_mongodb_client()
-    k8s_api = Mock()
-    backlog_task = asyncio.create_task(
-        skydriver.k8s.scan_backlog.startup(mongo_client, k8s_api)
-    )
-    await asyncio.sleep(0)  # start up previous task
-    rs = await make(mongo_client, k8s_api)
-    rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
-
-    def client() -> RestClient:
-        return RestClient(f"http://localhost:{port}", retries=0)
-
-    try:
-        yield client
-    finally:
-        await rs.stop()  # type: ignore[no-untyped-call]
-        backlog_task.cancel()
 
 
 ########################################################################################

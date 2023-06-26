@@ -6,17 +6,13 @@ import asyncio
 import os
 import random
 import re
-from typing import Any, AsyncIterator, Callable
-from unittest.mock import Mock
+from typing import Any, Callable
 
 import pytest
-import pytest_asyncio
 import requests
 import skydriver
 import skydriver.images  # noqa: F401  # export
 from rest_tools.client import RestClient
-from skydriver.database import create_mongodb_client
-from skydriver.server import make
 
 skydriver.config.config_logging("debug")
 
@@ -24,65 +20,9 @@ StrDict = dict[str, Any]
 
 ########################################################################################
 
-KNOWN_CLUSTERS = {
-    "foobar": {
-        "orchestrator": "condor",
-        "location": {
-            "collector": "for-sure.a-collector.edu",
-            "schedd": "foobar.schedd.edu",
-        },
-    },
-    "a-schedd": {
-        "orchestrator": "condor",
-        "location": {
-            "collector": "the-collector.edu",
-            "schedd": "a-schedd.edu",
-        },
-    },
-    "cloud": {
-        "orchestrator": "k8s",
-        "location": {
-            "host": "cumulus.nimbus.com",
-            "namespace": "stratus",
-        },
-    },
-}
-
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
-TEST_WAIT_BEFORE_TEARDOWN = 2
 
-
-@pytest_asyncio.fixture
-async def server(
-    monkeypatch: Any,
-    port: int,
-    mongo_clear: Any,  # pylint:disable=unused-argument
-) -> AsyncIterator[Callable[[], RestClient]]:
-    """Startup server in this process, yield RestClient func, then clean up."""
-
-    # patch at directly named import that happens before running the test
-    monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
-    monkeypatch.setattr(
-        skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
-    )
-
-    rs = await make(
-        mongo_client=await create_mongodb_client(),
-        k8s_api=Mock(),
-    )
-    rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
-
-    def client() -> RestClient:
-        return RestClient(f"http://localhost:{port}", retries=0)
-
-    try:
-        yield client
-    finally:
-        await rs.stop()  # type: ignore[no-untyped-call]
-
-
-########################################################################################
 
 POST_SCAN_BODY = {
     "reco_algo": "anything",
@@ -91,6 +31,9 @@ POST_SCAN_BODY = {
     "real_or_simulated_event": "real",
     "docker_tag": "latest",
 }
+
+
+########################################################################################
 
 
 async def _launch_scan(
@@ -354,11 +297,12 @@ async def _clientmanager_reply(
     scan_id: str,
     cluster_name__n_workers: tuple[str, int],
     previous_clusters: list[StrDict],
+    known_clusters: dict,
 ) -> StrDict:
     # reply as the clientmanager with a new cluster
     cluster = dict(
-        orchestrator=KNOWN_CLUSTERS[cluster_name__n_workers[0]]["orchestrator"],
-        location=KNOWN_CLUSTERS["location"],
+        orchestrator=known_clusters[cluster_name__n_workers[0]]["orchestrator"],
+        location=known_clusters[cluster_name__n_workers[0]]["location"],
         cluster_id=f"cluster-{random.randint(1, 10000)}",
         n_workers=cluster_name__n_workers[1],
     )
@@ -509,14 +453,18 @@ async def _delete_scan(
     assert resp["scan_ids"] == [scan_id]
 
 
-def get_tms_args(clusters: list | dict, docker_tag_expected: str) -> list[str]:
+def get_tms_args(
+    clusters: list | dict,
+    docker_tag_expected: str,
+    known_clusters: dict,
+) -> list[str]:
     tms_args = []
     for cluster in clusters if isinstance(clusters, list) else list(clusters.items()):
-        orchestrator = KNOWN_CLUSTERS[cluster[0]]["orchestrator"]
-        location = KNOWN_CLUSTERS["location"]
+        orchestrator = known_clusters[cluster[0]]["orchestrator"]
+        location = known_clusters[cluster[0]]["location"]
         image = (
             f"/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:{docker_tag_expected}"
-            if KNOWN_CLUSTERS[cluster[0]]["orchestrator"] == "condor"
+            if orchestrator == "condor"
             else f"icecube/skymap_scanner:{docker_tag_expected}"
         )
         tms_args += [
@@ -566,6 +514,8 @@ async def test_00(
     docker_tag_input: str,
     docker_tag_expected: str,
     server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
 ) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
@@ -580,7 +530,7 @@ async def test_00(
             "docker_tag": docker_tag_input,
             "cluster": clusters,
         },
-        get_tms_args(clusters, docker_tag_expected),
+        get_tms_args(clusters, docker_tag_expected, known_clusters),
     )
     scan_id = manifest["scan_id"]
     # follow-up query
@@ -598,6 +548,7 @@ async def test_00(
         scan_id,
         clusters[0] if isinstance(clusters, list) else list(clusters.items())[0],
         [],
+        known_clusters,
     )
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
@@ -621,7 +572,11 @@ async def test_00(
         clusters[1:] if isinstance(clusters, list) else list(clusters.items())[1:]
     ):
         manifest = await _clientmanager_reply(
-            rc, scan_id, cluster_name__n_workers, manifest["clusters"]
+            rc,
+            scan_id,
+            cluster_name__n_workers,
+            manifest["clusters"],
+            known_clusters,
         )
     # THEN, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
@@ -633,7 +588,7 @@ async def test_00(
     assert not manifest["complete"]
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
-    await asyncio.sleep(TEST_WAIT_BEFORE_TEARDOWN)
+    await asyncio.sleep(test_wait_before_teardown)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest["complete"]
 
@@ -646,7 +601,11 @@ async def test_00(
 POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
-async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
+async def test_01__bad_data(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
 
@@ -730,7 +689,11 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     manifest = await _launch_scan(
         rc,
         POST_SCAN_BODY_FOR_TEST_01,
-        get_tms_args(POST_SCAN_BODY_FOR_TEST_01["cluster"], os.environ["LATEST_TAG"]),  # type: ignore[arg-type]
+        get_tms_args(
+            POST_SCAN_BODY_FOR_TEST_01["cluster"],  # type: ignore[arg-type]
+            os.environ["LATEST_TAG"],
+            known_clusters,
+        ),
     )
     scan_id = manifest["scan_id"]
     # follow-up query
@@ -744,7 +707,11 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
     manifest = await _clientmanager_reply(
-        rc, scan_id, ("foobar", random.randint(1, 10000)), []
+        rc,
+        scan_id,
+        ("foobar", random.randint(1, 10000)),
+        [],
+        known_clusters,
     )
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
@@ -846,7 +813,7 @@ async def test_01__bad_data(server: Callable[[], RestClient]) -> None:
     # OK
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
-    await asyncio.sleep(TEST_WAIT_BEFORE_TEARDOWN)
+    await asyncio.sleep(test_wait_before_teardown)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest["complete"]
 
