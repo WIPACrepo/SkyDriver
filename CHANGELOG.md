@@ -2,6 +2,18 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.24 (2023-06-26)
+
+### Other
+
+* Update Auth Handling Pt-5 ([#49](https://github.com/WIPACrepo/SkyDriver/issues/49)) ([`3630b83`](https://github.com/WIPACrepo/SkyDriver/commit/3630b83ea6b78904c4630672b59669be9c210f26))
+* Update Auth Handling Pt-4 ([`9edd8cd`](https://github.com/WIPACrepo/SkyDriver/commit/9edd8cd2ca7a123cf6c12a6e71b97d43848f3426))
+* (debug) ([`56cc871`](https://github.com/WIPACrepo/SkyDriver/commit/56cc8712c368f5259cf61ecab0728273da05440d))
+* Update Auth Handling Pt-3 ([`7611cb2`](https://github.com/WIPACrepo/SkyDriver/commit/7611cb2c58d149259d76082000b229d03e4d6cd1))
+* <bot> update requirements.txt ([`487023a`](https://github.com/WIPACrepo/SkyDriver/commit/487023ad3d0459e4ca1d2a1220f456320318782d))
+* <bot> update requirements-tests.txt ([`7232981`](https://github.com/WIPACrepo/SkyDriver/commit/7232981bf2b86febc34da3fe65b5ef696a41bf96))
+* Update Auth Handling Pt-2 ([`468fba8`](https://github.com/WIPACrepo/SkyDriver/commit/468fba870c1c8b59eeaa7f0608785a051f6ac273))
+
 ## v0.3.23 (2023-06-23)
 
 ### Other
