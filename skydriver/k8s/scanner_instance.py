@@ -19,7 +19,9 @@ from .utils import KubeAPITools
 def get_cluster_auth_v1envvar(cluster: schema.Cluster) -> kubernetes.client.V1EnvVar:
     """Get the `V1EnvVar`s for workers' auth."""
     info = next(
-        x for x in KNOWN_CLUSTERS if x["location"] == dc.asdict(cluster.location)
+        x
+        for x in KNOWN_CLUSTERS.values()
+        if x["location"] == dc.asdict(cluster.location)
     )
     return kubernetes.client.V1EnvVar(
         name=info["env_var_dest"],
@@ -423,7 +425,7 @@ class SkymapScannerStopperJob:
                 KubeAPITools.create_container(
                     f"tms-stopper-{i}-{scan_id}",
                     ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
-                    env=[get_cluster_auth_v1envvar(cluster.orchestrator)],
+                    env=[get_cluster_auth_v1envvar(cluster)],
                     args=args.split(),
                     memory=ENV.K8S_CONTAINER_MEMORY_TMS_STOPPER,
                 )
