@@ -302,7 +302,7 @@ async def _clientmanager_reply(
     # reply as the clientmanager with a new cluster
     cluster = dict(
         orchestrator=known_clusters[cluster_name__n_workers[0]]["orchestrator"],
-        location=known_clusters["location"],
+        location=known_clusters[cluster_name__n_workers[0]]["location"],
         cluster_id=f"cluster-{random.randint(1, 10000)}",
         n_workers=cluster_name__n_workers[1],
     )
