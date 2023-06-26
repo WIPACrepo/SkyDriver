@@ -102,11 +102,16 @@ KNOWN_CLUSTERS = {
         },
         "env_var_dest": "",
         "secret_key": "",
+    },
+    "gke-2306": {
+        "orchestrator": "k8s",
+        "location": {
+            "host": "https://34.171.167.119/",
+            "namespace": "icecube-skymap-scanner",
+        },
         "env_var_dest": "WORKER_K8S_CONFIG_FILE_BASE64",
         "secret_key": "worker_k8s_config_file_base64_gke",
-    }
-    # gke
-    # icecube-skymap-scanner
+    },
 }
 
 
