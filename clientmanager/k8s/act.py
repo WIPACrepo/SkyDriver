@@ -55,21 +55,21 @@ def act(args: argparse.Namespace) -> None:
 
     # connect & go
     with kubernetes.client.ApiClient(k8s_client_config) as k8s_client:
-        try:
-            LOGGER.debug("testing k8s credentials")
-            try:
-                resp = kubernetes.client.BatchV1Api(k8s_client).get_api_resources()
-                LOGGER.debug(resp)
-            except:  # noqa: E722
-                # it's possible we're scoped to a namespace so the above shouldn't work
-                core_client = kubernetes.client.CoreV1Api(k8s_client)
-                resp = core_client.list_namespaced_pod(args.namespace)
-                LOGGER.debug(resp)
-                resp = core_client.list_namespaced_service(args.namespace)
-                LOGGER.debug(resp)
-        except kubernetes.client.rest.ApiException as e:
-            LOGGER.exception(e)
-            raise
+        # try:
+        #     LOGGER.debug("testing k8s credentials")
+        #     try:
+        #         resp = kubernetes.client.BatchV1Api(k8s_client).get_api_resources()
+        #         LOGGER.debug(resp)
+        #     except:  # noqa: E722
+        #         # it's possible we're scoped to a namespace so the above shouldn't work
+        #         core_client = kubernetes.client.CoreV1Api(k8s_client)
+        #         resp = core_client.list_namespaced_pod(args.namespace)
+        #         LOGGER.debug(resp)
+        #         resp = core_client.list_namespaced_service(args.namespace)
+        #         LOGGER.debug(resp)
+        # except kubernetes.client.rest.ApiException as e:
+        #     LOGGER.exception(e)
+        #     raise
         _act(args, k8s_client)
 
 
