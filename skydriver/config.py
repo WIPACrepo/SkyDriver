@@ -120,14 +120,23 @@ KNOWN_CLUSTERS = {
         },
         "v1envvars": [
             kubernetes.client.V1EnvVar(
-                name="WORKER_K8S_CONFIG_FILE_BASE64",
+                name="WORKER_K8S_CACERT",
                 value_from=kubernetes.client.V1EnvVarSource(
                     secret_key_ref=kubernetes.client.V1SecretKeySelector(
                         name=ENV.K8S_SECRET_NAME,
-                        key="worker_k8s_config_file_base64_gke",
+                        key="worker_k8s_cacert_gke",
                     )
                 ),
-            )
+            ),
+            kubernetes.client.V1EnvVar(
+                name="WORKER_K8S_TOKEN",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name=ENV.K8S_SECRET_NAME,
+                        key="worker_k8s_token_gke",
+                    )
+                ),
+            ),
         ],
     },
 }

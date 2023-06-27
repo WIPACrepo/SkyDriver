@@ -20,13 +20,13 @@ def get_cluster_auth_v1envvars(
     cluster: schema.Cluster,
 ) -> list[kubernetes.client.V1EnvVar]:
     """Get the `V1EnvVar`s for workers' auth."""
-    LOGGER.debug(f"getting auth secret env var for {cluster=}")
+    LOGGER.debug(f"getting auth secret env vars for {cluster=}")
     info = next(
         x
         for x in KNOWN_CLUSTERS.values()
         if x["location"] == dc.asdict(cluster.location)
     )
-    return info["v1envvars"]
+    return info["v1envvars"]  # type: ignore[return-value]
 
 
 def get_tms_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
