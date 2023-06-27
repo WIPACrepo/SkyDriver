@@ -316,7 +316,7 @@ class SkymapScannerStarterJob:
 
         # 1. start w/ secrets
         # NOTE: the values come from an existing secret in the current namespace
-        env.append(get_cluster_auth_v1envvars(cluster))
+        env.extend(get_cluster_auth_v1envvars(cluster))
         env.extend(get_tms_s3_v1envvars())
 
         # 2. add required env vars
