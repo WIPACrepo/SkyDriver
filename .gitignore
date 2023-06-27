@@ -134,3 +134,5 @@ dmypy.json
 *.token
 
 gke-cluster-config.yaml
+
+*_cache
