@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.29 (2023-06-27)
+
+### Other
+
+* Update Auth Handling Pt-8 ([`779a347`](https://github.com/WIPACrepo/SkyDriver/commit/779a347dd13e5f2a03377dc61f3bc06d1d25caff))
+
 ## v0.3.28 (2023-06-27)
 
 ### Other
