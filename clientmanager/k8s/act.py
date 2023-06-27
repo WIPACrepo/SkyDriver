@@ -4,6 +4,7 @@
 import argparse
 import base64
 import time
+from tempfile import NamedTemporaryFile
 
 import kubernetes  # type: ignore[import]
 
@@ -11,29 +12,46 @@ from .. import utils
 from ..config import ENV, LOCAL_K8S_HOST, LOGGER
 from . import starter, stopper
 
-WORKER_K8S_CONFIG_FILEPATH = "./worker_k8s_config_file.yaml"
-
 
 def act(args: argparse.Namespace) -> None:
     """Do the action."""
+    k8s_client_config = kubernetes.client.Configuration()
 
     # Creating K8S cluster client
-    k8s_client_config = kubernetes.client.Configuration()
+    # Local
     if args.host == LOCAL_K8S_HOST:
+        LOGGER.info("connecting to local k8s...")
         # use *this* pod's service account
         kubernetes.config.load_incluster_config(k8s_client_config)
-    else:
+    # Using config file + token
+    elif ENV.WORKER_K8S_CONFIG_FILE_BASE64 and ENV.WORKER_K8S_TOKEN:
+        LOGGER.info("connecting to remote k8s via config file + token...")
         # connect to remote host
-        with open(WORKER_K8S_CONFIG_FILEPATH, "w") as f:
-            f.write(base64.b64decode(ENV.WORKER_K8S_CONFIG_FILE_BASE64).decode("utf-8"))
-        with open(WORKER_K8S_CONFIG_FILEPATH, "r") as f:
-            LOGGER.info(f.read())
-        kubernetes.config.load_kube_config(
-            config_file=WORKER_K8S_CONFIG_FILEPATH,
-            client_configuration=k8s_client_config,
-        )
+        with NamedTemporaryFile(delete=False) as tempf:
+            tempf.write(base64.b64decode(ENV.WORKER_K8S_CONFIG_FILE_BASE64))
+            LOGGER.info("loading k8s configuration...")
+            kubernetes.config.load_kube_config(
+                config_file=tempf.name,
+                client_configuration=k8s_client_config,
+            )
         k8s_client_config.host = args.host
         k8s_client_config.api_key["authorization"] = ENV.WORKER_K8S_TOKEN
+    # Using CA cert + token
+    elif ENV.WORKER_K8S_CACERT and ENV.WORKER_K8S_TOKEN:
+        # https://medium.com/@jankrynauw/run-a-job-on-google-kubernetes-engine-using-the-python-client-library-and-not-kubectl-4ee8bdd55b1b
+        LOGGER.info("connecting to remote k8s via ca cert + token...")
+        with NamedTemporaryFile(delete=False) as tempf:
+            tempf.write(base64.b64decode(ENV.WORKER_K8S_CACERT))
+            k8s_client_config.ssl_ca_cert = tempf.name
+        k8s_client_config.host = args.host
+        k8s_client_config.verify_ssl = True
+        k8s_client_config.debug = False
+        k8s_client_config.api_key = {"authorization": "Bearer " + ENV.WORKER_K8S_TOKEN}
+        kubernetes.client.Configuration.set_default(k8s_client_config)
+    else:
+        raise RuntimeError(
+            f"Did not provide sufficient configuration to connect to {args.host}"
+        )
 
     # connect & go
     with kubernetes.client.ApiClient(k8s_client_config) as k8s_client:

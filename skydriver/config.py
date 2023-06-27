@@ -5,6 +5,7 @@ import logging
 from typing import Optional
 
 import coloredlogs  # type: ignore[import]
+import kubernetes.client  # type: ignore[import]
 from wipac_dev_tools import from_environment_as_dataclass
 
 LOGGER = logging.getLogger("skydriver")
@@ -91,8 +92,17 @@ KNOWN_CLUSTERS = {
             "collector": "glidein-cm.icecube.wisc.edu",
             "schedd": "sub-2.icecube.wisc.edu",
         },
-        "env_var_dest": "CONDOR_TOKEN",
-        "secret_key": "condor_token_sub2",
+        "v1envvars": [
+            kubernetes.client.V1EnvVar(
+                name="CONDOR_TOKEN",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name=ENV.K8S_SECRET_NAME,
+                        key="condor_token_sub2",
+                    )
+                ),
+            )
+        ],
     },
     LOCAL_K8S_HOST: {
         "orchestrator": "k8s",
@@ -100,8 +110,7 @@ KNOWN_CLUSTERS = {
             "host": LOCAL_K8S_HOST,
             "namespace": ENV.K8S_NAMESPACE,
         },
-        "env_var_dest": "",
-        "secret_key": "",
+        "v1envvars": [],
     },
     "gke-2306": {
         "orchestrator": "k8s",
@@ -109,8 +118,26 @@ KNOWN_CLUSTERS = {
             "host": "https://34.171.167.119/",
             "namespace": "icecube-skymap-scanner",
         },
-        "env_var_dest": "WORKER_K8S_CONFIG_FILE_BASE64",
-        "secret_key": "worker_k8s_config_file_base64_gke",
+        "v1envvars": [
+            kubernetes.client.V1EnvVar(
+                name="WORKER_K8S_CACERT",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name=ENV.K8S_SECRET_NAME,
+                        key="worker_k8s_cacert_gke",
+                    )
+                ),
+            ),
+            kubernetes.client.V1EnvVar(
+                name="WORKER_K8S_TOKEN",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name=ENV.K8S_SECRET_NAME,
+                        key="worker_k8s_token_gke",
+                    )
+                ),
+            ),
+        ],
     },
 }
 

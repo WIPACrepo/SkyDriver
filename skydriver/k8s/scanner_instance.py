@@ -16,27 +16,17 @@ from . import scan_backlog
 from .utils import KubeAPITools
 
 
-def get_cluster_auth_v1envvar(
+def get_cluster_auth_v1envvars(
     cluster: schema.Cluster,
-) -> kubernetes.client.V1EnvVar | None:
+) -> list[kubernetes.client.V1EnvVar]:
     """Get the `V1EnvVar`s for workers' auth."""
-    LOGGER.debug(f"getting auth secret env var for {cluster=}")
+    LOGGER.debug(f"getting auth secret env vars for {cluster=}")
     info = next(
         x
         for x in KNOWN_CLUSTERS.values()
         if x["location"] == dc.asdict(cluster.location)
     )
-    if not info["env_var_dest"] or not info["secret_key"]:
-        return None
-    return kubernetes.client.V1EnvVar(
-        name=info["env_var_dest"],
-        value_from=kubernetes.client.V1EnvVarSource(
-            secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                name=ENV.K8S_SECRET_NAME,
-                key=info["secret_key"],
-            )
-        ),
-    )
+    return info["v1envvars"]  # type: ignore[return-value]
 
 
 def get_tms_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
@@ -326,8 +316,7 @@ class SkymapScannerStarterJob:
 
         # 1. start w/ secrets
         # NOTE: the values come from an existing secret in the current namespace
-        if cluster_auth_v1envvar := get_cluster_auth_v1envvar(cluster):
-            env.append(cluster_auth_v1envvar)
+        env.extend(get_cluster_auth_v1envvars(cluster))
         env.extend(get_tms_s3_v1envvars())
 
         # 2. add required env vars
@@ -433,12 +422,11 @@ class SkymapScannerStopperJob:
                     raise ValueError(f"Unknown cluster orchestrator: {other}")
             args += f" stop --cluster-id {cluster.cluster_id} "
 
-            cluster_auth_v1envvar = get_cluster_auth_v1envvar(cluster)
             containers.append(
                 KubeAPITools.create_container(
                     f"tms-stopper-{i}-{scan_id}",
                     ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
-                    env=[cluster_auth_v1envvar] if cluster_auth_v1envvar else [],
+                    env=get_cluster_auth_v1envvars(cluster),
                     args=args.split(),
                     memory=ENV.K8S_CONTAINER_MEMORY_TMS_STOPPER,
                 )

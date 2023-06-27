@@ -6,6 +6,7 @@ import socket
 from typing import Any, AsyncIterator, Callable
 from unittest.mock import Mock
 
+import kubernetes.client  # type: ignore[import]
 import pytest
 import pytest_asyncio
 import skydriver
@@ -49,8 +50,17 @@ KNOWN_CLUSTERS = {
             "collector": "for-sure.a-collector.edu",
             "schedd": "foobar.schedd.edu",
         },
-        "env_var_dest": "CONDOR_TOKEN",
-        "secret_key": "condor_token_foobar",
+        "v1envvars": [
+            kubernetes.client.V1EnvVar(
+                name="CONDOR_TOKEN",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name="",
+                        key="condor_token_foobar",
+                    )
+                ),
+            )
+        ],
     },
     "a-schedd": {
         "orchestrator": "condor",
@@ -58,8 +68,17 @@ KNOWN_CLUSTERS = {
             "collector": "the-collector.edu",
             "schedd": "a-schedd.edu",
         },
-        "env_var_dest": "CONDOR_TOKEN",
-        "secret_key": "a_condor_token",
+        "v1envvars": [
+            kubernetes.client.V1EnvVar(
+                name="CONDOR_TOKEN",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name="",
+                        key="a_condor_token",
+                    )
+                ),
+            )
+        ],
     },
     "cloud": {
         "orchestrator": "k8s",
@@ -67,8 +86,17 @@ KNOWN_CLUSTERS = {
             "host": "cumulus.nimbus.com",
             "namespace": "stratus",
         },
-        "env_var_dest": "WORKER_K8S_CONFIG_FILE_BASE64",
-        "secret_key": "worker_k8s_config_cloud_file_base64",
+        "v1envvars": [
+            kubernetes.client.V1EnvVar(
+                name="WORKER_K8S_CONFIG_FILE_BASE64",
+                value_from=kubernetes.client.V1EnvVarSource(
+                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
+                        name="",
+                        key="worker_k8s_config_cloud_file_base64",
+                    )
+                ),
+            )
+        ],
     },
 }
 
