@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.27 (2023-06-27)
+
+### Other
+
+* Add installs for gcp/gke pt-4 ([`c509bcc`](https://github.com/WIPACrepo/SkyDriver/commit/c509bcc411430c419ddc9e94e895cf86fe40d244))
+* Add installs for gcp/gke pt-3 ([`97d050a`](https://github.com/WIPACrepo/SkyDriver/commit/97d050a9b8ba81c1fe8b348b9798b62d0c84c9e7))
+
 ## v0.3.26 (2023-06-27)
 
 ### Other
