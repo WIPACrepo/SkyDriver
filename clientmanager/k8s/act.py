@@ -38,6 +38,7 @@ def act(args: argparse.Namespace) -> None:
         k8s_client_config.api_key["authorization"] = ENV.WORKER_K8S_TOKEN
     # Using CA cert + token
     elif ENV.WORKER_K8S_CACERT and ENV.WORKER_K8S_TOKEN:
+        # https://medium.com/@jankrynauw/run-a-job-on-google-kubernetes-engine-using-the-python-client-library-and-not-kubectl-4ee8bdd55b1b
         LOGGER.info("connecting to remote k8s via ca cert + token...")
         with NamedTemporaryFile(delete=False) as tempf:
             tempf.write(base64.b64decode(ENV.WORKER_K8S_CACERT))
