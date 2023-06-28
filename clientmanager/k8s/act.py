@@ -49,6 +49,7 @@ def act(args: argparse.Namespace) -> None:
         k8s_client_config.api_key = {"authorization": "Bearer " + ENV.WORKER_K8S_TOKEN}
         k8s_client_config.assert_hostname = False
         kubernetes.client.Configuration.set_default(k8s_client_config)
+        time.sleep(60 * 5)  # allow cluster to register
     else:
         raise RuntimeError(
             f"Did not provide sufficient configuration to connect to {args.host}"
