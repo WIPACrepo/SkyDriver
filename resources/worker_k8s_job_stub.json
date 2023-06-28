@@ -28,10 +28,9 @@
                   "value": "X"
                 }
               ],
-              "image": "busybox",
+              "image": "busybox:1.35.0-musl",
               "command": [
-                "wget", 
-                "--no-check-certificate",
+                "wget",
                 "-O",
                 "/skymap-scanner-startup-config/startup.json",
                 "$(URL_EVENT_STARTUP_JSON)"
