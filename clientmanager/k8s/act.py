@@ -45,11 +45,10 @@ def act(args: argparse.Namespace) -> None:
             k8s_client_config.ssl_ca_cert = tempf.name
         k8s_client_config.host = args.host
         k8s_client_config.verify_ssl = True
-        k8s_client_config.debug = False
+        k8s_client_config.debug = True  # remove?
         k8s_client_config.api_key = {"authorization": "Bearer " + ENV.WORKER_K8S_TOKEN}
         k8s_client_config.assert_hostname = False
         kubernetes.client.Configuration.set_default(k8s_client_config)
-        time.sleep(60 * 5)  # allow cluster to register
     else:
         raise RuntimeError(
             f"Did not provide sufficient configuration to connect to {args.host}"
@@ -57,6 +56,23 @@ def act(args: argparse.Namespace) -> None:
 
     # connect & go
     with kubernetes.client.ApiClient(k8s_client_config) as k8s_client:
+        try:
+            LOGGER.debug("testing k8s credentials")
+            api_response = kubernetes.client.CoreV1Api(k8s_client).list_namespaced_pod(
+                args.namespace
+            )
+            LOGGER.debug(api_response)
+        except kubernetes.client.rest.ApiException as e:
+            LOGGER.exception(e)
+            try:
+                LOGGER.debug("testing k8s credentials")
+                api_response = kubernetes.client.CoreV1Api(
+                    k8s_client
+                ).list_namespaced_pod("default")
+                LOGGER.debug(api_response)
+            except kubernetes.client.rest.ApiException as e:
+                LOGGER.exception(e)
+                time.sleep(60 * 5)  # allow cluster to register
         try:
             LOGGER.debug("testing k8s credentials")
             api_response = kubernetes.client.CoreV1Api(k8s_client).list_namespaced_pod(
