@@ -57,7 +57,9 @@ def act(args: argparse.Namespace) -> None:
     with kubernetes.client.ApiClient(k8s_client_config) as k8s_client:
         try:
             LOGGER.debug("testing k8s credentials")
-            api_response = kubernetes.client.BatchV1Api(k8s_client).get_api_resources()
+            api_response = kubernetes.client.CoreV1Api(k8s_client).list_namespaced_pod(
+                args.namespace
+            )
             LOGGER.debug(api_response)
         except kubernetes.client.rest.ApiException as e:
             LOGGER.exception(e)
