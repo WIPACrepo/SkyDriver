@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.39 (2023-06-28)
+
+### Other
+
+* Update Auth Handling Pt-15 ([`f7f5be5`](https://github.com/WIPACrepo/SkyDriver/commit/f7f5be524670a4aea01368b762d3146756946a0b))
+
 ## v0.3.38 (2023-06-28)
 
 ### Other
