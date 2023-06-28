@@ -58,38 +58,11 @@ def act(args: argparse.Namespace) -> None:
     with kubernetes.client.ApiClient(k8s_client_config) as k8s_client:
         try:
             LOGGER.debug("testing k8s credentials")
-            api_response = kubernetes.client.CoreV1Api(k8s_client).list_namespaced_pod(
-                args.namespace
-            )
-            LOGGER.debug(api_response)
+            resp = kubernetes.client.BatchV1Api(k8s_client).get_api_resources()
+            LOGGER.debug(resp)
         except kubernetes.client.rest.ApiException as e:
             LOGGER.exception(e)
-            try:
-                LOGGER.debug("testing k8s credentials")
-                api_response = kubernetes.client.CoreV1Api(
-                    k8s_client
-                ).list_namespaced_pod("default")
-                LOGGER.debug(api_response)
-            except kubernetes.client.rest.ApiException as e:
-                LOGGER.exception(e)
-                time.sleep(60 * 5)  # allow cluster to register
-        try:
-            LOGGER.debug("testing k8s credentials")
-            api_response = kubernetes.client.CoreV1Api(k8s_client).list_namespaced_pod(
-                args.namespace
-            )
-            LOGGER.debug(api_response)
-        except kubernetes.client.rest.ApiException as e:
-            LOGGER.exception(e)
-            try:
-                LOGGER.debug("testing k8s credentials")
-                api_response = kubernetes.client.CoreV1Api(
-                    k8s_client
-                ).list_namespaced_pod("default")
-                LOGGER.debug(api_response)
-            except kubernetes.client.rest.ApiException as e:
-                LOGGER.exception(e)
-                raise
+            raise
         _act(args, k8s_client)
 
 
