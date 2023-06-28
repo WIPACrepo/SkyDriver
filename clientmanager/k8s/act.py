@@ -47,6 +47,7 @@ def act(args: argparse.Namespace) -> None:
         k8s_client_config.verify_ssl = True
         k8s_client_config.debug = False
         k8s_client_config.api_key = {"authorization": "Bearer " + ENV.WORKER_K8S_TOKEN}
+        k8s_client_config.assert_hostname = False
         kubernetes.client.Configuration.set_default(k8s_client_config)
     else:
         raise RuntimeError(
