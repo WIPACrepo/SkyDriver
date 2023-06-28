@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.32 (2023-06-28)
+
+### Other
+
+* S3 Cert Workaround ([`a624dc5`](https://github.com/WIPACrepo/SkyDriver/commit/a624dc5140d1f142aaa592c6dbf62d130654691e))
+
 ## v0.3.31 (2023-06-27)
 
 ### Other
