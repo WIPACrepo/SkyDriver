@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.33 (2023-06-28)
+
+### Other
+
+* Pin `busybox` ([`8255894`](https://github.com/WIPACrepo/SkyDriver/commit/8255894a93afff7f8542edc5dc189742c98a78b4))
+
 ## v0.3.32 (2023-06-28)
 
 ### Other
