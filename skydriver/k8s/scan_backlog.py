@@ -61,19 +61,20 @@ async def startup(
     manifests = database.interface.ManifestClient(mongo_client)
     scan_backlog = database.interface.ScanBacklogClient(mongo_client)
 
-    first = True  # don't wait for full delay after first starting up (helpful for testing new changes)
+    short_sleep = True  # don't wait for full delay after first starting up (helpful for testing new changes)
 
     while True:
-        if first:
-            await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_INITIAL_DELAY)
+        if short_sleep:
+            await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_SHORT_DELAY)
         else:
             await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
 
         # get next entry
         try:
             entry = await get_next_backlog_entry(scan_backlog, manifests)
-            first = False
+            short_sleep = False
         except database.interface.DocumentNotFoundException:
+            short_sleep = True
             continue  # empty queue
 
         # get k8s job object
