@@ -115,7 +115,7 @@ KNOWN_CLUSTERS = {
     "gke-2306": {
         "orchestrator": "k8s",
         "location": {
-            "host": "https://34.171.167.119/",
+            "host": "https://34.171.167.119:443",
             "namespace": "icecube-skymap-scanner",
         },
         "v1envvars": [
