@@ -66,11 +66,7 @@
               "image": "icecube/skymap_scanner:X.Y.Z",
               "imagePullPolicy": "Always",
               "name": "skydriver-worker",
-              "command": [
-                "/bin/bash"
-              ],
               "args": [
-                "/usr/local/icetray/env-shell.sh",
                 "python",
                 "-m",
                 "skymap_scanner.client",
