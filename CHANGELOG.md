@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.43 (2023-06-28)
+
+### Other
+
+* GKE Updates Pt-3 ([`91ca7f0`](https://github.com/WIPACrepo/SkyDriver/commit/91ca7f03467c4511235501eedae1ae4fde901b69))
+
 ## v0.3.42 (2023-06-28)
 
 ### Other
