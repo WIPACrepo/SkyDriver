@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.35 (2023-06-28)
+
+### Other
+
+* <bot> update requirements.txt ([`ee4e67e`](https://github.com/WIPACrepo/SkyDriver/commit/ee4e67e8b2c8af93d99c5cd18d5f4e4d3653257b))
+* <bot> update requirements-tests.txt ([`1b25681`](https://github.com/WIPACrepo/SkyDriver/commit/1b25681f6e0878688bc4f423f2bfbb69b95024dd))
+* Update Auth Handling Pt-11 ([`7e578ce`](https://github.com/WIPACrepo/SkyDriver/commit/7e578ce5625779aa21678eef3ad5b254aed0e105))
+
 ## v0.3.34 (2023-06-28)
 
 ### Other
