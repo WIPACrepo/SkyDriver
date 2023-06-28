@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.34 (2023-06-28)
+
+### Other
+
+* Speed up backlog when needed ([`c88649b`](https://github.com/WIPACrepo/SkyDriver/commit/c88649be6eb8febe5d891216d0ad35a29c4449a2))
+
 ## v0.3.33 (2023-06-28)
 
 ### Other
