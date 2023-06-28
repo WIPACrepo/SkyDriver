@@ -67,10 +67,10 @@
               "imagePullPolicy": "Always",
               "name": "skydriver-worker",
               "command": [
-                "/bin/bash",
-                "/usr/local/icetray/env-shell.sh"
+                "/bin/bash"
               ],
               "args": [
+                "/usr/local/icetray/env-shell.sh",
                 "python",
                 "-m",
                 "skymap_scanner.client",

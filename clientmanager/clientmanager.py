@@ -96,7 +96,7 @@ class OrchestratorArgs:
         )
         sub_parser.add_argument(
             "--cpu-arch",
-            default="arm",
+            default="x64",
             help="which CPU architecture to use for running workers",
         )
         sub_parser.add_argument(
