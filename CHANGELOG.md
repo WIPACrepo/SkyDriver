@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.45 (2023-06-29)
+
+### Other
+
+* Use `EWMS_PILOT_TASK_TIMEOUT` ([`393bebb`](https://github.com/WIPACrepo/SkyDriver/commit/393bebb18a0bcab8c5c4e42ebaa2e13ed4996d2d))
+
 ## v0.3.44 (2023-06-29)
 
 ### Other
