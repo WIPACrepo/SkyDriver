@@ -2,6 +2,15 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.46 (2023-06-29)
+
+### Other
+
+* Auto abort scan when k8s job (starters + server) fails pt-2 ([`5497ff7`](https://github.com/WIPACrepo/SkyDriver/commit/5497ff78dca241c57cbaf6b6d5da681acf17ea07))
+* <bot> update requirements.txt ([`0a87b2b`](https://github.com/WIPACrepo/SkyDriver/commit/0a87b2b173a88960527eed39eaa8f82cec6cfe91))
+* <bot> update requirements-tests.txt ([`e07f99b`](https://github.com/WIPACrepo/SkyDriver/commit/e07f99bf8aaef501db30862a8cc670b55688179a))
+* Auto abort scan when k8s job (starters + server) fails ([`f5ccc31`](https://github.com/WIPACrepo/SkyDriver/commit/f5ccc31b0567e5c2fb81cb5568d39e376be50d29))
+
 ## v0.3.45 (2023-06-29)
 
 ### Other
