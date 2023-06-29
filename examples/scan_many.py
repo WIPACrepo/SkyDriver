@@ -5,6 +5,8 @@ will need to be tweaked and/or parameterized.
 """
 
 import argparse
+import random
+import time
 from pathlib import Path
 
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
@@ -29,7 +31,9 @@ def get_rest_client() -> RestClient:
     )
 
 
-def launch_a_scan(rc: RestClient, event_file: Path, n_workers: int) -> str:
+def launch_a_scan(
+    rc: RestClient, event_file: Path, cluster: str, n_workers: int
+) -> str:
     """Request to SkyDriver to scan an event."""
     body = {
         "reco_algo": "millipede_wilks",
@@ -37,12 +41,13 @@ def launch_a_scan(rc: RestClient, event_file: Path, n_workers: int) -> str:
         "nsides": {8: 12, 64: 12, 512: 24},
         "real_or_simulated_event": "simulated",
         "predictive_scanning_threshold": 0.3,
-        "cluster": {"sub-2": n_workers},
+        "cluster": {cluster: n_workers},
         "docker_tag": "latest",
+        "max_pixel_reco_time": 60 * 60 * 1,
     }
     resp = rc.request_seq("POST", "/scan", body)
 
-    # print(resp["scan_id"])
+    print(resp["scan_id"])
     return resp["scan_id"]  # type: ignore[no-any-return]
 
 
@@ -60,6 +65,17 @@ def main() -> None:
         help="a directory of event files in realtime's JSON format",
     )
     parser.add_argument(
+        "--n-events",
+        default=None,
+        type=int,
+        help="the number of events to scan, in case you don't want to scan all the files",
+    )
+    parser.add_argument(
+        "--cluster",
+        required=True,
+        help="the cluster to use for running workers. Ex: sub-2",
+    )
+    parser.add_argument(
         "--n-workers",
         required=True,
         type=int,
@@ -68,11 +84,16 @@ def main() -> None:
     args = parser.parse_args()
 
     rc = get_rest_client()
-    for event_file in args.event_files.iterdir():
+    files = list(args.event_files.iterdir())
+    random.shuffle(files)
+    for i, event_file in enumerate(files):
         print("-----------------------")
         print(event_file)
-        scan_id = launch_a_scan(rc, args.event_file, args.n_workers)
+        scan_id = launch_a_scan(rc, event_file, args.cluster, args.n_workers)
         print(f"SCAN ID: {scan_id}")
+        if args.n_events and i == args.n_events - 1:
+            break
+        # time.sleep(60 * 12)
 
 
 if __name__ == "__main__":

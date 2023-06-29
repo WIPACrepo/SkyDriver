@@ -1,4 +1,4 @@
-"""An example script for scanning an event & monitoring its progress.
+"""An example script for monitoring a scan.
 
 This script is meant to be a starting point--many arguments and options
 will need to be tweaked and/or parameterized.
@@ -7,7 +7,6 @@ will need to be tweaked and/or parameterized.
 import argparse
 import json
 import time
-from pathlib import Path
 from pprint import pprint
 
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
@@ -30,26 +29,6 @@ def get_rest_client() -> RestClient:
         client_id="skydriver-external",
         retries=0,
     )
-
-
-def launch_a_scan(
-    rc: RestClient, event_file: Path, cluster: str, n_workers: int
-) -> str:
-    """Request to SkyDriver to scan an event."""
-    body = {
-        "reco_algo": "millipede_wilks",
-        "event_i3live_json": event_file.open().read().strip(),
-        "nsides": {8: 12, 64: 12, 512: 24},
-        "real_or_simulated_event": "simulated",
-        "predictive_scanning_threshold": 0.3,
-        "cluster": {cluster: n_workers},
-        "docker_tag": "latest",
-        "max_pixel_reco_time": 60 * 60 * 1,
-    }
-    resp = rc.request_seq("POST", "/scan", body)
-
-    print(resp["scan_id"])
-    return resp["scan_id"]  # type: ignore[no-any-return]
 
 
 def monitor(rc: RestClient, scan_id: str) -> None:
@@ -82,34 +61,22 @@ def monitor(rc: RestClient, scan_id: str) -> None:
 
 
 def main() -> None:
-    """Launch and monitor a scan for an event."""
+    """Watch a scan of an event."""
 
     parser = argparse.ArgumentParser(
-        description="Launch and monitor a scan for an event",
+        description="Watch a scan for an event",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--event-file",
+        "--scan-id",
         required=True,
-        type=Path,
-        help="the event in realtime's JSON format",
-    )
-    parser.add_argument(
-        "--cluster",
-        required=True,
-        help="the cluster to use for running workers. Ex: sub-2",
-    )
-    parser.add_argument(
-        "--n-workers",
-        required=True,
-        type=int,
-        help="number of workers to request",
+        type=str,
+        help="the id of the scan",
     )
     args = parser.parse_args()
 
     rc = get_rest_client()
-    scan_id = launch_a_scan(rc, args.event_file, args.cluster, args.n_workers)
-    monitor(rc, scan_id)
+    monitor(rc, args.scan_id)
 
 
 if __name__ == "__main__":

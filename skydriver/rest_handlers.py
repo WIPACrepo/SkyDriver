@@ -15,7 +15,7 @@ from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
 from tornado import web
 
 from . import database, images, k8s
-from .config import KNOWN_CLUSTERS, LOGGER, is_testing
+from .config import ENV, KNOWN_CLUSTERS, LOGGER, is_testing
 
 WAIT_BEFORE_TEARDOWN = 60
 
@@ -522,6 +522,23 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
 
         self.write(dc.asdict(manifest))
+
+        # TODO - move this to background thread?
+
+        try:
+            v1_job = self.k8s_api.read_namespaced_job_status(
+                f"skyscan-{scan_id}", ENV.K8S_NAMESPACE
+            )
+            LOGGER.debug(v1_job)
+        except kubernetes.client.exceptions.ApiException as e:
+            LOGGER.exception(e)
+            raise web.HTTPError(
+                500,
+                log_message="Failed to launch Kubernetes job to stop Scanner instance",
+            )
+        if v1_job.status and v1_job.status.failed:
+            LOGGER.info("Scan's k8s job failed, aborting scan...")
+            await stop_scanner_instance(self.manifests, scan_id, self.k8s_api)
 
 
 # -----------------------------------------------------------------------------
