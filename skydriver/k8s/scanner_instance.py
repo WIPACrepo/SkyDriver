@@ -345,10 +345,10 @@ class SkymapScannerStarterJob:
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
-            "EWMS_PILOT_SUBPROC_TIMEOUT": (
+            "EWMS_PILOT_TASK_TIMEOUT": (
                 max_pixel_reco_time
                 if max_pixel_reco_time
-                else ENV.EWMS_PILOT_SUBPROC_TIMEOUT  # may also be None
+                else ENV.EWMS_PILOT_TASK_TIMEOUT  # may also be None
             ),
             "EWMS_PILOT_QUARANTINE_TIME": ENV.EWMS_PILOT_QUARANTINE_TIME,
         }

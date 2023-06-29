@@ -106,7 +106,7 @@ async def _launch_scan(
             for e in env_dicts
             if e["value"] is not None and e["value_from"] is None
         ) == {
-            "EWMS_PILOT_SUBPROC_TIMEOUT",  # set by CI runner
+            "EWMS_PILOT_TASK_TIMEOUT",  # set by CI runner
             "EWMS_TMS_S3_BUCKET",
             "EWMS_TMS_S3_URL",
             "SKYSCAN_BROKER_ADDRESS",

@@ -57,10 +57,6 @@
                 {
                   "name": "I3_DATA",
                   "value": "/cvmfs/icecube.opensciencegrid.org/data"
-                },
-                {
-                  "name": "EWMS_PILOT_TASK_TIMEOUT",
-                  "value": "600"
                 }
               ],
               "image": "icecube/skymap_scanner:X.Y.Z",
