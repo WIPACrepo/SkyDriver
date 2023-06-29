@@ -6,7 +6,8 @@ will need to be tweaked and/or parameterized.
 
 import argparse
 import random
-import time
+
+# import time
 from pathlib import Path
 
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
