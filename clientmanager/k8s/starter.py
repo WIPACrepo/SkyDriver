@@ -53,27 +53,32 @@ def make_k8s_job_desc(
             k8s_job_dict["metadata"][meta_field] = {}
 
     # ARM-specific fields
+    # TODO: cleanup these ifs
     if cpu_arch == "arm":
-        # labels
-        k8s_job_dict["metadata"]["labels"].update({"beta.kubernetes.io/arch": "arm64"})
-        # affinity
-        k8s_job_dict["spec"]["template"]["spec"]["affinity"] = {
-            "nodeAffinity": {
-                "requiredDuringSchedulingIgnoredDuringExecution": {
-                    "nodeSelectorTerms": [
-                        {
-                            "matchExpressions": [
-                                {
-                                    "key": "kubernetes.io/arch",
-                                    "operator": "In",
-                                    "values": ["arm64"],
-                                }
-                            ]
-                        }
-                    ]
-                }
+        cpu_arch = "arm64"
+    else:
+        # elif cpu_arch == "x86":
+        cpu_arch = "amd64"
+    # labels
+    k8s_job_dict["metadata"]["labels"].update({"kubernetes.io/arch": cpu_arch})
+    # affinity
+    k8s_job_dict["spec"]["template"]["spec"]["affinity"] = {
+        "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+                "nodeSelectorTerms": [
+                    {
+                        "matchExpressions": [
+                            {
+                                "key": "kubernetes.io/arch",
+                                "operator": "In",
+                                "values": [cpu_arch],
+                            }
+                        ]
+                    }
+                ]
             }
         }
+    }
 
     # Setting metadata
     k8s_job_dict["metadata"]["namespace"] = namespace
