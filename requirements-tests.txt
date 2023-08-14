@@ -168,7 +168,7 @@ thrift==0.16.0
     # via opentelemetry-exporter-jaeger-thrift
 tomli==2.0.1
     # via pytest
-tornado==6.3.2
+tornado==6.3.3
     # via
     #   UNKNOWN (setup.py)
     #   wipac-rest-tools
