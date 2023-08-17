@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.47 (2023-08-17)
+
+### Other
+
+* Misc Fixes ([#58](https://github.com/WIPACrepo/SkyDriver/issues/58)) ([`fde3413`](https://github.com/WIPACrepo/SkyDriver/commit/fde34135950a07f51833439bce27d563d27ccf66))
+
 ## v0.3.46 (2023-06-29)
 
 ### Other
