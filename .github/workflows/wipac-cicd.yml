@@ -45,7 +45,7 @@ jobs:
       - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.py3 }}
-      - uses: WIPACrepo/wipac-dev-mypy-action@v1.2
+      - uses: WIPACrepo/wipac-dev-mypy-action@v2
 
   py-setup:
     runs-on: ubuntu-latest
@@ -63,7 +63,7 @@ jobs:
           github.actor != 'dependabot[bot]' &&
           github.ref_type == 'branch'
         name: wipac-dev-py-setup-action (only for non-dependabot non-default branches)
-        uses: WIPACrepo/wipac-dev-py-setup-action@v1.15
+        uses: WIPACrepo/wipac-dev-py-setup-action@v2.4
         with:
           base-keywords: WIPAC IceCube
 
@@ -155,7 +155,7 @@ jobs:
         fetch-depth: 0
         token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
     - name: Python Semantic Release
-      uses: python-semantic-release/python-semantic-release@master
+      uses: python-semantic-release/python-semantic-release@v7.34.6
       with:
         github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         # repository_username: __token__
