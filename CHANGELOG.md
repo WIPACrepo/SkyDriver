@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.48 (2023-08-17)
+
+### Other
+
+* REST argument type fix ([`815fbbe`](https://github.com/WIPACrepo/SkyDriver/commit/815fbbe4033af81eb2a753f2d7b8c0b158f22ac0))
+
 ## v0.3.47 (2023-08-17)
 
 ### Other
