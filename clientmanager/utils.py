@@ -31,7 +31,7 @@ def update_skydriver(
     skydriver_rc: RestClient,
     orchestrator: str,
     location: dict[str, str],
-    cluster_id: str,
+    cluster_id: str | int,
     n_workers: int,
 ) -> None:
     """Send SkyDriver updates from the `submit_result`."""
@@ -42,7 +42,7 @@ def update_skydriver(
             "cluster": {
                 "orchestrator": orchestrator,
                 "location": location,
-                "cluster_id": cluster_id,
+                "cluster_id": str(cluster_id),
                 "n_workers": n_workers,
             }
         },
