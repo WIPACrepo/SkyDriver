@@ -530,7 +530,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             v1_job: kubernetes.client.V1Job = self.k8s_api.read_namespaced_job_status(
                 f"skyscan-{scan_id}", ENV.K8S_NAMESPACE
             )
-            LOGGER.debug(v1_job)
+            # LOGGER.debug(v1_job)
         except kubernetes.client.exceptions.ApiException as e:
             LOGGER.exception(e)
             raise web.HTTPError(
