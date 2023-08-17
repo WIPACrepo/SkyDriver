@@ -79,19 +79,22 @@ def _act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> N
             # start
             starter.start(
                 k8s_client=k8s_client,
-                job_config_stub=args.job_config_stub,
-                host=args.host,
-                namespace=args.namespace,
                 cluster_id=cluster_id,
-                n_workers=args.n_workers,
-                n_cores=args.n_cores,
-                client_args=args.client_args if args.client_args else [],
-                memory=args.memory,
-                container_image=args.image,
-                # put client_startup_json in S3 bucket
-                client_startup_json_s3=utils.s3ify(args.client_startup_json),
-                dryrun=args.dryrun,
+                # k8s CL args
                 cpu_arch=args.cpu_arch,
+                host=args.host,
+                job_config_stub=args.job_config_stub,
+                namespace=args.namespace,
+                # starter CL args -- helper
+                dryrun=args.dryrun,
+                # starter CL args -- worker
+                memory=args.memory,
+                n_cores=args.n_cores,
+                n_workers=args.n_workers,
+                # starter CL args -- client
+                client_args=args.client_args if args.client_args else [],
+                client_startup_json_s3=utils.s3ify(args.client_startup_json),
+                container_image=args.image,
             )
             # report to SkyDriver
             utils.update_skydriver(

@@ -29,17 +29,18 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
             skydriver_rc = utils.connect_to_skydriver()
             # start
             submit_result_obj = starter.start(
-                schedd_obj,
-                args.n_workers,
-                args.logs_directory if args.logs_directory else None,
-                args.client_args,
-                args.memory,
-                args.n_cores,
-                args.accounting_group,
-                args.image,
-                # put client_startup_json in S3 bucket
-                utils.s3ify(args.client_startup_json),
-                args.dryrun,
+                schedd_obj=schedd_obj,
+                # starter CL args -- helper
+                dryrun=args.dryrun,
+                logs_directory=args.logs_directory if args.logs_directory else None,
+                # starter CL args -- worker
+                memory=args.memory,
+                n_cores=args.n_cores,
+                n_workers=args.n_workers,
+                # starter CL args -- client
+                client_args=args.client_args,
+                client_startup_json_s3=utils.s3ify(args.client_startup_json),
+                image=args.image,
             )
             # report to SkyDriver
             utils.update_skydriver(

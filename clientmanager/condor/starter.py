@@ -2,7 +2,6 @@
 
 
 import datetime as dt
-import getpass
 from pathlib import Path
 
 import htcondor  # type: ignore[import]
@@ -30,7 +29,6 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     # condor args
     memory: str,
     n_cores: int,
-    accounting_group: str,
     # skymap scanner args
     image: str,
     client_startup_json_s3: S3File,
@@ -91,24 +89,22 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         # NOTE: this needs to be removed if we ARE transferring files
         submit_dict["initialdir"] = "/tmp"
 
-    # accounting group
-    if accounting_group:
-        submit_dict["+AccountingGroup"] = f"{accounting_group}.{getpass.getuser()}"
-
     return htcondor.Submit(submit_dict)
 
 
 def start(
     schedd_obj: htcondor.Schedd,
-    n_workers: int,
+    # starter CL args -- helper
+    dryrun: bool,
     logs_directory: Path | None,
-    client_args: list[tuple[str, str]],
+    # starter CL args -- worker
     memory: str,
     n_cores: int,
-    accounting_group: str,
-    image: str,
+    n_workers: int,
+    # starter CL args -- client
+    client_args: list[tuple[str, str]],
     client_startup_json_s3: S3File,
-    dryrun: bool,
+    image: str,
 ) -> htcondor.SubmitResult:
     """Main logic."""
     if logs_directory:
@@ -138,7 +134,6 @@ def start(
         # condor args
         memory,
         n_cores,
-        accounting_group,
         # skymap scanner args
         image,
         client_startup_json_s3,
