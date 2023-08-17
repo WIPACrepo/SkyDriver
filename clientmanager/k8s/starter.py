@@ -160,18 +160,22 @@ def make_k8s_job_desc(
 
 def start(
     k8s_client: kubernetes.client.ApiClient,
+    cluster_id: str,
+    # k8s CL args
     job_config_stub: Path,
     host: str,
     namespace: str,
-    cluster_id: str,
+    cpu_arch: str,
+    # starter CL args -- helper
+    dryrun: bool,
+    # starter CL args -- worker
+    memory: str,
     n_workers: int,
     n_cores: int,
+    # starter CL args -- client
     client_args: list[tuple[str, str]],
-    memory: str,
-    container_image: str,
     client_startup_json_s3: S3File,
-    dryrun: bool,
-    cpu_arch: str,
+    container_image: str,
 ) -> dict:
     """Main logic."""
     if host == LOCAL_K8S_HOST and n_workers > ENV.WORKER_K8S_LOCAL_WORKERS_MAX:

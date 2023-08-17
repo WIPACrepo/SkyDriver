@@ -136,3 +136,6 @@ dmypy.json
 gke-cluster-config.yaml
 
 *_cache
+
+# wipac-dev-py-setup-action
+!dependencies*.log

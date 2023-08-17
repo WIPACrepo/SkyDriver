@@ -140,13 +140,7 @@ class ActionArgs:
             help="where to save logs (if not given, logs are not saved)",
         )
 
-        # condor args
-        sub_parser.add_argument(
-            "--n-workers",
-            required=True,
-            type=int,
-            help="number of worker to start",
-        )
+        # worker args
         sub_parser.add_argument(
             "--memory",
             required=True,
@@ -159,21 +153,14 @@ class ActionArgs:
             type=int,
             help="number of cores per worker",
         )
+        sub_parser.add_argument(
+            "--n-workers",
+            required=True,
+            type=int,
+            help="number of worker to start",
+        )
 
         # client args
-        sub_parser.add_argument(
-            "--image",
-            required=True,
-            help="a path or url to the workers' image",
-        )
-        sub_parser.add_argument(
-            "--client-startup-json",
-            help="The 'startup.json' file to startup each client",
-            type=lambda x: wait_for_file(
-                Path(x),
-                ENV.CLIENT_STARTER_WAIT_FOR_STARTUP_JSON,
-            ),
-        )
         sub_parser.add_argument(
             "--client-args",
             required=False,
@@ -184,6 +171,19 @@ class ActionArgs:
                 ValueError('must " "-delimited series of "clientarg:value"-tuples'),
             ),
             help="n 'key:value' pairs containing the python CL arguments to pass to skymap_scanner.client",
+        )
+        sub_parser.add_argument(
+            "--client-startup-json",
+            help="The 'startup.json' file to startup each client",
+            type=lambda x: wait_for_file(
+                Path(x),
+                ENV.CLIENT_STARTER_WAIT_FOR_STARTUP_JSON,
+            ),
+        )
+        sub_parser.add_argument(
+            "--image",
+            required=True,
+            help="a path or url to the workers' image",
         )
 
     @staticmethod
