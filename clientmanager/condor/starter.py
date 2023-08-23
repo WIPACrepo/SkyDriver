@@ -68,8 +68,11 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         "getenv": ", ".join(FORWARDED_ENV_VARS),
         "environment": f'"{environment}"',  # must be quoted
         "+FileSystemDomain": '"blah"',  # must be quoted
+        #
         "should_transfer_files": "YES",
         "transfer_input_files": client_startup_json_s3.url,
+        "transfer_output_files": '""',  # must be quoted
+        #
         "request_cpus": str(n_cores),
         "request_memory": memory,
         "notification": "Error",
