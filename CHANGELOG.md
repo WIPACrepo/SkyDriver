@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.3.49 (2023-08-23)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`a794006`](https://github.com/WIPACrepo/SkyDriver/commit/a794006d62fd42f5c4eb23d3ef81f3008380c308))
+* Condor: Don't `transfer_output_files` ([`6da5275`](https://github.com/WIPACrepo/SkyDriver/commit/6da52753265fa70667a56dd48064356a89c6dda1))
+
 ## v0.3.48 (2023-08-17)
 
 ### Other
