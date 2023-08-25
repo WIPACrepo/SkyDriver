@@ -6,7 +6,7 @@ import time
 from typing import TYPE_CHECKING, Any, AsyncIterator, Type, TypeVar, cast
 
 import typeguard
-from dacite import from_dict  # type: ignore[attr-defined]
+from dacite import from_dict
 from motor.motor_asyncio import (  # type: ignore
     AsyncIOMotorClient,
     AsyncIOMotorCollection,
