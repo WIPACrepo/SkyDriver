@@ -201,7 +201,7 @@ class DataclassCollectionFacade:
             )
         dc_doc = from_dict(out_type, doc)
         LOGGER.debug(f"replaced: ({coll=}) doc {dc_doc}")
-        return dc_doc
+        return cast(DataclassT, dc_doc)  # mypy internal bug
 
 
 # -----------------------------------------------------------------------------
