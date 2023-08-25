@@ -108,14 +108,12 @@ jobs:
         - 27017:27017
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
+      - uses: docker/setup-buildx-action@v2
+      - uses: docker/build-push-action@v3
         with:
-          python-version: ${{ matrix.py3 }}
-
-      - name: pip install
-        run: |
-          pip install --upgrade pip wheel setuptools
-          pip install .[tests]
+          context: .
+          file: Dockerfile
+          tags: wipac/skydriver:local
 
       - name: Test
         run: |
@@ -125,12 +123,26 @@ jobs:
               | sed 's/v//' \
           )
           echo $LATEST_TAG  # this tag may be off if there's a delay between GH release & docker hub
-          pytest -vvv tests/integration
 
-      - name: Dump logs
+          docker run --network="host" --rm -i --name test \
+              --env LATEST_TAG=$LATEST_TAG \
+              $(env | grep '^SKYSCAN_' | awk '$0="--env "$0') \
+              $(env | grep '^EWMS_' | awk '$0="--env "$0') \
+              $(env | grep '^CLIENTMANAGER_' | awk '$0="--env "$0') \
+              $(env | grep '^CI_' | awk '$0="--env "$0') \
+              $(env | grep '^SCAN_' | awk '$0="--env "$0') \
+              wipac/skydriver:local \
+              pytest -vvv tests/integration
+
+      - name: dump skydriver logs
         if: always()
         run: |
-          cat pytest.logs
+          docker logs skydriver
+
+      - name: dump mongo logs
+        if: always()
+        run: |
+          docker logs "${{ job.services.mongo.id }}" || true
 
   test-build-docker:
     runs-on: ubuntu-latest
