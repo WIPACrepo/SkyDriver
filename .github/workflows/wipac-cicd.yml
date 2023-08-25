@@ -134,10 +134,10 @@ jobs:
               wipac/skydriver:local \
               pytest -vvv tests/integration
 
-      - name: dump skydriver logs
+      - name: dump test logs
         if: always()
         run: |
-          docker logs skydriver
+          docker logs test
 
       - name: dump mongo logs
         if: always()
