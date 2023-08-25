@@ -52,7 +52,7 @@ async def get_next_backlog_entry(
 
 
 async def startup(
-    mongo_client: "AsyncIOMotorClient",
+    mongo_client: AsyncIOMotorClient,
     api_instance: kubernetes.client.BatchV1Api,
 ) -> None:
     """The main loop."""

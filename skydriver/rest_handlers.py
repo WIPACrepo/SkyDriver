@@ -67,7 +67,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
 
     def initialize(  # type: ignore  # pylint: disable=W0221
         self,
-        mongo_client: "AsyncIOMotorClient",
+        mongo_client: AsyncIOMotorClient,
         k8s_api: kubernetes.client.BatchV1Api,
         *args: Any,
         **kwargs: Any,
