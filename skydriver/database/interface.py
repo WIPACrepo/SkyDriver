@@ -56,7 +56,7 @@ _RESULTS_COLL_NAME = "Results"
 _SCAN_BACKLOG_COLL_NAME = "ScanBacklog"
 
 
-async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
+async def ensure_indexes(motor_client: "AsyncIOMotorClient") -> None:
     """Create indexes in collections.
 
     Call on server startup.
@@ -95,7 +95,7 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
     )
 
 
-async def drop_collections(motor_client: AsyncIOMotorClient) -> None:
+async def drop_collections(motor_client: "AsyncIOMotorClient") -> None:
     """Drop the "regular" collections -- most useful for testing."""
     if not ENV.CI_TEST:
         raise RuntimeError("Cannot drop collections if not in testing mode")
@@ -107,9 +107,9 @@ async def drop_collections(motor_client: AsyncIOMotorClient) -> None:
 class DataclassCollectionFacade:
     """Motor Client wrapper w/ guardrails & `dataclasses.dataclass` casting."""
 
-    def __init__(self, motor_client: AsyncIOMotorClient) -> None:
+    def __init__(self, motor_client: "AsyncIOMotorClient") -> None:
         # place in a dictionary so there's some safeguarding against bogus collections
-        self._collections: dict[str, AsyncIOMotorCollection] = {
+        self._collections: dict[str, "AsyncIOMotorCollection"] = {
             _MANIFEST_COLL_NAME: motor_client[_DB_NAME][_MANIFEST_COLL_NAME],
             _RESULTS_COLL_NAME: motor_client[_DB_NAME][_RESULTS_COLL_NAME],
             _SCAN_BACKLOG_COLL_NAME: motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME],
