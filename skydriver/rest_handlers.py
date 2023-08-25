@@ -9,9 +9,9 @@ import uuid
 from typing import Any, Type, TypeVar, cast
 
 import kubernetes.client  # type: ignore[import]
-from dacite import from_dict  # type: ignore[attr-defined]
+from dacite import from_dict
 from dacite.exceptions import DaciteError
-from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore[import]
+from motor.motor_asyncio import AsyncIOMotorClient
 from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
 from tornado import web
 
@@ -67,7 +67,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
 
     def initialize(  # type: ignore  # pylint: disable=W0221
         self,
-        mongo_client: AsyncIOMotorClient,
+        mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
         k8s_api: kubernetes.client.BatchV1Api,
         *args: Any,
         **kwargs: Any,
@@ -489,7 +489,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             if not val:
                 return None
             try:
-                return from_dict(data_class, val)  # type: ignore[no-any-return]
+                return from_dict(data_class, val)
             except DaciteError as e:
                 raise ValueError(str(e))
 

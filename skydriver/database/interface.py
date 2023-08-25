@@ -7,10 +7,7 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, Type, TypeVar, cast
 
 import typeguard
 from dacite import from_dict
-from motor.motor_asyncio import (  # type: ignore
-    AsyncIOMotorClient,
-    AsyncIOMotorCollection,
-)
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from tornado import web
 
@@ -56,18 +53,18 @@ _RESULTS_COLL_NAME = "Results"
 _SCAN_BACKLOG_COLL_NAME = "ScanBacklog"
 
 
-async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
+async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
     """Create indexes in collections.
 
     Call on server startup.
     """
     # MANIFEST COLL
-    await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].create_index(
+    await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].create_index(  # type: ignore[index]
         "scan_id",
         name="scan_id_index",
         unique=True,
     )
-    await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].create_index(
+    await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].create_index(  # type: ignore[index]
         [
             ("event_metadata.event_id", DESCENDING),
             ("event_metadata.run_id", DESCENDING),
@@ -76,43 +73,43 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:
     )
 
     # RESULTS COLL
-    await motor_client[_DB_NAME][_RESULTS_COLL_NAME].create_index(
+    await motor_client[_DB_NAME][_RESULTS_COLL_NAME].create_index(  # type: ignore[index]
         "scan_id",
         name="scan_id_index",
         unique=True,
     )
 
     # SCAN BACKLOG COLL
-    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(
+    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(  # type: ignore[index]
         [("timestamp", ASCENDING)],
         name="timestamp_index",
         unique=False,
     )
-    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(
+    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(  # type: ignore[index]
         "scan_id",
         name="scan_id_index",
         unique=True,
     )
 
 
-async def drop_collections(motor_client: AsyncIOMotorClient) -> None:
+async def drop_collections(motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
     """Drop the "regular" collections -- most useful for testing."""
     if not ENV.CI_TEST:
         raise RuntimeError("Cannot drop collections if not in testing mode")
-    await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].drop()
-    await motor_client[_DB_NAME][_RESULTS_COLL_NAME].drop()
-    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].drop()
+    await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].drop()  # type: ignore[index]
+    await motor_client[_DB_NAME][_RESULTS_COLL_NAME].drop()  # type: ignore[index]
+    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].drop()  # type: ignore[index]
 
 
 class DataclassCollectionFacade:
     """Motor Client wrapper w/ guardrails & `dataclasses.dataclass` casting."""
 
-    def __init__(self, motor_client: AsyncIOMotorClient) -> None:
+    def __init__(self, motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
         # place in a dictionary so there's some safeguarding against bogus collections
-        self._collections: dict[str, AsyncIOMotorCollection] = {
-            _MANIFEST_COLL_NAME: motor_client[_DB_NAME][_MANIFEST_COLL_NAME],
-            _RESULTS_COLL_NAME: motor_client[_DB_NAME][_RESULTS_COLL_NAME],
-            _SCAN_BACKLOG_COLL_NAME: motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME],
+        self._collections: dict[str, AsyncIOMotorCollection] = {  # type: ignore[valid-type]
+            _MANIFEST_COLL_NAME: motor_client[_DB_NAME][_MANIFEST_COLL_NAME],  # type: ignore[index]
+            _RESULTS_COLL_NAME: motor_client[_DB_NAME][_RESULTS_COLL_NAME],  # type: ignore[index]
+            _SCAN_BACKLOG_COLL_NAME: motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME],  # type: ignore[index]
         }
 
     async def _find_one(
@@ -123,7 +120,7 @@ class DataclassCollectionFacade:
     ) -> DataclassT:
         """Get document by 'query'."""
         LOGGER.debug(f"finding: ({coll=}) doc with {query=} for {dclass=}")
-        doc = await self._collections[coll].find_one(query)
+        doc = await self._collections[coll].find_one(query)  # type: ignore[attr-defined]
         if not doc:
             raise web.HTTPError(
                 404,
@@ -131,7 +128,7 @@ class DataclassCollectionFacade:
             )
         dc_doc = from_dict(dclass, doc)
         LOGGER.debug(f"found: ({coll=}) doc {dc_doc}")
-        return dc_doc  # type: ignore[no-any-return]  # mypy internal bug
+        return dc_doc
 
     async def _upsert(
         self,
@@ -154,7 +151,7 @@ class DataclassCollectionFacade:
         LOGGER.debug(f"replacing: ({coll=}) doc with {query=} {dclass=}")
 
         async def find_one_and_update(update_dict: schema.StrDict) -> schema.StrDict:
-            return await self._collections[coll].find_one_and_update(  # type: ignore[no-any-return]
+            return await self._collections[coll].find_one_and_update(  # type: ignore[attr-defined, no-any-return]
                 query,
                 {"$set": update_dict},
                 upsert=True,
@@ -204,7 +201,7 @@ class DataclassCollectionFacade:
             )
         dc_doc = from_dict(out_type, doc)
         LOGGER.debug(f"replaced: ({coll=}) doc {dc_doc}")
-        return cast(DataclassT, dc_doc)  # mypy internal bug
+        return dc_doc
 
 
 # -----------------------------------------------------------------------------
@@ -363,7 +360,7 @@ class ManifestClient(DataclassCollectionFacade):
             "event_metadata.is_real_event": is_real_event,
             # NOTE: not searching for mjd
         }
-        async for doc in self._collections[_MANIFEST_COLL_NAME].find(query):
+        async for doc in self._collections[_MANIFEST_COLL_NAME].find(query):  # type: ignore[attr-defined]
             if not incl_del and doc["is_deleted"]:
                 continue
             LOGGER.debug(
@@ -427,7 +424,7 @@ class ScanBacklogClient(DataclassCollectionFacade):
         LOGGER.debug("fetching & marking top backlog entry as a pending...")
 
         # atomically find & update
-        doc = await self._collections[_SCAN_BACKLOG_COLL_NAME].find_one_and_update(
+        doc = await self._collections[_SCAN_BACKLOG_COLL_NAME].find_one_and_update(  # type: ignore[attr-defined]
             {
                 # get entries that have never been pending (0.0) and/or
                 # entries that have been pending for too long (parent
@@ -453,12 +450,12 @@ class ScanBacklogClient(DataclassCollectionFacade):
             # inequality should still be valid if revival time >> O(ms)
         ):
             LOGGER.debug(f"backlog entry ready for revival ({entry.scan_id=})")
-        return entry  # type: ignore[no-any-return]  # mypy internal bug
+        return entry
 
     async def remove(self, entry: schema.ScanBacklogEntry) -> schema.ScanBacklogEntry:
         """Remove entry, `schema.ScanBacklogEntry`."""
         LOGGER.debug("removing ScanBacklogEntry")
-        res = await self._collections[_SCAN_BACKLOG_COLL_NAME].delete_one(
+        res = await self._collections[_SCAN_BACKLOG_COLL_NAME].delete_one(  # type: ignore[attr-defined]
             {"scan_id": entry.scan_id}
         )
         LOGGER.debug(f"delete_one result: {res}")
@@ -468,7 +465,7 @@ class ScanBacklogClient(DataclassCollectionFacade):
         """Insert entry, `schema.ScanBacklogEntry`."""
         LOGGER.debug(f"inserting {entry=}")
         doc = dc.asdict(entry)
-        res = await self._collections[_SCAN_BACKLOG_COLL_NAME].insert_one(doc)
+        res = await self._collections[_SCAN_BACKLOG_COLL_NAME].insert_one(doc)  # type: ignore[attr-defined]
         LOGGER.debug(f"insert result: {res}")
         LOGGER.debug(f"Inserted backlog entry for {entry.scan_id=}")
 
@@ -480,7 +477,7 @@ class ScanBacklogClient(DataclassCollectionFacade):
         LOGGER.debug("getting all entries in backlog")
         docs = [
             d
-            async for d in self._collections[_SCAN_BACKLOG_COLL_NAME].find(
+            async for d in self._collections[_SCAN_BACKLOG_COLL_NAME].find(  # type: ignore[attr-defined]
                 {},
                 {"_id": False, "pickled_k8s_job": False},
                 sort=[("timestamp", ASCENDING)],
