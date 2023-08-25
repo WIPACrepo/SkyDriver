@@ -113,7 +113,7 @@ jobs:
         with:
           context: .
           cache-from: type=gha
-          # cache-to: type=gha,mode=min
+          cache-to: type=gha,mode=min
           file: Dockerfile
           tags: wipac/skydriver:local
           load: true
@@ -127,6 +127,16 @@ jobs:
           )
           echo $LATEST_TAG  # this tag may be off if there's a delay between GH release & docker hub
 
+          # make test script
+          DIR="test-script-dir"
+          mkdir $DIR
+          echo "#!/bin/bash" >> $DIR/test-script.sh
+          echo "set -xe" >> $DIR/test-script.sh
+          echo "pip install .[tests]" >> $DIR/test-script.sh
+          echo "python -m pytest -vvv tests/integration" >> $DIR/test-script.sh
+          chmod +x $DIR/test-script.sh
+          cat $DIR/test-script.sh
+
           docker run --network="host" --rm -i --name test \
               --env LATEST_TAG=$LATEST_TAG \
               $(env | grep '^SKYSCAN_' | awk '$0="--env "$0') \
@@ -134,13 +144,14 @@ jobs:
               $(env | grep '^CLIENTMANAGER_' | awk '$0="--env "$0') \
               $(env | grep '^CI_' | awk '$0="--env "$0') \
               $(env | grep '^SCAN_' | awk '$0="--env "$0') \
+              --mount type=bind,source=$(realpath $DIR),target=/local/$DIR \
               wipac/skydriver:local \
-              pytest -vvv tests/integration
+              /local/$DIR/test-script.sh
 
       - name: dump test logs
         if: always()
         run: |
-          docker logs test
+          docker logs test || true
 
       - name: dump mongo logs
         if: always()
