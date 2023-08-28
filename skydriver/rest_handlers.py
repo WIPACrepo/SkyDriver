@@ -637,3 +637,40 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
 
 # -----------------------------------------------------------------------------
+
+
+class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles relying logs for scans."""
+
+    ROUTE = r"/scans/(?P<scan_id>\w+)/logs$"
+
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
+        """Get a scan's status."""
+
+        # get pod status
+        try:
+            pod_container_logs = k8s.utils.KubeAPITools.get_container_logs(
+                self.k8s_api,
+                k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
+                ENV.K8S_NAMESPACE,
+            )
+        except kubernetes.client.rest.ApiException as e:
+            if await self.scan_backlog.is_in_backlog(scan_id):
+                pod_container_logs = {"message": "in backlog"}
+            else:
+                pod_container_logs = {"message": str(e)}
+
+        self.write(
+            {
+                "scan_id": scan_id,
+                "pod_container_logs": pod_container_logs,
+            }
+        )
+
+    #
+    # NOTE - handler needs to stay user-read-only
+    #
+
+
+# -----------------------------------------------------------------------------
