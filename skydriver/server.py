@@ -42,6 +42,8 @@ async def make(
         rest_handlers.ScanManifestHandler,
         rest_handlers.ScanResultHandler,
         rest_handlers.ScanLauncherHandler,
+        rest_handlers.ScanStatusHandler,
+        rest_handlers.ScanLogsHandler,
     ]:
         try:
             rs.add_route(getattr(klass, "ROUTE"), klass, args)

@@ -646,9 +646,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
-        """Get a scan's status."""
-
-        # get pod status
+        """Get a scan's logs."""
         try:
             pod_container_logs = k8s.utils.KubeAPITools.get_container_logs(
                 self.k8s_api,
