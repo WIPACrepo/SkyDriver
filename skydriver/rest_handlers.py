@@ -615,20 +615,19 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             ENV.K8S_NAMESPACE,
         )
 
-        # get status of each cluster
-        for cluster in manifest.clusters:
-            pass
-
         self.write(
             {
                 "scan_id": scan_id,
                 "is_deleted": manifest.is_deleted,
-                "locals": starter_status,
+                "scan_complete": manifest.complete,
+                "pod_status": pod_status,
+                "clusters": [dc.asdict(c) for c in manifest.clusters],
             }
         )
 
     #
-    # NOTE - needs to stay user-read-only
+    # NOTE - handler needs to stay user-read-only
+    #
 
 
 # -----------------------------------------------------------------------------
