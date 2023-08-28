@@ -287,7 +287,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scan_id = uuid.uuid4().hex
 
         # get the container info ready
-        k8s_job = k8s.scanner_instance.SkymapScannerStarterJob(
+        k8s_job = k8s.scanner_instance.SkymapScannerJob(
             api_instance=self.k8s_api,
             scan_backlog=self.scan_backlog,
             #
@@ -608,13 +608,10 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Get a scan's status."""
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
-        if manifest.is_deleted:
-            pass
-
-        # get starter status
-        starter_status = k8s.utils.KubeAPITools.get_status(
+        # get pod status
+        pod_status = k8s.utils.KubeAPITools.get_status(
             self.k8s_api,
-            k8s.scanner_instance.SkymapScannerStarterJob.get_starter_job_name(scan_id),
+            k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
             ENV.K8S_NAMESPACE,
         )
 
