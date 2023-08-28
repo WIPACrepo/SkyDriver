@@ -158,9 +158,9 @@ class KubeAPITools:
         namespace: str,
     ) -> dict[str, Any]:
         """Get the status of the k8s pod and its containers."""
-        core_api = kubernetes.client.CoreV1Api(api_client=api_instance.api_client)
-
         LOGGER.info(f"getting pod status for {name=} {namespace=}")
+
+        core_api = kubernetes.client.CoreV1Api(api_client=api_instance.api_client)
         pod = core_api.read_namespaced_pod(name, namespace)
 
-        return pod.to_dict()  # type: ignore[no-any-return]
+        return pod.status.to_dict()  # type: ignore[no-any-return]

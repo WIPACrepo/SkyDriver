@@ -609,11 +609,17 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         # get pod status
-        pod_status = k8s.utils.KubeAPITools.get_status(
-            self.k8s_api,
-            k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
-            ENV.K8S_NAMESPACE,
-        )
+        try:
+            pod_status = k8s.utils.KubeAPITools.get_status(
+                self.k8s_api,
+                k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
+                ENV.K8S_NAMESPACE,
+            )
+        except kubernetes.client.rest.ApiException as e:
+            if await self.scan_backlog.is_in_backlog(scan_id):
+                pod_status = {"message": "in backlog"}
+            else:
+                pod_status = {"message": str(e)}
 
         self.write(
             {

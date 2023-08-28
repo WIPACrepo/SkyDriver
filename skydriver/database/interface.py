@@ -484,3 +484,14 @@ class ScanBacklogClient(DataclassCollectionFacade):
             )
         ]
         return docs
+
+    async def is_in_backlog(self, scan_id: str) -> bool:
+        """Return whether the scan id is in the backlog."""
+        LOGGER.debug(f"looking for {scan_id} in backlog")
+        docs = [
+            d
+            async for d in self._collections[_SCAN_BACKLOG_COLL_NAME].find_one(  # type: ignore[attr-defined]
+                {"scan_id": scan_id},
+            )
+        ]
+        return bool(docs)
