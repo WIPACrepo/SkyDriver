@@ -140,11 +140,13 @@ class Manifest(ScanIDDataclass):
 
     is_deleted: bool
 
+    # args
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ checksum/hash?
     scanner_server_args: str
     tms_args: list[str]
     env_vars: dict[str, Any]
 
+    # cpus
     clusters: list[Cluster] = dc.field(default_factory=list)
 
     # found/created during first few seconds of scanning

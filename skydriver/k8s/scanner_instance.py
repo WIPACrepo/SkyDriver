@@ -137,11 +137,16 @@ class SkymapScannerStarterJob:
 
         # job
         self.job_obj = KubeAPITools.kube_create_job_object(
-            f"skyscan-{scan_id}",
+            self.get_starter_job_name(scan_id),
             [scanner_server] + tms_starters,
             ENV.K8S_NAMESPACE,
             volumes=[common_space_volume_path.name],
         )
+
+    @staticmethod
+    def get_starter_job_name(scan_id: str) -> str:
+        """Get the name of the K8s job (deterministic)."""
+        return f"skyscan-{scan_id}"
 
     @staticmethod
     def get_scanner_server_args(

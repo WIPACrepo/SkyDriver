@@ -596,3 +596,42 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
 
 # -----------------------------------------------------------------------------
+
+
+class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles relying statuses for scans."""
+
+    ROUTE = r"/scans/(?P<scan_id>\w+)/status$"
+
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
+        """Get a scan's status."""
+        manifest = await self.manifests.get(scan_id, incl_del=True)
+
+        if manifest.is_deleted:
+            pass
+
+        # get starter status
+        starter_status = k8s.utils.KubeAPITools.get_status(
+            self.k8s_api,
+            k8s.scanner_instance.SkymapScannerStarterJob.get_starter_job_name(scan_id),
+            ENV.K8S_NAMESPACE,
+        )
+
+        # get status of each cluster
+        for cluster in manifest.clusters:
+            pass
+
+        self.write(
+            {
+                "scan_id": scan_id,
+                "is_deleted": manifest.is_deleted,
+                "locals": starter_status,
+            }
+        )
+
+    #
+    # NOTE - needs to stay user-read-only
+
+
+# -----------------------------------------------------------------------------

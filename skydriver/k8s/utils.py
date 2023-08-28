@@ -150,3 +150,17 @@ class KubeAPITools:
             LOGGER.exception(e)
             raise
         return api_response
+
+    @staticmethod
+    def get_status(
+        api_instance: kubernetes.client.BatchV1Api,
+        name: str,
+        namespace: str,
+    ) -> dict[str, Any]:
+        """Get the status of the k8s pod and its containers."""
+        core_api = kubernetes.client.CoreV1Api(api_client=api_instance.api_client)
+
+        LOGGER.info(f"getting pod status for {name=} {namespace=}")
+        pod = core_api.read_namespaced_pod(name, namespace)
+
+        return pod.to_dict()  # type: ignore[no-any-return]
