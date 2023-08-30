@@ -376,7 +376,7 @@ class ScanBacklogClient:
         LOGGER.debug(f"looking for {scan_id} in backlog")
         async for _ in self.collection.find(
             {"scan_id": scan_id},
-            return_dclass=schema.ScanBacklogEntry,
+            return_dclass=dict,
         ):
             return True
         return False

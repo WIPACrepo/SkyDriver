@@ -2,18 +2,13 @@
 
 import dataclasses as dc
 import logging
-from typing import TYPE_CHECKING, Any, AsyncIterator, Type, TypeVar
+from typing import Any, AsyncIterator, Type, TypeVar
 
 import typeguard
 from dacite import from_dict
 from motor.motor_asyncio import AsyncIOMotorCollection
 
-if TYPE_CHECKING:
-    from _typeshed import DataclassInstance  # type: ignore[attr-defined]
-else:
-    DataclassInstance = Any
-
-DataclassT = TypeVar("DataclassT", bound=DataclassInstance)
+T = TypeVar("T")
 
 LOGGER = logging.getLogger(__name__)
 
@@ -28,11 +23,19 @@ class MotorDataclassCollection(AsyncIOMotorCollection):  # type: ignore[misc, va
     async def find(
         self,
         *args: Any,
-        return_dclass: Type[DataclassT],
+        return_dclass: Type[T],
         **kwargs: Any,
-    ) -> AsyncIterator[DataclassT]:
+    ) -> AsyncIterator[T]:
+        """Wraps `AsyncIOMotorCollection.find()` and typecasts the result of as
+        a dataclass.
+
+        Additional Keyword Arguments:
+            `return_dclass` -- the dataclass to cast the return type;
+                alternatively, this can be any type as long as the mongo
+                function returns that type directly (ex: `dict`)
+        """
         async for doc in super().find(*args, **kwargs):
-            if return_dclass == dict:
+            if isinstance(doc, return_dclass):
                 yield doc
             else:
                 yield from_dict(return_dclass, doc)
@@ -40,24 +43,46 @@ class MotorDataclassCollection(AsyncIOMotorCollection):  # type: ignore[misc, va
     async def find_one(
         self,
         *args: Any,
-        return_dclass: Type[DataclassT],
+        return_dclass: Type[T],
         **kwargs: Any,
-    ) -> DataclassT:
-        res = await super().find_one(*args, **kwargs)
-        if not res:
+    ) -> T:
+        """Wraps `AsyncIOMotorCollection.find_one()` and typecasts the result
+        of as a dataclass.
+
+        Additional Keyword Arguments:
+            `return_dclass` -- the dataclass to cast the return type;
+                alternatively, this can be any type as long as the mongo
+                function returns that type directly (ex: `dict`)
+        """
+        doc = await super().find_one(*args, **kwargs)
+        if not doc:
             raise DocumentNotFoundException()
-        return from_dict(return_dclass, res)
+        if isinstance(doc, return_dclass):
+            return doc
+        else:
+            return from_dict(return_dclass, doc)
 
     async def find_one_and_update(
         self,
         *args: Any,
-        return_dclass: Type[DataclassT],
+        return_dclass: Type[T],
         **kwargs: Any,
-    ) -> DataclassT:
-        res = await super().find_one_and_update(*args, **kwargs)
-        if not res:
+    ) -> T:
+        """Wraps the `AsyncIOMotorCollection.find_one_and_update()` and
+        typecasts the result of as a dataclass.
+
+        Additional Keyword Arguments:
+            `return_dclass` -- the dataclass to cast the return type;
+                alternatively, this can be any type as long as the mongo
+                function returns that type directly (ex: `dict`)
+        """
+        doc = await super().find_one_and_update(*args, **kwargs)
+        if not doc:
             raise DocumentNotFoundException()
-        return from_dict(return_dclass, res)
+        if isinstance(doc, return_dclass):
+            return doc
+        else:
+            return from_dict(return_dclass, doc)
 
 
 def friendly_nested_asdict(value: Any) -> Any:
@@ -78,7 +103,7 @@ def friendly_nested_asdict(value: Any) -> Any:
     return value
 
 
-def typecheck_as_dc_fields(dicto: dict, dclass: Type[DataclassT]) -> dict:
+def typecheck_as_dc_fields(dicto: dict, dclass: Type[T]) -> dict:
     """Type-check dict fields as if they were dataclass fields."""
     if not (dclass and dc.is_dataclass(dclass) and isinstance(dclass, type)):
         raise TypeError("'dclass' must be a dataclass class/type")
