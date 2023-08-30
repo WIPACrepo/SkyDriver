@@ -447,7 +447,7 @@ async def _delete_scan(
             "is_real_event": IS_REAL_EVENT,
         },
     )
-    assert not resp["scan_ids"]  # no matches
+    assert not resp["scans"]  # no matches
     # query by event id w/ incl_del
     resp = await rc.request(
         "GET",
