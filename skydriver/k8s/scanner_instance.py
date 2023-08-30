@@ -64,6 +64,7 @@ class SkymapScannerJob:
         docker_tag: str,
         scan_id: str,
         # scanner
+        scanner_server_memory: str,
         reco_algo: str,
         nsides: dict[int, int],
         is_real_event: bool,
@@ -102,7 +103,7 @@ class SkymapScannerJob:
             ),
             self.scanner_server_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
-            memory=ENV.K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
+            memory=scanner_server_memory,
         )
         self.env_dict["scanner_server"] = [e.to_dict() for e in scanner_server.env]
 

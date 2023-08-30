@@ -245,7 +245,15 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
 
-        # condor args
+        # scanner server args
+        scanner_server_memory = self.get_argument(
+            "scanner_server_memory",
+            type=str,
+            default=ENV.K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
+            forbiddens=[r"\s*"],  # no empty string / whitespace
+        )
+
+        # client worker args
         memory = self.get_argument(
             "memory",
             type=str,
@@ -305,6 +313,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             docker_tag=docker_tag,
             scan_id=scan_id,
             # server
+            scanner_server_memory=scanner_server_memory,
             reco_algo=reco_algo,
             nsides=nsides,  # type: ignore[arg-type]
             is_real_event=real_or_simulated_event in REAL_CHOICES,
