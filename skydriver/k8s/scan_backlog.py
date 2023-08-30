@@ -73,7 +73,8 @@ async def startup(
         try:
             entry = await get_next_backlog_entry(scan_backlog, manifests)
             short_sleep = False
-        except database.interface.DocumentNotFoundException:
+        except database.mongodc.DocumentNotFoundException:
+            LOGGER.debug("no backlog entry found")
             short_sleep = True
             continue  # empty queue
 
