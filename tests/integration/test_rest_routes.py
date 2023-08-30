@@ -465,7 +465,7 @@ async def _delete_scan(
             {
                 "scan_id": scan_id,
                 "is_real_event": IS_REAL_EVENT,
-                "is_deleted": False,
+                "is_deleted": True,
             }
         ],
     }
