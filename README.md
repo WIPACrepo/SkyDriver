@@ -156,11 +156,16 @@ None
 #### Returns
 ```
 {
-    "event_id": event_id,
     "scans": [
         {
-            "scan_id": str,
+            # event-specific:
+            "run_id": int,
+            "event_id": int,
+            "event_type": str,
+            "mjd": float,
             "is_real_event": bool,
+            # scan-specific:
+            "scan_id": str,
             "is_deleted": bool,
         },
     ],

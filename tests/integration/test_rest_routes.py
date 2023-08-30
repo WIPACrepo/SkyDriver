@@ -288,13 +288,8 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
         },
     )
     assert resp == {
-        "event_id": event_metadata["event_id"],
         "scans": [
-            {
-                "scan_id": scan_id,
-                "is_real_event": IS_REAL_EVENT,
-                "is_deleted": False,
-            }
+            event_metadata | {"scan_id": scan_id, "is_deleted": False},
         ],
     }
 
@@ -460,13 +455,8 @@ async def _delete_scan(
         },
     )
     assert resp == {
-        "event_id": event_metadata["event_id"],
         "scans": [
-            {
-                "scan_id": scan_id,
-                "is_real_event": IS_REAL_EVENT,
-                "is_deleted": True,
-            }
+            event_metadata | {"scan_id": scan_id, "is_deleted": True},
         ],
     }
 
