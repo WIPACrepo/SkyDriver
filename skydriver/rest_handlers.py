@@ -112,14 +112,19 @@ class RunEventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
-        scans = [
-            # event-specific
-            dc.asdict(m.event_metadata)
+        def resp_obj(manifest: database.schema.Manifest) -> dict:
             # scan-specific
-            | {
-                "scan_id": m.scan_id,
-                "is_deleted": m.is_deleted,
+            obj = {
+                "scan_id": manifest.scan_id,
+                "is_deleted": manifest.is_deleted,
             }
+            # event-specific -- should always be present
+            if manifest.event_metadata:
+                obj.update(dc.asdict(manifest.event_metadata))
+            return obj
+
+        scans = [
+            resp_obj(m)
             async for m in self.manifests.find_all(
                 run_id, event_id, is_real_event, incl_del
             )
