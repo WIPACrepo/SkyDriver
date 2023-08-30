@@ -208,16 +208,16 @@ class ManifestClient:
 
         return manifest
 
-    async def find_scan_ids(
+    async def find_all(
         self,
         run_id: int,
         event_id: int,
         is_real_event: bool,
         incl_del: bool,
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[schema.Manifest]:
         """Search over scans and find all matching runevent."""
         LOGGER.debug(
-            f"finding: scan ids for {(run_id, event_id, is_real_event)=} ({incl_del=})"
+            f"finding: scans for {(run_id, event_id, is_real_event)=} ({incl_del=})"
         )
 
         # skip the dataclass-casting b/c we're just returning a str
@@ -227,13 +227,15 @@ class ManifestClient:
             "event_metadata.is_real_event": is_real_event,
             # NOTE: not searching for mjd
         }
-        async for doc in self.collection.find(query):
-            if not incl_del and doc["is_deleted"]:
+        async for manifests in self.collection.find(
+            query, return_dclass=schema.Manifest
+        ):
+            if not incl_del and manifests.is_deleted:
                 continue
             LOGGER.debug(
-                f"found: {doc['scan_id']=} for {(run_id, event_id, is_real_event)=} ({incl_del=})"
+                f"found: {manifests.scan_id=} for {(run_id, event_id, is_real_event)=} ({incl_del=})"
             )
-            yield doc["scan_id"]
+            yield manifests
 
 
 # -----------------------------------------------------------------------------

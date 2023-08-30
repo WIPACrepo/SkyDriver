@@ -112,14 +112,23 @@ class RunEventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
-        scan_ids = [
-            s
-            async for s in self.manifests.find_scan_ids(
+        scans = [
+            {
+                "scan_id": m.scan_id,
+                "is_real_event": is_real_event,
+                "is_deleted": m.is_deleted,
+            }
+            async for m in self.manifests.find_all(
                 run_id, event_id, is_real_event, incl_del
             )
         ]
 
-        self.write({"event_id": event_id, "scan_ids": scan_ids})
+        self.write(
+            {
+                "event_id": event_id,
+                "scans": scans,
+            }
+        )
 
     #
     # NOTE - 'EventMappingHandler' needs to stay user-read-only b/c
