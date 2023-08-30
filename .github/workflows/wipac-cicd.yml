@@ -81,14 +81,14 @@ jobs:
           pip install --upgrade pip wheel setuptools
           pip install .[tests]
 
-      - name: Test
+      - name: test
         run: |
           pytest -vvv tests/unit
 
       - name: Dump logs
         if: always()
         run: |
-          cat pytest.logs
+          cat pytest.logs || true
 
   integration-tests:
     needs: [py-versions]
@@ -114,7 +114,7 @@ jobs:
           tags: wipac/skydriver:local
           load: true
 
-      - name: Test
+      - name: test
         run: |
           export LATEST_TAG=$( \
               curl -I https://github.com/icecube/skymap_scanner/releases/latest \
