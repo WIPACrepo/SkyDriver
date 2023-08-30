@@ -624,11 +624,14 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
                 ENV.K8S_NAMESPACE,
             )
+            pod_message = "retrieved"
         except kubernetes.client.rest.ApiException as e:
             if await self.scan_backlog.is_in_backlog(scan_id):
-                pod_status = {"message": "in backlog"}
+                pod_status = {}
+                pod_message = "in backlog"
             else:
-                pod_status = {"message": str(e)}
+                pod_status = {}
+                pod_message = str(e)
 
         self.write(
             {
@@ -636,6 +639,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 "is_deleted": manifest.is_deleted,
                 "scan_complete": manifest.complete,
                 "pod_status": pod_status,
+                "pod_message": pod_message,
                 "clusters": [dc.asdict(c) for c in manifest.clusters],
             }
         )
@@ -662,16 +666,20 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
                 ENV.K8S_NAMESPACE,
             )
+            pod_container_logs_message = "retrieved"
         except kubernetes.client.rest.ApiException as e:
             if await self.scan_backlog.is_in_backlog(scan_id):
-                pod_container_logs = {"message": "in backlog"}
+                pod_container_logs = {}
+                pod_container_logs_message = "in backlog"
             else:
-                pod_container_logs = {"message": str(e)}
+                pod_container_logs = {}
+                pod_container_logs_message = str(e)
 
         self.write(
             {
                 "scan_id": scan_id,
                 "pod_container_logs": pod_container_logs,
+                "pod_container_logs_message": pod_container_logs_message,
             }
         )
 

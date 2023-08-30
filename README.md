@@ -62,7 +62,7 @@ _Retrieve the manifest of a scan_
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
-| `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted
+| `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
 
 #### SkyDriver Effects
 None
@@ -79,7 +79,7 @@ _Retrieve the result of a scan_
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
-| `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted
+| `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
 
 #### SkyDriver Effects
 None
@@ -96,7 +96,7 @@ _Retrieve the manifest and result of a scan_
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
-| `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted
+| `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
 
 #### SkyDriver Effects
 None
@@ -148,7 +148,7 @@ _Retrieve scan ids corresponding to a specific run and event_
 | `"run_id"`          | int         | *[REQUIRED]*     | id of the run
 | `"event_id"`        | int         | *[REQUIRED]*     | id of the event
 | `"is_real_event"`   | bool        | *[REQUIRED]*     | whether this event is real or simulated
-| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
+| `"include_deleted"` | bool        | default: `False` | whether to include deleted (aborted) scans
 
 #### SkyDriver Effects
 None
@@ -157,7 +157,13 @@ None
 ```
 {
     "event_id": event_id,
-    "scan_ids": scan_ids,  # list of strings
+    "scans": [
+        {
+            "scan_id": str,
+            "is_real_event": bool,
+            "is_deleted": bool,
+        },
+    ],
 }
 ```
 
@@ -189,6 +195,51 @@ None
 
 
 &nbsp;
+### `/scan/SCAN_ID/status` - GET
+-------------------------------------------------------------------------------
+_Retrieve the status of a scan_
+
+#### Arguments
+None
+
+#### SkyDriver Effects
+None
+
+#### Returns
+```
+{
+    "scan_id": str,
+    "is_deleted": bool,
+    "scan_complete": bool,  # skymap scanner finished
+    "pod_status": dict,  # a large k8s status object
+    "pod_status_message": str,  # a human-readable message explaining the pod status retrieval
+    "clusters": list,  # same as Manifest's clusters field
+}
+```
+
+
+&nbsp;
+### `/scan/SCAN_ID/logs` - GET
+-------------------------------------------------------------------------------
+_Retrieve the logs of a scan's pod: central server & client starter(s)_
+
+#### Arguments
+None
+
+#### SkyDriver Effects
+None
+
+#### Returns
+```
+{
+    "scan_id": str,
+    "pod_container_logs": str | list[ dict[str,str] ],  # list
+    "pod_container_logs_message": str,  # a human-readable message explaining the log retrieval
+}
+```
+
+
+&nbsp;
 ### Return Types
 -------------------------------------------------------------------------------
 #### Manifest
@@ -212,6 +263,7 @@ Pseudo-code:
             cluster_id: int,
             n_workers: int,
         },
+        ...
         {
             orchestrator: 'k8s',
             location: {
