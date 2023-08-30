@@ -355,29 +355,26 @@ class ScanBacklogClient:
         LOGGER.debug(f"insert result: {res}")
         LOGGER.debug(f"Inserted backlog entry for {entry.scan_id=}")
 
-    async def get_all(self) -> list[dict]:
+    async def get_all(self) -> AsyncIterator[dict]:
         """Get all entries in backlog.
 
         Doesn't include all fields.
         """
         LOGGER.debug("getting all entries in backlog")
-        docs = [
-            d
-            async for d in self.collection.find(
-                {},
-                {"_id": False, "pickled_k8s_job": False},
-                sort=[("timestamp", ASCENDING)],
-            )
-        ]
-        return docs
+        async for entry in self.collection.find(
+            {},
+            {"_id": False, "pickled_k8s_job": False},
+            sort=[("timestamp", ASCENDING)],
+            return_dclass=dict,
+        ):
+            yield entry
 
     async def is_in_backlog(self, scan_id: str) -> bool:
         """Return whether the scan id is in the backlog."""
         LOGGER.debug(f"looking for {scan_id} in backlog")
-        docs = [
-            d
-            async for d in self.collection.find(
-                {"scan_id": scan_id},
-            )
-        ]
-        return bool(docs)
+        async for _ in self.collection.find(
+            {"scan_id": scan_id},
+            return_dclass=schema.ScanBacklogEntry,
+        ):
+            return True
+        return False

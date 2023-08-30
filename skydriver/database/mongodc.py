@@ -2,7 +2,7 @@
 
 import dataclasses as dc
 import logging
-from typing import TYPE_CHECKING, Any, Type, TypeVar
+from typing import TYPE_CHECKING, Any, AsyncIterator, Type, TypeVar
 
 import typeguard
 from dacite import from_dict
@@ -24,6 +24,18 @@ class DocumentNotFoundException(Exception):
 
 class MotorDataclassCollection(AsyncIOMotorCollection):  # type: ignore[misc, valid-type]
     """A wrapper around motor's collection with dataclass typecasting."""
+
+    async def find(
+        self,
+        *args: Any,
+        return_dclass: Type[DataclassT],
+        **kwargs: Any,
+    ) -> AsyncIterator[DataclassT]:
+        async for doc in super().find(*args, **kwargs):
+            if return_dclass == dict:
+                yield doc
+            else:
+                yield from_dict(return_dclass, doc)
 
     async def find_one(
         self,

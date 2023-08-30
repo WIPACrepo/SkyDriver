@@ -138,7 +138,7 @@ class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self) -> None:
         """Get all scan id(s) in the backlog."""
-        entries = await self.scan_backlog.get_all()
+        entries = [e async for e in self.scan_backlog.get_all()]
 
         self.write({"entries": entries})
 
