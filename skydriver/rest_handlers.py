@@ -113,7 +113,9 @@ class RunEventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
         scans = [
+            # event-specific
             dc.asdict(m.event_metadata)
+            # scan-specific
             | {
                 "scan_id": m.scan_id,
                 "is_deleted": m.is_deleted,
@@ -626,11 +628,11 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 pod_message = "in backlog"
             else:
                 pod_status = {}
-                pod_message = str(e)
+                pod_message = "error"
+                LOGGER.exception(e)
 
         self.write(
             {
-                "scan_id": scan_id,
                 "is_deleted": manifest.is_deleted,
                 "scan_complete": manifest.complete,
                 "pod_status": pod_status,
@@ -668,11 +670,11 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 pod_container_logs_message = "in backlog"
             else:
                 pod_container_logs = {}
-                pod_container_logs_message = str(e)
+                pod_container_logs_message = "error"
+                LOGGER.exception(e)
 
         self.write(
             {
-                "scan_id": scan_id,
                 "pod_container_logs": pod_container_logs,
                 "pod_container_logs_message": pod_container_logs_message,
             }

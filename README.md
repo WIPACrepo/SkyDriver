@@ -213,7 +213,6 @@ None
 #### Returns
 ```
 {
-    "scan_id": str,
     "is_deleted": bool,
     "scan_complete": bool,  # skymap scanner finished
     "pod_status": dict,  # a large k8s status object
@@ -237,7 +236,6 @@ None
 #### Returns
 ```
 {
-    "scan_id": str,
     "pod_container_logs": str | list[ dict[str,str] ],  # list
     "pod_container_logs_message": str,  # a human-readable message explaining the log retrieval
 }
