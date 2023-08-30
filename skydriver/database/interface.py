@@ -28,8 +28,9 @@ class ManifestClient:
     """Wraps the attribute for the metadata of a scan."""
 
     def __init__(self, motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
-        self.collection: mongodc.MotorDataclassCollection = mongodc.MotorDataclassCollection(
-            motor_client[_DB_NAME], _MANIFEST_COLL_NAME  # type: ignore[index]
+        self.collection = mongodc.MotorDataclassCollection(
+            motor_client[_DB_NAME],  # type: ignore[index]
+            _MANIFEST_COLL_NAME,
         )
 
     async def get(self, scan_id: str, incl_del: bool) -> schema.Manifest:
