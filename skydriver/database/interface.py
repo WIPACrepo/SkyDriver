@@ -77,7 +77,7 @@ class ManifestClient:
         try:
             manifest = await self.collection.find_one_and_update(
                 {"scan_id": manifest.scan_id},
-                dc.asdict(manifest),
+                {"$set": dc.asdict(manifest)},
                 return_dclass=schema.Manifest,
                 upsert=True,
                 return_document=ReturnDocument.AFTER,
@@ -174,7 +174,7 @@ class ManifestClient:
         try:
             manifest = await self.collection.find_one_and_update(
                 {"scan_id": scan_id},
-                upserting,
+                {"$set": upserting},
                 upsert=True,
                 return_document=ReturnDocument.AFTER,
                 return_dclass=schema.Manifest,
@@ -194,7 +194,7 @@ class ManifestClient:
         try:
             manifest = await self.collection.find_one_and_update(
                 {"scan_id": scan_id},
-                {"is_deleted": True},
+                {"$set": {"is_deleted": True}},
                 upsert=True,
                 return_document=ReturnDocument.AFTER,
                 return_dclass=schema.Manifest,
@@ -281,7 +281,7 @@ class ResultClient:
         try:
             result = await self.collection.find_one_and_update(
                 {"scan_id": result.scan_id},
-                dc.asdict(result),
+                {"$set": dc.asdict(result)},
                 upsert=True,
                 return_document=ReturnDocument.AFTER,
                 return_dclass=schema.Result,
