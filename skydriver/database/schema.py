@@ -159,8 +159,6 @@ class Manifest(ScanIDDataclass):
     # signifies k8s workers and condor cluster(s) are done
     complete: bool = False
 
-    # logs  # TODO
-
     def __repr__(self) -> str:
         dicto = dc.asdict(self)
         # shorten b/c this can be a LARGE dict
