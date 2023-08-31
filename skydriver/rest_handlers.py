@@ -527,7 +527,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 "manifest": dict_projection(
                     dc.asdict(manifest), projection=manifest_projection
                 ),
-                "result": dc.asdict(result),
+                "result": dc.asdict(result) if result else {},
             }
         )
 
@@ -640,7 +640,7 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             incl_del,
         )
 
-        self.write(dc.asdict(result))
+        self.write(dc.asdict(result) if result else {})
 
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
