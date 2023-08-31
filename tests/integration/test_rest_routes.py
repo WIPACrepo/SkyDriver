@@ -6,6 +6,7 @@ import asyncio
 import os
 import random
 import re
+import time
 from typing import Any, Callable
 
 import pytest
@@ -40,6 +41,7 @@ async def _launch_scan(
     rc: RestClient, post_scan_body: dict, tms_args: list[str]
 ) -> dict:
     # launch scan
+    launch_time = time.time()
     resp = await rc.request("POST", "/scan", post_scan_body)
 
     scanner_server_args = (
@@ -55,7 +57,7 @@ async def _launch_scan(
     assert resp == dict(
         scan_id=resp["scan_id"],
         is_deleted=False,
-        timestamp=0.0,
+        timestamp=resp["timestamp"],  # see below
         event_i3live_json_dict__hash=hash(str(post_scan_body["event_i3live_json"])),
         event_i3live_json_dict=post_scan_body["event_i3live_json"],
         event_metadata=None,
@@ -68,6 +70,8 @@ async def _launch_scan(
         complete=False,
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
+
+    assert launch_time < resp["timestamp"] < time.time()
 
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
@@ -194,7 +198,7 @@ async def _do_patch(
     assert resp == dict(
         scan_id=scan_id,
         is_deleted=False,
-        timestamp=0.0,
+        timestamp=resp["timestamp"],  # see below
         event_i3live_json_dict__hash=hash(str(resp["event_i3live_json"])),
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         event_metadata=event_metadata if event_metadata else resp["event_metadata"],
@@ -223,6 +227,8 @@ async def _do_patch(
         complete=False,
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
+    assert 0.0 < resp["timestamp"] < time.time()
+
     manifest = resp  # keep around
     # query progress
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
