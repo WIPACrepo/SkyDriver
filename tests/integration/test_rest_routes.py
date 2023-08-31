@@ -55,6 +55,8 @@ async def _launch_scan(
     assert resp == dict(
         scan_id=resp["scan_id"],
         is_deleted=False,
+        timestamp=0.0,
+        event_i3live_json_dict__hash="",
         event_i3live_json_dict=post_scan_body["event_i3live_json"],
         event_metadata=None,
         scan_metadata=None,
@@ -192,6 +194,8 @@ async def _do_patch(
     assert resp == dict(
         scan_id=scan_id,
         is_deleted=False,
+        timestamp=0.0,
+        event_i3live_json_dict__hash="",
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         event_metadata=event_metadata if event_metadata else resp["event_metadata"],
         scan_metadata=scan_metadata if scan_metadata else resp["scan_metadata"],

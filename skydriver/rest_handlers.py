@@ -376,7 +376,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             )
 
         self.write(
-            dict_projection(dc.asdict(manifest), projection=manifest_projection),
+            dict_projection(dc.asdict(manifest), manifest_projection),
         )
 
 
@@ -493,9 +493,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         self.write(
             {
-                "manifest": dict_projection(
-                    dc.asdict(manifest), projection=manifest_projection
-                ),
+                "manifest": dict_projection(dc.asdict(manifest), manifest_projection),
                 "result": result_dict,
             }
         )
@@ -524,9 +522,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         self.write(
             {
-                "manifest": dict_projection(
-                    dc.asdict(manifest), projection=manifest_projection
-                ),
+                "manifest": dict_projection(dc.asdict(manifest), manifest_projection),
                 "result": dc.asdict(result) if result else {},
             }
         )
@@ -558,7 +554,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await self.manifests.get(scan_id, incl_del)
 
         self.write(
-            dict_projection(dc.asdict(manifest), projection=manifest_projection),
+            dict_projection(dc.asdict(manifest), manifest_projection),
         )
 
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
@@ -612,7 +608,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
 
         self.write(
-            dict_projection(dc.asdict(manifest), projection=manifest_projection),
+            dict_projection(dc.asdict(manifest), manifest_projection),
         )
 
 
