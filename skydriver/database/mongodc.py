@@ -26,8 +26,8 @@ class MotorDataclassCollection(AsyncIOMotorCollection):  # type: ignore[misc, va
         return_dclass: Type[T],
         **kwargs: Any,
     ) -> AsyncIterator[T]:
-        """Wraps `AsyncIOMotorCollection.find()` and typecasts the result of as
-        a dataclass.
+        """Wraps `AsyncIOMotorCollection.find()` and typecasts the result as a
+        dataclass.
 
         Additional Keyword Arguments:
             `return_dclass` -- the dataclass to cast the return type;
@@ -47,7 +47,7 @@ class MotorDataclassCollection(AsyncIOMotorCollection):  # type: ignore[misc, va
         **kwargs: Any,
     ) -> T:
         """Wraps `AsyncIOMotorCollection.find_one()` and typecasts the result
-        of as a dataclass.
+        as a dataclass.
 
         Additional Keyword Arguments:
             `return_dclass` -- the dataclass to cast the return type;
@@ -68,8 +68,8 @@ class MotorDataclassCollection(AsyncIOMotorCollection):  # type: ignore[misc, va
         return_dclass: Type[T],
         **kwargs: Any,
     ) -> T:
-        """Wraps the `AsyncIOMotorCollection.find_one_and_update()` and
-        typecasts the result of as a dataclass.
+        """Wraps `AsyncIOMotorCollection.find_one_and_update()` and typecasts
+        the result as a dataclass.
 
         Additional Keyword Arguments:
             `return_dclass` -- the dataclass to cast the return type;
