@@ -3,6 +3,7 @@
 import dataclasses as dc
 from typing import Any
 
+import bson
 from typeguard import typechecked
 
 StrDict = dict[str, Any]
@@ -141,12 +142,15 @@ class Manifest(ScanIDDataclass):
     is_deleted: bool
 
     # args
+    event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ hash?
     scanner_server_args: str
     tms_args: list[str]
     env_vars: dict[str, Any]
 
-    event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ hash?
-    event_i3live_json_dict__hash: str = ""
+    # special fields -- see __post_init__
+    _id: dc.InitVar[bson.ObjectId | None] = None  # does not become instance variable
+    timestamp: float = dc.field(init=False)  # auto-generated
+    event_i3live_json_dict__hash: str = ""  # possibly overwritten
 
     # cpus
     clusters: list[Cluster] = dc.field(default_factory=list)
@@ -161,7 +165,12 @@ class Manifest(ScanIDDataclass):
     # signifies k8s workers and condor cluster(s) are done
     complete: bool = False
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, _id: bson.ObjectId | None) -> None:
+        if _id:
+            self.timestamp = _id.generation_time.timestamp()
+        else:
+            self.timestamp = 0.0
+
         if self.event_i3live_json_dict:
             # shorten b/c this can be a LARGE dict
             self.event_i3live_json_dict__hashed_data = hash(
