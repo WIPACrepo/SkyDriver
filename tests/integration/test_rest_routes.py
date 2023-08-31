@@ -62,10 +62,12 @@ async def _launch_scan(
         timestamp=resp["timestamp"],  # see below
         event_i3live_json_dict__hash=hashlib.md5(
             json.dumps(
-                post_scan_body["event_i3live_json"], sort_keys=True, ensure_ascii=True
+                post_scan_body["event_i3live_json_dict"],
+                sort_keys=True,
+                ensure_ascii=True,
             ).encode("utf-8")
         ).hexdigest(),
-        event_i3live_json_dict=post_scan_body["event_i3live_json"],
+        event_i3live_json_dict=post_scan_body["event_i3live_json_dict"],
         event_metadata=None,
         scan_metadata=None,
         clusters=[],
@@ -207,7 +209,9 @@ async def _do_patch(
         timestamp=resp["timestamp"],  # see below
         event_i3live_json_dict__hash=hashlib.md5(
             json.dumps(
-                resp["event_i3live_json"], sort_keys=True, ensure_ascii=True
+                resp["event_i3live_json_dict"],
+                sort_keys=True,
+                ensure_ascii=True,
             ).encode("utf-8")
         ).hexdigest(),
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking

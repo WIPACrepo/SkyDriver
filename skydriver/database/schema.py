@@ -170,7 +170,9 @@ class Manifest(ScanIDDataclass):
             # shorten b/c this can be a LARGE dict
             self.event_i3live_json_dict__hash = hashlib.md5(
                 json.dumps(  # sort -> deterministic
-                    self.event_i3live_json_dict, sort_keys=True, ensure_ascii=True
+                    self.event_i3live_json_dict,
+                    sort_keys=True,
+                    ensure_ascii=True,
                 ).encode("utf-8")
             ).hexdigest()
 
