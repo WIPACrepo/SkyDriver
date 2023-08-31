@@ -5,7 +5,6 @@ import hashlib
 import json
 from typing import Any
 
-import bson
 from typeguard import typechecked
 
 StrDict = dict[str, Any]
@@ -141,6 +140,7 @@ class Cluster:
 class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
 
+    timestamp: float
     is_deleted: bool
 
     # args
@@ -150,8 +150,6 @@ class Manifest(ScanIDDataclass):
     env_vars: dict[str, Any]
 
     # special fields -- see __post_init__
-    _id: dc.InitVar[bson.ObjectId | None] = None  # does not become instance variable
-    timestamp: float = dc.field(init=False)  # auto-generated
     event_i3live_json_dict__hash: str = ""  # possibly overwritten
 
     # cpus
@@ -167,12 +165,7 @@ class Manifest(ScanIDDataclass):
     # signifies k8s workers and condor cluster(s) are done
     complete: bool = False
 
-    def __post_init__(self, _id: bson.ObjectId | None) -> None:
-        if _id:
-            self.timestamp = _id.generation_time.timestamp()
-        else:
-            self.timestamp = 0.0
-
+    def __post_init__(self) -> None:
         if self.event_i3live_json_dict:
             # shorten b/c this can be a LARGE dict
             self.event_i3live_json_dict__hash = hashlib.md5(

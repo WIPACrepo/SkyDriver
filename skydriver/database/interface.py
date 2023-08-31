@@ -67,6 +67,7 @@ class ManifestClient:
         # validate
         manifest = schema.Manifest(
             scan_id=scan_id,
+            timestamp=time.time(),
             is_deleted=False,
             event_i3live_json_dict=event_i3live_json_dict,
             scanner_server_args=scanner_server_args,
