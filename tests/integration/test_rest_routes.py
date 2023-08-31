@@ -307,11 +307,7 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
             "is_real_event": IS_REAL_EVENT,
         },
     )
-    assert resp == {
-        "scans": [
-            event_metadata | {"scan_id": scan_id, "is_deleted": False},
-        ],
-    }
+    assert resp["scan_ids"] == [scan_id]
 
     return event_metadata
 
@@ -462,7 +458,7 @@ async def _delete_scan(
             "is_real_event": IS_REAL_EVENT,
         },
     )
-    assert not resp["scans"]  # no matches
+    assert not resp["scan_ids"]  # no matches
     # query by event id w/ incl_del
     resp = await rc.request(
         "GET",
@@ -474,11 +470,7 @@ async def _delete_scan(
             "is_real_event": IS_REAL_EVENT,
         },
     )
-    assert resp == {
-        "scans": [
-            event_metadata | {"scan_id": scan_id, "is_deleted": True},
-        ],
-    }
+    assert resp["scan_ids"] == [scan_id]
 
 
 def get_tms_args(

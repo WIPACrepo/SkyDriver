@@ -124,31 +124,16 @@ class RunEventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         event_id = self.get_argument("event_id", type=int)
         is_real_event = self.get_argument("is_real_event", type=bool)
 
-        incl_del = self.get_argument(
-            "include_deleted",
-            default=False,
-            type=bool,
-        )
+        incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
-        def resp_obj(manifest: database.schema.Manifest) -> dict:
-            # scan-specific
-            obj = {
-                "scan_id": manifest.scan_id,
-                "is_deleted": manifest.is_deleted,
-            }
-            # event-specific -- should always be present
-            if manifest.event_metadata:
-                obj.update(dc.asdict(manifest.event_metadata))
-            return obj
-
-        scans = [
-            resp_obj(m)
+        scan_ids = [
+            m.scan_id
             async for m in self.manifests.find_all(
                 run_id, event_id, is_real_event, incl_del
             )
         ]
 
-        self.write({"scans": scans})
+        self.write({"event_id": event_id, "scan_ids": scan_ids})
 
     #
     # NOTE - 'EventMappingHandler' needs to stay user-read-only b/c

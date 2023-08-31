@@ -149,7 +149,7 @@ _Retrieve scan ids corresponding to a specific run and event_
 | `"run_id"`          | int         | *[REQUIRED]*     | id of the run
 | `"event_id"`        | int         | *[REQUIRED]*     | id of the event
 | `"is_real_event"`   | bool        | *[REQUIRED]*     | whether this event is real or simulated
-| `"include_deleted"` | bool        | default: `False` | whether to include deleted (aborted) scans
+| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
 
 #### SkyDriver Effects
 None
@@ -157,19 +157,8 @@ None
 #### Returns
 ```
 {
-    "scans": [
-        {
-            # event-specific:
-            "run_id": int,
-            "event_id": int,
-            "event_type": str,
-            "mjd": float,
-            "is_real_event": bool,
-            # scan-specific:
-            "scan_id": str,
-            "is_deleted": bool,
-        },
-    ],
+    "event_id": event_id,
+    "scan_ids": scan_ids,  # list of strings
 }
 ```
 
