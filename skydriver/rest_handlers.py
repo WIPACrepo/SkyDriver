@@ -4,7 +4,6 @@
 import asyncio
 import dataclasses as dc
 import json
-import os
 import uuid
 from typing import Any, Type, TypeVar, cast
 
@@ -56,6 +55,21 @@ else:
 
 REAL_CHOICES = ["real", "real_event"]
 SIM_CHOICES = ["sim", "simulated", "simulated_event"]
+
+
+def all_dc_fields(class_or_instance: Any) -> set[str]:
+    """Get all the field names for a dataclass (instance or class)."""
+    return set(f.name for f in dc.fields(class_or_instance))
+
+
+def dict_projection(dicto: dict, projection: set[str]) -> dict:
+    """Keep only the keys in the `projection`.
+
+    If `projection` is empty, return all fields.
+    """
+    if not projection:
+        return dicto
+    return {k: v for k, v in dicto.items() if k in projection}
 
 
 # -----------------------------------------------------------------------------
@@ -110,7 +124,11 @@ class RunEventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         event_id = self.get_argument("event_id", type=int)
         is_real_event = self.get_argument("is_real_event", type=bool)
 
-        incl_del = self.get_argument("include_deleted", default=False, type=bool)
+        incl_del = self.get_argument(
+            "include_deleted",
+            default=False,
+            type=bool,
+        )
 
         def resp_obj(manifest: database.schema.Manifest) -> dict:
             # scan-specific
@@ -183,6 +201,55 @@ def cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
     )
 
 
+def _json_to_dict(val: Any) -> dict:
+    _error = TypeError("must be JSON-string or JSON-friendly dict")
+    # str -> json-dict
+    if isinstance(val, str):
+        try:
+            obj = json.loads(val)
+        except:  # noqa: E722
+            raise _error
+        if not isinstance(obj, dict):  # loaded object must be dict
+            raise _error
+        return obj
+    # dict -> check if json-friendly
+    elif isinstance(val, dict):
+        try:
+            json.dumps(val)
+            return val
+        except:  # noqa: E722
+            raise _error
+    # fall-through
+    raise _error
+
+
+def _dict_or_list_to_request_clusters(
+    val: dict | list,
+) -> list[database.schema.Cluster]:
+    _error = TypeError(
+        "must be a dict of cluster location and number of workers, Ex: {'sub-2': 1500, ...}"
+        " (to request a cluster location more than once, provide a list of 2-lists instead),"
+        # TODO: make n_workers optional when using "TMS smart starter"
+    )
+    if isinstance(val, dict):
+        val = list(val.items())  # {'a': 1, 'b': 2} -> [('a', 1), ('b', 2)}
+    if not val:
+        raise _error
+    if not isinstance(val, list):
+        raise _error
+    # check all entries are 2-lists (or tuple)
+    if not all(isinstance(a, list | tuple) and len(a) == 2 for a in val):
+        raise _error
+    #
+    return [cluster_lookup(name, n_workers) for name, n_workers in val]
+
+
+def _optional_int(val: Any) -> int | None:
+    if val is None:
+        return None
+    return int(val)
+
+
 class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles starting new scans."""
 
@@ -191,52 +258,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self) -> None:
         """Start a new scan."""
-
-        def _json_to_dict(val: Any) -> dict:
-            _error = TypeError("must be JSON-string or JSON-friendly dict")
-            # str -> json-dict
-            if isinstance(val, str):
-                try:
-                    obj = json.loads(val)
-                except:  # noqa: E722
-                    raise _error
-                if not isinstance(obj, dict):  # loaded object must be dict
-                    raise _error
-                return obj
-            # dict -> check if json-friendly
-            elif isinstance(val, dict):
-                try:
-                    json.dumps(val)
-                    return val
-                except:  # noqa: E722
-                    raise _error
-            # fall-through
-            raise _error
-
-        def _dict_or_list_to_request_clusters(
-            val: dict | list,
-        ) -> list[database.schema.Cluster]:
-            _error = TypeError(
-                "must be a dict of cluster location and number of workers, Ex: {'sub-2': 1500, ...}"
-                " (to request a cluster location more than once, provide a list of 2-lists instead),"
-                # TODO: make n_workers optional when using "TMS smart starter"
-            )
-            if isinstance(val, dict):
-                val = list(val.items())  # {'a': 1, 'b': 2} -> [('a', 1), ('b', 2)}
-            if not val:
-                raise _error
-            if not isinstance(val, list):
-                raise _error
-            # check all entries are 2-lists (or tuple)
-            if not all(isinstance(a, list | tuple) and len(a) == 2 for a in val):
-                raise _error
-            #
-            return [cluster_lookup(name, n_workers) for name, n_workers in val]
-
-        def _optional_int(val: Any) -> int | None:
-            if val is None:
-                return None
-            return int(val)
 
         # docker args
         docker_tag = self.get_argument(  # any tag on docker hub (including 'latest') -- must also be on CVMFS (but not checked here)
@@ -302,6 +323,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default=False,
         )
 
+        # response args
+        manifest_projection = self.get_argument(
+            "manifest_projection",
+            default=all_dc_fields(database.schema.Manifest),
+            type=set[str],
+        )
+
         # generate unique scan_id
         scan_id = uuid.uuid4().hex
 
@@ -347,7 +375,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 log_message="Failed to enqueue Kubernetes job for Scanner instance",
             )
 
-        self.write(dc.asdict(manifest))
+        self.write(
+            dict_projection(dc.asdict(manifest), projection=manifest_projection),
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -390,7 +420,7 @@ async def get_result_safely(
     results: database.interface.ResultClient,
     scan_id: str,
     incl_del: bool,
-) -> tuple[dict[str, Any], dict[str, Any]]:
+) -> tuple[None | database.schema.Result, database.schema.Manifest]:
     """Get the Result (and Manifest) using the incl_del/is_deleted logic.
 
     Returns objects as dicts
@@ -407,13 +437,12 @@ async def get_result_safely(
     # if we don't have a result yet, return {}
     try:
         result = await results.get(scan_id)
-        result_dict = dc.asdict(result)
     except web.HTTPError as e:
         if e.status_code != 404:
             raise
-        result_dict = {}
+        result = None
 
-    return result_dict, dc.asdict(manifest)
+    return result, manifest
 
 
 # -----------------------------------------------------------------------------
@@ -431,6 +460,13 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "delete_completed_scan",
             default=False,
             type=bool,
+        )
+
+        # response args
+        manifest_projection = self.get_argument(
+            "manifest_projection",
+            default=all_dc_fields(database.schema.Manifest),
+            type=set[str],
         )
 
         # check DB states
@@ -457,7 +493,9 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         self.write(
             {
-                "manifest": dc.asdict(manifest),
+                "manifest": dict_projection(
+                    dc.asdict(manifest), projection=manifest_projection
+                ),
                 "result": result_dict,
             }
         )
@@ -465,9 +503,19 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get manifest & result."""
-        incl_del = self.get_argument("include_deleted", default=False, type=bool)
+        incl_del = self.get_argument(
+            "include_deleted",
+            default=False,
+            type=bool,
+        )
+        # response args
+        manifest_projection = self.get_argument(
+            "manifest_projection",
+            default=all_dc_fields(database.schema.Manifest),
+            type=set[str],
+        )
 
-        result_dict, manifest_dict = await get_result_safely(
+        result, manifest = await get_result_safely(
             self.manifests,
             self.results,
             scan_id,
@@ -476,8 +524,10 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         self.write(
             {
-                "manifest": manifest_dict,
-                "result": result_dict,
+                "manifest": dict_projection(
+                    dc.asdict(manifest), projection=manifest_projection
+                ),
+                "result": dc.asdict(result),
             }
         )
 
@@ -493,11 +543,23 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
-        incl_del = self.get_argument("include_deleted", default=False, type=bool)
+        incl_del = self.get_argument(
+            "include_deleted",
+            default=False,
+            type=bool,
+        )
+        # response args
+        manifest_projection = self.get_argument(
+            "manifest_projection",
+            default=all_dc_fields(database.schema.Manifest),
+            type=set[str],
+        )
 
         manifest = await self.manifests.get(scan_id, incl_del)
 
-        self.write(dc.asdict(manifest))
+        self.write(
+            dict_projection(dc.asdict(manifest), projection=manifest_projection),
+        )
 
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
@@ -534,6 +596,13 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default=None,
         )
 
+        # response args
+        manifest_projection = self.get_argument(
+            "manifest_projection",
+            default=all_dc_fields(database.schema.Manifest),
+            type=set[str],
+        )
+
         manifest = await self.manifests.patch(
             scan_id,
             progress,
@@ -542,7 +611,9 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             cluster,
         )
 
-        self.write(dc.asdict(manifest))
+        self.write(
+            dict_projection(dc.asdict(manifest), projection=manifest_projection),
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -556,16 +627,20 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted result."""
-        incl_del = self.get_argument("include_deleted", default=False, type=bool)
+        incl_del = self.get_argument(
+            "include_deleted",
+            default=False,
+            type=bool,
+        )
 
-        result_dict, _ = await get_result_safely(
+        result, _ = await get_result_safely(
             self.manifests,
             self.results,
             scan_id,
             incl_del,
         )
 
-        self.write(result_dict)
+        self.write(dc.asdict(result))
 
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
