@@ -1,6 +1,8 @@
 """Collection of dataclass-based schema for the database."""
 
 import dataclasses as dc
+import hashlib
+import json
 from typing import Any
 
 import bson
@@ -173,7 +175,11 @@ class Manifest(ScanIDDataclass):
 
         if self.event_i3live_json_dict:
             # shorten b/c this can be a LARGE dict
-            self.event_i3live_json_dict__hash = hash(str(self.event_i3live_json_dict))
+            self.event_i3live_json_dict__hash = hashlib.md5(
+                json.dumps(  # sort -> deterministic
+                    self.event_i3live_json_dict, sort_keys=True, ensure_ascii=True
+                ).encode("utf-8")
+            ).hexdigest()
 
     def __repr__(self) -> str:
         dicto = dc.asdict(self)

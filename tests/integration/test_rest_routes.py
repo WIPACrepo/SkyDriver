@@ -3,6 +3,8 @@
 # pylint: disable=redefined-outer-name
 
 import asyncio
+import hashlib
+import json
 import os
 import random
 import re
@@ -58,7 +60,11 @@ async def _launch_scan(
         scan_id=resp["scan_id"],
         is_deleted=False,
         timestamp=resp["timestamp"],  # see below
-        event_i3live_json_dict__hash=hash(str(post_scan_body["event_i3live_json"])),
+        event_i3live_json_dict__hash=hashlib.md5(
+            json.dumps(
+                post_scan_body["event_i3live_json"], sort_keys=True, ensure_ascii=True
+            ).encode("utf-8")
+        ).hexdigest(),
         event_i3live_json_dict=post_scan_body["event_i3live_json"],
         event_metadata=None,
         scan_metadata=None,
@@ -199,7 +205,11 @@ async def _do_patch(
         scan_id=scan_id,
         is_deleted=False,
         timestamp=resp["timestamp"],  # see below
-        event_i3live_json_dict__hash=hash(str(resp["event_i3live_json"])),
+        event_i3live_json_dict__hash=hashlib.md5(
+            json.dumps(
+                resp["event_i3live_json"], sort_keys=True, ensure_ascii=True
+            ).encode("utf-8")
+        ).hexdigest(),
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         event_metadata=event_metadata if event_metadata else resp["event_metadata"],
         scan_metadata=scan_metadata if scan_metadata else resp["scan_metadata"],
