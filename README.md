@@ -42,9 +42,12 @@ _Launch a new scan of an event_
 | `"event_i3live_json"`             | dict or str  | *[REQUIRED]*     | Realtime's JSON event format
 | `"nsides"`                        | dict         | *[REQUIRED]*     | the nside progression to use (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"real_or_simulated_event"`       | str          | *[REQUIRED]*     | whether this event is real or simulated. Ex: `real`, `simulated`
+| `"scanner_server_memory"`         | str          | default: `512GB` | how much memory for the scanner server to request
 | `"memory"`                        | str          | default: `8GB`   | how much memory per client worker to request
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
-| `"max_pixel_reco_time"`                 | int          | default: `None`  | the max amount of time each pixel's reco should take
+| `"max_pixel_reco_time"`           | int          | default: `None`  | the max amount of time each pixel's reco should take
+| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+
 
 #### SkyDriver Effects
 - Creates and starts a new Skymap Scanner instance spread across many client workers
@@ -62,7 +65,9 @@ _Retrieve the manifest of a scan_
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
-| `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted
+| `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
+| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+
 
 #### SkyDriver Effects
 None
@@ -79,7 +84,7 @@ _Retrieve the result of a scan_
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
-| `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted
+| `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
 
 #### SkyDriver Effects
 None
@@ -96,7 +101,9 @@ _Retrieve the manifest and result of a scan_
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
-| `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted
+| `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
+| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+
 
 #### SkyDriver Effects
 None
@@ -121,6 +128,7 @@ _Abort a scan and/or mark scan (manifest and result) as "deleted"_
 | Argument                  | Type        | Required/Default | Description          |
 | ------------------------- | ----------- | ---------------- | -------------------- |
 | `"delete_completed_scan"` | bool        | default: `False` | whether to mark a completed scan as "deleted" -- *this is not needed for aborting an ongoing scan*
+| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
 
 #### SkyDriver Effects
 - The Skymap Scanner instance is stopped and removed
@@ -189,6 +197,49 @@ None
 
 
 &nbsp;
+### `/scan/SCAN_ID/status` - GET
+-------------------------------------------------------------------------------
+_Retrieve the status of a scan_
+
+#### Arguments
+None
+
+#### SkyDriver Effects
+None
+
+#### Returns
+```
+{
+    "is_deleted": bool,
+    "scan_complete": bool,  # skymap scanner finished
+    "pod_status": dict,  # a large k8s status object
+    "pod_status_message": str,  # a human-readable message explaining the pod status retrieval
+    "clusters": list,  # same as Manifest's clusters field
+}
+```
+
+
+&nbsp;
+### `/scan/SCAN_ID/logs` - GET
+-------------------------------------------------------------------------------
+_Retrieve the logs of a scan's pod: central server & client starter(s)_
+
+#### Arguments
+None
+
+#### SkyDriver Effects
+None
+
+#### Returns
+```
+{
+    "pod_container_logs": str | list[ dict[str,str] ],  # list
+    "pod_container_logs_message": str,  # a human-readable message explaining the log retrieval
+}
+```
+
+
+&nbsp;
 ### Return Types
 -------------------------------------------------------------------------------
 #### Manifest
@@ -197,10 +248,17 @@ _A dictionary containing non-physics metadata on a scan_
 Pseudo-code:
 ```
 {
+    scan_id: str,
+
+    timestamp: float,
+    is_deleted: bool,
+
     event_i3live_json_dict: dict,
     scanner_server_args: str,
     tms_args: list[str],
     env_vars: dict[str, dict[str, Any]],
+
+    event_i3live_json_dict__hash: str,  # a deterministic hash of the event json
 
     clusters: [  # 2 types: condor & k8s -- different 'location' sub-fields
         {
@@ -212,6 +270,7 @@ Pseudo-code:
             cluster_id: int,
             n_workers: int,
         },
+        ...
         {
             orchestrator: 'k8s',
             location: {
@@ -263,6 +322,8 @@ _A dictionary containing the scan result_
 Pseudo-code:
 ```
 {
+    scan_id: str,
+
     skyscan_result: dict,  # serialized version of 'skyreader.SkyScanResult'
     is_final: bool,  # is this result the final result?
 }

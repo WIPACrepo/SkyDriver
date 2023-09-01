@@ -1,6 +1,8 @@
 """Collection of dataclass-based schema for the database."""
 
 import dataclasses as dc
+import hashlib
+import json
 from typing import Any
 
 from typeguard import typechecked
@@ -138,13 +140,19 @@ class Cluster:
 class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
 
+    timestamp: float
     is_deleted: bool
 
-    event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ checksum/hash?
+    # args
+    event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ hash?
     scanner_server_args: str
     tms_args: list[str]
     env_vars: dict[str, Any]
 
+    # special fields -- see __post_init__
+    event_i3live_json_dict__hash: str = ""  # possibly overwritten
+
+    # cpus
     clusters: list[Cluster] = dc.field(default_factory=list)
 
     # found/created during first few seconds of scanning
@@ -157,20 +165,20 @@ class Manifest(ScanIDDataclass):
     # signifies k8s workers and condor cluster(s) are done
     complete: bool = False
 
-    # logs  # TODO
+    def __post_init__(self) -> None:
+        if self.event_i3live_json_dict:
+            # shorten b/c this can be a LARGE dict
+            self.event_i3live_json_dict__hash = hashlib.md5(
+                json.dumps(  # sort -> deterministic
+                    self.event_i3live_json_dict,
+                    sort_keys=True,
+                    ensure_ascii=True,
+                ).encode("utf-8")
+            ).hexdigest()
 
     def __repr__(self) -> str:
         dicto = dc.asdict(self)
-        # shorten b/c this can be a LARGE dict
-        try:
-            dicto["event_i3live_json_dict"]["value"]["data"] = hash(
-                str(dicto["event_i3live_json_dict"]["value"]["data"])
-            )
-        except KeyError:
-            pass
-        dicto["event_i3live_json_dict__hashed_data"] = dicto.pop(
-            "event_i3live_json_dict"
-        )
+        dicto.pop("event_i3live_json_dict")
         # obfuscate tokens
         # TODO
         rep = f"{self.__class__.__name__}{dicto}"

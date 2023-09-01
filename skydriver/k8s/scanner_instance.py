@@ -53,7 +53,7 @@ def get_tms_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
     ]
 
 
-class SkymapScannerStarterJob:
+class SkymapScannerJob:
     """Wraps a Skymap Scanner Kubernetes job with tools to start and manage."""
 
     def __init__(
@@ -64,6 +64,7 @@ class SkymapScannerStarterJob:
         docker_tag: str,
         scan_id: str,
         # scanner
+        scanner_server_memory: str,
         reco_algo: str,
         nsides: dict[int, int],
         is_real_event: bool,
@@ -102,7 +103,7 @@ class SkymapScannerStarterJob:
             ),
             self.scanner_server_args.split(),
             {common_space_volume_path.name: common_space_volume_path},
-            memory=ENV.K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
+            memory=scanner_server_memory,
         )
         self.env_dict["scanner_server"] = [e.to_dict() for e in scanner_server.env]
 
@@ -137,11 +138,16 @@ class SkymapScannerStarterJob:
 
         # job
         self.job_obj = KubeAPITools.kube_create_job_object(
-            f"skyscan-{scan_id}",
+            self.get_job_name(scan_id),
             [scanner_server] + tms_starters,
             ENV.K8S_NAMESPACE,
             volumes=[common_space_volume_path.name],
         )
+
+    @staticmethod
+    def get_job_name(scan_id: str) -> str:
+        """Get the name of the K8s job (deterministic)."""
+        return f"skyscan-{scan_id}"
 
     @staticmethod
     def get_scanner_server_args(
@@ -280,12 +286,12 @@ class SkymapScannerStarterJob:
 
         # 4. generate & add auth tokens
         tokens = {
-            "SKYSCAN_BROKER_AUTH": SkymapScannerStarterJob._get_token_from_keycloak(
+            "SKYSCAN_BROKER_AUTH": SkymapScannerJob._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_BROKER,
                 ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
             ),
-            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerStarterJob._get_token_from_keycloak(
+            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerJob._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
@@ -362,12 +368,12 @@ class SkymapScannerStarterJob:
 
         # 4. generate & add auth tokens
         tokens = {
-            "SKYSCAN_BROKER_AUTH": SkymapScannerStarterJob._get_token_from_keycloak(
+            "SKYSCAN_BROKER_AUTH": SkymapScannerJob._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_BROKER,
                 ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
             ),
-            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerStarterJob._get_token_from_keycloak(
+            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerJob._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,

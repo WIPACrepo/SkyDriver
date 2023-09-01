@@ -12,7 +12,7 @@ async def main() -> None:
     # Mongo client
     LOGGER.info("Setting up Mongo client...")
     mongo_client = await database.create_mongodb_client()
-    indexing_task = asyncio.create_task(database.interface.ensure_indexes(mongo_client))
+    indexing_task = asyncio.create_task(database.utils.ensure_indexes(mongo_client))
     await asyncio.sleep(0)  # start up previous task
     LOGGER.info("Mongo client connected.")
 

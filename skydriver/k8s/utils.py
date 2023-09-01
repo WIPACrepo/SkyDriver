@@ -150,3 +150,40 @@ class KubeAPITools:
             LOGGER.exception(e)
             raise
         return api_response
+
+    @staticmethod
+    def get_status(
+        api_instance: kubernetes.client.BatchV1Api,
+        name: str,
+        namespace: str,
+    ) -> dict[str, Any]:
+        """Get the status of the k8s pod and its containers."""
+        LOGGER.info(f"getting pod status for {name=} {namespace=}")
+
+        core_api = kubernetes.client.CoreV1Api(api_client=api_instance.api_client)
+        pod = core_api.read_namespaced_pod(name, namespace)
+
+        return pod.status.to_dict()  # type: ignore[no-any-return]
+
+    @staticmethod
+    def get_container_logs(
+        api_instance: kubernetes.client.BatchV1Api,
+        name: str,
+        namespace: str,
+    ) -> dict[str, str]:
+        """Grab the logs for all containers."""
+        LOGGER.info(f"getting logs for {name=} {namespace=}")
+
+        core_api = kubernetes.client.CoreV1Api(api_client=api_instance.api_client)
+        pod = core_api.read_namespaced_pod(name, namespace)
+
+        logs = {}
+        for container in pod.spec.containers:
+            logs[container.name] = core_api.read_namespaced_pod_log(
+                name,
+                namespace,
+                container=container.name,
+                timestamps=True,
+            )
+
+        return logs

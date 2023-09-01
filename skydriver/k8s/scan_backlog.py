@@ -8,7 +8,7 @@ import time
 
 import bson
 import kubernetes.client  # type: ignore[import]
-from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore[import]
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from .. import database
 from ..config import ENV
@@ -52,7 +52,7 @@ async def get_next_backlog_entry(
 
 
 async def startup(
-    mongo_client: AsyncIOMotorClient,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     api_instance: kubernetes.client.BatchV1Api,
 ) -> None:
     """The main loop."""
@@ -73,7 +73,8 @@ async def startup(
         try:
             entry = await get_next_backlog_entry(scan_backlog, manifests)
             short_sleep = False
-        except database.interface.DocumentNotFoundException:
+        except database.mongodc.DocumentNotFoundException:
+            LOGGER.debug("no backlog entry found")
             short_sleep = True
             continue  # empty queue
 

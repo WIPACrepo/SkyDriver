@@ -10,10 +10,6 @@ env:
   SCAN_BACKLOG_RUNNER_DELAY: 1
   SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: 200
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # don't cancel on main/master/default
-  cancel-in-progress: ${{ format('refs/heads/{0}', github.event.repository.default_branch) != github.ref }}
 
 jobs:
 
@@ -63,7 +59,7 @@ jobs:
           github.actor != 'dependabot[bot]' &&
           github.ref_type == 'branch'
         name: wipac-dev-py-setup-action (only for non-dependabot non-default branches)
-        uses: WIPACrepo/wipac-dev-py-setup-action@v2.4
+        uses: WIPACrepo/wipac-dev-py-setup-action@v2.5
         with:
           base-keywords: WIPAC IceCube
 
@@ -85,14 +81,14 @@ jobs:
           pip install --upgrade pip wheel setuptools
           pip install .[tests]
 
-      - name: Test
+      - name: test
         run: |
           pytest -vvv tests/unit
 
       - name: Dump logs
         if: always()
         run: |
-          cat pytest.logs
+          cat pytest.logs || true
 
   integration-tests:
     needs: [py-versions]
@@ -108,16 +104,17 @@ jobs:
         - 27017:27017
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
+      - uses: docker/setup-buildx-action@v2
+      - uses: docker/build-push-action@v3
         with:
-          python-version: ${{ matrix.py3 }}
+          context: .
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
+          file: Dockerfile
+          tags: wipac/skydriver:local
+          load: true
 
-      - name: pip install
-        run: |
-          pip install --upgrade pip wheel setuptools
-          pip install .[tests]
-
-      - name: Test
+      - name: test
         run: |
           export LATEST_TAG=$( \
               curl -I https://github.com/icecube/skymap_scanner/releases/latest \
@@ -125,12 +122,37 @@ jobs:
               | sed 's/v//' \
           )
           echo $LATEST_TAG  # this tag may be off if there's a delay between GH release & docker hub
-          pytest -vvv tests/integration
 
-      - name: Dump logs
+          # make test script
+          DIR="test-script-dir"
+          mkdir $DIR
+          echo "#!/bin/bash" >> $DIR/test-script.sh
+          echo "set -xe" >> $DIR/test-script.sh
+          echo "pip install .[tests]" >> $DIR/test-script.sh
+          echo "python -m pytest -vvv tests/integration" >> $DIR/test-script.sh
+          chmod +x $DIR/test-script.sh
+          cat $DIR/test-script.sh
+
+          docker run --network="host" --rm -i --name test \
+              --env LATEST_TAG=$LATEST_TAG \
+              $(env | grep '^SKYSCAN_' | awk '$0="--env "$0') \
+              $(env | grep '^EWMS_' | awk '$0="--env "$0') \
+              $(env | grep '^CLIENTMANAGER_' | awk '$0="--env "$0') \
+              $(env | grep '^CI_' | awk '$0="--env "$0') \
+              $(env | grep '^SCAN_' | awk '$0="--env "$0') \
+              --mount type=bind,source=$(realpath $DIR),target=/local/$DIR \
+              wipac/skydriver:local \
+              /local/$DIR/test-script.sh
+
+      - name: dump test logs
         if: always()
         run: |
-          cat pytest.logs
+          docker logs test || true
+
+      - name: dump mongo logs
+        if: always()
+        run: |
+          docker logs "${{ job.services.mongo.id }}" || true
 
   test-build-docker:
     runs-on: ubuntu-latest

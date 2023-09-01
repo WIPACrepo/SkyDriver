@@ -4,7 +4,7 @@
 from typing import Any
 
 import kubernetes.client  # type: ignore[import]
-from motor.motor_asyncio import AsyncIOMotorClient  # type: ignore
+from motor.motor_asyncio import AsyncIOMotorClient
 from rest_tools.server import RestHandlerSetup, RestServer
 
 from . import rest_handlers
@@ -12,7 +12,7 @@ from .config import ENV, LOGGER, is_testing
 
 
 async def make(
-    mongo_client: AsyncIOMotorClient,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_api: kubernetes.client.BatchV1Api,
 ) -> RestServer:
     """Make a SkyDriver REST service (does not start up automatically)."""
@@ -42,6 +42,8 @@ async def make(
         rest_handlers.ScanManifestHandler,
         rest_handlers.ScanResultHandler,
         rest_handlers.ScanLauncherHandler,
+        rest_handlers.ScanStatusHandler,
+        rest_handlers.ScanLogsHandler,
     ]:
         try:
             rs.add_route(getattr(klass, "ROUTE"), klass, args)
