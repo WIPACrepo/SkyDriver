@@ -148,15 +148,15 @@ _Abort a scan and/or mark scan (manifest and result) as "deleted"_
 &nbsp;
 ### `/scans` - GET
 -------------------------------------------------------------------------------
-_Retrieve scan ids corresponding to a specific run and event_
+_Retrieve scan manifests corresponding to a specific search query_
 
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
-| `"run_id"`          | int         | *[REQUIRED]*     | id of the run
-| `"event_id"`        | int         | *[REQUIRED]*     | id of the event
-| `"is_real_event"`   | bool        | *[REQUIRED]*     | whether this event is real or simulated
-| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
+| `"filter"`          | dict        | *[REQUIRED]*     | a MongoDB-syntax filter for `Manifest`
+| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans (overwritten by `filter`'s `is_deleted`)
+| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+
 
 #### SkyDriver Effects
 None
@@ -164,10 +164,10 @@ None
 #### Returns
 ```
 {
-    "event_id": event_id,
-    "scan_ids": scan_ids,  # list of strings
+    "manifest": Manifest dict,
 }
 ```
+- See [Manifest](#manifest)
 
 
 &nbsp;
