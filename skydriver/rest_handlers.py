@@ -120,7 +120,7 @@ class ScansSearchHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self) -> None:
         """Get matching scan manifest(s) for the given search."""
-        mongo_filter = self.get_argument("filter", type=dict[str, Any])
+        mongo_filter: dict[str, Any] = self.get_argument("filter", type=dict)
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
         # response args
