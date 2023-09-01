@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.1 (2023-09-01)
+
+### Other
+
+* Patch for ArgoCD ([`71dc2fc`](https://github.com/WIPACrepo/SkyDriver/commit/71dc2fc375f55b6a91f8a79e7ffa2b9c33a60abc))
+
 ## v0.4.0 (2023-09-01)
 
 ### Other
