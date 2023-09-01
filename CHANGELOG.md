@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.4.0 (2023-09-01)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`c92b1a1`](https://github.com/WIPACrepo/SkyDriver/commit/c92b1a1679ede8fcffa975529a76e16bc6d8f4a4))
+
 ## v0.3.49 (2023-08-23)
 
 ### Other
