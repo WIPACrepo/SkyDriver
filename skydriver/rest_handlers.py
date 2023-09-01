@@ -134,7 +134,7 @@ class ScansSearchHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             mongo_filter["is_deleted"] = False
 
         manifests = [
-            dict_projection(m, manifest_projection)
+            dict_projection(dc.asdict(m), manifest_projection)
             async for m in self.manifests.find_all(mongo_filter)
         ]
 
