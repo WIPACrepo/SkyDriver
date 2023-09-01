@@ -211,31 +211,15 @@ class ManifestClient:
 
     async def find_all(
         self,
-        run_id: int,
-        event_id: int,
-        is_real_event: bool,
-        incl_del: bool,
+        mongo_filter: dict[str, Any],
     ) -> AsyncIterator[schema.Manifest]:
-        """Search over scans and find all matching runevent."""
-        LOGGER.debug(
-            f"finding: scans for {(run_id, event_id, is_real_event)=} ({incl_del=})"
-        )
+        """Search over scans and find all matching `mongo_filter`."""
+        LOGGER.debug(f"finding: scans for {mongo_filter})")
 
-        # skip the dataclass-casting b/c we're just returning a str
-        query = {
-            "event_metadata.event_id": event_id,
-            "event_metadata.run_id": run_id,
-            "event_metadata.is_real_event": is_real_event,
-            # NOTE: not searching for mjd
-        }
         async for manifests in self.collection.find(
-            query, return_dclass=schema.Manifest
+            mongo_filter, return_dclass=schema.Manifest
         ):
-            if not incl_del and manifests.is_deleted:
-                continue
-            LOGGER.debug(
-                f"found: {manifests.scan_id=} for {(run_id, event_id, is_real_event)=} ({incl_del=})"
-            )
+            LOGGER.debug(f"found: {manifests.scan_id=} for {mongo_filter})")
             yield manifests
 
 

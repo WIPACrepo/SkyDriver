@@ -112,28 +112,33 @@ class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class RunEventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
-    """Handles mapping a run+event to scan(s)."""
+class ScansSearchHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles finding scans by attributes."""
 
     ROUTE = r"/scans$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self) -> None:
-        """Get matching scan id(s) for the given event id."""
-        run_id = self.get_argument("run_id", type=int)
-        event_id = self.get_argument("event_id", type=int)
-        is_real_event = self.get_argument("is_real_event", type=bool)
-
+        """Get matching scan manifest(s) for the given search."""
+        mongo_filter = self.get_argument("filter", type=dict[str, Any])
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
-        scan_ids = [
-            m.scan_id
-            async for m in self.manifests.find_all(
-                run_id, event_id, is_real_event, incl_del
-            )
+        # response args
+        manifest_projection = self.get_argument(
+            "manifest_projection",
+            default=all_dc_fields(database.schema.Manifest),
+            type=set[str],
+        )
+
+        if "is_deleted" not in mongo_filter and not incl_del:
+            mongo_filter["is_deleted"] = False
+
+        manifests = [
+            dict_projection(m, manifest_projection)
+            async for m in self.manifests.find_all(mongo_filter)
         ]
 
-        self.write({"event_id": event_id, "scan_ids": scan_ids})
+        self.write({"manifests": manifests})
 
     #
     # NOTE - 'EventMappingHandler' needs to stay user-read-only b/c

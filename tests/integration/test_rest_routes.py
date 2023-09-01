@@ -297,17 +297,45 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
 
     await _do_patch(rc, scan_id, event_metadata=event_metadata)
 
-    # query by event id
+    # query by run+event id
     resp = await rc.request(
         "GET",
         "/scans",
         {
-            "run_id": run_id,
-            "event_id": event_id,
-            "is_real_event": IS_REAL_EVENT,
+            "filter": {
+                "event_metadata.run_id": run_id,
+                "event_metadata.event_id": event_id,
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+            }
         },
     )
-    assert resp["scan_ids"] == [scan_id]
+    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
+    resp = await rc.request(
+        "GET",
+        "/scans",
+        {
+            "filter": {
+                "event_metadata.run_id": run_id,
+                "event_metadata.event_id": event_id,
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+            },
+            "include_deleted": False,
+        },
+    )
+    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
+    resp = await rc.request(
+        "GET",
+        "/scans",
+        {
+            "filter": {
+                "event_metadata.run_id": run_id,
+                "event_metadata.event_id": event_id,
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+                "is_deleted": False,
+            },
+        },
+    )
+    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
 
     return event_metadata
 
@@ -448,29 +476,73 @@ async def _delete_scan(
 
     #
 
-    # query by event id (none)
+    # query by run+event id (none)
     resp = await rc.request(
         "GET",
         "/scans",
         {
-            "run_id": event_metadata["run_id"],
-            "event_id": event_metadata["event_id"],
-            "is_real_event": IS_REAL_EVENT,
+            "filter": {
+                "event_metadata.run_id": event_metadata["run_id"],
+                "event_metadata.event_id": event_metadata["event_id"],
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+            },
         },
     )
-    assert not resp["scan_ids"]  # no matches
-    # query by event id w/ incl_del
+    assert not resp["manifests"]  # no matches
     resp = await rc.request(
         "GET",
         "/scans",
         {
-            "run_id": event_metadata["run_id"],
-            "event_id": event_metadata["event_id"],
+            "filter": {
+                "event_metadata.run_id": event_metadata["run_id"],
+                "event_metadata.event_id": event_metadata["event_id"],
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+            },
+            "include_deleted": False,
+        },
+    )
+    assert not resp["manifests"]  # no matches
+    resp = await rc.request(
+        "GET",
+        "/scans",
+        {
+            "filter": {
+                "event_metadata.run_id": event_metadata["run_id"],
+                "event_metadata.event_id": event_metadata["event_id"],
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+                "is_deleted": False,
+            },
+        },
+    )
+    assert not resp["manifests"]  # no matches
+
+    # query by run+event id w/ incl_del
+    resp = await rc.request(
+        "GET",
+        "/scans",
+        {
+            "filter": {
+                "event_metadata.run_id": event_metadata["run_id"],
+                "event_metadata.event_id": event_metadata["event_id"],
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+            },
             "include_deleted": True,
-            "is_real_event": IS_REAL_EVENT,
         },
     )
-    assert resp["scan_ids"] == [scan_id]
+    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
+    resp = await rc.request(
+        "GET",
+        "/scans",
+        {
+            "filter": {
+                "event_metadata.run_id": event_metadata["run_id"],
+                "event_metadata.event_id": event_metadata["event_id"],
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+                "is_deleted": True,
+            },
+        },
+    )
+    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
 
 
 def get_tms_args(
