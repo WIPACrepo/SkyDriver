@@ -17,7 +17,19 @@ from tornado import web
 from . import database, images, k8s
 from .config import ENV, KNOWN_CLUSTERS, LOGGER, is_testing
 
+# -----------------------------------------------------------------------------
+# constants
+
+
+REAL_CHOICES = ["real", "real_event"]
+SIM_CHOICES = ["sim", "simulated", "simulated_event"]
+
 WAIT_BEFORE_TEARDOWN = 60
+
+DEFAULT_EXCLUDED_MANIFEST_FIELDS = {
+    "event_i3live_json_dict",
+    "env_vars",
+}
 
 
 # -----------------------------------------------------------------------------
@@ -50,11 +62,7 @@ else:
 
 
 # -----------------------------------------------------------------------------
-# misc constants
-
-
-REAL_CHOICES = ["real", "real_event"]
-SIM_CHOICES = ["sim", "simulated", "simulated_event"]
+# utils
 
 
 def all_dc_fields(class_or_instance: Any) -> set[str]:
@@ -65,8 +73,10 @@ def all_dc_fields(class_or_instance: Any) -> set[str]:
 def dict_projection(dicto: dict, projection: set[str]) -> dict:
     """Keep only the keys in the `projection`.
 
-    If `projection` is empty, return all fields.
+    If `projection` is empty or includes '*', return all fields.
     """
+    if "*" in projection:
+        return dicto
     if not projection:
         return dicto
     return {k: v for k, v in dicto.items() if k in projection}
@@ -130,7 +140,10 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
+            default=(
+                all_dc_fields(database.schema.Manifest)
+                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+            ),
             type=set[str],
         )
 
@@ -320,7 +333,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
+            default=(
+                all_dc_fields(database.schema.Manifest)
+                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+            ),
             type=set[str],
         )
 
@@ -459,7 +475,10 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
+            default=(
+                all_dc_fields(database.schema.Manifest)
+                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+            ),
             type=set[str],
         )
 
@@ -503,7 +522,10 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
+            default=(
+                all_dc_fields(database.schema.Manifest)
+                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+            ),
             type=set[str],
         )
 
@@ -589,7 +611,10 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
+            default=(
+                all_dc_fields(database.schema.Manifest)
+                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+            ),
             type=set[str],
         )
 

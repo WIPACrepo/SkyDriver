@@ -46,7 +46,7 @@ _Launch a new scan of an event_
 | `"memory"`                        | str          | default: `8GB`   | how much memory per client worker to request
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"max_pixel_reco_time"`           | int          | default: `None`  | the max amount of time each pixel's reco should take
-| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+| `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
 
 
 #### SkyDriver Effects
@@ -66,7 +66,7 @@ _Retrieve the manifest of a scan_
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
 | `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
-| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+| `"manifest_projection"` | list | default: all fields | which `Manifest` fields to include in the response (include `*` to include all fields)
 
 
 #### SkyDriver Effects
@@ -102,7 +102,7 @@ _Retrieve the manifest and result of a scan_
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
 | `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
-| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+| `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
 
 
 #### SkyDriver Effects
@@ -128,7 +128,7 @@ _Abort a scan and/or mark scan (manifest and result) as "deleted"_
 | Argument                  | Type        | Required/Default | Description          |
 | ------------------------- | ----------- | ---------------- | -------------------- |
 | `"delete_completed_scan"` | bool        | default: `False` | whether to mark a completed scan as "deleted" -- *this is not needed for aborting an ongoing scan*
-| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+| `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
 
 #### SkyDriver Effects
 - The Skymap Scanner instance is stopped and removed
@@ -155,7 +155,7 @@ _Retrieve scan manifests corresponding to a specific search query_
 | ------------------- | ----------- | ---------------- | -------------------- |
 | `"filter"`          | dict        | *[REQUIRED]*     | a MongoDB-syntax filter for `Manifest`
 | `"include_deleted"` | bool        | default: `False` | whether to include deleted scans (overwritten by `filter`'s `is_deleted`)
-| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+| `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
 
 
 #### SkyDriver Effects
@@ -315,6 +315,12 @@ Pseudo-code:
 }
 ```
 - See [skydriver/database/schema.py](https://github.com/WIPACrepo/SkyDriver/blob/main/skydriver/database/schema.py)
+
+##### Manifest Fields Excluded by Default in Response
+Some routes/methods respond with the scan's manifest. This is a large dictionary, so by default, these fields are excluded:
+- `event_i3live_json_dict`
+- `env_vars`
+See https://github.com/search?q=repo%3AWIPACrepo%2FSkyDriver+DEFAULT_EXCLUDED_MANIFEST_FIELDS&type=code
 
 #### Result
 _A dictionary containing the scan result_
