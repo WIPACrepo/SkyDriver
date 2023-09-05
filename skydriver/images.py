@@ -23,8 +23,10 @@ DOCKERHUB_API_URL = (
 _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH = Path(
     "/cvmfs/icecube.opensciencegrid.org/containers/realtime/"
 )
-VERSION_REGEX_MAJMINPATCH = re.compile(r"\d+\.\d+\.\d+")
-VERSION_REGEX_PREFIX_V = re.compile(r"(v|V)\d+(\.\d+(\.\d+)?)?")
+
+# NOTE: for security, limit the regex section lengths (with trusted input we'd use \d+)
+VERSION_REGEX_MAJMINPATCH = re.compile(r"\d{1,3}\.\d{1,3}\.\d{1,3}$")
+VERSION_REGEX_PREFIX_V = re.compile(r"(v|V)\d{1,3}(\.\d{1,3}(\.\d{1,3})?)?$")
 
 
 # ---------------------------------------------------------------------------------------
