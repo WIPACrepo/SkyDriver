@@ -317,7 +317,7 @@ Pseudo-code:
 - See [skydriver/database/schema.py](https://github.com/WIPACrepo/SkyDriver/blob/main/skydriver/database/schema.py)
 
 ##### Manifest Fields Excluded by Default in Response
-Some routes/methods respond with the scan's manifest. This is a large dictionary, so by default, these fields are excluded:
+Some routes/methods respond with the scan's manifest. This is a large dictionary, so by default, all but [GET @ `/scan/SCAN_ID/manifest`](#scanscan_idmanifest---get) exclude these fields:
 - `event_i3live_json_dict`
 - `env_vars`
 See https://github.com/search?q=repo%3AWIPACrepo%2FSkyDriver+DEFAULT_EXCLUDED_MANIFEST_FIELDS&type=code
