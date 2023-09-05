@@ -608,16 +608,6 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default=None,
         )
 
-        # response args
-        manifest_projection = self.get_argument(
-            "manifest_projection",
-            default=(
-                all_dc_fields(database.schema.Manifest)
-                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-            ),
-            type=set[str],
-        )
-
         manifest = await self.manifests.patch(
             scan_id,
             progress,
@@ -626,9 +616,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             cluster,
         )
 
-        self.write(
-            dict_projection(dc.asdict(manifest), manifest_projection),
-        )
+        self.write(dc.asdict(manifest))  # don't use a projection
 
 
 # -----------------------------------------------------------------------------
