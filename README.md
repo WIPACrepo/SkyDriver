@@ -15,7 +15,7 @@ One of many workflows may be:
 5. [Make plots](#making-plots-with-a-scans-result-using-the-scan_id)
 
 Another workflow:
-1. Find a scan id for a particular run and event ([GET @ `/scans`](#scans---get))
+1. Find a scan id for a particular run and event ([GET @ `/scans/find`](#scansfind---post))
 2. Get the scan's manifest and result ([GET @ `/scan/SCAN_ID`](#scanscan_id---get))
 
 For more examples see [examples](#examples)
@@ -146,7 +146,7 @@ _Abort a scan and/or mark scan (manifest and result) as "deleted"_
 
 
 &nbsp;
-### `/scans` - GET
+### `/scans/find` - POST
 -------------------------------------------------------------------------------
 _Retrieve scan manifests corresponding to a specific search query_
 

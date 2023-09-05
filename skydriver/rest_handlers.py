@@ -112,13 +112,13 @@ class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScansSearchHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles finding scans by attributes."""
 
-    ROUTE = r"/scans$"
+    ROUTE = r"/scans/find$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    async def get(self) -> None:
+    async def post(self) -> None:
         """Get matching scan manifest(s) for the given search."""
         mongo_filter: dict[str, Any] = self.get_argument(
             "filter",

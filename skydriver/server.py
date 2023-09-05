@@ -35,7 +35,7 @@ async def make(
     rs = RestServer(debug=debug)
 
     for klass in [
-        rest_handlers.ScansSearchHandler,
+        rest_handlers.ScansFindHandler,
         rest_handlers.ScanBacklogHandler,
         rest_handlers.MainHandler,
         rest_handlers.ScanHandler,

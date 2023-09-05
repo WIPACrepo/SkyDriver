@@ -299,8 +299,8 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
 
     # query by run+event id
     resp = await rc.request(
-        "GET",
-        "/scans",
+        "POST",
+        "/scans/find",
         {
             "filter": {
                 "event_metadata.run_id": run_id,
@@ -311,8 +311,8 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
     )
     assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
     resp = await rc.request(
-        "GET",
-        "/scans",
+        "POST",
+        "/scans/find",
         {
             "filter": {
                 "event_metadata.run_id": run_id,
@@ -324,8 +324,8 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
     )
     assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
     resp = await rc.request(
-        "GET",
-        "/scans",
+        "POST",
+        "/scans/find",
         {
             "filter": {
                 "event_metadata.run_id": run_id,
@@ -478,8 +478,8 @@ async def _delete_scan(
 
     # query by run+event id (none)
     resp = await rc.request(
-        "GET",
-        "/scans",
+        "POST",
+        "/scans/find",
         {
             "filter": {
                 "event_metadata.run_id": event_metadata["run_id"],
@@ -490,8 +490,8 @@ async def _delete_scan(
     )
     assert not resp["manifests"]  # no matches
     resp = await rc.request(
-        "GET",
-        "/scans",
+        "POST",
+        "/scans/find",
         {
             "filter": {
                 "event_metadata.run_id": event_metadata["run_id"],
@@ -503,8 +503,8 @@ async def _delete_scan(
     )
     assert not resp["manifests"]  # no matches
     resp = await rc.request(
-        "GET",
-        "/scans",
+        "POST",
+        "/scans/find",
         {
             "filter": {
                 "event_metadata.run_id": event_metadata["run_id"],
@@ -518,8 +518,8 @@ async def _delete_scan(
 
     # query by run+event id w/ incl_del
     resp = await rc.request(
-        "GET",
-        "/scans",
+        "POST",
+        "/scans/find",
         {
             "filter": {
                 "event_metadata.run_id": event_metadata["run_id"],
@@ -531,8 +531,8 @@ async def _delete_scan(
     )
     assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
     resp = await rc.request(
-        "GET",
-        "/scans",
+        "POST",
+        "/scans/find",
         {
             "filter": {
                 "event_metadata.run_id": event_metadata["run_id"],
