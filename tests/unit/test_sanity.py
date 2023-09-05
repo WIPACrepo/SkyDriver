@@ -11,7 +11,7 @@ def test_00__rest_handlers() -> None:
 
     known_handlers = {
         rest_handlers.MainHandler: r"/$",
-        rest_handlers.RunEventMappingHandler: r"/scans$",
+        rest_handlers.ScansFindHandler: r"/scans/find$",
         rest_handlers.ScanBacklogHandler: r"/scans/backlog$",
         rest_handlers.ScanLauncherHandler: r"/scan$",
         rest_handlers.ScanHandler: r"/scan/(?P<scan_id>\w+)$",

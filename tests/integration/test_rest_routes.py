@@ -44,7 +44,11 @@ async def _launch_scan(
 ) -> dict:
     # launch scan
     launch_time = time.time()
-    resp = await rc.request("POST", "/scan", post_scan_body)
+    resp = await rc.request(
+        "POST",
+        "/scan",
+        {**post_scan_body, "manifest_projection": ["*"]},
+    )
 
     scanner_server_args = (
         f"python -m skymap_scanner.server "
@@ -177,6 +181,10 @@ async def _launch_scan(
 
     # get scan_id
     assert resp["scan_id"]
+
+    # remove fields usually not returned
+    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
+    assert resp.pop("env_vars")  # remove to match with other requests
     return resp  # type: ignore[no-any-return]
 
 
@@ -203,6 +211,8 @@ async def _do_patch(
     assert body
 
     resp = await rc.request("PATCH", f"/scan/{scan_id}/manifest", body)
+    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
+    assert resp.pop("env_vars")  # remove to match with other requests
     assert resp == dict(
         scan_id=scan_id,
         is_deleted=False,
@@ -210,7 +220,6 @@ async def _do_patch(
         event_i3live_json_dict__hash=resp[
             "event_i3live_json_dict__hash"
         ],  # not checking
-        event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         event_metadata=event_metadata if event_metadata else resp["event_metadata"],
         scan_metadata=scan_metadata if scan_metadata else resp["scan_metadata"],
         clusters=(
@@ -233,7 +242,6 @@ async def _do_patch(
         ),
         scanner_server_args=resp["scanner_server_args"],  # not checking
         tms_args=resp["tms_args"],  # not checking
-        env_vars=resp["env_vars"],  # not checking
         complete=False,
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
@@ -242,6 +250,8 @@ async def _do_patch(
     manifest = resp  # keep around
     # query progress
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
+    assert resp.pop("env_vars")  # remove to match with other requests
     assert resp == manifest
     return manifest  # type: ignore[no-any-return]
 
@@ -297,17 +307,45 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
 
     await _do_patch(rc, scan_id, event_metadata=event_metadata)
 
-    # query by event id
+    # query by run+event id
     resp = await rc.request(
-        "GET",
-        "/scans",
+        "POST",
+        "/scans/find",
         {
-            "run_id": run_id,
-            "event_id": event_id,
-            "is_real_event": IS_REAL_EVENT,
+            "filter": {
+                "event_metadata.run_id": run_id,
+                "event_metadata.event_id": event_id,
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+            }
         },
     )
-    assert resp["scan_ids"] == [scan_id]
+    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
+    resp = await rc.request(
+        "POST",
+        "/scans/find",
+        {
+            "filter": {
+                "event_metadata.run_id": run_id,
+                "event_metadata.event_id": event_id,
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+            },
+            "include_deleted": False,
+        },
+    )
+    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
+    resp = await rc.request(
+        "POST",
+        "/scans/find",
+        {
+            "filter": {
+                "event_metadata.run_id": run_id,
+                "event_metadata.event_id": event_id,
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+                "is_deleted": False,
+            },
+        },
+    )
+    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
 
     return event_metadata
 
@@ -360,6 +398,8 @@ async def _send_result(
 
     # query progress
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
+    assert resp.pop("env_vars")  # remove to match with other requests
     assert resp == last_known_manifest
 
     # query result
@@ -432,6 +472,8 @@ async def _delete_scan(
     resp = await rc.request(
         "GET", f"/scan/{scan_id}/manifest", {"include_deleted": True}
     )
+    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
+    assert resp.pop("env_vars")  # remove to match with other requests
     assert resp == del_resp["manifest"]
 
     # RESULT: query w/ scan id (fails)
@@ -448,29 +490,73 @@ async def _delete_scan(
 
     #
 
-    # query by event id (none)
+    # query by run+event id (none)
     resp = await rc.request(
-        "GET",
-        "/scans",
+        "POST",
+        "/scans/find",
         {
-            "run_id": event_metadata["run_id"],
-            "event_id": event_metadata["event_id"],
-            "is_real_event": IS_REAL_EVENT,
+            "filter": {
+                "event_metadata.run_id": event_metadata["run_id"],
+                "event_metadata.event_id": event_metadata["event_id"],
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+            },
         },
     )
-    assert not resp["scan_ids"]  # no matches
-    # query by event id w/ incl_del
+    assert not resp["manifests"]  # no matches
     resp = await rc.request(
-        "GET",
-        "/scans",
+        "POST",
+        "/scans/find",
         {
-            "run_id": event_metadata["run_id"],
-            "event_id": event_metadata["event_id"],
+            "filter": {
+                "event_metadata.run_id": event_metadata["run_id"],
+                "event_metadata.event_id": event_metadata["event_id"],
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+            },
+            "include_deleted": False,
+        },
+    )
+    assert not resp["manifests"]  # no matches
+    resp = await rc.request(
+        "POST",
+        "/scans/find",
+        {
+            "filter": {
+                "event_metadata.run_id": event_metadata["run_id"],
+                "event_metadata.event_id": event_metadata["event_id"],
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+                "is_deleted": False,
+            },
+        },
+    )
+    assert not resp["manifests"]  # no matches
+
+    # query by run+event id w/ incl_del
+    resp = await rc.request(
+        "POST",
+        "/scans/find",
+        {
+            "filter": {
+                "event_metadata.run_id": event_metadata["run_id"],
+                "event_metadata.event_id": event_metadata["event_id"],
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+            },
             "include_deleted": True,
-            "is_real_event": IS_REAL_EVENT,
         },
     )
-    assert resp["scan_ids"] == [scan_id]
+    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
+    resp = await rc.request(
+        "POST",
+        "/scans/find",
+        {
+            "filter": {
+                "event_metadata.run_id": event_metadata["run_id"],
+                "event_metadata.event_id": event_metadata["event_id"],
+                "event_metadata.is_real_event": IS_REAL_EVENT,
+                "is_deleted": True,
+            },
+        },
+    )
+    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
 
 
 def get_tms_args(
@@ -610,6 +696,8 @@ async def test_00(
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
+    assert manifest.pop("env_vars")  # remove to match with other requests
     assert manifest["complete"]
 
     #
@@ -835,6 +923,8 @@ async def test_01__bad_data(
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
+    assert manifest.pop("env_vars")  # remove to match with other requests
     assert manifest["complete"]
 
     #

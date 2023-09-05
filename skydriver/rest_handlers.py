@@ -17,7 +17,19 @@ from tornado import web
 from . import database, images, k8s
 from .config import ENV, KNOWN_CLUSTERS, LOGGER, is_testing
 
+# -----------------------------------------------------------------------------
+# constants
+
+
+REAL_CHOICES = ["real", "real_event"]
+SIM_CHOICES = ["sim", "simulated", "simulated_event"]
+
 WAIT_BEFORE_TEARDOWN = 60
+
+DEFAULT_EXCLUDED_MANIFEST_FIELDS = {
+    "event_i3live_json_dict",
+    "env_vars",
+}
 
 
 # -----------------------------------------------------------------------------
@@ -50,11 +62,7 @@ else:
 
 
 # -----------------------------------------------------------------------------
-# misc constants
-
-
-REAL_CHOICES = ["real", "real_event"]
-SIM_CHOICES = ["sim", "simulated", "simulated_event"]
+# utils
 
 
 def all_dc_fields(class_or_instance: Any) -> set[str]:
@@ -65,8 +73,10 @@ def all_dc_fields(class_or_instance: Any) -> set[str]:
 def dict_projection(dicto: dict, projection: set[str]) -> dict:
     """Keep only the keys in the `projection`.
 
-    If `projection` is empty, return all fields.
+    If `projection` is empty or includes '*', return all fields.
     """
+    if "*" in projection:
+        return dicto
     if not projection:
         return dicto
     return {k: v for k, v in dicto.items() if k in projection}
@@ -112,28 +122,40 @@ class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class RunEventMappingHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
-    """Handles mapping a run+event to scan(s)."""
+class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles finding scans by attributes."""
 
-    ROUTE = r"/scans$"
+    ROUTE = r"/scans/find$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    async def get(self) -> None:
-        """Get matching scan id(s) for the given event id."""
-        run_id = self.get_argument("run_id", type=int)
-        event_id = self.get_argument("event_id", type=int)
-        is_real_event = self.get_argument("is_real_event", type=bool)
-
+    async def post(self) -> None:
+        """Get matching scan manifest(s) for the given search."""
+        mongo_filter: dict[str, Any] = self.get_argument(
+            "filter",
+            type=dict,
+            strict_type=True,
+        )
         incl_del = self.get_argument("include_deleted", default=False, type=bool)
 
-        scan_ids = [
-            m.scan_id
-            async for m in self.manifests.find_all(
-                run_id, event_id, is_real_event, incl_del
-            )
+        # response args
+        manifest_projection = self.get_argument(
+            "manifest_projection",
+            default=(
+                all_dc_fields(database.schema.Manifest)
+                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+            ),
+            type=set[str],
+        )
+
+        if "is_deleted" not in mongo_filter and not incl_del:
+            mongo_filter["is_deleted"] = False
+
+        manifests = [
+            dict_projection(dc.asdict(m), manifest_projection)
+            async for m in self.manifests.find_all(mongo_filter)
         ]
 
-        self.write({"event_id": event_id, "scan_ids": scan_ids})
+        self.write({"manifests": manifests})
 
     #
     # NOTE - 'EventMappingHandler' needs to stay user-read-only b/c
@@ -311,7 +333,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
+            default=(
+                all_dc_fields(database.schema.Manifest)
+                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+            ),
             type=set[str],
         )
 
@@ -450,7 +475,10 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
+            default=(
+                all_dc_fields(database.schema.Manifest)
+                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+            ),
             type=set[str],
         )
 
@@ -494,7 +522,10 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
+            default=(
+                all_dc_fields(database.schema.Manifest)
+                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+            ),
             type=set[str],
         )
 
@@ -577,13 +608,6 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default=None,
         )
 
-        # response args
-        manifest_projection = self.get_argument(
-            "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
-            type=set[str],
-        )
-
         manifest = await self.manifests.patch(
             scan_id,
             progress,
@@ -592,9 +616,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             cluster,
         )
 
-        self.write(
-            dict_projection(dc.asdict(manifest), manifest_projection),
-        )
+        self.write(dc.asdict(manifest))  # don't use a projection
 
 
 # -----------------------------------------------------------------------------

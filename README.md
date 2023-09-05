@@ -15,7 +15,7 @@ One of many workflows may be:
 5. [Make plots](#making-plots-with-a-scans-result-using-the-scan_id)
 
 Another workflow:
-1. Find a scan id for a particular run and event ([GET @ `/scans`](#scans---get))
+1. Find a scan id for a particular run and event ([GET @ `/scans/find`](#scansfind---post))
 2. Get the scan's manifest and result ([GET @ `/scan/SCAN_ID`](#scanscan_id---get))
 
 For more examples see [examples](#examples)
@@ -23,7 +23,7 @@ For more examples see [examples](#examples)
 
 &nbsp;
 ## REST API
-Documentation for the public-facing routes and methods
+Documentation for the public-facing routes and method
 
 
 
@@ -46,7 +46,7 @@ _Launch a new scan of an event_
 | `"memory"`                        | str          | default: `8GB`   | how much memory per client worker to request
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"max_pixel_reco_time"`           | int          | default: `None`  | the max amount of time each pixel's reco should take
-| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+| `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
 
 
 #### SkyDriver Effects
@@ -66,7 +66,7 @@ _Retrieve the manifest of a scan_
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
 | `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
-| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+| `"manifest_projection"` | list | default: all fields | which `Manifest` fields to include in the response (include `*` to include all fields)
 
 
 #### SkyDriver Effects
@@ -102,7 +102,7 @@ _Retrieve the manifest and result of a scan_
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
 | `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
-| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+| `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
 
 
 #### SkyDriver Effects
@@ -128,7 +128,7 @@ _Abort a scan and/or mark scan (manifest and result) as "deleted"_
 | Argument                  | Type        | Required/Default | Description          |
 | ------------------------- | ----------- | ---------------- | -------------------- |
 | `"delete_completed_scan"` | bool        | default: `False` | whether to mark a completed scan as "deleted" -- *this is not needed for aborting an ongoing scan*
-| `"manifest_projection"`           | list         | default: all fields | which `Manifest` fields to include in the response
+| `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
 
 #### SkyDriver Effects
 - The Skymap Scanner instance is stopped and removed
@@ -146,17 +146,30 @@ _Abort a scan and/or mark scan (manifest and result) as "deleted"_
 
 
 &nbsp;
-### `/scans` - GET
+### `/scans/find` - POST
 -------------------------------------------------------------------------------
-_Retrieve scan ids corresponding to a specific run and event_
+_Retrieve scan manifests corresponding to a specific search query_
 
 #### Arguments
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
-| `"run_id"`          | int         | *[REQUIRED]*     | id of the run
-| `"event_id"`        | int         | *[REQUIRED]*     | id of the event
-| `"is_real_event"`   | bool        | *[REQUIRED]*     | whether this event is real or simulated
-| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans
+| `"filter"`          | dict        | *[REQUIRED]*     | a MongoDB-syntax filter for `Manifest`
+| `"include_deleted"` | bool        | default: `False` | whether to include deleted scans (overwritten by `filter`'s `is_deleted`)
+| `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
+
+
+##### Example
+One simple `"filter"` may be:
+```
+{
+    "filter": {
+       "event_metadata.run_id": 123456789,
+       "event_metadata.event_id": 987654321,
+       "event_metadata.is_real_event": True,
+    }
+}
+```
+See https://www.mongodb.com/docs/manual/tutorial/query-documents/ for more complex queries.
 
 #### SkyDriver Effects
 None
@@ -164,10 +177,10 @@ None
 #### Returns
 ```
 {
-    "event_id": event_id,
-    "scan_ids": scan_ids,  # list of strings
+    "manifests": list[Manifest dict],
 }
 ```
+- See [Manifest](#manifest)
 
 
 &nbsp;
@@ -315,6 +328,13 @@ Pseudo-code:
 }
 ```
 - See [skydriver/database/schema.py](https://github.com/WIPACrepo/SkyDriver/blob/main/skydriver/database/schema.py)
+
+##### Manifest Fields Excluded by Default in Response
+Some routes/methods respond with the scan's manifest. This is a large dictionary, so by default, all but [GET @ `/scan/SCAN_ID/manifest`](#scanscan_idmanifest---get) exclude these fields:
+- `event_i3live_json_dict`
+- `env_vars`
+
+See https://github.com/search?q=repo%3AWIPACrepo%2FSkyDriver+DEFAULT_EXCLUDED_MANIFEST_FIELDS&type=code
 
 #### Result
 _A dictionary containing the scan result_
