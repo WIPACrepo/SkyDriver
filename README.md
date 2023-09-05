@@ -164,7 +164,7 @@ None
 #### Returns
 ```
 {
-    "manifest": Manifest dict,
+    "manifests": list[Manifest dict],
 }
 ```
 - See [Manifest](#manifest)
