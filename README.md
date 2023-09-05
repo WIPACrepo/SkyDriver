@@ -23,7 +23,7 @@ For more examples see [examples](#examples)
 
 &nbsp;
 ## REST API
-Documentation for the public-facing routes and methods
+Documentation for the public-facing routes and method
 
 
 
@@ -157,6 +157,19 @@ _Retrieve scan manifests corresponding to a specific search query_
 | `"include_deleted"` | bool        | default: `False` | whether to include deleted scans (overwritten by `filter`'s `is_deleted`)
 | `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
 
+
+##### Example
+One simple `"filter"` may be:
+```
+{
+    "filter": {
+       "event_metadata.run_id": 123456789,
+       "event_metadata.event_id": 987654321,
+       "event_metadata.is_real_event": True,
+    }
+}
+```
+See https://www.mongodb.com/docs/manual/tutorial/query-documents/ for more complex queries.
 
 #### SkyDriver Effects
 None
