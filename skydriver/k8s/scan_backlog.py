@@ -86,8 +86,9 @@ async def startup(
             continue
 
         LOGGER.info(
-            f"Starting Scanner Instance: ({entry.scan_id=}) ({entry.timestamp}) {job_obj}"
+            f"Starting Scanner Instance: ({entry.scan_id=}) ({entry.timestamp})"
         )
+        # NOTE: the job_obj is enormous, so don't log it
 
         # start job
         try:
