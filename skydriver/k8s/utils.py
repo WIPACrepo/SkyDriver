@@ -1,6 +1,7 @@
 """An interface to the Kubernetes cluster."""
 
 
+import json
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -177,7 +178,10 @@ class KubeAPITools:
         k8s_core_api = kubernetes.client.CoreV1Api(api_client=k8s_batch_api.api_client)
 
         for pod in KubeAPITools.get_pods(k8s_core_api, job_name, namespace):
-            status[pod.metadata.name] = pod.status.to_dict()
+            pod_status: kubernetes.client.V1PodStatus = pod.status
+            # pod status has non-serializable things like datetime objects
+            serializable = json.loads(json.dumps(pod_status.to_dict(), default=str))
+            status[pod.metadata.name] = serializable
 
         return status
 
