@@ -17,8 +17,8 @@ def test_00__rest_handlers() -> None:
         rest_handlers.ScanHandler: r"/scan/(?P<scan_id>\w+)$",
         rest_handlers.ScanManifestHandler: r"/scan/(?P<scan_id>\w+)/manifest$",
         rest_handlers.ScanResultHandler: r"/scan/(?P<scan_id>\w+)/result$",
-        rest_handlers.ScanStatusHandler: r"/scans/(?P<scan_id>\w+)/status$",
-        rest_handlers.ScanLogsHandler: r"/scans/(?P<scan_id>\w+)/logs$",
+        rest_handlers.ScanStatusHandler: r"/scan/(?P<scan_id>w+)/status$",
+        rest_handlers.ScanLogsHandler: r"/scan/(?P<scan_id>w+)/logs$",
     }
 
     # search for all known handlers

@@ -682,7 +682,7 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles relying statuses for scans."""
 
-    ROUTE = r"/scans/(?P<scan_id>\w+)/status$"
+    ROUTE = r"/scan/(?P<scan_id>w+)/status$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
@@ -727,7 +727,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles relying logs for scans."""
 
-    ROUTE = r"/scans/(?P<scan_id>\w+)/logs$"
+    ROUTE = r"/scan/(?P<scan_id>w+)/logs$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
