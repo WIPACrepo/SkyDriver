@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.3 (2023-09-07)
+
+### Other
+
+* Serialization Fix ([`bead589`](https://github.com/WIPACrepo/SkyDriver/commit/bead5893daaa2cc7cdfacd2d57faec2496413be2))
+
 ## v0.5.2 (2023-09-07)
 
 ### Other
