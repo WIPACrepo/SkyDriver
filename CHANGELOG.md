@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.1 (2023-09-07)
+
+### Other
+
+* User Debugging Tools Followup ([#66](https://github.com/WIPACrepo/SkyDriver/issues/66)) ([`721c7c8`](https://github.com/WIPACrepo/SkyDriver/commit/721c7c847182b1558d1be755a68df478db44db60))
+
 ## v0.5.0 (2023-09-05)
 
 
