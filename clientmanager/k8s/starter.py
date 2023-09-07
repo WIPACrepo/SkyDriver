@@ -159,7 +159,7 @@ def make_k8s_job_desc(
 
 
 def start(
-    k8s_client: kubernetes.client.ApiClient,
+    k8s_api: kubernetes.client.ApiClient,
     cluster_id: str,
     # k8s CL args
     job_config_stub: Path,
@@ -214,14 +214,14 @@ def start(
         return k8s_job_dict
 
     # create namespace
-    # kubernetes.client.CoreV1Api(k8s_client).create_namespace(
+    # kubernetes.client.CoreV1Api(k8s_api).create_namespace(
     #     kubernetes.client.V1Namespace(
     #         metadata=kubernetes.client.V1ObjectMeta(name=namespace)
     #     )
     # )
     # create secret
     k8s_tools.patch_or_create_namespaced_secret(
-        kubernetes.client.CoreV1Api(k8s_client),
+        kubernetes.client.CoreV1Api(k8s_api),
         host,
         namespace,
         k8s_tools.get_worker_k8s_secret_name(cluster_id),
@@ -232,6 +232,6 @@ def start(
         },
     )
     # submit jobs
-    kubernetes.utils.create_from_dict(k8s_client, k8s_job_dict, namespace=namespace)
+    kubernetes.utils.create_from_dict(k8s_api, k8s_job_dict, namespace=namespace)
 
     return k8s_job_dict

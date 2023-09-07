@@ -10,13 +10,13 @@ from . import k8s_tools
 def stop(
     namespace: str,
     cluster_id: str,
-    k8s_client: kubernetes.client.ApiClient,
+    k8s_api: kubernetes.client.ApiClient,
 ) -> None:
     """Main logic."""
 
     # Remove workers -- may not be instantaneous
     LOGGER.info("Requesting removal...")
-    resp = kubernetes.client.BatchV1Api(k8s_client).delete_namespaced_job(
+    resp = kubernetes.client.BatchV1Api(k8s_api).delete_namespaced_job(
         name=cluster_id,
         namespace=namespace,
         body=kubernetes.client.V1DeleteOptions(
@@ -28,7 +28,7 @@ def stop(
     )
 
     # Remove secret -- may not be instantaneous
-    resp = kubernetes.client.CoreV1Api(k8s_client).delete_namespaced_secret(
+    resp = kubernetes.client.CoreV1Api(k8s_api).delete_namespaced_secret(
         name=k8s_tools.get_worker_k8s_secret_name(cluster_id),
         namespace=namespace,
         body=kubernetes.client.V1DeleteOptions(
