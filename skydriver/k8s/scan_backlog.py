@@ -53,7 +53,7 @@ async def get_next_backlog_entry(
 
 async def startup(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
-    batch_api: kubernetes.client.BatchV1Api,
+    k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
     """The main loop."""
     LOGGER.info("Started scan backlog runner.")
@@ -91,7 +91,7 @@ async def startup(
 
         # start job
         try:
-            resp = KubeAPITools.start_job(batch_api, job_obj)
+            resp = KubeAPITools.start_job(k8s_batch_api, job_obj)
             # job (entry) will be revived & restarted in future iteration
             LOGGER.info(resp)
         except kubernetes.client.exceptions.ApiException as e:

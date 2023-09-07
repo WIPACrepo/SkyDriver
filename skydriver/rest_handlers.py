@@ -92,7 +92,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
     def initialize(  # type: ignore  # pylint: disable=W0221
         self,
         mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
-        batch_api: kubernetes.client.BatchV1Api,
+        k8s_batch_api: kubernetes.client.BatchV1Api,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -102,7 +102,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
         self.manifests = database.interface.ManifestClient(mongo_client)
         self.results = database.interface.ResultClient(mongo_client)
         self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
-        self.batch_api = batch_api
+        self.k8s_batch_api = k8s_batch_api
 
 
 # ----------------------------------------------------------------------------
@@ -345,7 +345,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # get the container info ready
         k8s_job = k8s.scanner_instance.SkymapScannerJob(
-            batch_api=self.batch_api,
+            k8s_batch_api=self.k8s_batch_api,
             scan_backlog=self.scan_backlog,
             #
             docker_tag=docker_tag,
@@ -396,7 +396,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 async def stop_scanner_instance(
     manifests: database.interface.ManifestClient,
     scan_id: str,
-    batch_api: kubernetes.client.BatchV1Api,
+    k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     manifest = await manifests.get(scan_id, True)
@@ -405,7 +405,7 @@ async def stop_scanner_instance(
 
     # get the container info ready
     k8s_job = k8s.scanner_instance.SkymapScannerStopperJob(
-        batch_api,
+        k8s_batch_api,
         scan_id,
         manifest.clusters,
     )
@@ -493,7 +493,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             )
 
         # Abort
-        await stop_scanner_instance(self.manifests, scan_id, self.batch_api)
+        await stop_scanner_instance(self.manifests, scan_id, self.k8s_batch_api)
 
         manifest = await self.manifests.mark_as_deleted(scan_id)
 
@@ -673,7 +673,7 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             await asyncio.sleep(
                 WAIT_BEFORE_TEARDOWN
             )  # regular time.sleep() sleeps the entire server
-            await stop_scanner_instance(self.manifests, scan_id, self.batch_api)
+            await stop_scanner_instance(self.manifests, scan_id, self.k8s_batch_api)
 
 
 # -----------------------------------------------------------------------------
@@ -692,7 +692,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # get pod status
         try:
             pod_status = k8s.utils.KubeAPITools.get_pod_status(
-                self.batch_api,
+                self.k8s_batch_api,
                 k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
                 ENV.K8S_NAMESPACE,
             )
@@ -734,7 +734,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         """Get a scan's logs."""
         try:
             pod_container_logs = k8s.utils.KubeAPITools.get_container_logs(
-                self.batch_api,
+                self.k8s_batch_api,
                 k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
                 ENV.K8S_NAMESPACE,
             )

@@ -18,17 +18,17 @@ async def main() -> None:
 
     # K8s client
     LOGGER.info("Setting up k8s client...")
-    batch_api = k8s.setup_k8s_client()
+    k8s_batch_api = k8s.setup_k8s_batch_api()
     LOGGER.info("K8s client connected.")
 
     # Scan Backlog Runner
     LOGGER.info("Starting scan backlog runner...")
-    backlog_task = asyncio.create_task(k8s.scan_backlog.startup(mongo_client, batch_api))
+    backlog_task = asyncio.create_task(k8s.scan_backlog.startup(mongo_client, k8s_batch_api))
     await asyncio.sleep(0)  # start up previous task
 
     # REST Server
     LOGGER.info("Setting up REST server...")
-    rs = await server.make(mongo_client, batch_api)
+    rs = await server.make(mongo_client, k8s_batch_api)
     rs.startup(address=ENV.REST_HOST, port=ENV.REST_PORT)  # type: ignore[no-untyped-call]
     try:
         await asyncio.Event().wait()
