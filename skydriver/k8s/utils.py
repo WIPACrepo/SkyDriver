@@ -2,7 +2,7 @@
 
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
@@ -132,7 +132,7 @@ class KubeAPITools:
 
     @staticmethod
     def start_job(
-        api_instance: kubernetes.client.BatchV1Api,
+        k8s_batch_api: kubernetes.client.BatchV1Api,
         job_obj: kubernetes.client.V1Job,
     ) -> Any:
         """Start the k8s job.
@@ -142,7 +142,7 @@ class KubeAPITools:
         if not job_obj:
             raise ValueError("Job object not created")
         try:
-            api_response = api_instance.create_namespaced_job(
+            api_response = k8s_batch_api.create_namespaced_job(
                 ENV.K8S_NAMESPACE, job_obj
             )
             LOGGER.info(api_response)
@@ -152,38 +152,56 @@ class KubeAPITools:
         return api_response
 
     @staticmethod
-    def get_status(
-        api_instance: kubernetes.client.BatchV1Api,
-        name: str,
+    def get_pods(
+        k8s_core_api: kubernetes.client.CoreV1Api,
+        job_name: str,
         namespace: str,
-    ) -> dict[str, Any]:
-        """Get the status of the k8s pod and its containers."""
-        LOGGER.info(f"getting pod status for {name=} {namespace=}")
+    ) -> Iterator[kubernetes.client.V1Pod]:
+        """Get each pod corresponding to the job."""
+        pods: kubernetes.client.V1PodList = k8s_core_api.list_namespaced_pod(
+            namespace=namespace, label_selector=f"job-name={job_name}"
+        )
+        for pod in pods.items:
+            yield pod
 
-        core_api = kubernetes.client.CoreV1Api(api_client=api_instance.api_client)
-        pod = core_api.read_namespaced_pod(name, namespace)
+    @staticmethod
+    def get_pod_status(
+        k8s_batch_api: kubernetes.client.BatchV1Api,
+        job_name: str,
+        namespace: str,
+    ) -> dict[str, dict[str, Any]]:
+        """Get the status of the k8s pod(s) and their containers."""
+        LOGGER.info(f"getting pod status for {job_name=} {namespace=}")
+        status = {}
 
-        return pod.status.to_dict()  # type: ignore[no-any-return]
+        k8s_core_api = kubernetes.client.CoreV1Api(api_client=k8s_batch_api.api_client)
+
+        for pod in KubeAPITools.get_pods(k8s_core_api, job_name, namespace):
+            status[pod.metadata.name] = pod.status.to_dict()
+
+        return status
 
     @staticmethod
     def get_container_logs(
-        api_instance: kubernetes.client.BatchV1Api,
-        name: str,
+        k8s_batch_api: kubernetes.client.BatchV1Api,
+        job_name: str,
         namespace: str,
-    ) -> dict[str, str]:
+    ) -> dict[str, dict[str, str]]:
         """Grab the logs for all containers."""
-        LOGGER.info(f"getting logs for {name=} {namespace=}")
-
-        core_api = kubernetes.client.CoreV1Api(api_client=api_instance.api_client)
-        pod = core_api.read_namespaced_pod(name, namespace)
-
+        LOGGER.info(f"getting logs for {job_name=} {namespace=}")
         logs = {}
-        for container in pod.spec.containers:
-            logs[container.name] = core_api.read_namespaced_pod_log(
-                name,
-                namespace,
-                container=container.name,
-                timestamps=True,
-            )
+
+        k8s_core_api = kubernetes.client.CoreV1Api(api_client=k8s_batch_api.api_client)
+
+        for pod in KubeAPITools.get_pods(k8s_core_api, job_name, namespace):
+            these_logs = {}
+            for container in pod.spec.containers:
+                these_logs[container.name] = k8s_core_api.read_namespaced_pod_log(
+                    pod.metadata.name,
+                    namespace,
+                    container=container.name,
+                    timestamps=True,
+                )
+            logs[pod.metadata.name] = these_logs
 
         return logs

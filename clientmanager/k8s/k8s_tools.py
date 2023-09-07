@@ -11,7 +11,7 @@ def get_worker_k8s_secret_name(cluster_id: str) -> str:
 
 
 def patch_or_create_namespaced_secret(
-    api_instance: kubernetes.client.CoreV1Api,
+    k8s_core_api: kubernetes.client.CoreV1Api,
     host: str,
     namespace: str,
     secret_name: str,
@@ -43,7 +43,7 @@ def patch_or_create_namespaced_secret(
 
     # try to patch first
     try:
-        api_instance.patch_namespaced_secret(secret_name, namespace, body)
+        k8s_core_api.patch_namespaced_secret(secret_name, namespace, body)
         LOGGER.info(f"Secret {secret_name} in namespace {namespace} has been patched")
     except kubernetes.client.rest.ApiException as e:
         # a (None or 404) means we can create secret instead, see below
@@ -53,7 +53,7 @@ def patch_or_create_namespaced_secret(
 
     # create if patch failed
     try:
-        api_instance.create_namespaced_secret(namespace=namespace, body=body)
+        k8s_core_api.create_namespaced_secret(namespace=namespace, body=body)
         LOGGER.info(
             f"Created secret {secret_name} of type {secret_type} in namespace {namespace}"
         )

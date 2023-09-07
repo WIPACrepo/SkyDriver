@@ -13,7 +13,7 @@ from .config import ENV, LOGGER, is_testing
 
 async def make(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
-    k8s_api: kubernetes.client.BatchV1Api,
+    k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> RestServer:
     """Make a SkyDriver REST service (does not start up automatically)."""
     debug = is_testing()
@@ -29,7 +29,7 @@ async def make(
     #
     # Setup clients/apis
     args["mongo_client"] = mongo_client
-    args["k8s_api"] = k8s_api
+    args["k8s_batch_api"] = k8s_batch_api
 
     # Configure REST Routes
     rs = RestServer(debug=debug)

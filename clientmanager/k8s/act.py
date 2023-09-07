@@ -55,18 +55,18 @@ def act(args: argparse.Namespace) -> None:
         )
 
     # connect & go
-    with kubernetes.client.ApiClient(k8s_client_config) as k8s_client:
+    with kubernetes.client.ApiClient(k8s_client_config) as k8s_api:
         try:
             LOGGER.debug("testing k8s credentials")
-            resp = kubernetes.client.BatchV1Api(k8s_client).get_api_resources()
+            resp = kubernetes.client.BatchV1Api(k8s_api).get_api_resources()
             LOGGER.debug(resp)
         except kubernetes.client.rest.ApiException as e:
             LOGGER.exception(e)
             raise
-        _act(args, k8s_client)
+        _act(args, k8s_api)
 
 
-def _act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> None:
+def _act(args: argparse.Namespace, k8s_api: kubernetes.client.ApiClient) -> None:
     match args.action:
         case "start":
             cluster_id = f"skyscan-worker-{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}-{int(time.time())}"  # TODO: make more unique
@@ -78,7 +78,7 @@ def _act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> N
             skydriver_rc = utils.connect_to_skydriver()
             # start
             starter.start(
-                k8s_client=k8s_client,
+                k8s_api=k8s_api,
                 cluster_id=cluster_id,
                 # k8s CL args
                 cpu_arch=args.cpu_arch,
@@ -116,7 +116,7 @@ def _act(args: argparse.Namespace, k8s_client: kubernetes.client.ApiClient) -> N
             stopper.stop(
                 args.namespace,
                 args.cluster_id,
-                k8s_client,
+                k8s_api,
             )
         case _:
             raise RuntimeError(f"Unknown action: {args.action}")
