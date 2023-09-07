@@ -132,12 +132,12 @@ async def server(
     )
 
     mongo_client = await create_mongodb_client()
-    k8s_api = Mock()
+    batch_api = Mock()
     backlog_task = asyncio.create_task(
-        skydriver.k8s.scan_backlog.startup(mongo_client, k8s_api)
+        skydriver.k8s.scan_backlog.startup(mongo_client, batch_api)
     )
     await asyncio.sleep(0)  # start up previous task
-    rs = await make(mongo_client, k8s_api)
+    rs = await make(mongo_client, batch_api)
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:

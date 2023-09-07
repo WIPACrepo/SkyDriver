@@ -37,7 +37,7 @@ def setup_k8s_client() -> kubernetes.client.BatchV1Api:
     config.load_incluster_config(configuration)  # uses pod's service account
     # config.load_kube_config()  # looks for 'KUBECONFIG' or '~/.kube/config'
 
-    k8s_api = kubernetes.client.BatchV1Api(kubernetes.client.ApiClient(configuration))
-    _kube_test_credentials(k8s_api)
+    batch_api = kubernetes.client.BatchV1Api(kubernetes.client.ApiClient(configuration))
+    _kube_test_credentials(batch_api)
 
-    return k8s_api
+    return batch_api
