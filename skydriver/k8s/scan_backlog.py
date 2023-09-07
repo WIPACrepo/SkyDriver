@@ -93,9 +93,9 @@ async def startup(
         # start job
         try:
             resp = KubeAPITools.start_job(k8s_batch_api, job_obj)
-            # job (entry) will be revived & restarted in future iteration
             LOGGER.info(resp)
         except kubernetes.client.exceptions.ApiException as e:
+            # job (entry) will be revived & restarted in future iteration
             LOGGER.exception(e)
             continue
 
