@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.2 (2023-09-07)
+
+### Other
+
+* Fix Route RegEx ([`f023f2a`](https://github.com/WIPACrepo/SkyDriver/commit/f023f2acf12217375e54da5fd6136902b35d5462))
+
 ## v0.5.1 (2023-09-07)
 
 ### Other
