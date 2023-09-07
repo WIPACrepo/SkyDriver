@@ -11,7 +11,7 @@ from . import scanner_instance, utils  # noqa: F401  # export
 LOGGER = logging.getLogger(__name__)
 
 
-def _kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:
+def _kube_test_credentials(batch_api: kubernetes.client.BatchV1Api) -> None:
     """Testing function.
 
     If you get an error on this call don't proceed. Something is wrong on your connectivity to
@@ -21,7 +21,7 @@ def _kube_test_credentials(api_instance: kubernetes.client.BatchV1Api) -> None:
     """
     LOGGER.debug("testing k8s credentials")
     try:
-        api_response = api_instance.get_api_resources()
+        api_response = batch_api.get_api_resources()
         LOGGER.debug(api_response)
     except ApiException as e:
         LOGGER.exception(e)

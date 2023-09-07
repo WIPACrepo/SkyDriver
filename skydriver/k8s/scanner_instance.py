@@ -58,7 +58,7 @@ class SkymapScannerJob:
 
     def __init__(
         self,
-        api_instance: kubernetes.client.BatchV1Api,
+        batch_api: kubernetes.client.BatchV1Api,
         scan_backlog: database.interface.ScanBacklogClient,
         #
         docker_tag: str,
@@ -79,7 +79,7 @@ class SkymapScannerJob:
         rest_address: str,
     ):
         LOGGER.info(f"making k8s job for {scan_id=}")
-        self.api_instance = api_instance
+        self.batch_api = batch_api
         self.scan_backlog = scan_backlog
         self.scan_id = scan_id
         self.env_dict = {}
@@ -399,12 +399,12 @@ class SkymapScannerStopperJob:
 
     def __init__(
         self,
-        api_instance: kubernetes.client.BatchV1Api,
+        batch_api: kubernetes.client.BatchV1Api,
         scan_id: str,
         clusters: list[schema.Cluster],
     ):
         LOGGER.info(f"making k8s STOPPER job for {scan_id=}")
-        self.api_instance = api_instance
+        self.batch_api = batch_api
         self.scan_id = scan_id
 
         # make a container per cluster
@@ -450,4 +450,4 @@ class SkymapScannerStopperJob:
 
         # TODO: stop first k8s job (server & clientmanager-starter)
 
-        KubeAPITools.start_job(self.api_instance, self.job_obj)
+        KubeAPITools.start_job(self.batch_api, self.job_obj)

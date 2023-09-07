@@ -345,7 +345,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # get the container info ready
         k8s_job = k8s.scanner_instance.SkymapScannerJob(
-            api_instance=self.k8s_api,
+            batch_api=self.k8s_api,
             scan_backlog=self.scan_backlog,
             #
             docker_tag=docker_tag,
@@ -691,7 +691,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # get pod status
         try:
-            pod_status = k8s.utils.KubeAPITools.get_status(
+            pod_status = k8s.utils.KubeAPITools.get_pod_status(
                 self.k8s_api,
                 k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
                 ENV.K8S_NAMESPACE,
