@@ -29,6 +29,8 @@ class EnvConfig:
     REST_PORT: int = 8080
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
+
+    SCAN_BACKLOG_MAX_ATTEMPTS: int = 3
     SCAN_BACKLOG_RUNNER_SHORT_DELAY: int = 15
     SCAN_BACKLOG_RUNNER_DELAY: int = 5 * 60
     SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: int = 5 * 60  # entry is revived after N secs

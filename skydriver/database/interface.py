@@ -312,7 +312,10 @@ class ScanBacklogClient:
                     "$lt": time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
                 }
             },
-            {"$set": {"pending_timestamp": time.time()}},
+            {
+                "$set": {"pending_timestamp": time.time()},
+                "$inc": {"next_attempt": 1},
+            },
             sort=[("timestamp", ASCENDING)],
             return_document=ReturnDocument.AFTER,
             return_dclass=schema.ScanBacklogEntry,
