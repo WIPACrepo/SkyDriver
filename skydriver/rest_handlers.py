@@ -697,7 +697,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 ENV.K8S_NAMESPACE,
             )
             pod_message = "retrieved"
-        except kubernetes.client.rest.ApiException as e:
+        except (kubernetes.client.rest.ApiException, ValueError) as e:
             if await self.scan_backlog.is_in_backlog(scan_id):
                 pod_status = {}
                 pod_message = "in backlog"
@@ -739,7 +739,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 ENV.K8S_NAMESPACE,
             )
             pod_container_logs_message = "retrieved"
-        except kubernetes.client.rest.ApiException as e:
+        except (kubernetes.client.rest.ApiException, ValueError) as e:
             if await self.scan_backlog.is_in_backlog(scan_id):
                 pod_container_logs = {}
                 pod_container_logs_message = "in backlog"
