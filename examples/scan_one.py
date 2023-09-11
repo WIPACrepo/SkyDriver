@@ -39,7 +39,7 @@ def launch_a_scan(
     body = {
         "reco_algo": "millipede_wilks",
         "event_i3live_json": event_file.open().read().strip(),
-        "nsides": {8: 12, 64: 12, 512: 24},
+        "nsides": {8: 0, 64: 12, 512: 24},
         "real_or_simulated_event": "simulated",
         "predictive_scanning_threshold": 0.3,
         "cluster": {cluster: n_workers},
