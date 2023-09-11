@@ -703,7 +703,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 pod_message = "in backlog"
             else:
                 pod_status = {}
-                pod_message = "error"
+                pod_message = "pod(s) not found"
                 LOGGER.exception(e)
 
         self.write(
@@ -745,7 +745,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 pod_container_logs_message = "in backlog"
             else:
                 pod_container_logs = {}
-                pod_container_logs_message = "error"
+                pod_container_logs_message = "pod(s) not found"
                 LOGGER.exception(e)
 
         self.write(
