@@ -83,6 +83,7 @@ async def startup(
             job_obj = pickle.loads(entry.pickled_k8s_job)
         except Exception as e:
             LOGGER.exception(e)
+            short_sleep = True  # don't wait long b/c nothing was started
             continue
 
         LOGGER.info(
@@ -97,6 +98,7 @@ async def startup(
         except kubernetes.client.exceptions.ApiException as e:
             # job (entry) will be revived & restarted in future iteration
             LOGGER.exception(e)
+            short_sleep = True  # don't wait long b/c nothing was started
             continue
 
         # remove from backlog now that startup succeeded

@@ -79,6 +79,15 @@ class EnvConfig:
                 "Missing required environment variable: 'CLIENTMANAGER_IMAGE_WITH_TAG'"
             )
 
+        if self.SCAN_BACKLOG_RUNNER_SHORT_DELAY > self.SCAN_BACKLOG_RUNNER_DELAY:
+            raise RuntimeError(
+                "'SCAN_BACKLOG_RUNNER_SHORT_DELAY' cannot be greater than 'SCAN_BACKLOG_RUNNER_DELAY'"
+            )
+        if self.SCAN_BACKLOG_RUNNER_DELAY > self.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE:
+            raise RuntimeError(
+                "'SCAN_BACKLOG_RUNNER_DELAY' cannot be greater than 'SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE'"
+            )
+
 
 ENV = from_environment_as_dataclass(EnvConfig)
 
