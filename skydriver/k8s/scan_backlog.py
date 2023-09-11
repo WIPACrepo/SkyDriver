@@ -41,6 +41,13 @@ async def get_next_backlog_entry(
         entry = await scan_backlog.fetch_next_as_pending()
         LOGGER.info(f"Got backlog entry ({entry.scan_id=})")
 
+        if entry.next_attempt > ENV.SCAN_BACKLOG_MAX_ATTEMPTS:
+            LOGGER.info(
+                f"Backlog entry was already attempted {ENV.SCAN_BACKLOG_MAX_ATTEMPTS} times ({entry.scan_id=})"
+            )
+            await scan_backlog.remove(entry)
+            continue
+
         # check if scan was aborted (cancelled)
         manifest = await manifests.get(entry.scan_id, incl_del=True)
         if manifest.is_deleted:
