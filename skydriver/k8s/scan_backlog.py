@@ -54,8 +54,9 @@ async def get_next_backlog_entry(
             LOGGER.info(f"Backlog entry was aborted ({entry.scan_id=})")
             await scan_backlog.remove(entry)
             continue
-        else:
-            return entry  # ready to start job
+
+        # all good!
+        return entry  # ready to start job
 
 
 async def startup(
