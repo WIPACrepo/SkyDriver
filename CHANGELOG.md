@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.4 (2023-09-11)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`ba0bd7a`](https://github.com/WIPACrepo/SkyDriver/commit/ba0bd7af0d016d6cd06073e66649fc87dce1f149))
+* Fix Jammed Backlog ([`7485c49`](https://github.com/WIPACrepo/SkyDriver/commit/7485c496cf61a0a6e069efd4633a1f6a5e0dd54a))
+
 ## v0.5.3 (2023-09-07)
 
 ### Other
