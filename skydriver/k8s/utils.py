@@ -2,6 +2,7 @@
 
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -9,6 +10,12 @@ import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
 
 from ..config import ENV, LOGGER
+
+# NOTE: for security, limit the regex section lengths (with trusted input we'd use + and *)
+# https://cwe.mitre.org/data/definitions/1333.html
+K8S_MEMORY_PATTERN = re.compile(
+    r"^([+-]?[0-9.]{1,5})([eEinumkKMGTP]{0,3}[-+]?[0-9]{0,5})$"
+)
 
 
 class KubeAPITools:
@@ -99,6 +106,15 @@ class KubeAPITools:
         return body
 
     @staticmethod
+    def validate_k8s_memory(memory: str) -> str:
+        """Raise 'ValueError' if not a valid k8s value."""
+        if not K8S_MEMORY_PATTERN.match(memory):
+            raise ValueError(
+                f"Invalid memory format, must match {K8S_MEMORY_PATTERN.pattern}"
+            )
+        return memory
+
+    @staticmethod
     def create_container(
         name: str,
         image: str,
@@ -108,8 +124,11 @@ class KubeAPITools:
         memory: str = ENV.K8S_CONTAINER_MEMORY_DEFAULT,
     ) -> kubernetes.client.V1Container:
         """Make a Container instance."""
+        memory = KubeAPITools.validate_k8s_memory(memory)
+
         if not volumes:
             volumes = {}
+
         return kubernetes.client.V1Container(
             name=name,
             image=image,
@@ -158,10 +177,15 @@ class KubeAPITools:
         job_name: str,
         namespace: str,
     ) -> Iterator[kubernetes.client.V1Pod]:
-        """Get each pod corresponding to the job."""
+        """Get each pod corresponding to the job.
+
+        Raises `ValueError` if there are no pods for the job.
+        """
         pods: kubernetes.client.V1PodList = k8s_core_api.list_namespaced_pod(
             namespace=namespace, label_selector=f"job-name={job_name}"
         )
+        if not pods.items:
+            raise ValueError(f"Job {job_name} has no pods")
         for pod in pods.items:
             yield pod
 
@@ -171,7 +195,10 @@ class KubeAPITools:
         job_name: str,
         namespace: str,
     ) -> dict[str, dict[str, Any]]:
-        """Get the status of the k8s pod(s) and their containers."""
+        """Get the status of the k8s pod(s) and their containers.
+
+        Raises `ValueError` if there are no pods for the job.
+        """
         LOGGER.info(f"getting pod status for {job_name=} {namespace=}")
         status = {}
 
@@ -191,7 +218,10 @@ class KubeAPITools:
         job_name: str,
         namespace: str,
     ) -> dict[str, dict[str, str]]:
-        """Grab the logs for all containers."""
+        """Grab the logs for all containers.
+
+        Raises `ValueError` if there are no pods for the job.
+        """
         LOGGER.info(f"getting logs for {job_name=} {namespace=}")
         logs = {}
 

@@ -276,7 +276,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # scanner server args
         scanner_server_memory = self.get_argument(
             "scanner_server_memory",
-            type=str,
+            type=k8s.utils.KubeAPITools.validate_k8s_memory,
             default=ENV.K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
@@ -697,13 +697,13 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 ENV.K8S_NAMESPACE,
             )
             pod_message = "retrieved"
-        except kubernetes.client.rest.ApiException as e:
+        except (kubernetes.client.rest.ApiException, ValueError) as e:
             if await self.scan_backlog.is_in_backlog(scan_id):
                 pod_status = {}
                 pod_message = "in backlog"
             else:
                 pod_status = {}
-                pod_message = "error"
+                pod_message = "pod(s) not found"
                 LOGGER.exception(e)
 
         self.write(
@@ -739,13 +739,13 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 ENV.K8S_NAMESPACE,
             )
             pod_container_logs_message = "retrieved"
-        except kubernetes.client.rest.ApiException as e:
+        except (kubernetes.client.rest.ApiException, ValueError) as e:
             if await self.scan_backlog.is_in_backlog(scan_id):
                 pod_container_logs = {}
                 pod_container_logs_message = "in backlog"
             else:
                 pod_container_logs = {}
-                pod_container_logs_message = "error"
+                pod_container_logs_message = "pod(s) not found"
                 LOGGER.exception(e)
 
         self.write(
