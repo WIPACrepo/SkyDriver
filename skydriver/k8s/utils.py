@@ -11,7 +11,11 @@ from kubernetes.client.rest import ApiException  # type: ignore[import]
 
 from ..config import ENV, LOGGER
 
-K8S_MEMORY_PATTERN = re.compile(r"^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$")
+# NOTE: for security, limit the regex section lengths (with trusted input we'd use + and *)
+# https://cwe.mitre.org/data/definitions/1333.html
+K8S_MEMORY_PATTERN = re.compile(
+    r"^([+-]?[0-9.]{1,5})([eEinumkKMGTP]{0,3}[-+]?[0-9]{0,5})$"
+)
 
 
 class KubeAPITools:
