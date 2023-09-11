@@ -42,8 +42,8 @@ _Launch a new scan of an event_
 | `"event_i3live_json"`             | dict or str  | *[REQUIRED]*     | Realtime's JSON event format
 | `"nsides"`                        | dict         | *[REQUIRED]*     | the nside progression to use (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"real_or_simulated_event"`       | str          | *[REQUIRED]*     | whether this event is real or simulated. Ex: `real`, `simulated`
-| `"scanner_server_memory"`         | str          | default: `512GB` | how much memory for the scanner server to request
-| `"memory"`                        | str          | default: `8GB`   | how much memory per client worker to request
+| `"scanner_server_memory"`         | str          | default: `512M` | how much memory for the scanner server to request
+| `"memory"`                        | str          | default: `8G`   | how much memory per client worker to request
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"max_pixel_reco_time"`           | int          | default: `None`  | the max amount of time each pixel's reco should take
 | `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
