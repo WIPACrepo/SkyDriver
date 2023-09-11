@@ -2,6 +2,7 @@
 
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -9,6 +10,8 @@ import kubernetes.client  # type: ignore[import]
 from kubernetes.client.rest import ApiException  # type: ignore[import]
 
 from ..config import ENV, LOGGER
+
+K8S_MEMORY_PATTERN = re.compile(r"^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$")
 
 
 class KubeAPITools:
@@ -99,6 +102,15 @@ class KubeAPITools:
         return body
 
     @staticmethod
+    def validate_k8s_memory(memory: str) -> str:
+        """Raise 'ValueError' if not a valid k8s value."""
+        if not K8S_MEMORY_PATTERN.match(memory):
+            raise ValueError(
+                f"Invalid memory format, must match {K8S_MEMORY_PATTERN.pattern}"
+            )
+        return memory
+
+    @staticmethod
     def create_container(
         name: str,
         image: str,
@@ -108,8 +120,11 @@ class KubeAPITools:
         memory: str = ENV.K8S_CONTAINER_MEMORY_DEFAULT,
     ) -> kubernetes.client.V1Container:
         """Make a Container instance."""
+        memory = KubeAPITools.validate_k8s_memory(memory)
+
         if not volumes:
             volumes = {}
+
         return kubernetes.client.V1Container(
             name=name,
             image=image,

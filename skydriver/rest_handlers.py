@@ -276,7 +276,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # scanner server args
         scanner_server_memory = self.get_argument(
             "scanner_server_memory",
-            type=str,
+            type=k8s.utils.KubeAPITools.validate_k8s_memory,
             default=ENV.K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
