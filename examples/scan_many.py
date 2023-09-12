@@ -39,7 +39,7 @@ def launch_a_scan(
     body = {
         "reco_algo": "millipede_wilks",
         "event_i3live_json": event_file.open().read().strip(),
-        "nsides": {8: 12, 64: 12, 512: 24},
+        "nsides": {8: 0, 64: 12, 512: 24},
         "real_or_simulated_event": "simulated",
         "predictive_scanning_threshold": 0.3,
         "cluster": {cluster: n_workers},
@@ -88,6 +88,8 @@ def main() -> None:
     files = list(args.event_files.iterdir())
     random.shuffle(files)
     for i, event_file in enumerate(files):
+        if event_file.suffix != '.json':
+            continue
         print("-----------------------")
         print(event_file)
         scan_id = launch_a_scan(rc, event_file, args.cluster, args.n_workers)
