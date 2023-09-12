@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.6 (2023-09-12)
+
+### Other
+
+* Update examples ([#68](https://github.com/WIPACrepo/SkyDriver/issues/68)) ([`c29586f`](https://github.com/WIPACrepo/SkyDriver/commit/c29586f35ea89ef8c4ee43ba2361d9c7e4bfd854))
+
 ## v0.5.5 (2023-09-11)
 
 ### Other
