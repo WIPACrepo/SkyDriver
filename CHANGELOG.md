@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.7 (2023-09-13)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`f2a5d23`](https://github.com/WIPACrepo/SkyDriver/commit/f2a5d23826432940151c705e881ec0bb5e852172))
+* Bump Scanner Server Default Memory to `1024M` ([`6fd395b`](https://github.com/WIPACrepo/SkyDriver/commit/6fd395b9e320e846b0023cefadc0503c1547958a))
+
 ## v0.5.6 (2023-09-12)
 
 ### Other
