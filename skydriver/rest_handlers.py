@@ -15,7 +15,13 @@ from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
 from tornado import web
 
 from . import database, images, k8s
-from .config import ENV, KNOWN_CLUSTERS, LOGGER, is_testing
+from .config import (
+    DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
+    ENV,
+    KNOWN_CLUSTERS,
+    LOGGER,
+    is_testing,
+)
 
 # -----------------------------------------------------------------------------
 # constants
@@ -277,7 +283,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scanner_server_memory = self.get_argument(
             "scanner_server_memory",
             type=k8s.utils.KubeAPITools.validate_k8s_memory,
-            default=ENV.K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
+            default=DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
 

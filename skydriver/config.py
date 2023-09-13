@@ -10,8 +10,12 @@ from wipac_dev_tools import from_environment_as_dataclass
 
 LOGGER = logging.getLogger("skydriver")
 
+
 # --------------------------------------------------------------------------------------
 # Constants
+
+
+DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER = "1024M"
 
 
 @dc.dataclass(frozen=True)
@@ -47,7 +51,6 @@ class EnvConfig:
     K8S_CONTAINER_MEMORY_DEFAULT: str = "64M"
     K8S_CONTAINER_MEMORY_TMS_STOPPER: str = "256M"
     K8S_CONTAINER_MEMORY_TMS_STARTER: str = "256M"
-    K8S_CONTAINER_MEMORY_SKYSCAN_SERVER: str = "512M"
 
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""
