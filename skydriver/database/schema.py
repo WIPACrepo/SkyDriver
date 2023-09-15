@@ -150,7 +150,7 @@ class Manifest(ScanIDDataclass):
     tms_args: list[str]
     env_vars: dict[str, Any]
 
-    classifiers: list[str] = dc.field(default_factory=list)
+    classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)
 
     # special fields -- see __post_init__
     event_i3live_json_dict__hash: str = ""  # possibly overwritten

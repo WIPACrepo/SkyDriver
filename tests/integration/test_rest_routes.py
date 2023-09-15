@@ -26,7 +26,12 @@ StrDict = dict[str, Any]
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 
-CLASSIFIERS = ["foo", "bar bat", "baz"]
+CLASSIFIERS = {
+    "foo": 1,
+    "bar bat": True,
+    "baz": "y" * skydriver.rest_handlers.MAX_CLASSIFIERS_LEN,  # type: ignore[attr-defined]
+    "z" * skydriver.rest_handlers.MAX_CLASSIFIERS_LEN: 3.1415,  # type: ignore[attr-defined]
+}
 POST_SCAN_BODY = {
     "reco_algo": "anything",
     "event_i3live_json": {"a": 22},
