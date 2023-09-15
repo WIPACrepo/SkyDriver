@@ -368,7 +368,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         classifiers = self.get_argument(
             "classifiers",
             type=_classifiers_validator,
-            default=[],
+            default={},
         )
 
         # response args
