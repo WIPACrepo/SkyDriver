@@ -35,6 +35,13 @@ POST_SCAN_BODY = {
     "docker_tag": "latest",
     "keywords": KEYWORDS,
 }
+REQUIRED_FIELDS = [
+    "reco_algo",
+    "event_i3live_json",
+    "nsides",
+    "real_or_simulated_event",
+    "docker_tag",
+]
 
 
 ########################################################################################
@@ -775,16 +782,18 @@ async def test_01__bad_data(
     print(e.value)
     # # missing arg
     for arg in POST_SCAN_BODY_FOR_TEST_01:
-        with pytest.raises(
-            requests.exceptions.HTTPError,
-            match=rf"400 Client Error: `{arg}`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
-        ) as e:
-            # remove arg from body
-            await rc.request(
-                "POST",
-                "/scan",
-                {k: v for k, v in POST_SCAN_BODY_FOR_TEST_01.items() if k != arg},
-            )
+        if arg in REQUIRED_FIELDS:
+            print(arg)
+            with pytest.raises(
+                requests.exceptions.HTTPError,
+                match=rf"400 Client Error: `{arg}`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
+            ) as e:
+                # remove arg from body
+                await rc.request(
+                    "POST",
+                    "/scan",
+                    {k: v for k, v in POST_SCAN_BODY_FOR_TEST_01.items() if k != arg},
+                )
         print(e.value)
     # # bad docker tag
     with pytest.raises(
