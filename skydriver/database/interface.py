@@ -60,7 +60,7 @@ class ManifestClient:
         scanner_server_args: str,
         tms_args_list: list[str],
         env_vars: dict[str, Any],
-        keywords: list,
+        classifiers: list,
     ) -> schema.Manifest:
         """Create `schema.Manifest` doc."""
         LOGGER.debug("creating new manifest")
@@ -74,7 +74,7 @@ class ManifestClient:
             scanner_server_args=scanner_server_args,
             tms_args=tms_args_list,
             env_vars=env_vars,
-            keywords=keywords,
+            classifiers=classifiers,
         )
 
         # db

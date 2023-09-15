@@ -337,8 +337,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
 
         # other args
-        keywords = self.get_argument(
-            "keywords",
+        classifiers = self.get_argument(
+            "classifiers",
             type=list,  # TODO -- put data size constraints
             strict_type=True,
             default=[],
@@ -387,7 +387,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             k8s_job.scanner_server_args,
             k8s_job.tms_args_list,
             k8s_job.env_dict,
-            keywords,
+            classifiers,
         )
 
         # enqueue skymap scanner instance to be started in-time

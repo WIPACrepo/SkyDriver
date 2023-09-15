@@ -26,14 +26,14 @@ StrDict = dict[str, Any]
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 
-KEYWORDS = ["foo", "bar bat", "baz"]
+CLASSIFIERS = ["foo", "bar bat", "baz"]
 POST_SCAN_BODY = {
     "reco_algo": "anything",
     "event_i3live_json": {"a": 22},
     "nsides": {1: 2, 3: 4},
     "real_or_simulated_event": "real",
     "docker_tag": "latest",
-    "keywords": KEYWORDS,
+    "classifiers": CLASSIFIERS,
 }
 REQUIRED_FIELDS = [
     "reco_algo",
@@ -88,7 +88,7 @@ async def _launch_scan(
         tms_args=resp["tms_args"],  # see below
         env_vars=resp["env_vars"],  # see below
         complete=False,
-        keywords=post_scan_body["keywords"],
+        classifiers=post_scan_body["classifiers"],
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
 
@@ -252,7 +252,7 @@ async def _do_patch(
         scanner_server_args=resp["scanner_server_args"],  # not checking
         tms_args=resp["tms_args"],  # not checking
         complete=False,
-        keywords=KEYWORDS,
+        classifiers=CLASSIFIERS,
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
     assert 0.0 < resp["timestamp"] < time.time()
