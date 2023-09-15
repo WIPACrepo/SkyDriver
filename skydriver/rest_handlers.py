@@ -340,6 +340,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         keywords = self.get_argument(
             "keywords",
             type=list,  # TODO -- put data size constraints
+            strict_type=True,
             default=[],
         )
 
