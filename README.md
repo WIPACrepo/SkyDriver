@@ -46,6 +46,7 @@ _Launch a new scan of an event_
 | `"memory"`                        | str          | default: `8G`   | how much memory per client worker to request
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"max_pixel_reco_time"`           | int          | default: `None`  | the max amount of time each pixel's reco should take
+| `"classifiers"` | `dict[str, str | bool | float | int]` | default: `{}` | a user-defined collection of labels, attributes, etc. -- this is constrained in size and is intended for user-defined metadata only
 | `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
 
 
@@ -270,6 +271,8 @@ Pseudo-code:
     scanner_server_args: str,
     tms_args: list[str],
     env_vars: dict[str, dict[str, Any]],
+
+    classifiers: dict[str, str | bool | float | int]
 
     event_i3live_json_dict__hash: str,  # a deterministic hash of the event json
 
