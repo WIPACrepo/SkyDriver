@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.8 (2023-09-18)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`5c3a2ca`](https://github.com/WIPACrepo/SkyDriver/commit/5c3a2ca60c92510ec82056131e29703afa395ee7))
+* Update README ([`31878d6`](https://github.com/WIPACrepo/SkyDriver/commit/31878d6c77ea2d5d413331faa7b3a1500273a15d))
+* User-Defined `classifiers` ([#70](https://github.com/WIPACrepo/SkyDriver/issues/70)) ([`c6fa048`](https://github.com/WIPACrepo/SkyDriver/commit/c6fa048126c51c24b361ab5773ec8bf0b67e58c6))
+
 ## v0.5.7 (2023-09-13)
 
 ### Other
