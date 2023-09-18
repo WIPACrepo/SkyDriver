@@ -46,7 +46,7 @@ _Launch a new scan of an event_
 | `"memory"`                        | str          | default: `8G`   | how much memory per client worker to request
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"max_pixel_reco_time"`           | int          | default: `None`  | the max amount of time each pixel's reco should take
-| `"classifiers"` | `dict[str, str | bool | float | int]` | default: `{}` | a user-defined collection of labels, attributes, etc. -- this is constrained in size and is intended for user-defined metadata only
+| `"classifiers"` | <code>dict[str, str &#124; bool &#124; float &#124; int]</code> | default: `{}` | a user-defined collection of labels, attributes, etc. -- this is constrained in size and is intended for user-defined metadata only
 | `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
 
 
