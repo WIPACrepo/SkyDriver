@@ -30,6 +30,8 @@ from .config import (
 REAL_CHOICES = ["real", "real_event"]
 SIM_CHOICES = ["sim", "simulated", "simulated_event"]
 
+MAX_CLASSIFIERS_LEN = 15
+
 WAIT_BEFORE_TEARDOWN = 60
 
 DEFAULT_EXCLUDED_MANIFEST_FIELDS = {
@@ -263,6 +265,32 @@ def _optional_int(val: Any) -> int | None:
     return int(val)
 
 
+def _classifiers_validator(val: Any) -> dict[str, str | bool | float | int]:
+    # type checks
+    if not isinstance(val, dict):
+        raise TypeError("must be a dict")
+    if any(v for v in val.values() if not isinstance(v, str | bool | float | int)):
+        raise TypeError("entry must be 'str | bool | float | int'")
+
+    # size check
+    if len(val) > MAX_CLASSIFIERS_LEN:
+        raise ValueError(f"must be at most {MAX_CLASSIFIERS_LEN} entries long")
+    for key, subval in val.items():
+        if len(key) > MAX_CLASSIFIERS_LEN:
+            raise ValueError(
+                f"key must be at most {MAX_CLASSIFIERS_LEN} characters long"
+            )
+        try:
+            if len(subval) > MAX_CLASSIFIERS_LEN:
+                raise ValueError(
+                    f"str-field must be at most {MAX_CLASSIFIERS_LEN} characters long"
+                )
+        except TypeError:
+            pass  # not a str
+
+    return val
+
+
 class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles starting new scans."""
 
@@ -336,6 +364,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default=False,
         )
 
+        # other args
+        classifiers = self.get_argument(
+            "classifiers",
+            type=_classifiers_validator,
+            default={},
+        )
+
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
@@ -379,6 +414,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             k8s_job.scanner_server_args,
             k8s_job.tms_args_list,
             k8s_job.env_dict,
+            classifiers,
         )
 
         # enqueue skymap scanner instance to be started in-time

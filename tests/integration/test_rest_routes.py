@@ -26,14 +26,27 @@ StrDict = dict[str, Any]
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 
-
+CLASSIFIERS = {
+    "foo": 1,
+    "bar bat": True,
+    "baz": "y" * skydriver.rest_handlers.MAX_CLASSIFIERS_LEN,  # type: ignore[attr-defined]
+    "z" * skydriver.rest_handlers.MAX_CLASSIFIERS_LEN: 3.1415,  # type: ignore[attr-defined]
+}
 POST_SCAN_BODY = {
     "reco_algo": "anything",
     "event_i3live_json": {"a": 22},
     "nsides": {1: 2, 3: 4},
     "real_or_simulated_event": "real",
     "docker_tag": "latest",
+    "classifiers": CLASSIFIERS,
 }
+REQUIRED_FIELDS = [
+    "reco_algo",
+    "event_i3live_json",
+    "nsides",
+    "real_or_simulated_event",
+    "docker_tag",
+]
 
 
 ########################################################################################
@@ -80,6 +93,7 @@ async def _launch_scan(
         tms_args=resp["tms_args"],  # see below
         env_vars=resp["env_vars"],  # see below
         complete=False,
+        classifiers=post_scan_body["classifiers"],
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
 
@@ -243,6 +257,7 @@ async def _do_patch(
         scanner_server_args=resp["scanner_server_args"],  # not checking
         tms_args=resp["tms_args"],  # not checking
         complete=False,
+        classifiers=CLASSIFIERS,
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
     assert 0.0 < resp["timestamp"] < time.time()
@@ -772,16 +787,18 @@ async def test_01__bad_data(
     print(e.value)
     # # missing arg
     for arg in POST_SCAN_BODY_FOR_TEST_01:
-        with pytest.raises(
-            requests.exceptions.HTTPError,
-            match=rf"400 Client Error: `{arg}`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
-        ) as e:
-            # remove arg from body
-            await rc.request(
-                "POST",
-                "/scan",
-                {k: v for k, v in POST_SCAN_BODY_FOR_TEST_01.items() if k != arg},
-            )
+        if arg in REQUIRED_FIELDS:
+            print(arg)
+            with pytest.raises(
+                requests.exceptions.HTTPError,
+                match=rf"400 Client Error: `{arg}`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
+            ) as e:
+                # remove arg from body
+                await rc.request(
+                    "POST",
+                    "/scan",
+                    {k: v for k, v in POST_SCAN_BODY_FOR_TEST_01.items() if k != arg},
+                )
         print(e.value)
     # # bad docker tag
     with pytest.raises(
