@@ -1,6 +1,7 @@
 """Config settings."""
 
 import dataclasses as dc
+import enum
 import logging
 from typing import Optional
 
@@ -16,6 +17,14 @@ LOGGER = logging.getLogger("skydriver")
 
 
 DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER = "1024M"
+
+
+@enum.unique
+class DebugMode(enum.Enum):
+    """Various debug modes."""
+
+    LOGS_DUMP = "logs-dump"
+    LOGS_DIRECTORY = "logs-directory-admin-only"  # if used w/ condor, limited to one scan at a time (spool)
 
 
 @dc.dataclass(frozen=True)
@@ -71,7 +80,7 @@ class EnvConfig:
 
     # EWMS (forwarded)
     EWMS_PILOT_TASK_TIMEOUT: Optional[int] = None  # max work time (stop slow worker)
-    EWMS_PILOT_QUARANTINE_TIME: int = 0  # wait-time after error (stop greedy worker)
+    EWMS_PILOT_QUARANTINE_TIME: Optional[int] = None
     EWMS_TMS_S3_BUCKET: str = ""
     EWMS_TMS_S3_URL: str = ""
 

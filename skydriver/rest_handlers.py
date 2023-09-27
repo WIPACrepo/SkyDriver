@@ -20,6 +20,7 @@ from .config import (
     ENV,
     KNOWN_CLUSTERS,
     LOGGER,
+    DebugMode,
     is_testing,
 )
 
@@ -291,6 +292,12 @@ def _classifiers_validator(val: Any) -> dict[str, str | bool | float | int]:
     return val
 
 
+def _debug_mode(val: Any) -> list[DebugMode]:
+    if not isinstance(val, list):
+        val = [val]
+    return [DebugMode(v) for v in val]  # -> ValueError
+
+
 class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles starting new scans."""
 
@@ -360,8 +367,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         debug_mode = self.get_argument(
             "debug_mode",
-            type=bool,
-            default=False,
+            type=_debug_mode,
+            default=[],
         )
 
         # other args

@@ -10,7 +10,7 @@ import kubernetes.client  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
 from .. import database, images
-from ..config import ENV, KNOWN_CLUSTERS, LOGGER
+from ..config import ENV, KNOWN_CLUSTERS, LOGGER, DebugMode
 from ..database import schema
 from . import scan_backlog
 from .utils import KubeAPITools
@@ -74,7 +74,7 @@ class SkymapScannerJob:
         request_clusters: list[schema.Cluster],
         max_pixel_reco_time: int | None,
         # universal
-        debug_mode: bool,
+        debug_mode: list[DebugMode],
         # env
         rest_address: str,
     ):
@@ -119,6 +119,7 @@ class SkymapScannerJob:
                         scan_id=scan_id,
                         cluster=cluster,
                         max_pixel_reco_time=max_pixel_reco_time,
+                        debug_mode=debug_mode,
                     ),
                     args=self.get_tms_starter_args(
                         common_space_volume_path=common_space_volume_path,
@@ -176,7 +177,7 @@ class SkymapScannerJob:
         docker_tag: str,
         memory: str,
         request_cluster: schema.Cluster,
-        debug_mode: bool,
+        debug_mode: list[DebugMode],
     ) -> list[str]:
         """Make the starter container args.
 
@@ -214,8 +215,8 @@ class SkymapScannerJob:
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
 
-        if debug_mode:
-            args += f" --logs-directory {common_space_volume_path} "  # TODO unique
+        if DebugMode.LOGS_DIRECTORY in debug_mode:
+            args += f" --logs-directory {common_space_volume_path} "
 
         return args.split()
 
@@ -280,7 +281,7 @@ class SkymapScannerJob:
             [
                 kubernetes.client.V1EnvVar(name=k, value=str(v))
                 for k, v in prefiltered.items()
-                if v  # skip any env vars that are Falsy
+                if v is not None
             ]
         )
 
@@ -312,6 +313,7 @@ class SkymapScannerJob:
         scan_id: str,
         cluster: schema.Cluster,
         max_pixel_reco_time: int | None,
+        debug_mode: list[DebugMode],
     ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to all containers.
 
@@ -357,12 +359,15 @@ class SkymapScannerJob:
                 else ENV.EWMS_PILOT_TASK_TIMEOUT  # may also be None
             ),
             "EWMS_PILOT_QUARANTINE_TIME": ENV.EWMS_PILOT_QUARANTINE_TIME,
+            "EWMS_PILOT_DUMP_TASK_OUTPUT": (
+                True if DebugMode.LOGS_DUMP in debug_mode else None
+            ),
         }
         env.extend(
             [
                 kubernetes.client.V1EnvVar(name=k, value=str(v))
                 for k, v in prefiltered.items()
-                if v  # skip any env vars that are Falsy
+                if v is not None
             ]
         )
 
