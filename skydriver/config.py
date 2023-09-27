@@ -80,7 +80,9 @@ class EnvConfig:
 
     # EWMS (forwarded)
     EWMS_PILOT_TASK_TIMEOUT: Optional[int] = None  # max work time (stop slow worker)
-    EWMS_PILOT_QUARANTINE_TIME: int = 0  # wait-time after error (stop greedy worker)
+    EWMS_PILOT_QUARANTINE_TIME: Optional[
+        int
+    ] = None  # wait-time after error (stop greedy worker)
     EWMS_TMS_S3_BUCKET: str = ""
     EWMS_TMS_S3_URL: str = ""
 
