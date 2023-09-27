@@ -1,6 +1,7 @@
 """Config settings."""
 
 import dataclasses as dc
+import enum
 import logging
 from typing import Optional
 
@@ -16,6 +17,14 @@ LOGGER = logging.getLogger("skydriver")
 
 
 DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER = "1024M"
+
+
+@enum.unique
+class DebugMode(enum.Enum):
+    """Various debug modes."""
+
+    LOGS_DUMP = "logs-dump"
+    LOGS_DIRECTORY = "logs-directory"
 
 
 @dc.dataclass(frozen=True)

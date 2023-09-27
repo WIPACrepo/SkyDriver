@@ -20,6 +20,7 @@ from .config import (
     ENV,
     KNOWN_CLUSTERS,
     LOGGER,
+    DebugMode,
     is_testing,
 )
 
@@ -358,11 +359,15 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=_optional_int,
             default=None,
         )
-        debug_mode = self.get_argument(
-            "debug_mode",
-            type=bool,
-            default=False,
-        )
+        debug_mode = [
+            DebugMode(m)
+            for m in self.get_argument(
+                "debug_mode",
+                type=list[str],
+                default=[],
+                choices=[m.value for m in DebugMode],
+            )
+        ]
 
         # other args
         classifiers = self.get_argument(
