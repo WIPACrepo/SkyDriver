@@ -22,7 +22,9 @@ def get_cluster_auth_v1envvars(
     """Get the `V1EnvVar`s for workers' auth."""
     LOGGER.debug(f"getting auth secret env vars for {cluster=}")
     info = next(
-        x for x in KNOWN_CLUSTERSs() if x["location"] == dc.asdict(cluster.location)
+        x
+        for x in KNOWN_CLUSTERS.values()
+        if x["location"] == dc.asdict(cluster.location)
     )
     return info["v1envvars"]  # type: ignore[return-value]
 
