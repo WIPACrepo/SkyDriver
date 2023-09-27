@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.9 (2023-09-27)
+
+### Other
+
+* Set `EWMS_PILOT_DUMP_TASK_OUTPUT` Using `debug_mode` Input ([#72](https://github.com/WIPACrepo/SkyDriver/issues/72)) ([`ecd4a0b`](https://github.com/WIPACrepo/SkyDriver/commit/ecd4a0b79733d679a4bee8c9574033f24406736e))
+
 ## v0.5.8 (2023-09-18)
 
 ### Other
