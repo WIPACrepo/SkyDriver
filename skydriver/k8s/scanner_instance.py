@@ -281,7 +281,7 @@ class SkymapScannerJob:
             [
                 kubernetes.client.V1EnvVar(name=k, value=str(v))
                 for k, v in prefiltered.items()
-                if v  # skip any env vars that are Falsy
+                if v is not None
             ]
         )
 
@@ -367,7 +367,7 @@ class SkymapScannerJob:
             [
                 kubernetes.client.V1EnvVar(name=k, value=str(v))
                 for k, v in prefiltered.items()
-                if v is not None  # skip any env vars that are Falsy
+                if v is not None
             ]
         )
 
