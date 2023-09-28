@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.10 (2023-09-28)
+
+### Other
+
+* Make `max_pixel_reco_time` Required ([#74](https://github.com/WIPACrepo/SkyDriver/issues/74)) ([`7691ee0`](https://github.com/WIPACrepo/SkyDriver/commit/7691ee012ce842fedadb5e079ad419204d4781f8))
+
 ## v0.5.9 (2023-09-27)
 
 ### Other
