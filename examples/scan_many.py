@@ -33,7 +33,11 @@ def get_rest_client() -> RestClient:
 
 
 def launch_a_scan(
-    rc: RestClient, event_file: Path, cluster: str, n_workers: int
+    rc: RestClient,
+    event_file: Path,
+    cluster: str,
+    n_workers: int,
+    max_pixel_reco_time: int,
 ) -> str:
     """Request to SkyDriver to scan an event."""
     body = {
@@ -44,7 +48,7 @@ def launch_a_scan(
         "predictive_scanning_threshold": 0.3,
         "cluster": {cluster: n_workers},
         "docker_tag": "latest",
-        "max_pixel_reco_time": 60 * 60 * 1,
+        "max_pixel_reco_time": max_pixel_reco_time,
     }
     resp = rc.request_seq("POST", "/scan", body)
 
@@ -82,17 +86,29 @@ def main() -> None:
         type=int,
         help="number of workers to request",
     )
+    parser.add_argument(
+        "--max-pixel-reco-time",
+        required=True,
+        type=int,
+        help="how long a reco should take",
+    )
     args = parser.parse_args()
 
     rc = get_rest_client()
     files = list(args.event_files.iterdir())
     random.shuffle(files)
     for i, event_file in enumerate(files):
-        if event_file.suffix != '.json':
+        if event_file.suffix != ".json":
             continue
         print("-----------------------")
         print(event_file)
-        scan_id = launch_a_scan(rc, event_file, args.cluster, args.n_workers)
+        scan_id = launch_a_scan(
+            rc,
+            event_file,
+            args.cluster,
+            args.n_workers,
+            args.max_pixel_reco_time,
+        )
         print(f"SCAN ID: {scan_id}")
         if args.n_events and i == args.n_events - 1:
             break
