@@ -79,7 +79,6 @@ class EnvConfig:
     SKYSCAN_LOG_THIRD_PARTY: Optional[str] = None
 
     # EWMS (forwarded)
-    EWMS_PILOT_TASK_TIMEOUT: Optional[int] = None  # max work time (stop slow worker)
     EWMS_PILOT_QUARANTINE_TIME: Optional[int] = None
     EWMS_TMS_S3_BUCKET: str = ""
     EWMS_TMS_S3_URL: str = ""

@@ -72,7 +72,7 @@ class SkymapScannerJob:
         # tms
         memory: str,
         request_clusters: list[schema.Cluster],
-        max_pixel_reco_time: int | None,
+        max_pixel_reco_time: int,
         # universal
         debug_mode: list[DebugMode],
         # env
@@ -312,7 +312,7 @@ class SkymapScannerJob:
         rest_address: str,
         scan_id: str,
         cluster: schema.Cluster,
-        max_pixel_reco_time: int | None,
+        max_pixel_reco_time: int,
         debug_mode: list[DebugMode],
     ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to all containers.
@@ -338,6 +338,8 @@ class SkymapScannerJob:
             "EWMS_TMS_S3_BUCKET": ENV.EWMS_TMS_S3_BUCKET,
             "EWMS_TMS_S3_URL": ENV.EWMS_TMS_S3_URL,
             #
+            "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
+            #
             "WORKER_K8S_LOCAL_APPLICATION_NAME": ENV.K8S_APPLICATION_NAME,
         }
         env.extend(
@@ -353,11 +355,6 @@ class SkymapScannerJob:
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
-            "EWMS_PILOT_TASK_TIMEOUT": (
-                max_pixel_reco_time
-                if max_pixel_reco_time
-                else ENV.EWMS_PILOT_TASK_TIMEOUT  # may also be None
-            ),
             "EWMS_PILOT_QUARANTINE_TIME": ENV.EWMS_PILOT_QUARANTINE_TIME,
             "EWMS_PILOT_DUMP_TASK_OUTPUT": (
                 True if DebugMode.LOGS_DUMP in debug_mode else None
