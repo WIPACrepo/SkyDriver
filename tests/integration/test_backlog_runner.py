@@ -30,6 +30,7 @@ POST_SCAN_BODY = {
     "nsides": {1: 2, 3: 4},
     "real_or_simulated_event": "real",
     "docker_tag": "latest",
+    "max_pixel_reco_time": 60,
 }
 
 N_JOBS = 5
