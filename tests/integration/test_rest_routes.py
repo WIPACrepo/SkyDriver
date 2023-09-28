@@ -39,6 +39,7 @@ POST_SCAN_BODY = {
     "real_or_simulated_event": "real",
     "docker_tag": "latest",
     "classifiers": CLASSIFIERS,
+    "max_pixel_reco_time": 60,
 }
 REQUIRED_FIELDS = [
     "reco_algo",
@@ -46,6 +47,7 @@ REQUIRED_FIELDS = [
     "nsides",
     "real_or_simulated_event",
     "docker_tag",
+    "max_pixel_reco_time",
 ]
 
 
