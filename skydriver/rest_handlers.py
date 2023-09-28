@@ -260,12 +260,6 @@ def _dict_or_list_to_request_clusters(
     return [cluster_lookup(name, n_workers) for name, n_workers in val]
 
 
-def _optional_int(val: Any) -> int | None:
-    if val is None:
-        return None
-    return int(val)
-
-
 def _classifiers_validator(val: Any) -> dict[str, str | bool | float | int]:
     # type checks
     if not isinstance(val, dict):
@@ -362,8 +356,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         max_pixel_reco_time = self.get_argument(
             "max_pixel_reco_time",
-            type=_optional_int,
-            default=None,
+            type=int,
         )
         debug_mode = self.get_argument(
             "debug_mode",
