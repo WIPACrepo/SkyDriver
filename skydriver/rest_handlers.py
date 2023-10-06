@@ -300,6 +300,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self) -> None:
         """Start a new scan."""
+        print(self._headers)
+        assert 0
 
         # docker args
         docker_tag = self.get_argument(  # any tag on docker hub (including 'latest') -- must also be on CVMFS (but not checked here)
