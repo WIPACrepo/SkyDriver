@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.11 (2023-10-09)
+
+### Other
+
+* Pin `htcondor==10.8.0` ([#78](https://github.com/WIPACrepo/SkyDriver/issues/78)) ([`671d506`](https://github.com/WIPACrepo/SkyDriver/commit/671d50642a6df1830e43bf52a767549c5c0a2347))
+
 ## v0.5.10 (2023-09-28)
 
 ### Other
