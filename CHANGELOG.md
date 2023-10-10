@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.14 (2023-10-10)
+
+### Other
+
+* Remove Condor `notification` Attribute ([`e4f72c7`](https://github.com/WIPACrepo/SkyDriver/commit/e4f72c70ea769258c0412e6bad6dae03b9ed86f1))
+
 ## v0.5.13 (2023-10-10)
 
 ### Other
