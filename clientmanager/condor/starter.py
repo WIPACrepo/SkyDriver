@@ -75,7 +75,6 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         #
         "request_cpus": str(n_cores),
         "request_memory": memory,
-        "notification": "Error",
         "+WantIOProxy": "true",  # for HTChirp
     }
 
