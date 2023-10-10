@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.13 (2023-10-10)
+
+### Other
+
+* Enable `htcondor` debugging - 2 ([`4e5b789`](https://github.com/WIPACrepo/SkyDriver/commit/4e5b789989023f4edb86857ddd5d71c02f48c239))
+
 ## v0.5.12 (2023-10-10)
 
 ### Other
