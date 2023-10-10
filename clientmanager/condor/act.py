@@ -12,6 +12,10 @@ from . import condor_tools, starter, stopper
 
 def act(args: argparse.Namespace) -> None:
     """Do the action."""
+    htcondor.set_subsystem("TOOL")
+    htcondor.param["TOOL_DEBUG"] = "D_FULLDEBUG"
+    # htcondor.param["TOOL_LOG"] = "log.txt"
+    # htcondor.enable_log()
     htcondor.enable_debug()
 
     # condor auth & go
