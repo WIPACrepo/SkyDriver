@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.12 (2023-10-10)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`ab6d2f9`](https://github.com/WIPACrepo/SkyDriver/commit/ab6d2f927705fceb9bc97f5f4beed57e067143b6))
+* Enable `htcondor` debugging ([`8ea0142`](https://github.com/WIPACrepo/SkyDriver/commit/8ea014277d54163b9361fa0736c50f2a1cf43ac8))
+
 ## v0.5.11 (2023-10-09)
 
 ### Other
