@@ -12,6 +12,8 @@ from . import condor_tools, starter, stopper
 
 def act(args: argparse.Namespace) -> None:
     """Do the action."""
+    htcondor.enable_debug()
+
     # condor auth & go
     with htcondor.SecMan() as secman:
         secman.setToken(htcondor.Token(ENV.CONDOR_TOKEN))
