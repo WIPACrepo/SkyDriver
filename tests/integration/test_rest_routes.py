@@ -13,10 +13,9 @@ from typing import Any, Callable
 
 import pytest
 import requests
-from rest_tools.client import RestClient
-
 import skydriver
 import skydriver.images  # noqa: F401  # export
+from rest_tools.client import RestClient
 
 skydriver.config.config_logging("debug")
 
@@ -153,6 +152,14 @@ async def _launch_scan(
             "WORKER_K8S_LOCAL_APPLICATION_NAME",
             "EWMS_PILOT_DUMP_TASK_OUTPUT",
         }
+        assert (
+            next(
+                x["value"]
+                for x in env_dicts
+                if x["name"] == "EWMS_PILOT_DUMP_TASK_OUTPUT"
+            )
+            == "True"
+        )
         assert set(  # these have `value_from`s
             e["name"]
             for e in env_dicts
