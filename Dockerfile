@@ -7,7 +7,7 @@ USER app
 
 COPY --chown=app:app . .
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir -e .
 ENV PYTHONPATH=/home/app
 
 # clientmanager needs GCP for GKE
