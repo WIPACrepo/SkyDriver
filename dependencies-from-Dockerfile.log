@@ -1,6 +1,6 @@
 backoff==2.2.1
-boto3==1.28.62
-botocore==1.31.62
+boto3==1.28.63
+botocore==1.31.63
 cachetools==5.3.1
 certifi==2023.7.22
 cffi==1.16.0
