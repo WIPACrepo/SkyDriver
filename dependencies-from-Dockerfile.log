@@ -4,6 +4,7 @@ cryptography==41.0.4
 pip==23.2.1
 pipdeptree==2.13.0
 setuptools==65.5.1
+skydriver-clientmanager0.5.14
 ├── boto3 [required: Any, installed: 1.28.63]
 │   ├── botocore [required: >=1.31.63,<1.32.0, installed: 1.31.63]
 │   │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
