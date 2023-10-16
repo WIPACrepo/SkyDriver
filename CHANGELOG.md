@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.15 (2023-10-16)
+
+### Other
+
+* Unpin `htcondor` and Set `requests.ephemeral-storage` ([#80](https://github.com/WIPACrepo/SkyDriver/issues/80)) ([`55a6163`](https://github.com/WIPACrepo/SkyDriver/commit/55a61634d62932e7bc09d9b022643963912f21ce))
+
 ## v0.5.14 (2023-10-10)
 
 ### Other
