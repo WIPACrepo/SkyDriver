@@ -146,6 +146,7 @@ class KubeAPITools:
                 requests={
                     "memory": memory,
                     "cpu": "1",
+                    "ephemeral-storage": "1M",
                 },
             ),
         )

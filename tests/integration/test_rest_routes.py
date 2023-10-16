@@ -40,6 +40,7 @@ POST_SCAN_BODY = {
     "docker_tag": "latest",
     "classifiers": CLASSIFIERS,
     "max_pixel_reco_time": 60,
+    "debug_mode": "logs-dump",
 }
 REQUIRED_FIELDS = [
     "reco_algo",
@@ -149,7 +150,16 @@ async def _launch_scan(
             "SKYSCAN_SKYDRIVER_AUTH",
             "SKYSCAN_SKYDRIVER_SCAN_ID",
             "WORKER_K8S_LOCAL_APPLICATION_NAME",
+            "EWMS_PILOT_DUMP_TASK_OUTPUT",
         }
+        assert (
+            next(
+                x["value"]
+                for x in env_dicts
+                if x["name"] == "EWMS_PILOT_DUMP_TASK_OUTPUT"
+            )
+            == "True"
+        )
         assert set(  # these have `value_from`s
             e["name"]
             for e in env_dicts
