@@ -13,9 +13,10 @@ from typing import Any, Callable
 
 import pytest
 import requests
+from rest_tools.client import RestClient
+
 import skydriver
 import skydriver.images  # noqa: F401  # export
-from rest_tools.client import RestClient
 
 skydriver.config.config_logging("debug")
 
@@ -40,7 +41,7 @@ POST_SCAN_BODY = {
     "docker_tag": "latest",
     "classifiers": CLASSIFIERS,
     "max_pixel_reco_time": 60,
-    "debug_mode": "logs-dump",
+    "debug_mode": "client-logs",
 }
 REQUIRED_FIELDS = [
     "reco_algo",
