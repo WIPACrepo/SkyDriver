@@ -105,6 +105,7 @@ ENV = from_environment_as_dataclass(EnvConfig)
 
 LOCAL_K8S_HOST = "local"
 
+
 # known cluster locations
 KNOWN_CLUSTERS = {
     "sub-2": {
@@ -124,6 +125,7 @@ KNOWN_CLUSTERS = {
                 ),
             )
         ],
+        "max_n_clients_during_debug_mode": 10,
     },
     LOCAL_K8S_HOST: {
         "orchestrator": "k8s",

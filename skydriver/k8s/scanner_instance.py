@@ -20,7 +20,7 @@ def get_cluster_auth_v1envvars(
 ) -> list[kubernetes.client.V1EnvVar]:
     """Get the `V1EnvVar`s for workers' auth."""
     LOGGER.debug(f"getting auth secret env vars for {cluster=}")
-    info = cluster.to_known_cluster()
+    _, info = cluster.to_known_cluster()
     return info["v1envvars"]  # type: ignore[no-any-return]
 
 

@@ -137,12 +137,12 @@ class Cluster:
             case other:
                 raise ValueError(f"Unknown cluster orchestrator: {other}")
 
-    def to_known_cluster(self) -> dict:
+    def to_known_cluster(self) -> tuple[str, dict]:
         """Map to a config.KNOWN_CLUSTERS entry."""
-        return next(
-            x  # type: ignore[misc]
-            for x in config.KNOWN_CLUSTERS.values()
-            if x["location"] == dc.asdict(self.location)  # type: ignore[index]
+        return next(  # type: ignore[return-value]
+            (k, v)
+            for k, v in config.KNOWN_CLUSTERS.items()
+            if v["location"] == dc.asdict(self.location)  # type: ignore[index]
         )
 
 
