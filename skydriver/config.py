@@ -23,8 +23,7 @@ DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER = "1024M"
 class DebugMode(enum.Enum):
     """Various debug modes."""
 
-    LOGS_DUMP = "logs-dump"
-    LOGS_DIRECTORY = "logs-directory-admin-only"  # if used w/ condor, limited to one scan at a time (spool)
+    CLIENT_LOGS = "client-logs"
 
 
 @dc.dataclass(frozen=True)
