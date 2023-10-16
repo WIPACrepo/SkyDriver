@@ -3,7 +3,7 @@
 import dataclasses as dc
 import enum
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 import coloredlogs  # type: ignore[import]
 import kubernetes.client  # type: ignore[import]
@@ -105,9 +105,8 @@ ENV = from_environment_as_dataclass(EnvConfig)
 
 LOCAL_K8S_HOST = "local"
 
-
 # known cluster locations
-KNOWN_CLUSTERS = {
+KNOWN_CLUSTERS: dict[str, dict[str, Any]] = {
     "sub-2": {
         "orchestrator": "condor",
         "location": {
