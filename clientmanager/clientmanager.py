@@ -134,10 +134,10 @@ class ActionArgs:
             help="does everything except submitting the worker(s)",
         )
         sub_parser.add_argument(
-            "--logs-directory",
+            "--spool-logs-directory",
             default=None,
             type=Path,
-            help="where to save logs (if not given, logs are not saved)",
+            help="where to spool (persist) logs -- if not given, logs are not kept",
         )
 
         # worker args

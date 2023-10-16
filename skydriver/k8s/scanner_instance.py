@@ -203,15 +203,15 @@ class SkymapScannerJob:
             f" start "
             f" --n-workers {request_cluster.n_workers} "
             # f" --dryrun"
-            # f" --logs-directory "  # see below
+            # f" --spool-logs-directory "  # see below
             f" --memory {memory} "
             f" --image {worker_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
 
-        if DebugMode.LOGS_DIRECTORY in debug_mode:
-            args += f" --logs-directory {common_space_volume_path} "
+        if DebugMode.CLIENT_LOGS in debug_mode:
+            args += f" --spool-logs-directory {common_space_volume_path} "
 
         return args.split()
 
@@ -352,7 +352,7 @@ class SkymapScannerJob:
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
             "EWMS_PILOT_QUARANTINE_TIME": ENV.EWMS_PILOT_QUARANTINE_TIME,
             "EWMS_PILOT_DUMP_TASK_OUTPUT": (
-                True if DebugMode.LOGS_DUMP in debug_mode else None
+                True if DebugMode.CLIENT_LOGS in debug_mode else None
             ),
         }
         env.extend(

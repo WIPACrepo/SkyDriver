@@ -38,7 +38,9 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
                 schedd_obj=schedd_obj,
                 # starter CL args -- helper
                 dryrun=args.dryrun,
-                logs_directory=args.logs_directory if args.logs_directory else None,
+                spool_logs_directory=args.spool_logs_directory
+                if args.spool_logs_directory
+                else None,
                 # starter CL args -- worker
                 memory=args.memory,
                 n_cores=args.n_cores,

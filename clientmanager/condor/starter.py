@@ -98,7 +98,7 @@ def start(
     schedd_obj: htcondor.Schedd,
     # starter CL args -- helper
     dryrun: bool,
-    logs_directory: Path | None,
+    spool_logs_directory: Path | None,
     # starter CL args -- worker
     memory: str,
     n_cores: int,
@@ -109,8 +109,8 @@ def start(
     image: str,
 ) -> htcondor.SubmitResult:
     """Main logic."""
-    if logs_directory:
-        logs_subdir = make_condor_logs_subdir(logs_directory)
+    if spool_logs_directory:
+        logs_subdir = make_condor_logs_subdir(spool_logs_directory)
         spool = True
     else:
         logs_subdir = None

@@ -609,7 +609,7 @@ def get_tms_args(
             f" --memory 8GB "
             f" --image {image} "
             f" --client-startup-json /common-space/startup.json "
-            # f" --logs-directory /common-space "
+            # f" --spool-logs-directory /common-space "
         ]
 
     return tms_args
