@@ -3,9 +3,11 @@
 import dataclasses as dc
 import hashlib
 import json
-from typing import Any
+from typing import Any, Literal
 
 from typeguard import typechecked
+
+from .. import config
 
 StrDict = dict[str, Any]
 
@@ -115,7 +117,7 @@ class KubernetesLocation:
 class Cluster:
     """Stores information for a worker cluster."""
 
-    orchestrator: str
+    orchestrator: Literal["condor", "k8s"]
     location: HTCondorLocation | KubernetesLocation
     n_workers: int
     cluster_id: str = ""  # "" is a non-started cluster
@@ -134,6 +136,14 @@ class Cluster:
                     )
             case other:
                 raise ValueError(f"Unknown cluster orchestrator: {other}")
+
+    def to_known_cluster(self) -> dict:
+        """Map to a config.KNOWN_CLUSTERS entry."""
+        return next(
+            x  # type: ignore[misc]
+            for x in config.KNOWN_CLUSTERS.values()
+            if x["location"] == dc.asdict(self.location)  # type: ignore[index]
+        )
 
 
 @typechecked

@@ -2,7 +2,6 @@
 instances."""
 
 
-import dataclasses as dc
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +9,7 @@ import kubernetes.client  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
 from .. import database, images
-from ..config import ENV, KNOWN_CLUSTERS, LOGGER, DebugMode
+from ..config import ENV, LOGGER, DebugMode
 from ..database import schema
 from . import scan_backlog
 from .utils import KubeAPITools
@@ -21,12 +20,8 @@ def get_cluster_auth_v1envvars(
 ) -> list[kubernetes.client.V1EnvVar]:
     """Get the `V1EnvVar`s for workers' auth."""
     LOGGER.debug(f"getting auth secret env vars for {cluster=}")
-    info = next(
-        x
-        for x in KNOWN_CLUSTERS.values()
-        if x["location"] == dc.asdict(cluster.location)
-    )
-    return info["v1envvars"]  # type: ignore[return-value]
+    info = cluster.to_known_cluster()
+    return info["v1envvars"]  # type: ignore[no-any-return]
 
 
 def get_tms_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
