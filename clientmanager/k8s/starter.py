@@ -203,6 +203,7 @@ def start(
         SECRET_FORWARDED_ENV_VARS,
     )
     try:
+        # must be natively json-encodable
         LOGGER.info(json.dumps(k8s_job_dict, indent=4))
     except json.decoder.JSONDecodeError:
         LOGGER.info(pprint.pformat(k8s_job_dict, indent=4))
@@ -211,7 +212,7 @@ def start(
     # dryrun?
     if dryrun:
         LOGGER.error("Script Aborted: K8s job not submitted")
-        return k8s_job_dict
+        raise RuntimeError("Dry run completed successfully")
 
     # create namespace
     # kubernetes.client.CoreV1Api(k8s_api).create_namespace(

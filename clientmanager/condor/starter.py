@@ -144,7 +144,7 @@ def start(
     # dryrun?
     if dryrun:
         LOGGER.error("Script Aborted: Condor job not submitted")
-        return submit_dict, None
+        raise RuntimeError("Dry run completed successfully")
 
     # submit
     submit_result_obj = schedd_obj.submit(
