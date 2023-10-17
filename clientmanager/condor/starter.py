@@ -20,10 +20,6 @@ def make_condor_logs_subdir(directory: Path) -> Path:
     return subdir
 
 
-def _get_log_fpath(logs_subdir: Path) -> Path:
-    return logs_subdir / "clientmanager.log"
-
-
 def make_condor_job_description(  # pylint: disable=too-many-arguments
     logs_subdir: Path | None,
     # condor args
@@ -84,7 +80,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
             {
                 "output": str(logs_subdir / "client-$(ProcId).out"),
                 "error": str(logs_subdir / "client-$(ProcId).err"),
-                "log": str(_get_log_fpath(logs_subdir)),
+                "log": str(logs_subdir / "clientmanager.log"),
             }
         )
     else:
