@@ -68,7 +68,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         #
         "should_transfer_files": "YES",
         "transfer_input_files": client_startup_json_s3.url,
-        "transfer_output_files": '""',  # must be quoted
+        "transfer_output_files": '""',  # must be quoted for "none"
         #
         "request_cpus": str(n_cores),
         "request_memory": memory,
@@ -82,6 +82,19 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
                 "output": str(logs_subdir / "client-$(ProcId).out"),
                 "error": str(logs_subdir / "client-$(ProcId).err"),
                 "log": str(logs_subdir / "clientmanager.log"),
+            }
+        )
+        # https://htcondor.readthedocs.io/en/latest/users-manual/file-transfer.html#specifying-if-and-when-to-transfer-files
+        submit_dict.update(
+            {
+                "transfer_output_files": ",".join(
+                    [
+                        submit_dict["output"],
+                        submit_dict["error"],
+                        submit_dict["log"],
+                    ]
+                ),
+                "when_to_transfer_output": "ON_EXIT_OR_EVICT",
             }
         )
     else:
