@@ -3,7 +3,7 @@
 import dataclasses as dc
 import enum
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 import coloredlogs  # type: ignore[import]
 import kubernetes.client  # type: ignore[import]
@@ -23,8 +23,7 @@ DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER = "1024M"
 class DebugMode(enum.Enum):
     """Various debug modes."""
 
-    LOGS_DUMP = "logs-dump"
-    LOGS_DIRECTORY = "logs-directory-admin-only"  # if used w/ condor, limited to one scan at a time (spool)
+    CLIENT_LOGS = "client-logs"
 
 
 @dc.dataclass(frozen=True)
@@ -107,7 +106,7 @@ ENV = from_environment_as_dataclass(EnvConfig)
 LOCAL_K8S_HOST = "local"
 
 # known cluster locations
-KNOWN_CLUSTERS = {
+KNOWN_CLUSTERS: dict[str, dict[str, Any]] = {
     "sub-2": {
         "orchestrator": "condor",
         "location": {
@@ -125,6 +124,7 @@ KNOWN_CLUSTERS = {
                 ),
             )
         ],
+        "max_n_clients_during_debug_mode": 10,
     },
     LOCAL_K8S_HOST: {
         "orchestrator": "k8s",

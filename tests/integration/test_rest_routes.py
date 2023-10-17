@@ -40,7 +40,7 @@ POST_SCAN_BODY = {
     "docker_tag": "latest",
     "classifiers": CLASSIFIERS,
     "max_pixel_reco_time": 60,
-    "debug_mode": "logs-dump",
+    "debug_mode": "client-logs",
 }
 REQUIRED_FIELDS = [
     "reco_algo",
@@ -390,6 +390,7 @@ async def _clientmanager_reply(
         location=known_clusters[cluster_name__n_workers[0]]["location"],
         cluster_id=f"cluster-{random.randint(1, 10000)}",
         n_workers=cluster_name__n_workers[1],
+        starter_info={},
     )
 
     manifest = await _do_patch(
@@ -609,7 +610,7 @@ def get_tms_args(
             f" --memory 8GB "
             f" --image {image} "
             f" --client-startup-json /common-space/startup.json "
-            # f" --logs-directory /common-space "
+            f" --spool-logs-directory /common-space "
         ]
 
     return tms_args

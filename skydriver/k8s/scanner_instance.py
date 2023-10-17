@@ -2,7 +2,6 @@
 instances."""
 
 
-import dataclasses as dc
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +9,7 @@ import kubernetes.client  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
 from .. import database, images
-from ..config import ENV, KNOWN_CLUSTERS, LOGGER, DebugMode
+from ..config import ENV, LOGGER, DebugMode
 from ..database import schema
 from . import scan_backlog
 from .utils import KubeAPITools
@@ -21,12 +20,8 @@ def get_cluster_auth_v1envvars(
 ) -> list[kubernetes.client.V1EnvVar]:
     """Get the `V1EnvVar`s for workers' auth."""
     LOGGER.debug(f"getting auth secret env vars for {cluster=}")
-    info = next(
-        x
-        for x in KNOWN_CLUSTERS.values()
-        if x["location"] == dc.asdict(cluster.location)
-    )
-    return info["v1envvars"]  # type: ignore[return-value]
+    _, info = cluster.to_known_cluster()
+    return info["v1envvars"]  # type: ignore[no-any-return]
 
 
 def get_tms_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
@@ -208,15 +203,15 @@ class SkymapScannerJob:
             f" start "
             f" --n-workers {request_cluster.n_workers} "
             # f" --dryrun"
-            # f" --logs-directory "  # see below
+            # f" --spool-logs-directory "  # see below
             f" --memory {memory} "
             f" --image {worker_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
         )
 
-        if DebugMode.LOGS_DIRECTORY in debug_mode:
-            args += f" --logs-directory {common_space_volume_path} "
+        if DebugMode.CLIENT_LOGS in debug_mode:
+            args += f" --spool-logs-directory {common_space_volume_path} "
 
         return args.split()
 
@@ -357,7 +352,7 @@ class SkymapScannerJob:
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
             "EWMS_PILOT_QUARANTINE_TIME": ENV.EWMS_PILOT_QUARANTINE_TIME,
             "EWMS_PILOT_DUMP_TASK_OUTPUT": (
-                True if DebugMode.LOGS_DUMP in debug_mode else None
+                True if DebugMode.CLIENT_LOGS in debug_mode else None
             ),
         }
         env.extend(

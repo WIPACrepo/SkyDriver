@@ -201,14 +201,14 @@ def cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
     if cluster := KNOWN_CLUSTERS.get(name):
         if cluster["orchestrator"] == "condor":
             return database.schema.Cluster(
-                orchestrator=cluster["orchestrator"],  # type: ignore[arg-type]
-                location=database.schema.HTCondorLocation(**cluster["location"]),  # type: ignore[arg-type]
+                orchestrator=cluster["orchestrator"],
+                location=database.schema.HTCondorLocation(**cluster["location"]),
                 n_workers=n_workers,
             )
         elif cluster["orchestrator"] == "k8s":
             return database.schema.Cluster(
-                orchestrator=cluster["orchestrator"],  # type: ignore[arg-type]
-                location=database.schema.KubernetesLocation(**cluster["location"]),  # type: ignore[arg-type]
+                orchestrator=cluster["orchestrator"],
+                location=database.schema.KubernetesLocation(**cluster["location"]),
                 n_workers=n_workers,
             )
     raise TypeError(
@@ -363,6 +363,21 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=_debug_mode,
             default=[],
         )
+        if DebugMode.CLIENT_LOGS in debug_mode:
+            for cluster in request_clusters:
+                cname, cinfo = cluster.to_known_cluster()
+                if cluster.n_workers > cinfo.get(
+                    "max_n_clients_during_debug_mode", float("inf")
+                ):
+                    raise web.HTTPError(
+                        400,
+                        log_message=(
+                            f"Too many workers: Cluster '{cname}' can only have "
+                            f"{cinfo.get('max_n_clients_during_debug_mode')} "
+                            f"workers when 'debug_mode' "
+                            f"includes '{DebugMode.CLIENT_LOGS.value}'"
+                        ),
+                    )
 
         # other args
         classifiers = self.get_argument(

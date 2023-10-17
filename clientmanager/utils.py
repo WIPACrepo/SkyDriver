@@ -3,6 +3,7 @@
 
 import dataclasses as dc
 from pathlib import Path
+from typing import Any
 
 import boto3  # type: ignore[import]
 import requests
@@ -33,6 +34,7 @@ def update_skydriver(
     location: dict[str, str],
     cluster_id: str | int,
     n_workers: int,
+    starter_info: dict[str, Any],
 ) -> None:
     """Send SkyDriver updates from the `submit_result`."""
     skydriver_rc.request_seq(
@@ -44,6 +46,7 @@ def update_skydriver(
                 "location": location,
                 "cluster_id": str(cluster_id),
                 "n_workers": n_workers,
+                "starter_info": starter_info,
             }
         },
     )

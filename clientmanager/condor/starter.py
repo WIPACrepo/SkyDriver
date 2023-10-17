@@ -3,6 +3,7 @@
 
 import datetime as dt
 from pathlib import Path
+from typing import Any
 
 import htcondor  # type: ignore[import]
 
@@ -20,10 +21,6 @@ def make_condor_logs_subdir(directory: Path) -> Path:
     return subdir
 
 
-def _get_log_fpath(logs_subdir: Path) -> Path:
-    return logs_subdir / "clientmanager.log"
-
-
 def make_condor_job_description(  # pylint: disable=too-many-arguments
     logs_subdir: Path | None,
     # condor args
@@ -33,8 +30,8 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     image: str,
     client_startup_json_s3: S3File,
     client_args_string: str,
-) -> htcondor.Submit:
-    """Make the condor job description (submit object)."""
+) -> dict[str, Any]:
+    """Make the condor job description (dict)."""
 
     # NOTE:
     # In the newest version of condor we could use:
@@ -71,7 +68,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         #
         "should_transfer_files": "YES",
         "transfer_input_files": client_startup_json_s3.url,
-        "transfer_output_files": '""',  # must be quoted
+        "transfer_output_files": '""',  # must be quoted for "none"
         #
         "request_cpus": str(n_cores),
         "request_memory": memory,
@@ -84,21 +81,34 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
             {
                 "output": str(logs_subdir / "client-$(ProcId).out"),
                 "error": str(logs_subdir / "client-$(ProcId).err"),
-                "log": str(_get_log_fpath(logs_subdir)),
+                "log": str(logs_subdir / "clientmanager.log"),
+            }
+        )
+        # https://htcondor.readthedocs.io/en/latest/users-manual/file-transfer.html#specifying-if-and-when-to-transfer-files
+        submit_dict.update(
+            {
+                "transfer_output_files": ",".join(
+                    [
+                        submit_dict["output"],
+                        submit_dict["error"],
+                        submit_dict["log"],
+                    ]
+                ),
+                "when_to_transfer_output": "ON_EXIT_OR_EVICT",
             }
         )
     else:
         # NOTE: this needs to be removed if we ARE transferring files
         submit_dict["initialdir"] = "/tmp"
 
-    return htcondor.Submit(submit_dict)
+    return submit_dict
 
 
 def start(
     schedd_obj: htcondor.Schedd,
     # starter CL args -- helper
     dryrun: bool,
-    logs_directory: Path | None,
+    spool_logs_directory: Path | None,
     # starter CL args -- worker
     memory: str,
     n_cores: int,
@@ -107,10 +117,10 @@ def start(
     client_args: list[tuple[str, str]],
     client_startup_json_s3: S3File,
     image: str,
-) -> htcondor.SubmitResult:
+) -> tuple[dict[str, Any], htcondor.SubmitResult]:
     """Main logic."""
-    if logs_directory:
-        logs_subdir = make_condor_logs_subdir(logs_directory)
+    if spool_logs_directory:
+        logs_subdir = make_condor_logs_subdir(spool_logs_directory)
         spool = True
     else:
         logs_subdir = None
@@ -131,7 +141,7 @@ def start(
             )
 
     # make condor job description
-    submit_obj = make_condor_job_description(
+    submit_dict = make_condor_job_description(
         logs_subdir,
         # condor args
         memory,
@@ -141,12 +151,13 @@ def start(
         client_startup_json_s3,
         client_args_string,
     )
+    submit_obj = htcondor.Submit(submit_dict)
     LOGGER.info(submit_obj)
 
     # dryrun?
     if dryrun:
         LOGGER.error("Script Aborted: Condor job not submitted")
-        return
+        raise RuntimeError("Dry run completed successfully")
 
     # submit
     submit_result_obj = schedd_obj.submit(
@@ -163,4 +174,4 @@ def start(
         )
         schedd_obj.spool(jobs)
 
-    return submit_result_obj
+    return submit_dict, submit_result_obj

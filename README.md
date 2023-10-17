@@ -45,7 +45,7 @@ _Launch a new scan of an event_
 | `"max_pixel_reco_time"`           | int          | *[REQUIRED]*     | the max amount of time each pixel's reco should take (accurate values will evict pixels from slow workers thereby re-delivering to faster workers -- slow workers are unavoidable due to non-deterministic errors)
 | `"scanner_server_memory"`         | str          | default: `1024M` | how much memory for the scanner server to request
 | `"memory"`                        | str          | default: `8G`   | how much memory per client worker to request
-| `"debug_mode"`                    | str or list  | default: None    | what debug mode(s) to use: `"logs-dump"` redirects each reco's logs/prints to its parent scanner client's stderr/stdout
+| `"debug_mode"`                    | str or list  | default: None    | what debug mode(s) to use: `"client-logs"` collects the scanner clients' stderr/stdout including icetray logs (scans are limited in # of workers)
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"classifiers"` | <code>dict[str, str &#124; bool &#124; float &#124; int]</code> | default: `{}` | a user-defined collection of labels, attributes, etc. -- this is constrained in size and is intended for user-defined metadata only
 | `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
@@ -286,6 +286,7 @@ Pseudo-code:
             },
             cluster_id: int,
             n_workers: int,
+            starter_info: dict,
         },
         ...
         {
@@ -296,6 +297,7 @@ Pseudo-code:
             },
             cluster_id: int,
             n_workers: int,
+            starter_info: dict,
         },
         ...
     ],

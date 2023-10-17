@@ -3,9 +3,11 @@
 import dataclasses as dc
 import hashlib
 import json
-from typing import Any
+from typing import Any, Literal
 
 from typeguard import typechecked
+
+from .. import config
 
 StrDict = dict[str, Any]
 
@@ -115,10 +117,11 @@ class KubernetesLocation:
 class Cluster:
     """Stores information for a worker cluster."""
 
-    orchestrator: str
+    orchestrator: Literal["condor", "k8s"]
     location: HTCondorLocation | KubernetesLocation
     n_workers: int
     cluster_id: str = ""  # "" is a non-started cluster
+    starter_info: StrDict = dc.field(default_factory=dict)
 
     def __post_init__(self) -> None:
         match self.orchestrator:
@@ -134,6 +137,14 @@ class Cluster:
                     )
             case other:
                 raise ValueError(f"Unknown cluster orchestrator: {other}")
+
+    def to_known_cluster(self) -> tuple[str, StrDict]:
+        """Map to a config.KNOWN_CLUSTERS entry."""
+        return next(  # type: ignore[return-value]
+            (k, v)
+            for k, v in config.KNOWN_CLUSTERS.items()
+            if v["location"] == dc.asdict(self.location)  # type: ignore[index]
+        )
 
 
 @typechecked
