@@ -3,6 +3,7 @@
 
 import datetime as dt
 from pathlib import Path
+from typing import Any
 
 import htcondor  # type: ignore[import]
 
@@ -29,8 +30,8 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     image: str,
     client_startup_json_s3: S3File,
     client_args_string: str,
-) -> htcondor.Submit:
-    """Make the condor job description (submit object)."""
+) -> dict[str, Any]:
+    """Make the condor job description (dict)."""
 
     # NOTE:
     # In the newest version of condor we could use:
@@ -87,7 +88,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         # NOTE: this needs to be removed if we ARE transferring files
         submit_dict["initialdir"] = "/tmp"
 
-    return htcondor.Submit(submit_dict)
+    return submit_dict
 
 
 def start(
@@ -103,7 +104,7 @@ def start(
     client_args: list[tuple[str, str]],
     client_startup_json_s3: S3File,
     image: str,
-) -> htcondor.SubmitResult:
+) -> tuple[dict[str, Any], htcondor.SubmitResult | None]:
     """Main logic."""
     if spool_logs_directory:
         logs_subdir = make_condor_logs_subdir(spool_logs_directory)
@@ -127,7 +128,7 @@ def start(
             )
 
     # make condor job description
-    submit_obj = make_condor_job_description(
+    submit_dict = make_condor_job_description(
         logs_subdir,
         # condor args
         memory,
@@ -137,12 +138,13 @@ def start(
         client_startup_json_s3,
         client_args_string,
     )
+    submit_obj = htcondor.Submit(submit_dict)
     LOGGER.info(submit_obj)
 
     # dryrun?
     if dryrun:
         LOGGER.error("Script Aborted: Condor job not submitted")
-        return
+        return submit_dict, None
 
     # submit
     submit_result_obj = schedd_obj.submit(
@@ -159,4 +161,4 @@ def start(
         )
         schedd_obj.spool(jobs)
 
-    return submit_result_obj
+    return submit_dict, submit_result_obj

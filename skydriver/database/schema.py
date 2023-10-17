@@ -121,6 +121,7 @@ class Cluster:
     location: HTCondorLocation | KubernetesLocation
     n_workers: int
     cluster_id: str = ""  # "" is a non-started cluster
+    starter_dict: StrDict = dc.field(default_factory=dict)
 
     def __post_init__(self) -> None:
         match self.orchestrator:
@@ -137,7 +138,7 @@ class Cluster:
             case other:
                 raise ValueError(f"Unknown cluster orchestrator: {other}")
 
-    def to_known_cluster(self) -> tuple[str, dict]:
+    def to_known_cluster(self) -> tuple[str, StrDict]:
         """Map to a config.KNOWN_CLUSTERS entry."""
         return next(  # type: ignore[return-value]
             (k, v)

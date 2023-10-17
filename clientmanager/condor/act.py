@@ -34,7 +34,7 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
             # make connections -- do now so we don't have any surprises downstream
             skydriver_rc = utils.connect_to_skydriver()
             # start
-            submit_result_obj = starter.start(
+            submit_dict, submit_result_obj = starter.start(
                 schedd_obj=schedd_obj,
                 # starter CL args -- helper
                 dryrun=args.dryrun,
@@ -60,6 +60,7 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
                 },
                 cluster_id=submit_result_obj.cluster(),
                 n_workers=submit_result_obj.num_procs(),
+                starter_dict=submit_dict,
             )
             LOGGER.info("Sent cluster info to SkyDriver")
         case "stop":

@@ -77,7 +77,7 @@ def _act(args: argparse.Namespace, k8s_api: kubernetes.client.ApiClient) -> None
             # make connections -- do now so we don't have any surprises downstream
             skydriver_rc = utils.connect_to_skydriver()
             # start
-            starter.start(
+            k8s_job_dict = starter.start(
                 k8s_api=k8s_api,
                 cluster_id=cluster_id,
                 # k8s CL args
@@ -106,6 +106,7 @@ def _act(args: argparse.Namespace, k8s_api: kubernetes.client.ApiClient) -> None
                 },
                 cluster_id=cluster_id,
                 n_workers=args.n_workers,
+                starter_dict=k8s_job_dict,
             )
             LOGGER.info("Sent cluster info to SkyDriver")
         case "stop":
