@@ -106,7 +106,7 @@ def _act(args: argparse.Namespace, k8s_api: kubernetes.client.ApiClient) -> None
                 },
                 cluster_id=cluster_id,
                 n_workers=args.n_workers,
-                starter_dict=k8s_job_dict,
+                starter_info=k8s_job_dict,
             )
             LOGGER.info("Sent cluster info to SkyDriver")
         case "stop":

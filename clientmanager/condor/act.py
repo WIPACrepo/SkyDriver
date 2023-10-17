@@ -60,7 +60,7 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
                 },
                 cluster_id=submit_result_obj.cluster(),
                 n_workers=submit_result_obj.num_procs(),
-                starter_dict=submit_dict,
+                starter_info=submit_dict,
             )
             LOGGER.info("Sent cluster info to SkyDriver")
         case "stop":

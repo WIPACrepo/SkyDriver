@@ -286,6 +286,7 @@ Pseudo-code:
             },
             cluster_id: int,
             n_workers: int,
+            starter_info: dict,
         },
         ...
         {
@@ -296,6 +297,7 @@ Pseudo-code:
             },
             cluster_id: int,
             n_workers: int,
+            starter_info: dict,
         },
         ...
     ],
