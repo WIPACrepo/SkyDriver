@@ -104,7 +104,7 @@ def start(
     client_args: list[tuple[str, str]],
     client_startup_json_s3: S3File,
     image: str,
-) -> tuple[dict[str, Any], htcondor.SubmitResult | None]:
+) -> tuple[dict[str, Any], htcondor.SubmitResult]:
     """Main logic."""
     if spool_logs_directory:
         logs_subdir = make_condor_logs_subdir(spool_logs_directory)
