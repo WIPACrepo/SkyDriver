@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.5.16 (2023-10-17)
+
+### Other
+
+* Enable Client Logs with `"client-logs"` ([#83](https://github.com/WIPACrepo/SkyDriver/issues/83)) ([`4757568`](https://github.com/WIPACrepo/SkyDriver/commit/47575684fb91e948799de74388daaba77dcc68f0))
+
 ## v0.5.15 (2023-10-16)
 
 ### Other
