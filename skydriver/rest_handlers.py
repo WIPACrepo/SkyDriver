@@ -765,6 +765,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         self.write(
             {
+                "scan_state": manifest.get_state().name,
                 "is_deleted": manifest.is_deleted,
                 "scan_complete": manifest.complete,
                 "pod_status": pod_status,

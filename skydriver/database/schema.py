@@ -1,6 +1,7 @@
 """Collection of dataclass-based schema for the database."""
 
 import dataclasses as dc
+import enum
 import hashlib
 import json
 from typing import Any, Literal
@@ -10,6 +11,21 @@ from typeguard import typechecked
 from .. import config
 
 StrDict = dict[str, Any]
+
+
+class ScanState(enum.Enum):
+    """A non-persisted scan state."""
+
+    # completed states
+    COMPLETED_BEFORE_SCANNING = enum.auto
+    COMPLETED_WITH_FINISHED_SCANNING = enum.auto
+    COMPLETED_WITH_UNFINISHED_SCANNING = enum.auto
+
+    # non-completed states
+    SCANNING_IN_PROGRESS = enum.auto
+    SCANNER_WAITING_FOR_CLUSTERS = enum.auto
+    CLUSTERS_WAITING_FOR_SCANNER = enum.auto
+    PENDING_STARTUP = enum.auto
 
 
 @typechecked
@@ -191,6 +207,31 @@ class Manifest(ScanIDDataclass):
                     ensure_ascii=True,
                 ).encode("utf-8")
             ).hexdigest()
+
+    def get_state(self) -> ScanState:
+        """Determine the state of the scan by parsing attributes."""
+
+        # COMPLETED STATES
+        if self.complete:
+            if not self.progress:
+                return ScanState.COMPLETED_BEFORE_SCANNING
+            elif self.progress.processing_stats.finished:
+                return ScanState.COMPLETED_WITH_FINISHED_SCANNING
+            else:
+                return ScanState.COMPLETED_WITH_UNFINISHED_SCANNING
+
+        # NON-COMPLETED STATES
+        if self.progress:  # from scanner server
+            if self.clusters:
+                # NOTE - we don't know if the workers have started up, but the cluster(s) have
+                return ScanState.SCANNING_IN_PROGRESS
+            else:
+                return ScanState.SCANNER_WAITING_FOR_CLUSTERS
+        else:
+            if self.clusters:
+                return ScanState.CLUSTERS_WAITING_FOR_SCANNER
+            else:
+                return ScanState.PENDING_STARTUP
 
     def __repr__(self) -> str:
         dicto = dc.asdict(self)
