@@ -97,10 +97,10 @@ async def _launch_scan(
         env_vars=resp["env_vars"],  # see below
         complete=False,
         classifiers=post_scan_body["classifiers"],
+        last_updated=resp["last_updated"],  # see below
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
-
-    assert launch_time < resp["timestamp"] < time.time()
+    assert launch_time < resp["timestamp"] < resp["last_updated"] < time.time()
 
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
@@ -236,6 +236,8 @@ async def _do_patch(
         assert isinstance(previous_clusters, list)  # gotta include this one too
     assert body
 
+    now = time.time()
+
     resp = await rc.request("PATCH", f"/scan/{scan_id}/manifest", body)
     assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
     assert resp.pop("env_vars")  # remove to match with other requests
@@ -270,9 +272,10 @@ async def _do_patch(
         tms_args=resp["tms_args"],  # not checking
         complete=False,
         classifiers=CLASSIFIERS,
+        last_updated=resp["last_updated"],  # see below
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
-    assert 0.0 < resp["timestamp"] < time.time()
+    assert 0.0 < resp["timestamp"] < now < resp["last_updated"] < time.time()
 
     manifest = resp  # keep around
     # query progress
@@ -455,6 +458,9 @@ async def _delete_scan(
     body = {}
     if delete_completed_scan is not None:
         body["delete_completed_scan"] = delete_completed_scan
+
+    now = time.time()
+
     resp = await rc.request("DELETE", f"/scan/{scan_id}", body)
     assert resp == {
         "manifest": {
@@ -464,6 +470,7 @@ async def _delete_scan(
             "is_deleted": True,
             "progress": last_known_manifest["progress"],
             "complete": last_known_manifest["complete"],
+            "last_updated": resp["last_updated"],  # see below
             # TODO: check more fields in future (hint: ctrl+F this comment)
         },
         "result": {
@@ -472,6 +479,7 @@ async def _delete_scan(
             "skyscan_result": last_known_result["skyscan_result"],
         },
     }
+    assert 0.0 < resp["timestamp"] < now < resp["last_updated"] < time.time()
     del_resp = resp  # keep around
 
     #
