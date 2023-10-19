@@ -459,6 +459,8 @@ async def stop_scanner_instance(
     manifest = await manifests.get(scan_id, True)
     if manifest.complete:
         return
+    if not manifest.clusters:
+        return
 
     # get the container info ready
     k8s_job = k8s.scanner_instance.SkymapScannerStopperJob(

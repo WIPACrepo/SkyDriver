@@ -392,7 +392,10 @@ class SkymapScannerJob:
 
 
 class SkymapScannerStopperJob:
-    """Wraps a Kubernetes job to stop condor cluster(s) w/ Scanner clients."""
+    """Wraps a Kubernetes job to stop condor cluster(s) w/ Scanner clients.
+
+    Warning: Do not initialize with an empty `clusters` list -> `ValueError`
+    """
 
     def __init__(
         self,
@@ -403,6 +406,10 @@ class SkymapScannerStopperJob:
         LOGGER.info(f"making k8s STOPPER job for {scan_id=}")
         self.k8s_batch_api = k8s_batch_api
         self.scan_id = scan_id
+
+        # check if any cluster
+        if not clusters:
+            raise ValueError("No clusters to stop")
 
         # make a container per cluster
         containers = []
