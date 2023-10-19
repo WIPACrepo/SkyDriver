@@ -549,10 +549,10 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 reason=msg,
             )
 
-        # Abort
-        await stop_scanner_instance(self.manifests, scan_id, self.k8s_batch_api)
-
+        # mark as deleted -> also stops backlog from starting
         manifest = await self.manifests.mark_as_deleted(scan_id)
+        # abort
+        await stop_scanner_instance(self.manifests, scan_id, self.k8s_batch_api)
 
         try:
             result_dict = dc.asdict(await self.results.get(scan_id))
