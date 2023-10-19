@@ -28,6 +28,16 @@ def connect_to_skydriver() -> RestClient:
     return skydriver_rc
 
 
+def skydriver_aborted_scan(skydriver_rc: RestClient) -> bool:
+    """Return whether the scan has been signaled for deletion."""
+    ret = skydriver_rc.request_seq(
+        "GET",
+        f"/scan/{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}/manifest",
+        {"manifest_projection": ["is_deleted"]},
+    )
+    return ret["is_deleted"]  # type: ignore[no-any-return]
+
+
 def update_skydriver(
     skydriver_rc: RestClient,
     orchestrator: str,
