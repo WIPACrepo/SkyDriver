@@ -470,7 +470,7 @@ async def _delete_scan(
             "is_deleted": True,
             "progress": last_known_manifest["progress"],
             "complete": last_known_manifest["complete"],
-            "last_updated": resp["last_updated"],  # see below
+            "last_updated": resp["manifest"]["last_updated"],  # see below
             # TODO: check more fields in future (hint: ctrl+F this comment)
         },
         "result": {
