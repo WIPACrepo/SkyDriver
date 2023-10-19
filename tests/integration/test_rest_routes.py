@@ -479,7 +479,13 @@ async def _delete_scan(
             "skyscan_result": last_known_result["skyscan_result"],
         },
     }
-    assert 0.0 < resp["timestamp"] < now < resp["last_updated"] < time.time()
+    assert (
+        0.0
+        < resp["manifest"]["timestamp"]
+        < now
+        < resp["manifest"]["last_updated"]
+        < time.time()
+    )
     del_resp = resp  # keep around
 
     #
