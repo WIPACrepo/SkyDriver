@@ -8,7 +8,7 @@ from typing import Any
 import htcondor  # type: ignore[import]
 
 from ..config import ENV, FORWARDED_ENV_VARS, LOGGER
-from ..utils import S3File, skydriver_aborted_scan
+from ..utils import S3File
 from . import condor_tools
 
 
