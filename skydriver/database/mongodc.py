@@ -79,9 +79,11 @@ class MotorDataclassCollection(AsyncIOMotorCollection):  # type: ignore[misc, va
                 alternatively, this can be any type as long as the mongo
                 function returns that type directly (ex: `dict`)
         """
-        if "$set" in update and "last_updated" in [
-            f.name for f in dc.fields(return_dclass)
-        ]:
+        if (
+            "$set" in update
+            and dc.is_dataclass(return_dclass)
+            and "last_updated" in [f.name for f in dc.fields(return_dclass)]
+        ):
             update["$set"].update({"last_updated": time.time()})
 
         doc = await super().find_one_and_update(filter, update, *args, **kwargs)
