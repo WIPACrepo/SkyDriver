@@ -225,6 +225,7 @@ None
 #### Returns
 ```
 {
+    "scan_state": str,  # a short human-readable code
     "is_deleted": bool,
     "scan_complete": bool,  # skymap scanner finished
     "pod_status": dict,  # a large k8s status object
@@ -331,6 +332,9 @@ Pseudo-code:
 
     # signifies scanner is done (server and worker cluster(s))
     complete: bool,
+
+    # any kind of update to manifest -- also see `progress.last_updated`
+    last_updated: float,
 }
 ```
 - See [skydriver/database/schema.py](https://github.com/WIPACrepo/SkyDriver/blob/main/skydriver/database/schema.py)
