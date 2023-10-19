@@ -179,6 +179,8 @@ class Manifest(ScanIDDataclass):
     # signifies k8s workers and condor cluster(s) are done
     complete: bool = False
 
+    last_updated: float = 0.0
+
     def __post_init__(self) -> None:
         if self.event_i3live_json_dict:
             # shorten b/c this can be a LARGE dict
