@@ -459,23 +459,20 @@ async def stop_scanner_instance(
     manifest = await manifests.get(scan_id, True)
     if manifest.complete:
         return
-    if not manifest.clusters:
-        return
 
-    # get the container info ready
-    k8s_job = k8s.scanner_instance.SkymapScannerStopperJob(
+    stopper = k8s.scanner_instance.SkymapScannerWorkerStopper(
         k8s_batch_api,
         scan_id,
         manifest.clusters,
     )
 
     try:
-        k8s_job.do_job()
+        stopper.go()
     except kubernetes.client.exceptions.ApiException as e:
         LOGGER.exception(e)
         raise web.HTTPError(
             500,
-            log_message="Failed to launch Kubernetes job to stop Scanner instance",
+            log_message="Failed to stop Scanner instance",
         )
 
     await manifests.patch(scan_id, complete=True)
