@@ -9,7 +9,7 @@ import kubernetes.client  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
 from .. import database, images
-from ..config import ENV, LOGGER, DebugMode
+from ..config import ENV, LOGGER, TMS_STOPPER_K8S_JOB_N_RETRIES, DebugMode
 from ..database import schema
 from . import scan_backlog
 from .utils import KubeAPITools
@@ -441,6 +441,7 @@ class SkymapScannerWorkerStopper:
                 f"tms-stopper-{scan_id}",
                 containers,
                 ENV.K8S_NAMESPACE,
+                n_retries=TMS_STOPPER_K8S_JOB_N_RETRIES,
             )
 
     def go(self) -> Any:
