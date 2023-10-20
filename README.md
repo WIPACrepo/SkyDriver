@@ -333,7 +333,7 @@ Pseudo-code:
     # signifies scanner is done (server and worker cluster(s))
     complete: bool,
 
-    # any kind of update to manifest -- also see `progress.last_updated`
+    # timestamp of any update to manifest -- also see `progress.last_updated`
     last_updated: float,
 }
 ```
