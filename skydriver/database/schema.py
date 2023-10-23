@@ -16,14 +16,16 @@ StrDict = dict[str, Any]
 class ScanState(enum.Enum):
     """A non-persisted scan state."""
 
-    # completed states
-    STOPPED_PRIOR_TO_SCANNING = enum.auto
     SCAN_FINISHED_SUCCESSFULLY = enum.auto
-    STOPPED_DURING_SCANNING = enum.auto
 
-    # non-completed states
+    STOPPED__PARTIAL_RESULT_GENERATED = enum.auto
+    STOPPED__WAITING_ON_FIRST_PIXEL_RECO = enum.auto
+    STOPPED__WAITING_ON_CLUSTER_STARTUP = enum.auto
+    STOPPED__WAITING_ON_SCANNER_SERVER_STARTUP = enum.auto
+    STOPPED__PRESTARTUP = enum.auto
+
     IN_PROGRESS__PARTIAL_RESULT_GENERATED = enum.auto
-    IN_PROGRESS__WAITING_FOR_FIRST_PIXEL_RECO = enum.auto
+    IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO = enum.auto
     PENDING__WAITING_ON_CLUSTER_STARTUP = enum.auto
     PENDING__WAITING_ON_SCANNER_SERVER_STARTUP = enum.auto
     PENDING__PRESTARTUP = enum.auto
@@ -211,32 +213,29 @@ class Manifest(ScanIDDataclass):
 
     def get_state(self) -> ScanState:
         """Determine the state of the scan by parsing attributes."""
+        if self.complete and self.progress and self.progress.processing_stats.finished:
+            return ScanState.SCAN_FINISHED_SUCCESSFULLY
 
-        # COMPLETED STATES
-        if self.complete:
+        def get_nonfinished_state() -> ScanState:
             if self.progress:  # from scanner server
-                if self.progress.processing_stats.finished:
-                    return ScanState.SCAN_FINISHED_SUCCESSFULLY
+                if self.clusters:
+                    # NOTE - we only know if the workers have started up once the server has gotten pixels
+                    if self.progress.processing_stats.rate:
+                        return ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
+                    else:
+                        return ScanState.IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO
                 else:
-                    return ScanState.STOPPED_DURING_SCANNING
+                    return ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP
             else:
-                return ScanState.STOPPED_PRIOR_TO_SCANNING
+                if self.clusters:
+                    return ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
+                else:
+                    return ScanState.PENDING__PRESTARTUP
 
-        # NON-COMPLETED STATES
-        if self.progress:  # from scanner server
-            if self.clusters:
-                # NOTE - we only know if the workers have started up once the server has gotten pixels
-                if self.progress.processing_stats.rate:
-                    return ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
-                else:
-                    return ScanState.IN_PROGRESS__WAITING_FOR_FIRST_PIXEL_RECO
-            else:
-                return ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP
+        if self.complete:
+            return ScanState[f"STOPPED__{get_nonfinished_state().name.split('__')[1]}"]
         else:
-            if self.clusters:
-                return ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
-            else:
-                return ScanState.PENDING__PRESTARTUP
+            return get_nonfinished_state()
 
     def __repr__(self) -> str:
         dicto = dc.asdict(self)
