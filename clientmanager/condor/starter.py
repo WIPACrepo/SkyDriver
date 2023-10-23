@@ -104,21 +104,18 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     return submit_dict
 
 
-def start(
-    schedd_obj: htcondor.Schedd,
+def prep(
     # starter CL args -- helper
-    dryrun: bool,
     spool_logs_directory: Path | None,
     # starter CL args -- worker
     memory: str,
     n_cores: int,
-    n_workers: int,
     # starter CL args -- client
     client_args: list[tuple[str, str]],
     client_startup_json_s3: S3File,
     image: str,
-) -> tuple[dict[str, Any], htcondor.SubmitResult]:
-    """Main logic."""
+) -> tuple[dict[str, Any], bool]:
+    """Create objects needed for starting cluster."""
     if spool_logs_directory:
         logs_subdir = make_condor_logs_subdir(spool_logs_directory)
         spool = True
@@ -151,13 +148,21 @@ def start(
         client_startup_json_s3,
         client_args_string,
     )
+    LOGGER.info(submit_dict)
+
+    return submit_dict, spool
+
+
+def start(
+    schedd_obj: htcondor.Schedd,
+    n_workers: int,
+    #
+    submit_dict: dict[str, Any],
+    spool: bool,
+) -> htcondor.SubmitResult:
+    """Start cluster."""
     submit_obj = htcondor.Submit(submit_dict)
     LOGGER.info(submit_obj)
-
-    # dryrun?
-    if dryrun:
-        LOGGER.error("Script Aborted: Condor job not submitted")
-        raise RuntimeError("Dry run completed successfully")
 
     # submit
     submit_result_obj = schedd_obj.submit(
@@ -174,4 +179,4 @@ def start(
         )
         schedd_obj.spool(jobs)
 
-    return submit_dict, submit_result_obj
+    return submit_result_obj

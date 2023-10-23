@@ -34,21 +34,31 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
             # make connections -- do now so we don't have any surprises downstream
             skydriver_rc = utils.connect_to_skydriver()
             # start
-            submit_dict, submit_result_obj = starter.start(
-                schedd_obj=schedd_obj,
-                # starter CL args -- helper
-                dryrun=args.dryrun,
-                spool_logs_directory=args.spool_logs_directory
-                if args.spool_logs_directory
-                else None,
+            submit_dict, spool = starter.prep(
+                spool_logs_directory=(
+                    args.spool_logs_directory if args.spool_logs_directory else None
+                ),
                 # starter CL args -- worker
                 memory=args.memory,
                 n_cores=args.n_cores,
-                n_workers=args.n_workers,
                 # starter CL args -- client
                 client_args=args.client_args,
                 client_startup_json_s3=utils.s3ify(args.client_startup_json),
                 image=args.image,
+            )
+            # final checks
+            if args.dryrun:
+                LOGGER.critical("Script Aborted: dryrun enabled")
+                return
+            if utils.skydriver_aborted_scan(skydriver_rc):
+                LOGGER.critical("Script Aborted: SkyDriver aborted scan")
+                return
+            # start
+            submit_result_obj = starter.start(
+                schedd_obj=schedd_obj,
+                n_workers=args.n_workers,
+                submit_dict=submit_dict,
+                spool=spool,
             )
             # report to SkyDriver
             utils.update_skydriver(

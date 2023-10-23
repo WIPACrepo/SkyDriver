@@ -460,20 +460,19 @@ async def stop_scanner_instance(
     if manifest.complete:
         return
 
-    # get the container info ready
-    k8s_job = k8s.scanner_instance.SkymapScannerStopperJob(
+    stopper = k8s.scanner_instance.SkymapScannerWorkerStopper(
         k8s_batch_api,
         scan_id,
         manifest.clusters,
     )
 
     try:
-        k8s_job.do_job()
+        stopper.go()
     except kubernetes.client.exceptions.ApiException as e:
         LOGGER.exception(e)
         raise web.HTTPError(
             500,
-            log_message="Failed to launch Kubernetes job to stop Scanner instance",
+            log_message="Failed to stop Scanner instance",
         )
 
     await manifests.patch(scan_id, complete=True)
@@ -549,10 +548,10 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 reason=msg,
             )
 
-        # Abort
-        await stop_scanner_instance(self.manifests, scan_id, self.k8s_batch_api)
-
+        # mark as deleted -> also stops backlog from starting
         manifest = await self.manifests.mark_as_deleted(scan_id)
+        # abort
+        await stop_scanner_instance(self.manifests, scan_id, self.k8s_batch_api)
 
         try:
             result_dict = dc.asdict(await self.results.get(scan_id))
@@ -765,6 +764,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         self.write(
             {
+                "scan_state": manifest.get_state().name,
                 "is_deleted": manifest.is_deleted,
                 "scan_complete": manifest.complete,
                 "pod_status": pod_status,

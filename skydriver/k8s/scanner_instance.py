@@ -9,7 +9,7 @@ import kubernetes.client  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
 from .. import database, images
-from ..config import ENV, LOGGER, DebugMode
+from ..config import ENV, LOGGER, TMS_STOPPER_K8S_JOB_N_RETRIES, DebugMode
 from ..database import schema
 from . import scan_backlog
 from .utils import KubeAPITools
@@ -391,8 +391,8 @@ class SkymapScannerJob:
         await scan_backlog.enqueue(self.scan_id, self.job_obj, self.scan_backlog)
 
 
-class SkymapScannerStopperJob:
-    """Wraps a Kubernetes job to stop condor cluster(s) w/ Scanner clients."""
+class SkymapScannerWorkerStopper:
+    """Wraps K8s logic to stop workers of a Skymap Scanner instance."""
 
     def __init__(
         self,
@@ -400,7 +400,6 @@ class SkymapScannerStopperJob:
         scan_id: str,
         clusters: list[schema.Cluster],
     ):
-        LOGGER.info(f"making k8s STOPPER job for {scan_id=}")
         self.k8s_batch_api = k8s_batch_api
         self.scan_id = scan_id
 
@@ -435,16 +434,40 @@ class SkymapScannerStopperJob:
                 )
             )
 
-        self.job_obj = KubeAPITools.kube_create_job_object(
-            f"tms-stopper-{scan_id}",
-            containers,
-            ENV.K8S_NAMESPACE,
-        )
+        if not containers:
+            self.worker_stopper_job_obj = None
+        else:
+            self.worker_stopper_job_obj = KubeAPITools.kube_create_job_object(
+                f"tms-stopper-{scan_id}",
+                containers,
+                ENV.K8S_NAMESPACE,
+                n_retries=TMS_STOPPER_K8S_JOB_N_RETRIES,
+            )
 
-    def do_job(self) -> Any:
-        """Start the k8s job."""
-        LOGGER.info(f"starting k8s STOPPER job for {self.scan_id=}")
+    def go(self) -> Any:
+        """Stop all workers of a Skymap Scanner instance."""
 
-        # TODO: stop first k8s job (server & clientmanager-starter)
+        # NOTE - we don't want to stop the first k8s job because its containers will stop themselves.
+        #        plus, 'K8S_TTL_SECONDS_AFTER_FINISHED' will allow logs & pod status to be retrieved for some time
+        #
+        # stop first k8s job (server & tms starters) -- may not be instantaneous
+        # LOGGER.info(
+        #     f"requesting removal of Skymap Scanner Job (server & tms starters) -- {self.scan_id=}..."
+        # )
+        # resp = self.k8s_batch_api.delete_namespaced_job(
+        #     name=SkymapScannerJob.get_job_name(self.scan_id),
+        #     namespace=ENV.K8S_NAMESPACE,
+        #     body=kubernetes.client.V1DeleteOptions(
+        #         propagation_policy="Foreground", grace_period_seconds=5
+        #     ),
+        # )
+        # LOGGER.info(
+        #     f"removed Skymap Scanner Job {self.scan_id=} -- with response {resp.status} "
+        # )
 
-        KubeAPITools.start_job(self.k8s_batch_api, self.job_obj)
+        # stop workers
+        if self.worker_stopper_job_obj:
+            LOGGER.info(f"starting k8s TMS-STOPPER job for {self.scan_id=}")
+            KubeAPITools.start_job(self.k8s_batch_api, self.worker_stopper_job_obj)
+        else:
+            LOGGER.info(f"no workers to stop for {self.scan_id=}")
