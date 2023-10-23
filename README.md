@@ -234,6 +234,22 @@ None
 }
 ```
 
+##### Scan State Codes
+There are several codes for `scan_state`:
+- Successful state
+    * `SCAN_FINISHED_SUCCESSFULLY`
+- Non-finished scan states (in reverse order of occurrence)
+    * `IN_PROGRESS__PARTIAL_RESULT_GENERATED`
+    * `IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO`
+    * `PENDING__WAITING_ON_CLUSTER_STARTUP` or `PENDING__WAITING_ON_SCANNER_SERVER_STARTUP`
+    * `PENDING__PRESTARTUP`
+- The above non-finished states have equivalents in the case that the scan failed and/or aborted
+    * `STOPPED__PARTIAL_RESULT_GENERATED`
+    * `STOPPED__WAITING_ON_FIRST_PIXEL_RECO`
+    * `STOPPED__WAITING_ON_CLUSTER_STARTUP` or `STOPPED__WAITING_ON_SCANNER_SERVER_STARTUP`
+    * `STOPPED__PRESTARTUP`
+    * *NOTE: a failed scan my not have an above code automatically, and may need a `DELETE` request to get the code. Until then, it will retain an non-finished state code.*
+
 
 &nbsp;
 ### `/scan/SCAN_ID/logs` - GET
