@@ -67,7 +67,7 @@ def test_10__partial_result_generated(
             schema.ProgressProcessingStats(
                 start={},
                 runtime={},
-                # rate,
+                rate={"abc": 123},
                 # end,
                 # finished=True,
                 # predictions,
