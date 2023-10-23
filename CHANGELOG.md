@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.1 (2023-10-23)
+
+### Other
+
+* Set `ttl_seconds_after_finished` to 1 Hour for Stoppers ([`f77e357`](https://github.com/WIPACrepo/SkyDriver/commit/f77e357814c5ec671f91bf278d2c3eba25b8e9b7))
+
 ## v0.6.0 (2023-10-23)
 
 
