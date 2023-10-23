@@ -9,7 +9,13 @@ import kubernetes.client  # type: ignore[import]
 from rest_tools.client import ClientCredentialsAuth
 
 from .. import database, images
-from ..config import ENV, LOGGER, TMS_STOPPER_K8S_JOB_N_RETRIES, DebugMode
+from ..config import (
+    ENV,
+    LOGGER,
+    TMS_STOPPER_K8S_JOB_N_RETRIES,
+    TMS_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
+    DebugMode,
+)
 from ..database import schema
 from . import scan_backlog
 from .utils import KubeAPITools
@@ -137,6 +143,7 @@ class SkymapScannerJob:
             self.get_job_name(scan_id),
             [scanner_server] + tms_starters,
             ENV.K8S_NAMESPACE,
+            ENV.K8S_TTL_SECONDS_AFTER_FINISHED,
             volumes=[common_space_volume_path.name],
         )
 
@@ -441,6 +448,7 @@ class SkymapScannerWorkerStopper:
                 f"tms-stopper-{scan_id}",
                 containers,
                 ENV.K8S_NAMESPACE,
+                TMS_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
                 n_retries=TMS_STOPPER_K8S_JOB_N_RETRIES,
             )
 
