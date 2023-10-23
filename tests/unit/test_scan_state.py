@@ -244,3 +244,53 @@ def test_40__waiting_on_scanner_server_startup(
         ],
     )
     assert manifest.get_state() == state
+
+
+@pytest.mark.parametrize(
+    "is_complete,state",
+    [
+        (True, schema.ScanState.STOPPED__PRESTARTUP),
+        (False, schema.ScanState.PENDING__PRESTARTUP),
+    ],
+)
+def test_50__prestartup(is_complete: bool, state: schema.ScanState) -> None:
+    """Test normal and stopped variants."""
+    manifest = schema.Manifest(
+        scan_id="abc123",
+        timestamp=time.time(),
+        is_deleted=False,
+        event_i3live_json_dict={"abc": 123},
+        scanner_server_args="",
+        tms_args=[],
+        env_vars={},
+        #
+        complete=is_complete,
+        # progress=schema.Progress(
+        #     "summary",
+        #     "epilogue",
+        #     {},
+        #     schema.ProgressProcessingStats(
+        #         start={},
+        #         runtime={},
+        #         # rate={"abc": 123},
+        #         # end,
+        #         # finished=True,
+        #         # predictions,
+        #     ),
+        #     1.0,
+        #     str(time.time()),
+        # ),
+        # clusters=[
+        #     schema.Cluster(
+        #         orchestrator="condor",
+        #         location=schema.HTCondorLocation(
+        #             collector="foo",
+        #             schedd="bar",
+        #         ),
+        #         n_workers=111,
+        #         cluster_id="abc123",  # "" is a non-started cluster
+        #         starter_info={"abc": 123},
+        #     )
+        # ],
+    )
+    assert manifest.get_state() == state
