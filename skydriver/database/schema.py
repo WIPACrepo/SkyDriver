@@ -17,15 +17,16 @@ class ScanState(enum.Enum):
     """A non-persisted scan state."""
 
     # completed states
-    COMPLETED_BEFORE_SCANNING = enum.auto
-    COMPLETED_WITH_FINISHED_SCANNING = enum.auto
-    COMPLETED_WITH_UNFINISHED_SCANNING = enum.auto
+    STOPPED_PRIOR_TO_SCANNING = enum.auto
+    SCAN_FINISHED_SUCCESSFULLY = enum.auto
+    STOPPED_DURING_SCANNING = enum.auto
 
     # non-completed states
-    SCANNING_IN_PROGRESS = enum.auto
-    SCANNER_WAITING_FOR_CLUSTERS = enum.auto
-    CLUSTERS_WAITING_FOR_SCANNER = enum.auto
-    PENDING_STARTUP = enum.auto
+    IN_PROGRESS__PARTIAL_RESULT_GENERATED = enum.auto
+    IN_PROGRESS__WAITING_FOR_FIRST_PIXEL_RECO = enum.auto
+    PENDING__WAITING_ON_CLUSTER_STARTUP = enum.auto
+    PENDING__WAITING_ON_SCANNER_SERVER_STARTUP = enum.auto
+    PENDING__PRESTARTUP = enum.auto
 
 
 @typechecked
@@ -213,25 +214,29 @@ class Manifest(ScanIDDataclass):
 
         # COMPLETED STATES
         if self.complete:
-            if not self.progress:
-                return ScanState.COMPLETED_BEFORE_SCANNING
-            elif self.progress.processing_stats.finished:
-                return ScanState.COMPLETED_WITH_FINISHED_SCANNING
+            if self.progress:  # from scanner server
+                if self.progress.processing_stats.finished:
+                    return ScanState.SCAN_FINISHED_SUCCESSFULLY
+                else:
+                    return ScanState.STOPPED_DURING_SCANNING
             else:
-                return ScanState.COMPLETED_WITH_UNFINISHED_SCANNING
+                return ScanState.STOPPED_PRIOR_TO_SCANNING
 
         # NON-COMPLETED STATES
         if self.progress:  # from scanner server
             if self.clusters:
-                # NOTE - we don't know if the workers have started up, but the cluster(s) have
-                return ScanState.SCANNING_IN_PROGRESS
+                # NOTE - we only know if the workers have started up once the server has gotten pixels
+                if self.progress.processing_stats.rate:
+                    return ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
+                else:
+                    return ScanState.IN_PROGRESS__WAITING_FOR_FIRST_PIXEL_RECO
             else:
-                return ScanState.SCANNER_WAITING_FOR_CLUSTERS
+                return ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP
         else:
             if self.clusters:
-                return ScanState.CLUSTERS_WAITING_FOR_SCANNER
+                return ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
             else:
-                return ScanState.PENDING_STARTUP
+                return ScanState.PENDING__PRESTARTUP
 
     def __repr__(self) -> str:
         dicto = dc.asdict(self)
