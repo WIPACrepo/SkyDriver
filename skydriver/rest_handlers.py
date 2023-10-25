@@ -575,15 +575,15 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default=False,
             type=bool,
         )
-        # response args
-        manifest_projection = self.get_argument(
-            "manifest_projection",
-            default=(
-                all_dc_fields(database.schema.Manifest)
-                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-            ),
-            type=set[str],
-        )
+        # # response args
+        # manifest_projection = self.get_argument(
+        #     "manifest_projection",
+        #     default=(
+        #         all_dc_fields(database.schema.Manifest)
+        #         - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+        #     ),
+        #     type=set[str],
+        # )
 
         result, manifest = await get_result_safely(
             self.manifests,
@@ -594,7 +594,8 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         self.write(
             {
-                "manifest": dict_projection(dc.asdict(manifest), manifest_projection),
+                # "manifest": dict_projection(dc.asdict(manifest), manifest_projection),
+                "manifest": dc.asdict(manifest),
                 "result": dc.asdict(result) if result else {},
             }
         )
@@ -616,17 +617,18 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default=False,
             type=bool,
         )
-        # response args
-        manifest_projection = self.get_argument(
-            "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
-            type=set[str],
-        )
+        # # response args
+        # manifest_projection = self.get_argument(
+        #     "manifest_projection",
+        #     default=all_dc_fields(database.schema.Manifest),
+        #     type=set[str],
+        # )
 
         manifest = await self.manifests.get(scan_id, incl_del)
 
         self.write(
-            dict_projection(dc.asdict(manifest), manifest_projection),
+            # dict_projection(dc.asdict(manifest), manifest_projection),
+            dc.asdict(manifest)
         )
 
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
