@@ -584,6 +584,9 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         #     ),
         #     type=set[str],
         # )
+        manifest_projection = (
+            all_dc_fields(database.schema.Manifest) - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+        )
 
         result, manifest = await get_result_safely(
             self.manifests,
@@ -594,8 +597,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         self.write(
             {
-                # "manifest": dict_projection(dc.asdict(manifest), manifest_projection),
-                "manifest": dc.asdict(manifest),
+                "manifest": dict_projection(dc.asdict(manifest), manifest_projection),
                 "result": dc.asdict(result) if result else {},
             }
         )
