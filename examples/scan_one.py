@@ -39,7 +39,8 @@ def launch_a_scan(
     n_workers: int,
     max_pixel_reco_time: int,
     reco_algo: str,
-    scanner_server_memory: str) -> str:
+    scanner_server_memory: str,
+) -> str:
     """Request to SkyDriver to scan an event."""
     body = {
         "reco_algo": reco_algo,
@@ -50,7 +51,6 @@ def launch_a_scan(
         "cluster": {cluster: n_workers},
         "docker_tag": "latest",
         "max_pixel_reco_time": max_pixel_reco_time,
-        "max_pixel_reco_time": 60 * 60 * 1,
         "scanner_server_memory": scanner_server_memory,
     }
     resp = rc.request_seq("POST", "/scan", body)
@@ -140,7 +140,7 @@ def main() -> None:
         args.n_workers,
         args.max_pixel_reco_time,
         args.reco_algo,
-        args.scanner_server_memory
+        args.scanner_server_memory,
     )
     monitor(rc, scan_id)
 

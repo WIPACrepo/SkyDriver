@@ -68,7 +68,7 @@ _Retrieve the manifest of a scan_
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
 | `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
-| `"manifest_projection"` | list | default: all fields | which `Manifest` fields to include in the response (include `*` to include all fields)
+<!-- | `"manifest_projection"` | list | default: all fields | which `Manifest` fields to include in the response (include `*` to include all fields) -->
 
 
 #### SkyDriver Effects
@@ -104,7 +104,7 @@ _Retrieve the manifest and result of a scan_
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
 | `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
-| `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
+<!-- | `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields) -->
 
 
 #### SkyDriver Effects

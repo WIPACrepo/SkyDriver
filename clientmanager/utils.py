@@ -33,7 +33,6 @@ def skydriver_aborted_scan(skydriver_rc: RestClient) -> bool:
     ret = skydriver_rc.request_seq(
         "GET",
         f"/scan/{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}/manifest",
-        {"manifest_projection": ["is_deleted"]},
     )
     return ret["is_deleted"]  # type: ignore[no-any-return]
 
