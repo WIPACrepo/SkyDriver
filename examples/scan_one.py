@@ -117,6 +117,8 @@ def main() -> None:
         required=True,
         type=int,
         help="how long a reco should take",
+    )
+    parser.add_argument(
         "--reco-algo",
         required=False,
         default="millipede_wilks",
