@@ -38,10 +38,11 @@ def launch_a_scan(
     cluster: str,
     n_workers: int,
     max_pixel_reco_time: int,
-) -> str:
+    reco_algo: str,
+    scanner_server_memory: str) -> str:
     """Request to SkyDriver to scan an event."""
     body = {
-        "reco_algo": "millipede_wilks",
+        "reco_algo": reco_algo,
         "event_i3live_json": event_file.open().read().strip(),
         "nsides": {8: 0, 64: 12, 512: 24},
         "real_or_simulated_event": "simulated",
@@ -49,6 +50,8 @@ def launch_a_scan(
         "cluster": {cluster: n_workers},
         "docker_tag": "latest",
         "max_pixel_reco_time": max_pixel_reco_time,
+        "max_pixel_reco_time": 60 * 60 * 1,
+        "scanner_server_memory": scanner_server_memory,
     }
     resp = rc.request_seq("POST", "/scan", body)
 
@@ -115,6 +118,18 @@ def main() -> None:
         type=int,
         help="how long a reco should take",
     )
+    parser.add_argument(
+        "--reco-algo",
+        required=False,
+        default="millipede_wilks",
+        help="reconstruction algorithm to run",
+    )
+    parser.add_argument(
+        "--scanner-server-memory",
+        required=False,
+        default="512M",
+        help="server memory required",
+    )
     args = parser.parse_args()
 
     rc = get_rest_client()
@@ -124,6 +139,8 @@ def main() -> None:
         args.cluster,
         args.n_workers,
         args.max_pixel_reco_time,
+        args.reco_algo,
+        args.scanner_server_memory
     )
     monitor(rc, scan_id)
 
