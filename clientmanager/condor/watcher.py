@@ -1,6 +1,8 @@
 """For watching Skymap Scanner clients on an HTCondor cluster."""
 
 
+import time
+
 import htcondor  # type: ignore[import]
 
 from ..config import LOGGER
@@ -14,17 +16,36 @@ def watch(
 ) -> None:
     """Main logic."""
     LOGGER.info(
-        f"Stopping Skymap Scanner client workers on {cluster_id} / {collector} / {schedd}"
+        f"Watching Skymap Scanner client workers on {cluster_id} / {collector} / {schedd}"
     )
 
-    # Remove workers -- may not be instantaneous
-    LOGGER.info("Requesting removal...")
-    act_obj = schedd_obj.act(
-        htcondor.JobAction.Remove,
-        f"ClusterId == {cluster_id}",
-        reason="Requested by SkyDriver",
-    )
-    LOGGER.debug(act_obj)
-    LOGGER.info(f"Removed {act_obj['TotalSuccess']} workers")
+    while True:
+        # class ad
+        ads = schedd_obj.query(
+            f"ClusterId == {cluster_id}",
+            # ["list", "of", "desired", "attributes"],
+        )
+        for i, ad in enumerate(ads):
+            LOGGER.debug(f"class ad #{i}")
+            LOGGER.debug(ad)
 
-    # TODO: get/forward worker logs
+        # histories
+        histories = schedd_obj.history(
+            f"ClusterId == {cluster_id}",
+            # ["list", "of", "desired", "attributes"],
+        )
+        for i, history in enumerate(histories):
+            LOGGER.debug(f"history #{i}")
+            LOGGER.debug(history)
+
+        # jobEpochHistory
+        histories = schedd_obj.jobEpochHistory(
+            f"ClusterId == {cluster_id}",
+            # ["list", "of", "desired", "attributes"],
+        )
+        for i, history in enumerate(histories):
+            LOGGER.debug(f"jobEpochHistory #{i}")
+            LOGGER.debug(history)
+
+        time.sleep(60)
+        LOGGER.info("requesting again...")
