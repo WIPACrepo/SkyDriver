@@ -33,7 +33,7 @@ def watch(
         # histories
         histories = schedd_obj.history(
             f"ClusterId == {cluster_id}",
-            # ["list", "of", "desired", "attributes"],
+            [],  # ["list", "of", "desired", "attributes"],
         )
         for i, history in enumerate(histories):
             LOGGER.debug(f"history #{i}")
@@ -42,7 +42,7 @@ def watch(
         # jobEpochHistory
         histories = schedd_obj.jobEpochHistory(
             f"ClusterId == {cluster_id}",
-            # ["list", "of", "desired", "attributes"],
+            [],  # ["list", "of", "desired", "attributes"],
         )
         for i, history in enumerate(histories):
             LOGGER.debug(f"jobEpochHistory #{i}")
