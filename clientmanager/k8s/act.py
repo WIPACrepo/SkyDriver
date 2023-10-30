@@ -77,16 +77,13 @@ def _act(args: argparse.Namespace, k8s_api: kubernetes.client.ApiClient) -> None
             # make connections -- do now so we don't have any surprises downstream
             skydriver_rc = utils.connect_to_skydriver()
             # start
-            k8s_job_dict = starter.start(
-                k8s_api=k8s_api,
+            k8s_job_dict = starter.prep(
                 cluster_id=cluster_id,
                 # k8s CL args
                 cpu_arch=args.cpu_arch,
                 host=args.host,
                 job_config_stub=args.job_config_stub,
                 namespace=args.namespace,
-                # starter CL args -- helper
-                dryrun=args.dryrun,
                 # starter CL args -- worker
                 memory=args.memory,
                 n_cores=args.n_cores,
@@ -95,6 +92,21 @@ def _act(args: argparse.Namespace, k8s_api: kubernetes.client.ApiClient) -> None
                 client_args=args.client_args if args.client_args else [],
                 client_startup_json_s3=utils.s3ify(args.client_startup_json),
                 container_image=args.image,
+            )
+            # final checks
+            if args.dryrun:
+                LOGGER.critical("Script Aborted: dryrun enabled")
+                return
+            if utils.skydriver_aborted_scan(skydriver_rc):
+                LOGGER.critical("Script Aborted: SkyDriver aborted scan")
+                return
+            # start
+            k8s_job_dict = starter.start(
+                k8s_api,
+                k8s_job_dict,
+                cluster_id,
+                args.host,
+                args.namespace,
             )
             # report to SkyDriver
             utils.update_skydriver(

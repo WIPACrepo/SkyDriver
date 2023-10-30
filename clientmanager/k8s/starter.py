@@ -42,7 +42,7 @@ def make_k8s_job_desc(
     cpu_arch: str,
     # env vars for secrets
     secret_env_vars: list[str],
-) -> dict:
+) -> dict[str, Any]:
     """Make the k8s job description (submit object)."""
     with open(job_config_stub, "r") as f:
         k8s_job_dict = json.load(f)
@@ -158,16 +158,13 @@ def make_k8s_job_desc(
     return k8s_job_dict  # type: ignore[no-any-return]
 
 
-def start(
-    k8s_api: kubernetes.client.ApiClient,
+def prep(
     cluster_id: str,
     # k8s CL args
     job_config_stub: Path,
     host: str,
     namespace: str,
     cpu_arch: str,
-    # starter CL args -- helper
-    dryrun: bool,
     # starter CL args -- worker
     memory: str,
     n_workers: int,
@@ -176,8 +173,8 @@ def start(
     client_args: list[tuple[str, str]],
     client_startup_json_s3: S3File,
     container_image: str,
-) -> dict:
-    """Main logic."""
+) -> dict[str, Any]:
+    """Create objects needed for starting cluster."""
     if host == LOCAL_K8S_HOST and n_workers > ENV.WORKER_K8S_LOCAL_WORKERS_MAX:
         LOGGER.warning(
             f"Requested more workers ({n_workers}) than the max allowed {ENV.WORKER_K8S_LOCAL_WORKERS_MAX}. Using the maximum instead."
@@ -209,10 +206,18 @@ def start(
         LOGGER.info(pprint.pformat(k8s_job_dict, indent=4))
         raise
 
-    # dryrun?
-    if dryrun:
-        LOGGER.error("Script Aborted: K8s job not submitted")
-        raise RuntimeError("Dry run completed successfully")
+    return k8s_job_dict
+
+
+def start(
+    k8s_api: kubernetes.client.ApiClient,
+    k8s_job_dict: dict[str, Any],
+    cluster_id: str,
+    # k8s CL args
+    host: str,
+    namespace: str,
+) -> dict[str, Any]:
+    """Start cluster."""
 
     # create namespace
     # kubernetes.client.CoreV1Api(k8s_api).create_namespace(
@@ -220,6 +225,7 @@ def start(
     #         metadata=kubernetes.client.V1ObjectMeta(name=namespace)
     #     )
     # )
+
     # create secret
     k8s_tools.patch_or_create_namespaced_secret(
         kubernetes.client.CoreV1Api(k8s_api),
@@ -232,6 +238,7 @@ def start(
             for v in SECRET_FORWARDED_ENV_VARS
         },
     )
+
     # submit jobs
     kubernetes.utils.create_from_dict(k8s_api, k8s_job_dict, namespace=namespace)
 

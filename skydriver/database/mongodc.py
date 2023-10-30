@@ -2,6 +2,7 @@
 
 import dataclasses as dc
 import logging
+import time
 from typing import Any, AsyncIterator, Type, TypeVar
 
 import typeguard
@@ -64,6 +65,8 @@ class MotorDataclassCollection(AsyncIOMotorCollection):  # type: ignore[misc, va
 
     async def find_one_and_update(
         self,
+        filter: dict[str, Any],
+        update: dict[str, Any],
         *args: Any,
         return_dclass: Type[T],
         **kwargs: Any,
@@ -76,7 +79,14 @@ class MotorDataclassCollection(AsyncIOMotorCollection):  # type: ignore[misc, va
                 alternatively, this can be any type as long as the mongo
                 function returns that type directly (ex: `dict`)
         """
-        doc = await super().find_one_and_update(*args, **kwargs)
+        if (
+            "$set" in update
+            and dc.is_dataclass(return_dclass)
+            and "last_updated" in [f.name for f in dc.fields(return_dclass)]
+        ):
+            update["$set"].update({"last_updated": time.time()})
+
+        doc = await super().find_one_and_update(filter, update, *args, **kwargs)
         if not doc:
             raise DocumentNotFoundException()
         if isinstance(doc, return_dclass):

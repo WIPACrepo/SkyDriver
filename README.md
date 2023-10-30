@@ -68,7 +68,7 @@ _Retrieve the manifest of a scan_
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
 | `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
-| `"manifest_projection"` | list | default: all fields | which `Manifest` fields to include in the response (include `*` to include all fields)
+<!-- | `"manifest_projection"` | list | default: all fields | which `Manifest` fields to include in the response (include `*` to include all fields) -->
 
 
 #### SkyDriver Effects
@@ -104,7 +104,7 @@ _Retrieve the manifest and result of a scan_
 | Argument            | Type        | Required/Default | Description          |
 | ------------------- | ----------- | ---------------- | -------------------- |
 | `"include_deleted"` | bool        | default: `False` | *Not normally needed* -- `True` prevents a 404 error if the scan was deleted (aborted)
-| `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
+<!-- | `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields) -->
 
 
 #### SkyDriver Effects
@@ -225,6 +225,7 @@ None
 #### Returns
 ```
 {
+    "scan_state": str,  # a short human-readable code
     "is_deleted": bool,
     "scan_complete": bool,  # skymap scanner finished
     "pod_status": dict,  # a large k8s status object
@@ -232,6 +233,22 @@ None
     "clusters": list,  # same as Manifest's clusters field
 }
 ```
+
+##### Scan State Codes
+There are several codes for `scan_state`:
+- Successful state
+    * `SCAN_FINISHED_SUCCESSFULLY`
+- Non-finished scan states (in reverse order of occurrence)
+    * `IN_PROGRESS__PARTIAL_RESULT_GENERATED`
+    * `IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO`
+    * `PENDING__WAITING_ON_CLUSTER_STARTUP` or `PENDING__WAITING_ON_SCANNER_SERVER_STARTUP`
+    * `PENDING__PRESTARTUP`
+- The above non-finished states have equivalents in the case that the scan failed and/or aborted
+    * `STOPPED__PARTIAL_RESULT_GENERATED`
+    * `STOPPED__WAITING_ON_FIRST_PIXEL_RECO`
+    * `STOPPED__WAITING_ON_CLUSTER_STARTUP` or `STOPPED__WAITING_ON_SCANNER_SERVER_STARTUP`
+    * `STOPPED__PRESTARTUP`
+    * *NOTE: a failed scan my not have an above code automatically, and may need a `DELETE` request to get the code. Until then, it will retain an non-finished state code.*
 
 
 &nbsp;
@@ -331,6 +348,9 @@ Pseudo-code:
 
     # signifies scanner is done (server and worker cluster(s))
     complete: bool,
+
+    # timestamp of any update to manifest -- also see `progress.last_updated`
+    last_updated: float,
 }
 ```
 - See [skydriver/database/schema.py](https://github.com/WIPACrepo/SkyDriver/blob/main/skydriver/database/schema.py)

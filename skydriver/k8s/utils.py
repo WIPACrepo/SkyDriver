@@ -26,7 +26,9 @@ class KubeAPITools:
         name: str,
         containers: list[kubernetes.client.V1Container],
         namespace: str,
+        ttl_seconds_after_finished: int,
         volumes: list[str] | None = None,  # volume names
+        n_retries: int = 0,
     ) -> kubernetes.client.V1Job:
         """Create a k8 Job Object Minimum definition of a job object.
 
@@ -99,9 +101,9 @@ class KubeAPITools:
         )
         # And finaly we can create our V1JobSpec!
         body.spec = kubernetes.client.V1JobSpec(
-            ttl_seconds_after_finished=ENV.K8S_TTL_SECONDS_AFTER_FINISHED,
+            ttl_seconds_after_finished=ttl_seconds_after_finished,
             template=template.template,
-            backoff_limit=ENV.K8S_BACKOFF_LIMIT,
+            backoff_limit=n_retries,
         )
         return body
 

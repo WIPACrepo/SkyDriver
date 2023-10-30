@@ -1,6 +1,7 @@
 """Collection of dataclass-based schema for the database."""
 
 import dataclasses as dc
+import enum
 import hashlib
 import json
 from typing import Any, Literal
@@ -10,6 +11,24 @@ from typeguard import typechecked
 from .. import config
 
 StrDict = dict[str, Any]
+
+
+class ScanState(enum.Enum):
+    """A non-persisted scan state."""
+
+    SCAN_FINISHED_SUCCESSFULLY = enum.auto()
+
+    STOPPED__PARTIAL_RESULT_GENERATED = enum.auto()
+    STOPPED__WAITING_ON_FIRST_PIXEL_RECO = enum.auto()
+    STOPPED__WAITING_ON_CLUSTER_STARTUP = enum.auto()
+    STOPPED__WAITING_ON_SCANNER_SERVER_STARTUP = enum.auto()
+    STOPPED__PRESTARTUP = enum.auto()
+
+    IN_PROGRESS__PARTIAL_RESULT_GENERATED = enum.auto()
+    IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO = enum.auto()
+    PENDING__WAITING_ON_CLUSTER_STARTUP = enum.auto()
+    PENDING__WAITING_ON_SCANNER_SERVER_STARTUP = enum.auto()
+    PENDING__PRESTARTUP = enum.auto()
 
 
 @typechecked
@@ -179,6 +198,8 @@ class Manifest(ScanIDDataclass):
     # signifies k8s workers and condor cluster(s) are done
     complete: bool = False
 
+    last_updated: float = 0.0
+
     def __post_init__(self) -> None:
         if self.event_i3live_json_dict:
             # shorten b/c this can be a LARGE dict
@@ -189,6 +210,32 @@ class Manifest(ScanIDDataclass):
                     ensure_ascii=True,
                 ).encode("utf-8")
             ).hexdigest()
+
+    def get_state(self) -> ScanState:
+        """Determine the state of the scan by parsing attributes."""
+        if self.complete and self.progress and self.progress.processing_stats.finished:
+            return ScanState.SCAN_FINISHED_SUCCESSFULLY
+
+        def get_nonfinished_state() -> ScanState:
+            if self.progress:  # from scanner server
+                if self.clusters:
+                    # NOTE - we only know if the workers have started up once the server has gotten pixels
+                    if self.progress.processing_stats.rate:
+                        return ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
+                    else:
+                        return ScanState.IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO
+                else:
+                    return ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP
+            else:
+                if self.clusters:
+                    return ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
+                else:
+                    return ScanState.PENDING__PRESTARTUP
+
+        if self.complete:
+            return ScanState[f"STOPPED__{get_nonfinished_state().name.split('__')[1]}"]
+        else:
+            return get_nonfinished_state()
 
     def __repr__(self) -> str:
         dicto = dc.asdict(self)

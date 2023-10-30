@@ -59,7 +59,7 @@ jobs:
           github.actor != 'dependabot[bot]' &&
           github.ref_type == 'branch'
         name: wipac-dev-py-setup-action (only for non-dependabot non-default branches)
-        uses: WIPACrepo/wipac-dev-py-setup-action@v2.7
+        uses: WIPACrepo/wipac-dev-py-setup-action@v2.8
         with:
           base-keywords: WIPAC IceCube
 

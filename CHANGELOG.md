@@ -2,6 +2,25 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.2 (2023-10-25)
+
+### Other
+
+* Fix Starter Abort-Check Bug ([#86](https://github.com/WIPACrepo/SkyDriver/issues/86)) ([`e9f195e`](https://github.com/WIPACrepo/SkyDriver/commit/e9f195ec41c929b6285f2df4aef08b7a7db8fb12))
+* <bot> update dependencies*.log files(s) ([`44ce1f0`](https://github.com/WIPACrepo/SkyDriver/commit/44ce1f08f4b05fc155b2c8a654b2bfe2940fc05d))
+* Missing parser.add_argument ([`d530013`](https://github.com/WIPACrepo/SkyDriver/commit/d53001379e77e684b15e8607aab86d83cf3a6bba))
+* Additional arguments for scan_one ([`2a0dc8a`](https://github.com/WIPACrepo/SkyDriver/commit/2a0dc8a9c125e7b205a389ea9a56c2ad894c94cd))
+
+## v0.6.1 (2023-10-23)
+
+### Other
+
+* Set `ttl_seconds_after_finished` to 1 Hour for Stoppers ([`f77e357`](https://github.com/WIPACrepo/SkyDriver/commit/f77e357814c5ec671f91bf278d2c3eba25b8e9b7))
+
+## v0.6.0 (2023-10-23)
+
+
+
 ## v0.5.16 (2023-10-17)
 
 ### Other
