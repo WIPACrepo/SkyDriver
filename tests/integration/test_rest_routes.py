@@ -736,7 +736,7 @@ async def test_00(
     assert not manifest["complete"]
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
-    await asyncio.sleep(test_wait_before_teardown)
+    await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
     assert manifest.pop("env_vars")  # remove to match with other requests
