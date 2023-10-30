@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.6 (2023-10-30)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`0dda5cc`](https://github.com/WIPACrepo/SkyDriver/commit/0dda5ccec403ef915f1b8f6cde8de80686dbc805))
+* Cluster-Watching Fix 3 ([`2f513f7`](https://github.com/WIPACrepo/SkyDriver/commit/2f513f712b12de36ff7a3c0afeef21beeecaa072))
+
 ## v0.6.5 (2023-10-30)
 
 ### Other
