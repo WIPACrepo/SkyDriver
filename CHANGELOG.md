@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.5 (2023-10-30)
+
+### Other
+
+* Misc Test Fix ([`a794d28`](https://github.com/WIPACrepo/SkyDriver/commit/a794d282c5c817d76993ad95016573b4d1da6adf))
+* Cluster-Watching Fix 2 ([`ce6f2a5`](https://github.com/WIPACrepo/SkyDriver/commit/ce6f2a565476f2705d07b2827cd2ab40bcf9df1e))
+
 ## v0.6.4 (2023-10-30)
 
 ### Other
