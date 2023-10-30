@@ -73,7 +73,6 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
                 starter_info=submit_dict,
             )
             LOGGER.info("Sent cluster info to SkyDriver")
-        case "watch":
             watcher.watch(
                 args.collector,
                 args.schedd,

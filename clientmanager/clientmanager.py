@@ -43,7 +43,6 @@ def main() -> None:
             help="the action to perform on the worker cluster",
         )
         ActionArgs.starter(act_subparsers.add_parser("start", help="start workers"))
-        ActionArgs.watcher(act_subparsers.add_parser("watch", help="watch workers"))
         ActionArgs.stopper(act_subparsers.add_parser("stop", help="stop workers"))
 
     # parse args & set up logging
@@ -185,15 +184,6 @@ class ActionArgs:
             "--image",
             required=True,
             help="a path or url to the workers' image",
-        )
-
-    @staticmethod
-    def watcher(sub_parser: argparse.ArgumentParser) -> None:
-        """Add args to subparser."""
-        sub_parser.add_argument(
-            "--cluster-id",
-            required=True,
-            help="the cluster id of the workers to be watched",
         )
 
     @staticmethod
