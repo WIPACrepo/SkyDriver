@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.3 (2023-10-30)
+
+### Other
+
+* Add Cluster-watching to Starter ([#88](https://github.com/WIPACrepo/SkyDriver/issues/88)) ([`46f6502`](https://github.com/WIPACrepo/SkyDriver/commit/46f6502f143bd39af9698934b5085486811f88c3))
+
 ## v0.6.2 (2023-10-25)
 
 ### Other
