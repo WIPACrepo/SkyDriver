@@ -18,8 +18,9 @@ def watch(
     LOGGER.info(
         f"Watching Skymap Scanner client workers on {cluster_id} / {collector} / {schedd}"
     )
+    start = time.time()
 
-    while True:
+    while time.time() - start < 60 * 60:  # only go for 1 hour -- TODO smarten
         # class ad
         ads = schedd_obj.query(
             f"ClusterId == {cluster_id}",
