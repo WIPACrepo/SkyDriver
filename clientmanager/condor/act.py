@@ -7,7 +7,7 @@ import htcondor  # type: ignore[import]
 
 from .. import utils
 from ..config import ENV, LOGGER
-from . import condor_tools, starter, stopper
+from . import condor_tools, starter, stopper, watcher
 
 
 def act(args: argparse.Namespace) -> None:
@@ -73,6 +73,12 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
                 starter_info=submit_dict,
             )
             LOGGER.info("Sent cluster info to SkyDriver")
+            watcher.watch(
+                args.collector,
+                args.schedd,
+                args.cluster_id,
+                schedd_obj,
+            )
         case "stop":
             stopper.stop(
                 args.collector,
