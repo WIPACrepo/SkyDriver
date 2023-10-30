@@ -76,7 +76,7 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
             watcher.watch(
                 args.collector,
                 args.schedd,
-                args.submit_result_obj.cluster(),
+                submit_result_obj.cluster(),
                 schedd_obj,
             )
         case "stop":
