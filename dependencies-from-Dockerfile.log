@@ -21,7 +21,7 @@ dnspython==2.4.2
 google-auth==2.23.3
 googleapis-common-protos==1.56.2
 grpcio==1.59.2
-htcondor==23.0.0
+htcondor==23.1.0
 humanfriendly==10.0
 idna==3.4
 importlib-metadata==6.8.0
@@ -91,7 +91,7 @@ skydriver-clientmanager
 ├── coloredlogs [required: Any, installed: 15.0.1]
 │   └── humanfriendly [required: >=9.1, installed: 10.0]
 ├── dacite [required: Any, installed: 1.8.1]
-├── htcondor [required: Any, installed: 23.0.0]
+├── htcondor [required: Any, installed: 23.1.0]
 ├── kubernetes [required: Any, installed: 28.1.0]
 │   ├── certifi [required: >=14.05.14, installed: 2023.7.22]
 │   ├── google-auth [required: >=1.0.1, installed: 2.23.3]
