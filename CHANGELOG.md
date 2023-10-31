@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.8 (2023-10-31)
+
+### Other
+
+* Cluster-Watching Fix 5 ([`b83de7d`](https://github.com/WIPACrepo/SkyDriver/commit/b83de7d0da21468d6e17da311da99701a1e41c37))
+
 ## v0.6.7 (2023-10-31)
 
 ### Other
