@@ -31,3 +31,19 @@ def get_job_classads(
     """Get list of (simulated) job ClassAds."""
     job_ads = submit_obj.workers(count=n_workers, clusterid=clusterid)
     return list(job_ads)
+
+
+STATUS_MAPPING = {
+    1: "Idle",
+    2: "Running",
+    3: "Removed",
+    4: "Completed",
+    5: "Held",
+    6: "Transferring Output",
+    7: "Suspended",
+}
+
+
+def job_status_to_str(status_code: int) -> str:
+    """Get the human-readable string for the job status int."""
+    return STATUS_MAPPING.get(status_code, f"Invalid status code: {status_code}")

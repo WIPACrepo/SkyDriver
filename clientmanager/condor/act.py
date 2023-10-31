@@ -78,6 +78,7 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
                 args.schedd,
                 submit_result_obj.cluster(),
                 schedd_obj,
+                submit_result_obj.num_procs(),
             )
         case "stop":
             stopper.stop(

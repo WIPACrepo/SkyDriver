@@ -2,10 +2,13 @@
 
 
 import time
+from pprint import pformat
+from typing import Any
 
 import htcondor  # type: ignore[import]
 
 from ..config import LOGGER
+from . import condor_tools
 
 
 def watch(
@@ -13,14 +16,37 @@ def watch(
     schedd: str,
     cluster_id: str,
     schedd_obj: htcondor.Schedd,
+    n_workers: int,
 ) -> None:
     """Main logic."""
     LOGGER.info(
         f"Watching Skymap Scanner client workers on {cluster_id} / {collector} / {schedd}"
     )
-    start = time.time()
 
-    while time.time() - start < 24 * 60 * 60:  # only go for 1 day -- TODO smarten
+    statuses: dict[int, str] = {i: "Unknown" for i in range(n_workers)}
+
+    def update_job_status(ad: Any) -> None:
+        try:
+            string = condor_tools.job_status_to_str(int(ad["JobStatus"]))
+        except Exception as e:
+            LOGGER.exception(e)
+            return
+        try:
+            statuses[int(ad["ProcId"])] = string
+        except Exception as e:
+            LOGGER.exception(e)
+            return
+
+    def counts() -> dict[str, int]:
+        cts = {}
+        for status in set(statuses.values()):
+            cts[status] = len([s for s in statuses.values() if s == status])
+        return cts
+
+    again = True
+    while again:
+        again = False
+
         # class ad
         LOGGER.info("getting query classads...")
         try:
@@ -28,11 +54,18 @@ def watch(
                 f"ClusterId == {cluster_id}",
                 # ["list", "of", "desired", "attributes"],
             )
+        except Exception as e:
+            LOGGER.exception(e)
+        else:
             for i, ad in enumerate(ads):
+                again = True  # we got data, so keep going
                 LOGGER.debug(f"class ad #{i}")
                 LOGGER.debug(ad)
-        except Exception as e:
-            LOGGER.debug(f"error -> {e}")
+                update_job_status(ad)
+
+        LOGGER.info(f"job statuses ({n_workers=})")
+        LOGGER.info(f"{pformat(statuses, indent=4)}")
+        LOGGER.info(f"{pformat(counts(), indent=4)}")
 
         # histories
         LOGGER.info("getting histories...")
@@ -41,11 +74,18 @@ def watch(
                 f"ClusterId == {cluster_id}",
                 [],  # ["list", "of", "desired", "attributes"],
             )
+        except Exception as e:
+            LOGGER.exception(e)
+        else:
             for i, history in enumerate(histories):
+                again = True  # we got data, so keep going
                 LOGGER.debug(f"history #{i}")
                 LOGGER.debug(history)
-        except Exception as e:
-            LOGGER.debug(f"error -> {e}")
+                update_job_status(history)
+
+        LOGGER.info(f"job statuses ({n_workers=})")
+        LOGGER.info(f"{pformat(statuses, indent=4)}")
+        LOGGER.info(f"{pformat(counts(), indent=4)}")
 
         # jobEpochHistory
         LOGGER.info("getting job epoch histories...")
@@ -54,11 +94,18 @@ def watch(
                 f"ClusterId == {cluster_id}",
                 [],  # ["list", "of", "desired", "attributes"],
             )
+        except Exception as e:
+            LOGGER.exception(e)
+        else:
             for i, history in enumerate(histories):
+                again = True  # we got data, so keep going
                 LOGGER.debug(f"jobEpochHistory #{i}")
                 LOGGER.debug(history)
-        except Exception as e:
-            LOGGER.debug(f"error -> {e}")
+                update_job_status(history)
+
+        LOGGER.info(f"job statuses ({n_workers=})")
+        LOGGER.info(f"{pformat(statuses, indent=4)}")
+        LOGGER.info(f"{pformat(counts(), indent=4)}")
 
         # wait
         time.sleep(60)
