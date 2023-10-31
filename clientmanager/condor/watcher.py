@@ -20,7 +20,7 @@ def watch(
     )
     start = time.time()
 
-    while time.time() - start < 60 * 60:  # only go for 1 hour -- TODO smarten
+    while time.time() - start < 24 * 60 * 60:  # only go for 1 day -- TODO smarten
         # class ad
         ads = schedd_obj.query(
             f"ClusterId == {cluster_id}",
