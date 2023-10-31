@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.9 (2023-10-31)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`7185334`](https://github.com/WIPACrepo/SkyDriver/commit/718533494d99042a9aa193110f29df661e31324c))
+* Cluster-Watching: add basic status aggregation and timely exit ([`934c671`](https://github.com/WIPACrepo/SkyDriver/commit/934c671e1fb4e00fb66ad07b1e51e253f3dea129))
+
 ## v0.6.8 (2023-10-31)
 
 ### Other
