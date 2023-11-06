@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.10 (2023-11-06)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`8b45eca`](https://github.com/WIPACrepo/SkyDriver/commit/8b45ecaac7f7d79857a3e14fe7f434b36300d97a))
+* Cluster-Watching: store chirps ([`26fe1e2`](https://github.com/WIPACrepo/SkyDriver/commit/26fe1e2d10ba3ff3796154f1024b09424614f66a))
+
 ## v0.6.9 (2023-10-31)
 
 ### Other
