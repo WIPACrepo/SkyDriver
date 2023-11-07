@@ -2,6 +2,8 @@
 
 
 import time
+import urllib
+from datetime import datetime as dt
 from pprint import pformat
 from typing import Any
 
@@ -30,11 +32,20 @@ def watch(
     def update_stored_job_attrs(ad: Any) -> None:
         if "ProcId" not in ad:
             return
+        procid = int(ad["ProcId"])
         for attr in ad:
             if attr.startswith("HTChirp"):
-                job_attrs[int(ad["ProcId"])][attr] = ad[attr]
+                if isinstance(ad[attr], str):
+                    val = urllib.parse.unquote(ad[attr])
+                else:
+                    val = ad[attr]
+                if attr.endswith("_Timestamp"):
+                    job_attrs[procid][attr] = str(dt.fromtimestamp(float(val)))
+                    # TODO use float if sending to skydriver
+                else:
+                    job_attrs[procid][attr] = val
         try:
-            job_attrs[int(ad["ProcId"])]["status"] = condor_tools.job_status_to_str(
+            job_attrs[procid]["status"] = condor_tools.job_status_to_str(
                 int(ad["JobStatus"])
             )
         except Exception as e:
