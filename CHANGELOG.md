@@ -2,6 +2,15 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.11 (2023-11-07)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`b9e4192`](https://github.com/WIPACrepo/SkyDriver/commit/b9e4192c72aa2c5740a35eb6a4721212f5416267))
+* Mypy ([`08202e5`](https://github.com/WIPACrepo/SkyDriver/commit/08202e51a5068872ebf5c15f014fc21e06fcc811))
+* Cluster-Watching: limit querying ([`b912ecb`](https://github.com/WIPACrepo/SkyDriver/commit/b912ecb158883a603627bb605467082b99e47da6))
+* Cluster-Watching: handle condor types ([`a7238dd`](https://github.com/WIPACrepo/SkyDriver/commit/a7238dde60ab2f329b24decbd162e22b6fd31e6c))
+
 ## v0.6.10 (2023-11-06)
 
 ### Other
