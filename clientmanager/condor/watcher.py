@@ -92,7 +92,7 @@ def watch(
     # TODO - be smarter about queries, subset attrs & keep track of finished jobs
     #        (note: can go running -> idle -> running)
 
-    projection = []
+    projection: list[str] = []
     start = time.time()
 
     while (
