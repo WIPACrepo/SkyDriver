@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.12 (2023-11-07)
+
+### Other
+
+* Cluster-Watching: limit querying further - 2 ([`751cca8`](https://github.com/WIPACrepo/SkyDriver/commit/751cca836e421a7a351d4e64ba1237d6dfc99139))
+* Cluster-Watching: limit querying further ([`a96eba4`](https://github.com/WIPACrepo/SkyDriver/commit/a96eba4a5dcd475afce42ac1d3ffbcc30388b4e4))
+
 ## v0.6.11 (2023-11-07)
 
 ### Other
