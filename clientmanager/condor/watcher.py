@@ -55,6 +55,8 @@ def iter_job_classads(
     ]:
         try:
             for classad in call(constraint, projection):
+                if "ProcId" not in classad:
+                    continue
                 LOGGER.info(f"looking at job {classad['ProcId']}")
                 LOGGER.debug(str(call))
                 LOGGER.debug(classad)
