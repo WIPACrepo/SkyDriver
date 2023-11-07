@@ -5,16 +5,12 @@ import time
 import urllib
 from datetime import datetime as dt
 from pprint import pformat
-from typing import Any
+from typing import Any, Iterator
 
 import htcondor  # type: ignore[import]
 
 from ..config import LOGGER
 from . import condor_tools
-
-
-class ClassAdNotFound(Exception):
-    """Raised when a class ad is not found."""
 
 
 def update_stored_job_attrs(
@@ -43,12 +39,15 @@ def update_stored_job_attrs(
         return
 
 
-def get_job_classad(
+def iter_job_classads(
     schedd_obj: htcondor.Schedd,
     constraint: str,
     projection: list[str],
-) -> htcondor.classad.ClassAd:
-    """Get the job class ad, trying various sources."""
+) -> Iterator[htcondor.classad.ClassAd]:
+    """Get the job class ads, trying various sources.
+
+    May not get all of them.
+    """
     for call in [
         schedd_obj.query,
         schedd_obj.history,
@@ -56,12 +55,12 @@ def get_job_classad(
     ]:
         try:
             for classad in call(constraint, projection):
+                LOGGER.info(f"looking at job {classad['ProcId']}")
                 LOGGER.debug(str(call))
                 LOGGER.debug(classad)
-                return classad
+                yield classad
         except Exception as e:
             LOGGER.exception(e)
-    raise ClassAdNotFound("could not find matching classad")
 
 
 def status_counts(job_attrs: dict[int, dict[str, str]]) -> dict[str, int]:
@@ -89,10 +88,7 @@ def watch(
         i: {"status": "Unknown"} for i in range(n_workers)
     }
 
-    # TODO - be smarter about queries, subset attrs & keep track of finished jobs
-    #        (note: can go running -> idle -> running)
-
-    projection: list[str] = []
+    projection: list[str] = []  # TODO
     start = time.time()
 
     while (
@@ -102,20 +98,13 @@ def watch(
         )
         and time.time() - start < 60 * 60 * 24  # TODO - be smarter
     ):
-        for job_id in job_attrs:
-            if job_attrs[job_id]["status"] == condor_tools.job_status_to_str(4):
-                continue
-            LOGGER.info(f"looking at job {job_id}")
-
-            try:
-                classad = get_job_classad(
-                    schedd_obj,
-                    f"ClusterId == {cluster_id} && ProcId == {job_id}",
-                    projection,
-                )
-            except ClassAdNotFound:
-                continue
-            update_stored_job_attrs(job_attrs, classad)
+        classads = iter_job_classads(
+            schedd_obj,
+            f"ClusterId == {cluster_id} && JobStatus =!= 4",
+            projection,
+        )
+        for ad in classads:
+            update_stored_job_attrs(job_attrs, ad)
 
         LOGGER.info(f"job statuses ({n_workers=})")
         LOGGER.info(f"{pformat(job_attrs, indent=4)}")
