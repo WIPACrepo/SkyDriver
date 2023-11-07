@@ -13,6 +13,66 @@ from ..config import LOGGER
 from . import condor_tools
 
 
+class ClassAdNotFound(Exception):
+    """Raised when a class ad is not found."""
+
+
+def update_stored_job_attrs(
+    job_attrs: dict[int, dict[str, str]],
+    classad: Any,
+) -> None:
+    """Update the job's classad attrs in `job_attrs`."""
+    procid = int(classad["ProcId"])
+    for attr in classad:
+        if attr.startswith("HTChirp"):
+            if isinstance(classad[attr], str):
+                val = urllib.parse.unquote(classad[attr])
+            else:
+                val = classad[attr]
+            if attr.endswith("_Timestamp"):
+                job_attrs[procid][attr] = str(dt.fromtimestamp(float(val)))
+                # TODO use float if sending to skydriver
+            else:
+                job_attrs[procid][attr] = val
+    try:
+        job_attrs[procid]["status"] = condor_tools.job_status_to_str(
+            int(classad["JobStatus"])
+        )
+    except Exception as e:
+        LOGGER.exception(e)
+        return
+
+
+def get_job_classad(
+    schedd_obj: htcondor.Schedd,
+    constraint: str,
+    projection: list[str],
+) -> htcondor.classad.ClassAd:
+    """Get the job class ad, trying various sources."""
+    for call in [
+        schedd_obj.query,
+        schedd_obj.history,
+        schedd_obj.jobEpochHistory,
+    ]:
+        try:
+            for classad in call(constraint, projection):
+                LOGGER.debug(str(call))
+                LOGGER.debug(classad)
+                return classad
+        except Exception as e:
+            LOGGER.exception(e)
+    raise ClassAdNotFound("could not find matching classad")
+
+
+def status_counts(job_attrs: dict[int, dict[str, str]]) -> dict[str, int]:
+    """Aggregate statuses of jobs."""
+    cts = {}
+    statuses = [a["status"] for a in job_attrs.values()]
+    for status in set(statuses):
+        cts[status] = len([s for s in statuses if s == status])
+    return cts
+
+
 def watch(
     collector: str,
     schedd: str,
@@ -29,97 +89,38 @@ def watch(
         i: {"status": "Unknown"} for i in range(n_workers)
     }
 
-    def update_stored_job_attrs(ad: Any) -> None:
-        if "ProcId" not in ad:
-            return
-        procid = int(ad["ProcId"])
-        for attr in ad:
-            if attr.startswith("HTChirp"):
-                if isinstance(ad[attr], str):
-                    val = urllib.parse.unquote(ad[attr])
-                else:
-                    val = ad[attr]
-                if attr.endswith("_Timestamp"):
-                    job_attrs[procid][attr] = str(dt.fromtimestamp(float(val)))
-                    # TODO use float if sending to skydriver
-                else:
-                    job_attrs[procid][attr] = val
-        try:
-            job_attrs[procid]["status"] = condor_tools.job_status_to_str(
-                int(ad["JobStatus"])
-            )
-        except Exception as e:
-            LOGGER.exception(e)
-            return
+    # TODO - be smarter about queries, subset attrs & keep track of finished jobs
+    #        (note: can go running -> idle -> running)
 
-    def status_counts() -> dict[str, int]:
-        cts = {}
-        statuses = [a["status"] for a in job_attrs.values()]
-        for status in set(statuses):
-            cts[status] = len([s for s in statuses if s == status])
-        return cts
+    projection = []
+    start = time.time()
 
-    again = True
-    while again:
-        again = False
+    while (
+        not all(
+            job_attrs[j]["status"] == condor_tools.job_status_to_str(4)
+            for j in job_attrs
+        )
+        and time.time() - start < 60 * 60 * 24  # TODO - be smarter
+    ):
+        for job_id in job_attrs:
+            if job_attrs[job_id]["status"] == condor_tools.job_status_to_str(4):
+                continue
+            LOGGER.info(f"looking at job {job_id}")
 
-        # class ad
-        LOGGER.info("getting query classads...")
-        try:
-            ads = schedd_obj.query(
-                f"ClusterId == {cluster_id}",
-                # ["list", "of", "desired", "attributes"],
-            )
-            for i, ad in enumerate(ads):
-                again = True  # we got data, so keep going
-                LOGGER.debug(f"class ad #{i}")
-                LOGGER.debug(ad)
-                update_stored_job_attrs(ad)
-        except Exception as e:
-            LOGGER.exception(e)
+            try:
+                classad = get_job_classad(
+                    schedd_obj,
+                    f"ClusterId == {cluster_id} && ProcId == {job_id}",
+                    projection,
+                )
+            except ClassAdNotFound:
+                continue
+            update_stored_job_attrs(job_attrs, classad)
 
         LOGGER.info(f"job statuses ({n_workers=})")
         LOGGER.info(f"{pformat(job_attrs, indent=4)}")
-        LOGGER.info(f"{pformat(status_counts(), indent=4)}")
-
-        # histories
-        LOGGER.info("getting histories...")
-        try:
-            histories = schedd_obj.history(
-                f"ClusterId == {cluster_id}",
-                [],  # ["list", "of", "desired", "attributes"],
-            )
-            for i, history in enumerate(histories):
-                again = True  # we got data, so keep going
-                LOGGER.debug(f"history #{i}")
-                LOGGER.debug(history)
-                update_stored_job_attrs(history)
-        except Exception as e:
-            LOGGER.exception(e)
-
-        LOGGER.info(f"job statuses ({n_workers=})")
-        LOGGER.info(f"{pformat(job_attrs, indent=4)}")
-        LOGGER.info(f"{pformat(status_counts(), indent=4)}")
-
-        # jobEpochHistory
-        LOGGER.info("getting job epoch histories...")
-        try:
-            histories = schedd_obj.jobEpochHistory(
-                f"ClusterId == {cluster_id}",
-                [],  # ["list", "of", "desired", "attributes"],
-            )
-            for i, history in enumerate(histories):
-                again = True  # we got data, so keep going
-                LOGGER.debug(f"jobEpochHistory #{i}")
-                LOGGER.debug(history)
-                update_stored_job_attrs(history)
-        except Exception as e:
-            LOGGER.exception(e)
-
-        LOGGER.info(f"job statuses ({n_workers=})")
-        LOGGER.info(f"{pformat(job_attrs, indent=4)}")
-        LOGGER.info(f"{pformat(status_counts(), indent=4)}")
+        LOGGER.info(f"{pformat(status_counts(job_attrs), indent=4)}")
 
         # wait
         time.sleep(60)
-        LOGGER.info("requesting again...")
+        LOGGER.info("checking jobs again...")
