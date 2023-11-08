@@ -26,6 +26,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     # condor args
     memory: str,
     n_cores: int,
+    execution_time_limit: int,
     # skymap scanner args
     image: str,
     client_startup_json_s3: S3File,
@@ -73,6 +74,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         "request_cpus": str(n_cores),
         "request_memory": memory,
         "+WantIOProxy": "true",  # for HTChirp
+        "+OriginalTime": execution_time_limit,  # Execution time limit -- 1 hour default on OSG
     }
 
     # outputs
@@ -110,6 +112,7 @@ def prep(
     # starter CL args -- worker
     memory: str,
     n_cores: int,
+    execution_time_limit: int,
     # starter CL args -- client
     client_args: list[tuple[str, str]],
     client_startup_json_s3: S3File,
@@ -143,6 +146,7 @@ def prep(
         # condor args
         memory,
         n_cores,
+        execution_time_limit,
         # skymap scanner args
         image,
         client_startup_json_s3,

@@ -41,6 +41,7 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
                 # starter CL args -- worker
                 memory=args.memory,
                 n_cores=args.n_cores,
+                execution_time_limit=args.execution_time_limit,
                 # starter CL args -- client
                 client_args=args.client_args,
                 client_startup_json_s3=utils.s3ify(args.client_startup_json),
