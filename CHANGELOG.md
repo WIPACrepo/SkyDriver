@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.14 (2023-11-08)
+
+### Other
+
+* Cluster-Watching: use `htcondor.classad.unquote()` - 2 ([`e0b812e`](https://github.com/WIPACrepo/SkyDriver/commit/e0b812e6bbe083b899b2cb6df4e274ab83dd98f2))
+
 ## v0.6.13 (2023-11-08)
 
 ### Other
