@@ -9,7 +9,7 @@ from typing import Any, Iterator
 import htcondor  # type: ignore[import]
 
 from ..config import LOGGER
-from . import condor_tools
+from .condor_tools import job_status_to_str
 
 
 def update_stored_job_attrs(
@@ -32,9 +32,7 @@ def update_stored_job_attrs(
             else:
                 job_attrs[procid][attr] = val
     try:
-        job_attrs[procid]["status"] = condor_tools.job_status_to_str(
-            int(classad["JobStatus"])
-        )
+        job_attrs[procid]["status"] = job_status_to_str(int(classad["JobStatus"]))
     except Exception as e:
         LOGGER.exception(e)
 
@@ -94,18 +92,17 @@ def watch(
     start = time.time()
 
     while (
-        not all(
-            job_attrs[j]["status"] == condor_tools.job_status_to_str(4)
-            for j in job_attrs
-        )
+        not all(job_attrs[j]["status"] == job_status_to_str(4) for j in job_attrs)
         and time.time() - start < 60 * 60 * 24  # TODO - be smarter
     ):
         classads = iter_job_classads(
             schedd_obj,
-            f"ClusterId == {cluster_id} && JobStatus =!= 4",
+            f"ClusterId == {cluster_id}",
             projection,
         )
         for ad, source in classads:
+            if job_attrs[int(ad["ProcId"])]["status"] == job_status_to_str(4):
+                continue  # no need to update completed jobs
             update_stored_job_attrs(job_attrs, ad, source)
 
         LOGGER.info(f"job statuses ({n_workers=})")
