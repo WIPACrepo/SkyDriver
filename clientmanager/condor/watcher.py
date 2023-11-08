@@ -63,7 +63,7 @@ def iter_job_classads(
                 LOGGER.info(f"looking at job {classad['ProcId']}")
                 LOGGER.debug(str(call))
                 LOGGER.debug(classad)
-                yield classad, str(call)
+                yield classad, call.__name__
         except Exception as e:
             LOGGER.exception(e)
 
