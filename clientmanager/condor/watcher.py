@@ -15,9 +15,11 @@ from . import condor_tools
 def update_stored_job_attrs(
     job_attrs: dict[int, dict[str, str]],
     classad: Any,
+    source: str,
 ) -> None:
     """Update the job's classad attrs in `job_attrs`."""
     procid = int(classad["ProcId"])
+    job_attrs[procid]["source"] = source
     for attr in classad:
         if attr.startswith("HTChirp"):
             if isinstance(classad[attr], str):
@@ -35,14 +37,13 @@ def update_stored_job_attrs(
         )
     except Exception as e:
         LOGGER.exception(e)
-        return
 
 
 def iter_job_classads(
     schedd_obj: htcondor.Schedd,
     constraint: str,
     projection: list[str],
-) -> Iterator[htcondor.classad.ClassAd]:
+) -> Iterator[tuple[htcondor.classad.ClassAd, str]]:
     """Get the job class ads, trying various sources.
 
     May not get all of them.
@@ -59,7 +60,7 @@ def iter_job_classads(
                 LOGGER.info(f"looking at job {classad['ProcId']}")
                 LOGGER.debug(str(call))
                 LOGGER.debug(classad)
-                yield classad
+                yield classad, str(call)
         except Exception as e:
             LOGGER.exception(e)
 
@@ -104,8 +105,8 @@ def watch(
             f"ClusterId == {cluster_id} && JobStatus =!= 4",
             projection,
         )
-        for ad in classads:
-            update_stored_job_attrs(job_attrs, ad)
+        for ad, source in classads:
+            update_stored_job_attrs(job_attrs, ad, source)
 
         LOGGER.info(f"job statuses ({n_workers=})")
         LOGGER.info(f"{pformat(job_attrs, indent=4)}")
