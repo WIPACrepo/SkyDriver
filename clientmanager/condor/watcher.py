@@ -23,7 +23,12 @@ def update_stored_job_attrs(
     for attr in classad:
         if attr.startswith("HTChirp"):
             if isinstance(classad[attr], str):
-                val = htcondor.classad.unquote(classad[attr])
+                try:
+                    val = htcondor.classad.unquote(classad[attr])
+                except Exception as e:
+                    LOGGER.error(f"could not unquote: {classad[attr]}")
+                    LOGGER.exception(e)
+                    val = classad[attr]
             else:
                 val = classad[attr]
             if attr.endswith("_Timestamp"):
