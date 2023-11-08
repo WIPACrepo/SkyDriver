@@ -2,7 +2,6 @@
 
 
 import time
-import urllib
 from datetime import datetime as dt
 from pprint import pformat
 from typing import Any, Iterator
@@ -22,7 +21,7 @@ def update_stored_job_attrs(
     for attr in classad:
         if attr.startswith("HTChirp"):
             if isinstance(classad[attr], str):
-                val = urllib.parse.unquote(classad[attr])
+                val = htcondor.classad.unquote(classad[attr])
             else:
                 val = classad[attr]
             if attr.endswith("_Timestamp"):
