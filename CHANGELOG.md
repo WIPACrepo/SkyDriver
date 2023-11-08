@@ -2,6 +2,15 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.13 (2023-11-08)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`a608f55`](https://github.com/WIPACrepo/SkyDriver/commit/a608f551d5efa5dd6ed00a64b188d25df7d952b4))
+* Cluster-Watching: filter completed jobs post-hoc ([`707247c`](https://github.com/WIPACrepo/SkyDriver/commit/707247c2b3919cb0f59f58448a2ba7748ee09a84))
+* Cluster-Watching: record source ([`cfdbcc9`](https://github.com/WIPACrepo/SkyDriver/commit/cfdbcc9ea45d4952b0e7533b765696ac778a253f))
+* Cluster-Watching: use `htcondor.classad.unquote()` ([`a595dde`](https://github.com/WIPACrepo/SkyDriver/commit/a595dde7362cc2e4ac752ed33d1c4f57890af1ac))
+
 ## v0.6.12 (2023-11-07)
 
 ### Other
