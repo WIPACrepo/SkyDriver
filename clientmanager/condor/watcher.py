@@ -102,7 +102,7 @@ def watch(
     ):
         classads = iter_job_classads(
             schedd_obj,
-            f"ClusterId == {cluster_id}",
+            f"ClusterId == {cluster_id} && LastJobStatus =!= 4",  # includes newly completed
             projection,
         )
         for ad, source in classads:
