@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.16 (2023-11-08)
+
+### Other
+
+* Cluster-Watching: record source - 2 ([`ed75709`](https://github.com/WIPACrepo/SkyDriver/commit/ed7570938d3416750d1f8049c1a6f2303f06cf57))
+
 ## v0.6.15 (2023-11-08)
 
 ### Other
