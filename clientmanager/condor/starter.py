@@ -91,9 +91,9 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
             {
                 "transfer_output_files": ",".join(
                     [
-                        submit_dict["output"],
-                        submit_dict["error"],
-                        submit_dict["log"],
+                        submit_dict["output"],  # type: ignore[list-item]
+                        submit_dict["error"],  # type: ignore[list-item]
+                        submit_dict["log"],  # type: ignore[list-item]
                     ]
                 ),
                 "when_to_transfer_output": "ON_EXIT_OR_EVICT",
