@@ -11,6 +11,23 @@ import htcondor  # type: ignore[import]
 from ..config import LOGGER, WATCHER_INTERVAL
 from . import condor_tools as ct
 
+PROJECTION = [
+    "ClusterId",
+    "JobStatus",
+    "EnteredCurrentStatus",
+    "ProcId",
+    "HTChirpEWMSPilotStarted",
+    "HTChirpEWMSPilotStatus",
+    "HTChirpEWMSPilotTasksTotal",
+    "HTChirpEWMSPilotTasksFailed",
+    "HTChirpEWMSPilotTasksSuccess",
+    "HTChirpEWMSPilotError",
+    "HTChirpEWMSPilotErrorTraceback",
+]
+for attr in list(PROJECTION):
+    if attr.startswith("HTChirp"):
+        PROJECTION.append(attr + "_Timestamp")
+
 
 def update_stored_job_attrs(
     job_attrs: dict[int, dict[str, Any]],
@@ -93,7 +110,6 @@ def watch(
         i: {"status": "Unknown"} for i in range(n_workers)
     }
 
-    projection: list[str] = []  # TODO
     start = time.time()
 
     while (
@@ -107,7 +123,7 @@ def watch(
                 # only care about "older" status jobs if they are running
                 f"( JobStatus == {ct.RUNNING} || EnteredCurrentStatus >= {int(time.time()) - WATCHER_INTERVAL*5} )"
             ),
-            projection,
+            PROJECTION,
         )
         for ad, source in classads:
             update_stored_job_attrs(job_attrs, ad, source)
