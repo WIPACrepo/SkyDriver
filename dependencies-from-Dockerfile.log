@@ -72,7 +72,7 @@ cryptography==41.0.5
 └── cffi [required: >=1.12, installed: 1.16.0]
     └── pycparser [required: Any, installed: 2.21]
 pip==23.2.1
-pipdeptree==2.13.0
+pipdeptree==2.13.1
 setuptools==65.5.1
 skydriver-clientmanager
 ├── boto3 [required: Any, installed: 1.28.82]
