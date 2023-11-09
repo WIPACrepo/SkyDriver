@@ -2,6 +2,15 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.17 (2023-11-09)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`dbf120c`](https://github.com/WIPACrepo/SkyDriver/commit/dbf120c20fc3756dd8e44c6d429cbdb7d3141fad))
+* Mypy Fix ([`2ba43a8`](https://github.com/WIPACrepo/SkyDriver/commit/2ba43a813101b6c7c1ccd83dc772bd311009908e))
+* Condor: Set `+OriginalTime` (4 hours) ([`95de516`](https://github.com/WIPACrepo/SkyDriver/commit/95de5169aa86ada9ff51dd3009e074ec27b6d7c5))
+* Cluster-Watching: ignore already-completed jobs ([`0b47442`](https://github.com/WIPACrepo/SkyDriver/commit/0b47442673875359bb4787cabb23106b9277c50f))
+
 ## v0.6.16 (2023-11-08)
 
 ### Other
