@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.18 (2023-11-09)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`8dcb032`](https://github.com/WIPACrepo/SkyDriver/commit/8dcb03270e7028878319d3eaec454eea8e99445f))
+* Cluster-Watching: use projection ([`d19cd67`](https://github.com/WIPACrepo/SkyDriver/commit/d19cd67e509a49535e5eac082686f7786d9b54ed))
+* Cluster-Watching: only query newly updated jobs ([`bd0d5c4`](https://github.com/WIPACrepo/SkyDriver/commit/bd0d5c445eae090e60c53b67853d17ab18da35a7))
+
 ## v0.6.17 (2023-11-09)
 
 ### Other
