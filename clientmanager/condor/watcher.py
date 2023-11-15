@@ -16,17 +16,24 @@ PROJECTION = [
     "JobStatus",
     "EnteredCurrentStatus",
     "ProcId",
-    "HTChirpEWMSPilotStarted",
+    #
+    "HTChirpEWMSPilotLastUpdatedTimestamp",
+    "HTChirpEWMSPilotStartedTimestamp",
     "HTChirpEWMSPilotStatus",
+    #
     "HTChirpEWMSPilotTasksTotal",
     "HTChirpEWMSPilotTasksFailed",
     "HTChirpEWMSPilotTasksSuccess",
+    #
     "HTChirpEWMSPilotError",
     "HTChirpEWMSPilotErrorTraceback",
 ]
-for attr in list(PROJECTION):
-    if attr.startswith("HTChirp"):
-        PROJECTION.append(attr + "_Timestamp")
+
+
+DONE_JOB_STATUSES = [
+    ct.job_status_to_str(ct.REMOVED),
+    ct.job_status_to_str(ct.COMPLETED),
+]
 
 
 def update_stored_job_attrs(
@@ -48,13 +55,13 @@ def update_stored_job_attrs(
                     val = classad[attr]
             else:
                 val = classad[attr]
-            if attr.endswith("_Timestamp"):
+            if attr.endswith("Timestamp"):
                 job_attrs[procid][attr] = str(dt.fromtimestamp(float(val)))
                 # TODO use float if sending to skydriver
             else:
                 job_attrs[procid][attr] = val
     try:
-        job_attrs[procid]["status"] = int(classad["JobStatus"])
+        job_attrs[procid]["JobStatus"] = ct.job_status_to_str(int(classad["JobStatus"]))
     except Exception as e:
         LOGGER.exception(e)
 
@@ -85,13 +92,25 @@ def iter_job_classads(
             LOGGER.exception(e)
 
 
-def human_readable_summay(job_attrs: dict[int, dict[str, Any]]) -> dict[str, int]:
+def aggregate_statuses(
+    job_attrs: dict[int, dict[str, Any]]
+) -> dict[str, dict[str, int]]:
     """Aggregate statuses of jobs."""
-    cts = {}
-    statuses = [a["status"] for a in job_attrs.values()]
-    for status in set(statuses):
-        cts[ct.job_status_to_str(status)] = len([s for s in statuses if s == status])
-    return cts
+
+    def counts(key: str) -> dict[str, int]:
+        all_statuses = [a[key] for a in job_attrs.values()]
+        return {
+            status: len([s for s in all_statuses if s == status])
+            for status in set(all_statuses)
+        }
+
+    return {
+        k: counts(k)
+        for k in [
+            "JobStatus",
+            "HTChirpEWMSPilotStatus",
+        ]
+    }
 
 
 def watch(
@@ -107,13 +126,17 @@ def watch(
     )
 
     job_attrs: dict[int, dict[str, Any]] = {
-        i: {"status": "Unknown"} for i in range(n_workers)
+        i: {
+            "JobStatus": None,
+            "HTChirpEWMSPilotStatus": None,
+        }
+        for i in range(n_workers)
     }
 
     start = time.time()
 
     while (
-        not all(job_attrs[j]["status"] in (ct.REMOVED, ct.COMPLETED) for j in job_attrs)
+        not all(job_attrs[j]["JobStatus"] in DONE_JOB_STATUSES for j in job_attrs)
         and time.time() - start < 60 * 60 * 24  # TODO - be smarter
     ):
         classads = iter_job_classads(
@@ -130,7 +153,7 @@ def watch(
 
         LOGGER.info(f"job statuses ({n_workers=})")
         LOGGER.info(f"{pformat(job_attrs, indent=4)}")
-        LOGGER.info(f"{pformat(human_readable_summay(job_attrs), indent=4)}")
+        LOGGER.info(f"{pformat(aggregate_statuses(job_attrs), indent=4)}")
 
         # wait
         time.sleep(WATCHER_INTERVAL)
