@@ -5,7 +5,7 @@ import asyncio
 import dataclasses as dc
 import json
 import uuid
-from typing import Any, Type, TypeVar, cast
+from typing import Any, Type, TypeVar
 
 import kubernetes.client  # type: ignore[import]
 from dacite import from_dict
@@ -338,7 +338,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "event_i3live_json",
             type=_json_to_dict,  # JSON-string/JSON-friendly dict -> dict
         )
-        nsides = self.get_argument(
+        nsides: dict[int, int] = self.get_argument(
             "nsides",
             type=dict,
             strict_type=True,
@@ -409,7 +409,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # server
             scanner_server_memory=scanner_server_memory,
             reco_algo=reco_algo,
-            nsides=nsides,  # type: ignore[arg-type]
+            nsides=nsides,
             is_real_event=real_or_simulated_event in REAL_CHOICES,
             predictive_scanning_threshold=predictive_scanning_threshold,
             # clientmanager
@@ -708,8 +708,10 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's result."""
-        skyscan_result = self.get_argument(
-            "skyscan_result", type=dict, strict_type=True
+        skyscan_result: dict[str, Any] = self.get_argument(
+            "skyscan_result",
+            type=dict,
+            strict_type=True,
         )
         is_final = self.get_argument("is_final", type=bool)
 
@@ -719,7 +721,7 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         result_dc = await self.results.put(
             scan_id,
-            cast(dict[str, Any], skyscan_result),
+            skyscan_result,
             is_final,
         )
         self.write(dc.asdict(result_dc))
