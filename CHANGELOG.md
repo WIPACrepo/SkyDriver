@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.20 (2023-11-16)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`2980045`](https://github.com/WIPACrepo/SkyDriver/commit/2980045aa51199a44f2812633fdfdfdef0165367))
+* Cluster-Watching: stop watching once we consistently get no response ([`5a50bfd`](https://github.com/WIPACrepo/SkyDriver/commit/5a50bfd03eeac3d4de0e544f82fa76ba94cbede8))
+
 ## v0.6.19 (2023-11-16)
 
 ### Other
