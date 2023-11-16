@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v0.6.19 (2023-11-16)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`f7936f6`](https://github.com/WIPACrepo/SkyDriver/commit/f7936f636d24f2f8de14e941fabb7c1efe685ead))
+* Use `WIPACrepo/wipac-dev-py-setup-action@v2.9` ([`950ec18`](https://github.com/WIPACrepo/SkyDriver/commit/950ec186fc32b4983b1ae3fe130af57383bad78a))
+* Mypy - 2 ([`6238014`](https://github.com/WIPACrepo/SkyDriver/commit/623801411ac5354ef9d084f25f9b42d4f62be980))
+* Mypy ([`0d05891`](https://github.com/WIPACrepo/SkyDriver/commit/0d058914a034911d1ebb8162b0cf84211b5b0eda))
+* Cluster-Watching: updates for new ewms-pilot chirp attrs ([`48e3693`](https://github.com/WIPACrepo/SkyDriver/commit/48e3693f061cda4341373bcaa44043fd1b9add1d))
+
 ## v0.6.18 (2023-11-09)
 
 ### Other
