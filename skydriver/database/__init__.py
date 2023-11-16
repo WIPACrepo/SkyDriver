@@ -19,5 +19,5 @@ async def create_mongodb_client() -> AsyncIOMotorClient:  # type: ignore[valid-t
     else:
         url = f"mongodb://{ENV.MONGODB_HOST}:{ENV.MONGODB_PORT}"
 
-    mongo_client = AsyncIOMotorClient(url)
+    mongo_client = AsyncIOMotorClient(url)  # type: ignore[var-annotated]
     return mongo_client
