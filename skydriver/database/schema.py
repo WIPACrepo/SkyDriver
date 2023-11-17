@@ -139,7 +139,10 @@ class Cluster:
     orchestrator: Literal["condor", "k8s"]
     location: HTCondorLocation | KubernetesLocation
     n_workers: int
-    cluster_id: str = ""  # "" is a non-started cluster
+
+    uuid: str = ""  # "" is a non-started cluster -- universally unique
+    cluster_id: str = ""  # "" is a non-started cluster -- quasi-unique to location
+
     starter_info: StrDict = dc.field(default_factory=dict)
 
     statuses: StrDict = dc.field(default_factory=dict)
