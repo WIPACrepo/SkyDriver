@@ -7,7 +7,9 @@ from pprint import pformat
 from typing import Any, Iterator
 
 import htcondor  # type: ignore[import]
+from rest_tools.client import RestClient
 
+from .. import utils
 from ..config import LOGGER, WATCHER_INTERVAL
 from . import condor_tools as ct
 
@@ -120,7 +122,9 @@ def watch(
     cluster_id: str,
     schedd_obj: htcondor.Schedd,
     n_workers: int,
-    cluster_uuid: str,
+    #
+    skydriver_rc: RestClient,
+    skydriver_cluster_obj: dict[str, Any],
 ) -> None:
     """Main logic."""
     LOGGER.info(
@@ -169,9 +173,15 @@ def watch(
             non_response_ct = 0
             update_stored_job_attrs(job_attrs, ad, source)
 
+        aggregate = aggregate_statuses(job_attrs)
+
         LOGGER.info(f"job statuses ({n_workers=})")
         LOGGER.info(f"{pformat(job_attrs, indent=4)}")
-        LOGGER.info(f"{pformat(aggregate_statuses(job_attrs), indent=4)}")
+        LOGGER.info(f"{pformat(aggregate, indent=4)}")
+
+        # send updates
+        skydriver_cluster_obj.update({"statuses": aggregate})
+        utils.update_skydriver(skydriver_rc, **skydriver_cluster_obj)
 
         # wait
         time.sleep(WATCHER_INTERVAL)
