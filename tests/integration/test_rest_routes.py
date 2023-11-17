@@ -9,6 +9,7 @@ import os
 import random
 import re
 import time
+import uuid
 from typing import Any, Callable
 
 import pytest
@@ -407,7 +408,7 @@ async def _clientmanager_reply(
         n_workers=cluster_name__n_workers[1],
         starter_info={},
         statuses={},
-        uuid="",
+        uuid=str(uuid.uuid4().hex),
     )
 
     manifest = await _do_patch(
