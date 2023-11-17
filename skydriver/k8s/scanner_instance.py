@@ -187,7 +187,7 @@ class SkymapScannerJob:
         This also includes any client args not added by the
         clientmanager.
         """
-        args = f"python -m clientmanager --uuid {str(uuid.uuid4())}"
+        args = f"python -m clientmanager --uuid {str(uuid.uuid4().hex)}"
 
         match request_cluster.orchestrator:
             case "condor":
