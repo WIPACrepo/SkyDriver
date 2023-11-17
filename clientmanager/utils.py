@@ -46,7 +46,7 @@ def update_skydriver(
     n_workers: int,
     starter_info: dict[str, Any],
     #
-    statuses: dict | None = None,
+    statuses: dict[str, dict[str, int]] | None = None,
 ) -> None:
     """Send SkyDriver updates from the `submit_result`."""
     skydriver_cluster_obj = {

@@ -180,8 +180,11 @@ def watch(
         LOGGER.info(f"{pformat(aggregate, indent=4)}")
 
         # send updates
-        skydriver_cluster_obj.update({"statuses": aggregate})
-        utils.update_skydriver(skydriver_rc, **skydriver_cluster_obj)
+        utils.update_skydriver(
+            skydriver_rc,
+            **skydriver_cluster_obj,
+            statuses=aggregate,
+        )
 
         # wait
         time.sleep(WATCHER_INTERVAL)
