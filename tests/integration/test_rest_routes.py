@@ -26,6 +26,8 @@ StrDict = dict[str, Any]
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 
+CLUSTER_ID_PLACEHOLDER = "CLUSTER_ID_PLACEHOLDER"
+
 CLASSIFIERS = {
     "foo": 1,
     "bar bat": True,
@@ -104,10 +106,10 @@ async def _launch_scan(
 
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
-    # fmt: off
-    # order of tms args doesn't matter here
-    assert sorted(a.split() for a in resp["tms_args"]) == sorted(a.split() for a in tms_args)
-    # fmt: on
+    for got, exp in zip(resp["tms_args"].split(), tms_args):
+        print(got, exp)
+        if exp != CLUSTER_ID_PLACEHOLDER:
+            assert got == exp
 
     # check env vars
     print(resp["env_vars"])
@@ -617,6 +619,7 @@ def get_tms_args(
         )
         tms_args += [
             f"python -m clientmanager "
+            f" --uuid {CLUSTER_ID_PLACEHOLDER} "
             f" {orchestrator} "
             f" {' '.join(f'--{k} {v}' for k,v in location.items())} "
             f" start "

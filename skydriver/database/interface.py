@@ -148,6 +148,7 @@ class ManifestClient:
 
         # cluster / clusters
         # TODO - when TMS is up and running, it will handle cluster updating--remove then
+        # NOTE - there is a race condition inherent with list attributes, don't do this in TMS
         if not cluster:
             pass  # don't put in DB
         else:
