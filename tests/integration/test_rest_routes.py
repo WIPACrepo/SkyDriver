@@ -115,8 +115,8 @@ async def _launch_scan(
         [a.split() for a in tms_args],
     ):
         print(got, exp)
-        if exp == CLUSTER_ID_PLACEHOLDER:
-            assert RE_UUID4HEX.fullmatch(got)
+        if exp == ["--uuid", CLUSTER_ID_PLACEHOLDER]:
+            assert RE_UUID4HEX.fullmatch(got[1])
         else:
             assert got == exp
     assert len(resp["tms_args"]) == len(tms_args)
