@@ -69,6 +69,7 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
                     "collector": args.collector,
                     "schedd": args.schedd,
                 },
+                uuid=args.cluster_uuid,
                 cluster_id=submit_result_obj.cluster(),
                 n_workers=submit_result_obj.num_procs(),
                 starter_info=submit_dict,
@@ -80,6 +81,7 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
                 submit_result_obj.cluster(),
                 schedd_obj,
                 submit_result_obj.num_procs(),
+                args.cluster_uuid,
             )
         case "stop":
             stopper.stop(

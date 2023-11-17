@@ -18,6 +18,12 @@ def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
+    parser.add_argument(
+        "--uuid",
+        required=True,
+        help="the uuid for the cluster",
+    )
+
     # orchestrator
     orch_subparsers = parser.add_subparsers(
         required=True,

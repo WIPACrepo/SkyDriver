@@ -120,6 +120,7 @@ def watch(
     cluster_id: str,
     schedd_obj: htcondor.Schedd,
     n_workers: int,
+    cluster_uuid: str,
 ) -> None:
     """Main logic."""
     LOGGER.info(

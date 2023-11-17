@@ -41,6 +41,7 @@ def update_skydriver(
     skydriver_rc: RestClient,
     orchestrator: str,
     location: dict[str, str],
+    uuid: str,
     cluster_id: str | int,
     n_workers: int,
     starter_info: dict[str, Any],
@@ -53,6 +54,7 @@ def update_skydriver(
             "cluster": {
                 "orchestrator": orchestrator,
                 "location": location,
+                "uuid": uuid,
                 "cluster_id": str(cluster_id),
                 "n_workers": n_workers,
                 "starter_info": starter_info,
