@@ -118,7 +118,7 @@ async def _launch_scan(
                 assert RE_UUID4HEX.fullmatch(got)
             else:
                 assert got == exp
-        assert len(got_args) == len(exp_args)
+        assert len(got_args.split()) == len(exp_args.split())
     assert len(resp["tms_args"]) == len(tms_args)
 
     # check env vars
