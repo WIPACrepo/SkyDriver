@@ -110,12 +110,13 @@ async def _launch_scan(
 
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
-    for got, exp in zip(resp["tms_args"].split(), tms_args):
+    for got, exp in zip(resp["tms_args"], tms_args):
         print(got, exp)
         if exp == CLUSTER_ID_PLACEHOLDER:
             assert RE_UUID4HEX.fullmatch(got)
         else:
             assert got == exp
+    assert len(resp["tms_args"]) == len(tms_args)
 
     # check env vars
     print(resp["env_vars"])
