@@ -24,7 +24,7 @@ StrDict = dict[str, Any]
 ########################################################################################
 
 
-RE_UUID4HEX = re.compile("[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}\Z", re.I)
+RE_UUID4HEX = re.compile(r"[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}")
 
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
