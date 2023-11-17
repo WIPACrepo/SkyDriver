@@ -45,21 +45,25 @@ def update_skydriver(
     cluster_id: str | int,
     n_workers: int,
     starter_info: dict[str, Any],
+    #
+    statuses: dict | None = None,
 ) -> None:
     """Send SkyDriver updates from the `submit_result`."""
+    skydriver_cluster_obj = {
+        "orchestrator": orchestrator,
+        "location": location,
+        "uuid": uuid,
+        "cluster_id": str(cluster_id),
+        "n_workers": n_workers,
+        "starter_info": starter_info,
+    }
+    if statuses:
+        skydriver_cluster_obj["statuses"] = statuses
+
     skydriver_rc.request_seq(
         "PATCH",
         f"/scan/{ENV.SKYSCAN_SKYDRIVER_SCAN_ID}/manifest",
-        {
-            "cluster": {
-                "orchestrator": orchestrator,
-                "location": location,
-                "uuid": uuid,
-                "cluster_id": str(cluster_id),
-                "n_workers": n_workers,
-                "starter_info": starter_info,
-            }
-        },
+        {"cluster": skydriver_cluster_obj},
     )
 
 
