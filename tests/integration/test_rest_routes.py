@@ -406,6 +406,8 @@ async def _clientmanager_reply(
         cluster_id=f"cluster-{random.randint(1, 10000)}",
         n_workers=cluster_name__n_workers[1],
         starter_info={},
+        statuses={},
+        uuid="",
     )
 
     manifest = await _do_patch(
