@@ -24,6 +24,9 @@ StrDict = dict[str, Any]
 ########################################################################################
 
 
+RE_UUID4HEX = re.compile("[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}\Z", re.I)
+
+
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 
 CLUSTER_ID_PLACEHOLDER = "CLUSTER_ID_PLACEHOLDER"
@@ -102,13 +105,16 @@ async def _launch_scan(
         last_updated=resp["last_updated"],  # see below
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
+    assert RE_UUID4HEX.fullmatch(resp["scan_id"])
     assert launch_time < resp["timestamp"] < resp["last_updated"] < time.time()
 
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
     for got, exp in zip(resp["tms_args"].split(), tms_args):
         print(got, exp)
-        if exp != CLUSTER_ID_PLACEHOLDER:
+        if exp == CLUSTER_ID_PLACEHOLDER:
+            assert RE_UUID4HEX.fullmatch(got)
+        else:
             assert got == exp
 
     # check env vars
