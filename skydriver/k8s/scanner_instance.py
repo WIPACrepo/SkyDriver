@@ -104,7 +104,8 @@ class SkymapScannerJob:
                 scan_id=scan_id,
             ),
             self.scanner_server_args.split(),
-            {common_space_volume_path.name: common_space_volume_path},
+            cpu=1,
+            volumes={common_space_volume_path.name: common_space_volume_path},
             memory=scanner_server_memory,
         )
         self.env_dict["scanner_server"] = [e.to_dict() for e in scanner_server.env]
@@ -130,6 +131,7 @@ class SkymapScannerJob:
                         request_cluster=cluster,
                         debug_mode=debug_mode,
                     ),
+                    cpu=0.125,
                     volumes={common_space_volume_path.name: common_space_volume_path},
                     memory=ENV.K8S_CONTAINER_MEMORY_TMS_STARTER,
                 )
@@ -436,6 +438,7 @@ class SkymapScannerWorkerStopper:
                 KubeAPITools.create_container(
                     f"tms-stopper-{i}-{scan_id}",
                     ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
+                    cpu=0.125,
                     env=get_cluster_auth_v1envvars(cluster),
                     args=args.split(),
                     memory=ENV.K8S_CONTAINER_MEMORY_TMS_STOPPER,

@@ -122,6 +122,7 @@ class KubeAPITools:
         image: str,
         env: list[kubernetes.client.V1EnvVar],
         args: list[str],
+        cpu: float,
         volumes: dict[str, Path] | None = None,
         memory: str = ENV.K8S_CONTAINER_MEMORY_DEFAULT,
     ) -> kubernetes.client.V1Container:
@@ -143,11 +144,11 @@ class KubeAPITools:
             resources=kubernetes.client.V1ResourceRequirements(
                 limits={
                     "memory": memory,
-                    "cpu": "1",
+                    "cpu": str(cpu),
                 },
                 requests={
                     "memory": memory,
-                    "cpu": "1",
+                    "cpu": str(cpu),
                     "ephemeral-storage": "1M",
                 },
             ),
