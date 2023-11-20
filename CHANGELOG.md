@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.2 (2023-11-20)
+
+### Other
+
+* Cluster-Watching: CL arg fix ([`4d44629`](https://github.com/WIPACrepo/SkyDriver/commit/4d4462913612a1b7de420c75a9075e112a788a6c))
+
 ## v0.7.1 (2023-11-20)
 
 ### Other
