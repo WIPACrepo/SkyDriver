@@ -1,6 +1,7 @@
 """For watching Skymap Scanner clients on an HTCondor cluster."""
 
 
+import collections
 import time
 from datetime import datetime as dt
 from pprint import pformat
@@ -95,20 +96,12 @@ def iter_job_classads(
             LOGGER.exception(e)
 
 
-def count_each_value(all_values: list[Any]) -> dict[Any, int]:
-    """Get a census of each value."""
-    return {
-        unique_value: len([v for v in all_values if v == unique_value])
-        for unique_value in set(all_values)
-    }
-
-
 def get_aggregate_statuses(
     job_attrs: dict[int, dict[str, Any]]
 ) -> dict[str, dict[str, int]]:
     """Aggregate statuses of jobs."""
     return {
-        s: count_each_value([dicto[s] for dicto in job_attrs.values()])
+        s: dict(collections.Counter([dicto[s] for dicto in job_attrs.values()]))
         for s in [
             "JobStatus",
             "HTChirpEWMSPilotStatus",
@@ -121,13 +114,12 @@ def get_aggregate_top_errors(
     n_top_errors: int,
 ) -> dict[str, int]:
     """Aggregate top errors X of jobs."""
-    counts = count_each_value(
+    counts = collections.Counter(
         [dicto.get("HTChirpEWMSPilotError") for dicto in job_attrs.values()]
     )
     counts.pop(None, None)  # remove counts of "no error"
 
-    top_keys = sorted(counts, key=counts.get, reverse=True)[:n_top_errors]  # type: ignore[arg-type]
-    return {k: counts[k] for k in top_keys}
+    return dict(counts.most_common(n_top_errors))  # type: ignore[arg-type]
 
 
 def watch(
