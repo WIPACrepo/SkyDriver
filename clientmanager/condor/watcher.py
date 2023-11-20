@@ -152,6 +152,8 @@ def watch(
 
     start = time.time()
     non_response_ct = 0
+    aggregate_statuses: dict[str, dict[str, int]] = {}
+    aggregate_top_task_errors: dict[str, int] = {}
 
     def keep_watching() -> bool:
         """
@@ -185,27 +187,35 @@ def watch(
             non_response_ct = 0
             update_stored_job_attrs(job_attrs, ad, source)
 
-        aggregate_statuses = get_aggregate_statuses(job_attrs)
-        aggregate_top_task_errors = get_aggregate_top_task_errors(
-            job_attrs, WATCHER_N_TOP_TASK_ERRORS
-        )
+        if (
+            aggregate_statuses
+            == (aggregate_statuses := get_aggregate_statuses(job_attrs))
+        ) and (
+            aggregate_top_task_errors
+            == (
+                aggregate_top_task_errors := get_aggregate_top_task_errors(
+                    job_attrs, WATCHER_N_TOP_TASK_ERRORS
+                )
+            )
+        ):
+            LOGGER.info("no updates")
+        else:
+            LOGGER.info(f"job statuses ({n_workers=})")
+            LOGGER.info(f"{pformat(job_attrs, indent=4)}")
+            LOGGER.info(f"job aggregate statuses ({n_workers=})")
+            LOGGER.info(f"{pformat(aggregate_statuses, indent=4)}")
+            LOGGER.info(
+                f"job aggregate top {WATCHER_N_TOP_TASK_ERRORS} task errors ({n_workers=})"
+            )
+            LOGGER.info(f"{pformat(aggregate_top_task_errors, indent=4)}")
 
-        LOGGER.info(f"job statuses ({n_workers=})")
-        LOGGER.info(f"{pformat(job_attrs, indent=4)}")
-        LOGGER.info(f"job aggregate statuses ({n_workers=})")
-        LOGGER.info(f"{pformat(aggregate_statuses, indent=4)}")
-        LOGGER.info(
-            f"job aggregate top {WATCHER_N_TOP_TASK_ERRORS} task errors ({n_workers=})"
-        )
-        LOGGER.info(f"{pformat(aggregate_top_task_errors, indent=4)}")
-
-        # send updates
-        utils.update_skydriver(
-            skydriver_rc,
-            **skydriver_cluster_obj,
-            statuses=aggregate_statuses,
-            top_task_errors=aggregate_top_task_errors,
-        )
+            # send updates
+            utils.update_skydriver(
+                skydriver_rc,
+                **skydriver_cluster_obj,
+                statuses=aggregate_statuses,
+                top_task_errors=aggregate_top_task_errors,
+            )
 
         # wait
         time.sleep(WATCHER_INTERVAL)
