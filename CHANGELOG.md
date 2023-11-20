@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.4 (2023-11-20)
+
+### Other
+
+* K8s - Decrease CPU Limits ([`6633e40`](https://github.com/WIPACrepo/SkyDriver/commit/6633e4056506ac2ec9099d916d178708b2ed9bc7))
+
 ## v0.7.3 (2023-11-20)
 
 ### Other
