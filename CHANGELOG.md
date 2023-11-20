@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.5 (2023-11-20)
+
+### Other
+
+* Cluster-Watching: only update skydriver if needed - 2 ([`fcdd669`](https://github.com/WIPACrepo/SkyDriver/commit/fcdd669bd22ee79d323a759bf9282cf6983d727d))
+
 ## v0.7.4 (2023-11-20)
 
 ### Other
