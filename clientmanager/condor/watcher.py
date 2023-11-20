@@ -186,7 +186,11 @@ def watch(
 
         LOGGER.info(f"job statuses ({n_workers=})")
         LOGGER.info(f"{pformat(job_attrs, indent=4)}")
+        LOGGER.info(f"job aggregate statuses ({n_workers=})")
         LOGGER.info(f"{pformat(aggregate_statuses, indent=4)}")
+        LOGGER.info(
+            f"job aggregate top {WATCHER_N_TOP_TASK_ERRORS} task errors ({n_workers=})"
+        )
         LOGGER.info(f"{pformat(aggregate_top_task_errors, indent=4)}")
 
         # send updates
