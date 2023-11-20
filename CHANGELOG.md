@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.6 (2023-11-20)
+
+### Other
+
+* Starter: flake8 ([`1a790c0`](https://github.com/WIPACrepo/SkyDriver/commit/1a790c0e3a6b5cd3d39b403fd3f9fde6128c7e40))
+* <bot> update dependencies*.log files(s) ([`31496f2`](https://github.com/WIPACrepo/SkyDriver/commit/31496f280a5f0fd39b618676f80ea08a4af5c703))
+* Starter: fix spooling ([`a970a16`](https://github.com/WIPACrepo/SkyDriver/commit/a970a16aac17bfaa03eded3998e695a959ce7854))
+
 ## v0.7.5 (2023-11-20)
 
 ### Other
