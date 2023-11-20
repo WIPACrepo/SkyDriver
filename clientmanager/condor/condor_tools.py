@@ -23,16 +23,6 @@ def get_schedd_obj(collector: str, schedd: str) -> htcondor.Schedd:
     return schedd_obj
 
 
-def get_job_classads(
-    submit_obj: htcondor.Submit,
-    n_workers: int,
-    clusterid: int,
-) -> list[Any]:
-    """Get list of (simulated) job ClassAds."""
-    job_ads = submit_obj.workers(count=n_workers, clusterid=clusterid)
-    return list(job_ads)
-
-
 IDLE = 1
 RUNNING = 2
 REMOVED = 3

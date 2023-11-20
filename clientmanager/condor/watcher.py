@@ -58,9 +58,9 @@ def update_stored_job_attrs(
             if isinstance(classad[attr], str):
                 try:
                     val = htcondor.classad.unquote(classad[attr])
-                except Exception as e:
-                    LOGGER.error(f"could not unquote: {classad[attr]}")
-                    LOGGER.exception(e)
+                except Exception:
+                    # LOGGER.error(f"could not unquote: {classad[attr]}")
+                    # LOGGER.exception(e)
                     val = classad[attr]
             else:
                 val = classad[attr]
@@ -93,9 +93,9 @@ def iter_job_classads(
             for classad in call(constraint, projection):
                 if "ProcId" not in classad:
                     continue
-                LOGGER.info(f"looking at job {classad['ProcId']}")
-                LOGGER.debug(str(call))
-                LOGGER.debug(classad)
+                # LOGGER.info(f"looking at job {classad['ProcId']}")
+                # LOGGER.debug(str(call))
+                # LOGGER.debug(classad)
                 yield classad, call.__name__
         except Exception as e:
             LOGGER.exception(e)

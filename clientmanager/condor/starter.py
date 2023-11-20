@@ -176,10 +176,11 @@ def start(
     )
     LOGGER.info(submit_result_obj)
     if spool:
-        jobs = condor_tools.get_job_classads(
-            submit_obj,
-            n_workers,
-            submit_result_obj.cluster(),
+        jobs = list(
+            submit_obj.jobs(
+                count=n_workers,
+                clusterid=submit_result_obj.cluster(),
+            )
         )
         schedd_obj.spool(jobs)
 
