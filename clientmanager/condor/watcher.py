@@ -11,7 +11,7 @@ import htcondor  # type: ignore[import]
 from rest_tools.client import RestClient
 
 from .. import utils
-from ..config import LOGGER, WATCHER_INTERVAL, WATCHER_N_TOP_ERRORS
+from ..config import LOGGER, WATCHER_INTERVAL, WATCHER_N_TOP_TASK_ERRORS
 from . import condor_tools as ct
 
 PROJECTION = [
@@ -109,9 +109,9 @@ def get_aggregate_statuses(
     }
 
 
-def get_aggregate_top_errors(
+def get_aggregate_top_task_errors(
     job_attrs: dict[int, dict[str, Any]],
-    n_top_errors: int,
+    n_top_task_errors: int,
 ) -> dict[str, int]:
     """Aggregate top errors X of jobs."""
     counts = collections.Counter(
@@ -119,7 +119,7 @@ def get_aggregate_top_errors(
     )
     counts.pop(None, None)  # remove counts of "no error"
 
-    return dict(counts.most_common(n_top_errors))  # type: ignore[arg-type]
+    return dict(counts.most_common(n_top_task_errors))  # type: ignore[arg-type]
 
 
 def watch(
@@ -180,19 +180,21 @@ def watch(
             update_stored_job_attrs(job_attrs, ad, source)
 
         aggregate_statuses = get_aggregate_statuses(job_attrs)
-        aggregate_top_errors = get_aggregate_top_errors(job_attrs, WATCHER_N_TOP_ERRORS)
+        aggregate_top_task_errors = get_aggregate_top_task_errors(
+            job_attrs, WATCHER_N_TOP_TASK_ERRORS
+        )
 
         LOGGER.info(f"job statuses ({n_workers=})")
         LOGGER.info(f"{pformat(job_attrs, indent=4)}")
         LOGGER.info(f"{pformat(aggregate_statuses, indent=4)}")
-        LOGGER.info(f"{pformat(aggregate_top_errors, indent=4)}")
+        LOGGER.info(f"{pformat(aggregate_top_task_errors, indent=4)}")
 
         # send updates
         utils.update_skydriver(
             skydriver_rc,
             **skydriver_cluster_obj,
             statuses=aggregate_statuses,
-            top_errors=aggregate_top_errors,
+            top_task_errors=aggregate_top_task_errors,
         )
 
         # wait
