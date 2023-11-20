@@ -11,7 +11,12 @@ import htcondor  # type: ignore[import]
 from rest_tools.client import RestClient
 
 from .. import utils
-from ..config import LOGGER, WATCHER_INTERVAL, WATCHER_N_TOP_TASK_ERRORS
+from ..config import (
+    LOGGER,
+    WATCHER_INTERVAL,
+    WATCHER_MAX_RUNTIME,
+    WATCHER_N_TOP_TASK_ERRORS,
+)
 from . import condor_tools as ct
 
 PROJECTION = [
@@ -163,7 +168,8 @@ def watch(
     # WATCHING LOOP
     while (
         keep_watching()
-        and time.time() - start < 60 * 60 * 24  # just in case, stop if taking too long
+        and time.time() - start
+        < WATCHER_MAX_RUNTIME  # just in case, stop if taking too long
     ):
         classads = iter_job_classads(
             schedd_obj,
