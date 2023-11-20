@@ -102,29 +102,33 @@ def iter_job_classads(
 
 
 def get_aggregate_statuses(
-    job_attrs: dict[int, dict[str, Any]]
-) -> dict[str, dict[str, int]]:
-    """Aggregate statuses of jobs."""
-    return {
+    job_attrs: dict[int, dict[str, Any]],
+    previous: dict[str, dict[str, int]],
+) -> tuple[dict[str, dict[str, int]], bool]:
+    """Aggregate statuses of jobs & return whether this is an new value."""
+    statuses = {
         s: dict(collections.Counter([dicto[s] for dicto in job_attrs.values()]))
         for s in [
             "JobStatus",
             "HTChirpEWMSPilotStatus",
         ]
     }
+    return statuses, statuses != previous
 
 
 def get_aggregate_top_task_errors(
     job_attrs: dict[int, dict[str, Any]],
     n_top_task_errors: int,
-) -> dict[str, int]:
-    """Aggregate top errors X of jobs."""
+    previous: dict[str, int],
+) -> tuple[dict[str, int], bool]:
+    """Aggregate top X errors of jobs & return whether this is an new value."""
     counts = collections.Counter(
         [dicto.get("HTChirpEWMSPilotError") for dicto in job_attrs.values()]
     )
     counts.pop(None, None)  # remove counts of "no error"
 
-    return dict(counts.most_common(n_top_task_errors))  # type: ignore[arg-type]
+    errors = dict(counts.most_common(n_top_task_errors))
+    return errors, errors != previous  # type: ignore[return-value]
 
 
 def watch(
@@ -187,17 +191,19 @@ def watch(
             non_response_ct = 0
             update_stored_job_attrs(job_attrs, ad, source)
 
-        if (
-            aggregate_statuses
-            == (aggregate_statuses := get_aggregate_statuses(job_attrs))
-        ) and (
-            aggregate_top_task_errors
-            == (
-                aggregate_top_task_errors := get_aggregate_top_task_errors(
-                    job_attrs, WATCHER_N_TOP_TASK_ERRORS
-                )
-            )
-        ):
+        # aggregate
+        aggregate_statuses, has_new_statuses = get_aggregate_statuses(
+            job_attrs,
+            aggregate_statuses,
+        )
+        aggregate_top_task_errors, has_new_errors = get_aggregate_top_task_errors(
+            job_attrs,
+            WATCHER_N_TOP_TASK_ERRORS,
+            aggregate_top_task_errors,
+        )
+
+        # figure updates
+        if not has_new_statuses and not has_new_errors:
             LOGGER.info("no updates")
         else:
             LOGGER.info(f"job statuses ({n_workers=})")
