@@ -147,10 +147,20 @@ class ManifestClient:
             )
 
         # cluster / clusters
+        # TODO - when TMS is up and running, it will handle cluster updating--remove then
+        # NOTE - there is a race condition inherent with list attributes, don't do this in TMS
         if not cluster:
             pass  # don't put in DB
         else:
-            upserting["clusters"] = in_db.clusters + [cluster]
+            try:  # find by uuid -> replace
+                idx = next(
+                    i for i, c in enumerate(in_db.clusters) if cluster.uuid == c.uuid
+                )
+                upserting["clusters"] = (
+                    in_db.clusters[:idx] + [cluster] + in_db.clusters[idx + 1 :]
+                )
+            except StopIteration:  # not found -> append
+                upserting["clusters"] = in_db.clusters + [cluster]
 
         # complete
         if complete is not None:

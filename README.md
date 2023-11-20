@@ -304,6 +304,11 @@ Pseudo-code:
             cluster_id: int,
             n_workers: int,
             starter_info: dict,
+            statuses: {
+                'JobStatus': dict[str, int],  # status value -> # of jobs
+                'HTChirpEWMSPilotStatus': dict[str, int],  # status value -> # of jobs
+            },
+            top_task_errors: dict[str, int],  # error message -> # of jobs
         },
         ...
         {

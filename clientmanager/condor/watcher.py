@@ -1,14 +1,17 @@
 """For watching Skymap Scanner clients on an HTCondor cluster."""
 
 
+import collections
 import time
 from datetime import datetime as dt
 from pprint import pformat
 from typing import Any, Iterator
 
 import htcondor  # type: ignore[import]
+from rest_tools.client import RestClient
 
-from ..config import LOGGER, WATCHER_INTERVAL
+from .. import utils
+from ..config import LOGGER, WATCHER_INTERVAL, WATCHER_N_TOP_TASK_ERRORS
 from . import condor_tools as ct
 
 PROJECTION = [
@@ -93,25 +96,30 @@ def iter_job_classads(
             LOGGER.exception(e)
 
 
-def aggregate_statuses(
+def get_aggregate_statuses(
     job_attrs: dict[int, dict[str, Any]]
 ) -> dict[str, dict[str, int]]:
     """Aggregate statuses of jobs."""
-
-    def counts(key: str) -> dict[str, int]:
-        all_statuses = [a[key] for a in job_attrs.values()]
-        return {
-            status: len([s for s in all_statuses if s == status])
-            for status in set(all_statuses)
-        }
-
     return {
-        k: counts(k)
-        for k in [
+        s: dict(collections.Counter([dicto[s] for dicto in job_attrs.values()]))
+        for s in [
             "JobStatus",
             "HTChirpEWMSPilotStatus",
         ]
     }
+
+
+def get_aggregate_top_task_errors(
+    job_attrs: dict[int, dict[str, Any]],
+    n_top_task_errors: int,
+) -> dict[str, int]:
+    """Aggregate top errors X of jobs."""
+    counts = collections.Counter(
+        [dicto.get("HTChirpEWMSPilotError") for dicto in job_attrs.values()]
+    )
+    counts.pop(None, None)  # remove counts of "no error"
+
+    return dict(counts.most_common(n_top_task_errors))  # type: ignore[arg-type]
 
 
 def watch(
@@ -120,6 +128,9 @@ def watch(
     cluster_id: str,
     schedd_obj: htcondor.Schedd,
     n_workers: int,
+    #
+    skydriver_rc: RestClient,
+    skydriver_cluster_obj: dict[str, Any],
 ) -> None:
     """Main logic."""
     LOGGER.info(
@@ -168,9 +179,27 @@ def watch(
             non_response_ct = 0
             update_stored_job_attrs(job_attrs, ad, source)
 
+        aggregate_statuses = get_aggregate_statuses(job_attrs)
+        aggregate_top_task_errors = get_aggregate_top_task_errors(
+            job_attrs, WATCHER_N_TOP_TASK_ERRORS
+        )
+
         LOGGER.info(f"job statuses ({n_workers=})")
         LOGGER.info(f"{pformat(job_attrs, indent=4)}")
-        LOGGER.info(f"{pformat(aggregate_statuses(job_attrs), indent=4)}")
+        LOGGER.info(f"job aggregate statuses ({n_workers=})")
+        LOGGER.info(f"{pformat(aggregate_statuses, indent=4)}")
+        LOGGER.info(
+            f"job aggregate top {WATCHER_N_TOP_TASK_ERRORS} task errors ({n_workers=})"
+        )
+        LOGGER.info(f"{pformat(aggregate_top_task_errors, indent=4)}")
+
+        # send updates
+        utils.update_skydriver(
+            skydriver_rc,
+            **skydriver_cluster_obj,
+            statuses=aggregate_statuses,
+            top_task_errors=aggregate_top_task_errors,
+        )
 
         # wait
         time.sleep(WATCHER_INTERVAL)

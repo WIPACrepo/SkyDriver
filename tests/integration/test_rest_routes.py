@@ -9,13 +9,15 @@ import os
 import random
 import re
 import time
+import uuid
 from typing import Any, Callable
 
 import pytest
 import requests
+from rest_tools.client import RestClient
+
 import skydriver
 import skydriver.images  # noqa: F401  # export
-from rest_tools.client import RestClient
 
 skydriver.config.config_logging("debug")
 
@@ -24,7 +26,12 @@ StrDict = dict[str, Any]
 ########################################################################################
 
 
+RE_UUID4HEX = re.compile(r"[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}")
+
+
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
+
+CLUSTER_ID_PLACEHOLDER = "CLUSTER_ID_PLACEHOLDER"
 
 CLASSIFIERS = {
     "foo": 1,
@@ -100,14 +107,21 @@ async def _launch_scan(
         last_updated=resp["last_updated"],  # see below
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
+    assert RE_UUID4HEX.fullmatch(resp["scan_id"])
     assert launch_time < resp["timestamp"] < resp["last_updated"] < time.time()
 
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
-    # fmt: off
-    # order of tms args doesn't matter here
-    assert sorted(a.split() for a in resp["tms_args"]) == sorted(a.split() for a in tms_args)
-    # fmt: on
+    for got_args, exp_args in zip(resp["tms_args"], tms_args):
+        print(got_args, exp_args)
+        for got, exp in zip(got_args.split(), exp_args.split()):
+            print(got, exp)
+            if exp == CLUSTER_ID_PLACEHOLDER:
+                assert RE_UUID4HEX.fullmatch(got)
+            else:
+                assert got == exp
+        assert len(got_args.split()) == len(exp_args.split())
+    assert len(resp["tms_args"]) == len(tms_args)
 
     # check env vars
     print(resp["env_vars"])
@@ -394,6 +408,9 @@ async def _clientmanager_reply(
         cluster_id=f"cluster-{random.randint(1, 10000)}",
         n_workers=cluster_name__n_workers[1],
         starter_info={},
+        statuses={},
+        top_task_errors={},
+        uuid=str(uuid.uuid4().hex),
     )
 
     manifest = await _do_patch(
@@ -617,6 +634,7 @@ def get_tms_args(
         )
         tms_args += [
             f"python -m clientmanager "
+            f" --uuid {CLUSTER_ID_PLACEHOLDER} "
             f" {orchestrator} "
             f" {' '.join(f'--{k} {v}' for k,v in location.items())} "
             f" start "

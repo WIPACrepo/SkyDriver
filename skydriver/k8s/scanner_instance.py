@@ -2,6 +2,7 @@
 instances."""
 
 
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -186,7 +187,7 @@ class SkymapScannerJob:
         This also includes any client args not added by the
         clientmanager.
         """
-        args = "python -m clientmanager "
+        args = f"python -m clientmanager --uuid {str(uuid.uuid4().hex)}"
 
         match request_cluster.orchestrator:
             case "condor":
@@ -413,7 +414,7 @@ class SkymapScannerWorkerStopper:
         # make a container per cluster
         containers = []
         for i, cluster in enumerate(clusters):
-            args = "python -m clientmanager "
+            args = f"python -m clientmanager --uuid {cluster.uuid}"
             match cluster.orchestrator:
                 case "condor":
                     args += (
