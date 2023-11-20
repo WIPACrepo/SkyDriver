@@ -47,6 +47,7 @@ def update_skydriver(
     starter_info: dict[str, Any],
     #
     statuses: dict[str, dict[str, int]] | None = None,
+    top_errors: dict[str, int] | None = None,
 ) -> None:
     """Send SkyDriver updates from the `submit_result`."""
     skydriver_cluster_obj = {
@@ -59,6 +60,8 @@ def update_skydriver(
     }
     if statuses:
         skydriver_cluster_obj["statuses"] = statuses
+    if top_errors:
+        skydriver_cluster_obj["top_errors"] = top_errors
 
     skydriver_rc.request_seq(
         "PATCH",

@@ -408,6 +408,7 @@ async def _clientmanager_reply(
         n_workers=cluster_name__n_workers[1],
         starter_info={},
         statuses={},
+        top_errors={},
         uuid=str(uuid.uuid4().hex),
     )
 

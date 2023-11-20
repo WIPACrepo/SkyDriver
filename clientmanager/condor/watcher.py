@@ -95,25 +95,39 @@ def iter_job_classads(
             LOGGER.exception(e)
 
 
-def aggregate_statuses(
+def count_each_value(all_values: list[Any]) -> dict[Any, int]:
+    """Get a census of each value."""
+    return {
+        unique_value: len([v for v in all_values if v == unique_value])
+        for unique_value in set(all_values)
+    }
+
+
+def get_aggregate_statuses(
     job_attrs: dict[int, dict[str, Any]]
 ) -> dict[str, dict[str, int]]:
     """Aggregate statuses of jobs."""
-
-    def counts(key: str) -> dict[str, int]:
-        all_statuses = [a[key] for a in job_attrs.values()]
-        return {
-            status: len([s for s in all_statuses if s == status])
-            for status in set(all_statuses)
-        }
-
     return {
-        k: counts(k)
-        for k in [
+        s: count_each_value([dicto[s] for dicto in job_attrs.values()])
+        for s in [
             "JobStatus",
             "HTChirpEWMSPilotStatus",
         ]
     }
+
+
+def get_aggregate_top_errors(
+    job_attrs: dict[int, dict[str, Any]],
+    n_top_errors: int,
+) -> dict[str, int]:
+    """Aggregate top errors X of jobs."""
+    counts = count_each_value(
+        [dicto.get("HTChirpEWMSPilotError") for dicto in job_attrs.values()]
+    )
+    counts.pop(None, None)  # remove counts of "no error"
+
+    top_keys = sorted(counts, key=counts.get, reverse=True)[:n_top_errors]  # type: ignore[arg-type]
+    return {k: counts[k] for k in top_keys}
 
 
 def watch(
@@ -173,17 +187,20 @@ def watch(
             non_response_ct = 0
             update_stored_job_attrs(job_attrs, ad, source)
 
-        aggregate = aggregate_statuses(job_attrs)
+        aggregate_statuses = get_aggregate_statuses(job_attrs)
+        aggregate_top_errors = get_aggregate_top_errors(job_attrs, 10)
 
         LOGGER.info(f"job statuses ({n_workers=})")
         LOGGER.info(f"{pformat(job_attrs, indent=4)}")
-        LOGGER.info(f"{pformat(aggregate, indent=4)}")
+        LOGGER.info(f"{pformat(aggregate_statuses, indent=4)}")
+        LOGGER.info(f"{pformat(aggregate_top_errors, indent=4)}")
 
         # send updates
         utils.update_skydriver(
             skydriver_rc,
             **skydriver_cluster_obj,
-            statuses=aggregate,
+            statuses=aggregate_statuses,
+            top_errors=aggregate_top_errors,
         )
 
         # wait

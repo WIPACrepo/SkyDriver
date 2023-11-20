@@ -146,6 +146,7 @@ class Cluster:
     starter_info: StrDict = dc.field(default_factory=dict)
 
     statuses: dict[str, dict[str, int]] = dc.field(default_factory=dict)
+    top_errors: dict[str, int] = dc.field(default_factory=dict)
 
     def __post_init__(self) -> None:
         match self.orchestrator:
