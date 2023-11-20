@@ -10,7 +10,7 @@ import htcondor  # type: ignore[import]
 from rest_tools.client import RestClient
 
 from .. import utils
-from ..config import LOGGER, WATCHER_INTERVAL
+from ..config import LOGGER, WATCHER_INTERVAL, WATCHER_N_TOP_ERRORS
 from . import condor_tools as ct
 
 PROJECTION = [
@@ -188,7 +188,7 @@ def watch(
             update_stored_job_attrs(job_attrs, ad, source)
 
         aggregate_statuses = get_aggregate_statuses(job_attrs)
-        aggregate_top_errors = get_aggregate_top_errors(job_attrs, 10)
+        aggregate_top_errors = get_aggregate_top_errors(job_attrs, WATCHER_N_TOP_ERRORS)
 
         LOGGER.info(f"job statuses ({n_workers=})")
         LOGGER.info(f"{pformat(job_attrs, indent=4)}")
