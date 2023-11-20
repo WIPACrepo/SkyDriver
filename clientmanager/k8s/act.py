@@ -116,7 +116,7 @@ def _act(args: argparse.Namespace, k8s_api: kubernetes.client.ApiClient) -> None
                     "host": args.host,
                     "namespace": args.namespace,
                 },
-                uuid=args.cluster_uuid,
+                uuid=args.uuid,
                 cluster_id=cluster_id,
                 n_workers=args.n_workers,
                 starter_info=k8s_job_dict,
