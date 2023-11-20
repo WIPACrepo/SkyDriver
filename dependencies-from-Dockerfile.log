@@ -7,10 +7,10 @@
 #  pip freeze
 ########################################################################
 backoff==2.2.1
-boto3==1.29.2
-botocore==1.32.2
+boto3==1.29.3
+botocore==1.32.3
 cachetools==5.3.2
-certifi==2023.7.22
+certifi==2023.11.17
 cffi==1.16.0
 charset-normalizer==3.3.2
 coloredlogs==15.0.1
@@ -75,15 +75,15 @@ pip==23.2.1
 pipdeptree==2.13.1
 setuptools==65.5.1
 skydriver-clientmanager
-├── boto3 [required: Any, installed: 1.29.2]
-│   ├── botocore [required: >=1.32.2,<1.33.0, installed: 1.32.2]
+├── boto3 [required: Any, installed: 1.29.3]
+│   ├── botocore [required: >=1.32.3,<1.33.0, installed: 1.32.3]
 │   │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   │   ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.8.2]
 │   │   │   └── six [required: >=1.5, installed: 1.16.0]
 │   │   └── urllib3 [required: >=1.25.4,<2.1, installed: 1.26.18]
 │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   └── s3transfer [required: >=0.7.0,<0.8.0, installed: 0.7.0]
-│       └── botocore [required: >=1.12.36,<2.0a.0, installed: 1.32.2]
+│       └── botocore [required: >=1.12.36,<2.0a.0, installed: 1.32.3]
 │           ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │           ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.8.2]
 │           │   └── six [required: >=1.5, installed: 1.16.0]
@@ -93,7 +93,7 @@ skydriver-clientmanager
 ├── dacite [required: Any, installed: 1.8.1]
 ├── htcondor [required: Any, installed: 23.1.0]
 ├── kubernetes [required: Any, installed: 28.1.0]
-│   ├── certifi [required: >=14.05.14, installed: 2023.7.22]
+│   ├── certifi [required: >=14.05.14, installed: 2023.11.17]
 │   ├── google-auth [required: >=1.0.1, installed: 2.23.4]
 │   │   ├── cachetools [required: >=2.0.0,<6.0, installed: 5.3.2]
 │   │   ├── pyasn1-modules [required: >=0.2.1, installed: 0.3.0]
@@ -105,14 +105,14 @@ skydriver-clientmanager
 │   │   └── six [required: >=1.5, installed: 1.16.0]
 │   ├── PyYAML [required: >=5.4.1, installed: 6.0.1]
 │   ├── requests [required: Any, installed: 2.31.0]
-│   │   ├── certifi [required: >=2017.4.17, installed: 2023.7.22]
+│   │   ├── certifi [required: >=2017.4.17, installed: 2023.11.17]
 │   │   ├── charset-normalizer [required: >=2,<4, installed: 3.3.2]
 │   │   ├── idna [required: >=2.5,<4, installed: 3.4]
 │   │   └── urllib3 [required: >=1.21.1,<3, installed: 1.26.18]
 │   ├── requests-oauthlib [required: Any, installed: 1.3.1]
 │   │   ├── oauthlib [required: >=3.0.0, installed: 3.2.2]
 │   │   └── requests [required: >=2.0.0, installed: 2.31.0]
-│   │       ├── certifi [required: >=2017.4.17, installed: 2023.7.22]
+│   │       ├── certifi [required: >=2017.4.17, installed: 2023.11.17]
 │   │       ├── charset-normalizer [required: >=2,<4, installed: 3.3.2]
 │   │       ├── idna [required: >=2.5,<4, installed: 3.4]
 │   │       └── urllib3 [required: >=1.21.1,<3, installed: 1.26.18]
@@ -125,7 +125,7 @@ skydriver-clientmanager
 ├── pymongo [required: Any, installed: 4.6.0]
 │   └── dnspython [required: >=1.16.0,<3.0.0, installed: 2.4.2]
 ├── requests [required: Any, installed: 2.31.0]
-│   ├── certifi [required: >=2017.4.17, installed: 2023.7.22]
+│   ├── certifi [required: >=2017.4.17, installed: 2023.11.17]
 │   ├── charset-normalizer [required: >=2,<4, installed: 3.3.2]
 │   ├── idna [required: >=2.5,<4, installed: 3.4]
 │   └── urllib3 [required: >=1.21.1,<3, installed: 1.26.18]
@@ -134,7 +134,7 @@ skydriver-clientmanager
 │   └── typing-extensions [required: >=4.7.0, installed: 4.8.0]
 ├── wipac-dev-tools [required: Any, installed: 1.7.1]
 │   ├── requests [required: Any, installed: 2.31.0]
-│   │   ├── certifi [required: >=2017.4.17, installed: 2023.7.22]
+│   │   ├── certifi [required: >=2017.4.17, installed: 2023.11.17]
 │   │   ├── charset-normalizer [required: >=2,<4, installed: 3.3.2]
 │   │   ├── idna [required: >=2.5,<4, installed: 3.4]
 │   │   └── urllib3 [required: >=1.21.1,<3, installed: 1.26.18]
@@ -146,20 +146,20 @@ skydriver-clientmanager
     │   ├── pypng [required: Any, installed: 0.20220715.0]
     │   └── typing-extensions [required: Any, installed: 4.8.0]
     ├── requests [required: Any, installed: 2.31.0]
-    │   ├── certifi [required: >=2017.4.17, installed: 2023.7.22]
+    │   ├── certifi [required: >=2017.4.17, installed: 2023.11.17]
     │   ├── charset-normalizer [required: >=2,<4, installed: 3.3.2]
     │   ├── idna [required: >=2.5,<4, installed: 3.4]
     │   └── urllib3 [required: >=1.21.1,<3, installed: 1.26.18]
     ├── requests-futures [required: Any, installed: 1.0.1]
     │   └── requests [required: >=1.2.0, installed: 2.31.0]
-    │       ├── certifi [required: >=2017.4.17, installed: 2023.7.22]
+    │       ├── certifi [required: >=2017.4.17, installed: 2023.11.17]
     │       ├── charset-normalizer [required: >=2,<4, installed: 3.3.2]
     │       ├── idna [required: >=2.5,<4, installed: 3.4]
     │       └── urllib3 [required: >=1.21.1,<3, installed: 1.26.18]
     ├── tornado [required: Any, installed: 6.3.3]
     └── wipac-dev-tools [required: Any, installed: 1.7.1]
         ├── requests [required: Any, installed: 2.31.0]
-        │   ├── certifi [required: >=2017.4.17, installed: 2023.7.22]
+        │   ├── certifi [required: >=2017.4.17, installed: 2023.11.17]
         │   ├── charset-normalizer [required: >=2,<4, installed: 3.3.2]
         │   ├── idna [required: >=2.5,<4, installed: 3.4]
         │   └── urllib3 [required: >=1.21.1,<3, installed: 1.26.18]
@@ -233,7 +233,7 @@ wipac-telemetry==0.3.0
 │   │   ├── opentelemetry-semantic-conventions [required: ==0.42b0, installed: 0.42b0]
 │   │   └── typing-extensions [required: >=3.7.4, installed: 4.8.0]
 │   └── requests [required: ~=2.7, installed: 2.31.0]
-│       ├── certifi [required: >=2017.4.17, installed: 2023.7.22]
+│       ├── certifi [required: >=2017.4.17, installed: 2023.11.17]
 │       ├── charset-normalizer [required: >=2,<4, installed: 3.3.2]
 │       ├── idna [required: >=2.5,<4, installed: 3.4]
 │       └── urllib3 [required: >=1.21.1,<3, installed: 1.26.18]
@@ -249,7 +249,7 @@ wipac-telemetry==0.3.0
 ├── typing-extensions [required: Any, installed: 4.8.0]
 └── wipac-dev-tools [required: Any, installed: 1.7.1]
     ├── requests [required: Any, installed: 2.31.0]
-    │   ├── certifi [required: >=2017.4.17, installed: 2023.7.22]
+    │   ├── certifi [required: >=2017.4.17, installed: 2023.11.17]
     │   ├── charset-normalizer [required: >=2,<4, installed: 3.3.2]
     │   ├── idna [required: >=2.5,<4, installed: 3.4]
     │   └── urllib3 [required: >=1.21.1,<3, installed: 1.26.18]
