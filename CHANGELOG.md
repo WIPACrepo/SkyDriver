@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.1 (2023-11-20)
+
+### Other
+
+* Cluster-Watching: add `WATCHER_MAX_RUNTIME` ([`9e7171f`](https://github.com/WIPACrepo/SkyDriver/commit/9e7171fac83e35bf6ded50b9c81af8c46f57ad65))
+
 ## v0.7.0 (2023-11-20)
 
 
