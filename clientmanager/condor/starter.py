@@ -1,27 +1,25 @@
 """For starting Skymap Scanner clients on an HTCondor cluster."""
 
 
-import datetime as dt
 from pathlib import Path
 from typing import Any
 
-import htcondor  # type: ignore[import]
+import htcondor  # type: ignore[import-untyped]
 
 from ..config import ENV, FORWARDED_ENV_VARS, LOGGER
 from ..utils import S3File
 
 
-def make_condor_logs_subdir(directory: Path) -> Path:
+def make_condor_logs_dir() -> Path:
     """Make the condor logs subdirectory."""
-    iso_now = dt.datetime.now().isoformat(timespec="seconds")
-    subdir = directory / f"skyscan-{iso_now}"
-    subdir.mkdir(parents=True)
-    LOGGER.info(f"HTCondor will write log files to {subdir}")
-    return subdir
+    dpath = Path("tms-cluster")
+    dpath.mkdir(parents=True)
+    LOGGER.info(f"HTCondor will write log files to {dpath}")
+    return dpath
 
 
-def make_condor_job_description(  # pylint: disable=too-many-arguments
-    logs_subdir: Path | None,
+def make_condor_job_description(
+    spool: bool,
     # condor args
     memory: str,
     n_cores: int,
@@ -70,6 +68,15 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         "transfer_input_files": client_startup_json_s3.url,
         "transfer_output_files": '""',  # must be quoted for "none"
         #
+        # Don't transfer executable (/bin/bash) in case of
+        #   version (dependency) mismatch.
+        #     Ex:
+        #     "/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.36' not found"
+        # Technically this is just needed for spooling -- since if
+        #   we don't spool, the executable (/bin/bash) can't be
+        #   transferred anyway and so a local version will be used
+        "transfer_executable": "false",
+        #
         "request_cpus": str(n_cores),
         "request_memory": memory,
         "+WantIOProxy": "true",  # for HTChirp
@@ -77,12 +84,14 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     }
 
     # outputs
-    if logs_subdir:
+    if spool:
+        # this is the location where the files will go when/if *returned here*
+        logs_dir = make_condor_logs_dir()
         submit_dict.update(
             {
-                "output": str(logs_subdir / "client-$(ProcId).out"),
-                "error": str(logs_subdir / "client-$(ProcId).err"),
-                "log": str(logs_subdir / "clientmanager.log"),
+                "output": str(logs_dir / "tms-worker-$(ProcId).out"),
+                "error": str(logs_dir / "tms-worker-$(ProcId).err"),
+                "log": str(logs_dir / "tms-cluster.log"),
             }
         )
         # https://htcondor.readthedocs.io/en/latest/users-manual/file-transfer.html#specifying-if-and-when-to-transfer-files
@@ -107,7 +116,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
 
 def prep(
     # starter CL args -- helper
-    spool_logs_directory: Path | None,
+    spool: bool,
     # starter CL args -- worker
     memory: str,
     n_cores: int,
@@ -116,16 +125,8 @@ def prep(
     client_args: list[tuple[str, str]],
     client_startup_json_s3: S3File,
     image: str,
-) -> tuple[dict[str, Any], bool]:
+) -> dict[str, Any]:
     """Create objects needed for starting cluster."""
-    if spool_logs_directory:
-        logs_subdir = make_condor_logs_subdir(spool_logs_directory)
-        spool = True
-    else:
-        logs_subdir = None
-        # NOTE: since we're not transferring any local files directly,
-        # we don't need to spool. Files are on CVMFS and S3.
-        spool = False
 
     # get client args
     client_args_string = ""
@@ -141,7 +142,7 @@ def prep(
 
     # make condor job description
     submit_dict = make_condor_job_description(
-        logs_subdir,
+        spool,
         # condor args
         memory,
         n_cores,
@@ -153,7 +154,7 @@ def prep(
     )
     LOGGER.info(submit_dict)
 
-    return submit_dict, spool
+    return submit_dict
 
 
 def start(

@@ -213,7 +213,7 @@ class SkymapScannerJob:
             f" start "
             f" --n-workers {request_cluster.n_workers} "
             # f" --dryrun"
-            # f" --spool-logs-directory "  # see below
+            # f" --spool "  # see below
             f" --memory {memory} "
             f" --image {worker_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
@@ -221,7 +221,7 @@ class SkymapScannerJob:
         )
 
         if DebugMode.CLIENT_LOGS in debug_mode:
-            args += f" --spool-logs-directory {common_space_volume_path} "
+            args += " --spool "
 
         return args.split()
 

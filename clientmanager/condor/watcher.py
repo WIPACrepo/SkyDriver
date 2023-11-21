@@ -45,34 +45,34 @@ DONE_JOB_STATUSES: list[int] = [
 NON_RESPONSE_LIMIT = 10
 
 
-def _translate_special_attrs(ad: dict[str, Any]) -> None:
+def _translate_special_attrs(job_ad: dict[str, Any]) -> None:
     """Special handling for specific attrs."""
-    for attr in ad:
+    for attr in job_ad:
         if attr.startswith("HTChirp"):
             # unquote
-            if isinstance(ad[attr], str):
+            if isinstance(job_ad[attr], str):
                 try:
-                    ad[attr] = htcondor.classad.unquote(ad[attr])
+                    job_ad[attr] = htcondor.classad.unquote(job_ad[attr])
                 except Exception:
                     # LOGGER.error(f"could not unquote: {job[attr]}")
                     # LOGGER.exception(e)
                     pass
     try:
-        ad["JobStatus"] = int(ad["JobStatus"])
+        job_ad["JobStatus"] = int(job_ad["JobStatus"])
     except Exception as e:
         LOGGER.exception(e)
 
 
-def update_stored_job_ads(
-    job_ads: dict[int, dict[str, Any]],
+def update_stored_job_infos(
+    job_infos: dict[int, dict[str, Any]],
     classad: Any,
     source: str,
 ) -> None:
-    """Update the job's classad attrs in `job_ads`."""
+    """Update the job's classad attrs in `job_infos`."""
     procid = int(classad["ProcId"])
-    job_ads[procid]["source"] = source
-    job_ads[procid].update(dict(classad))  # start with everything
-    _translate_special_attrs(job_ads[procid])
+    job_infos[procid]["source"] = source
+    job_infos[procid].update(dict(classad))  # start with everything
+    _translate_special_attrs(job_infos[procid])
 
 
 def iter_job_classads(
@@ -102,7 +102,7 @@ def iter_job_classads(
 
 
 def get_aggregate_statuses(
-    job_ads: dict[int, dict[str, Any]],
+    job_infos: dict[int, dict[str, Any]],
     previous: dict[str, dict[str, int]],
 ) -> tuple[dict[str, dict[str, int]], bool]:
     """Aggregate statuses of jobs & return whether this is an new value."""
@@ -114,14 +114,14 @@ def get_aggregate_statuses(
         enough to aggregate nicely with others; e.g. don't
         append a timestamp, do append a standard reason str.
         """
-        for ad in job_ads.values():
-            if ad["JobStatus"] == ct.HELD:
+        for info in job_infos.values():
+            if info["JobStatus"] == ct.HELD:
                 yield (
                     f"{ct.job_status_to_str(ct.HELD)}: "
-                    f"{ad.get('HoldReason', 'unknown reason')}"
+                    f"{info.get('HoldReason', 'unknown reason')}"
                 )
             else:
-                yield ct.job_status_to_str(ad["JobStatus"])
+                yield ct.job_status_to_str(info["JobStatus"])
 
     statuses = {
         "JobStatus": dict(
@@ -131,7 +131,7 @@ def get_aggregate_statuses(
         ),
         "HTChirpEWMSPilotStatus": dict(
             collections.Counter(
-                [j["HTChirpEWMSPilotStatus"] for j in job_ads.values()],
+                [j["HTChirpEWMSPilotStatus"] for j in job_infos.values()],
             )
         ),
     }
@@ -139,13 +139,13 @@ def get_aggregate_statuses(
 
 
 def get_aggregate_top_task_errors(
-    job_ads: dict[int, dict[str, Any]],
+    job_infos: dict[int, dict[str, Any]],
     n_top_task_errors: int,
     previous: dict[str, int],
 ) -> tuple[dict[str, int], bool]:
     """Aggregate top X errors of jobs & return whether this is an new value."""
     counts = collections.Counter(
-        [dicto.get("HTChirpEWMSPilotError") for dicto in job_ads.values()]
+        [dicto.get("HTChirpEWMSPilotError") for dicto in job_infos.values()]
     )
     counts.pop(None, None)  # remove counts of "no error"
 
@@ -168,7 +168,7 @@ def watch(
         f"Watching Skymap Scanner client workers on {cluster_id} / {collector} / {schedd}"
     )
 
-    job_ads: dict[int, dict[str, Any]] = {
+    job_infos: dict[int, dict[str, Any]] = {
         i: {
             "JobStatus": None,
             "HTChirpEWMSPilotStatus": None,
@@ -187,7 +187,7 @@ def watch(
         all jobs are done, since there may be more attrs to be updated.
         """
         if not any(  # but only if we have done jobs
-            job_ads[j]["JobStatus"] in DONE_JOB_STATUSES for j in job_ads
+            job_infos[j]["JobStatus"] in DONE_JOB_STATUSES for j in job_infos
         ):
             return True
         # condor may occasionally slow down & prematurely return nothing
@@ -216,16 +216,16 @@ def watch(
         non_response_ct += 1  # just in case
         for ad, source in classads:
             non_response_ct = 0
-            update_stored_job_ads(job_ads, ad, source)
+            update_stored_job_infos(job_infos, ad, source)
             # NOTE - if memory becomes an issue, switch to an in-iterator design
 
         # aggregate
         aggregate_statuses, has_new_statuses = get_aggregate_statuses(
-            job_ads,
+            job_infos,
             aggregate_statuses,
         )
         aggregate_top_task_errors, has_new_errors = get_aggregate_top_task_errors(
-            job_ads,
+            job_infos,
             WATCHER_N_TOP_TASK_ERRORS,
             aggregate_top_task_errors,
         )
@@ -235,7 +235,7 @@ def watch(
             LOGGER.info("no updates")
         else:
             # LOGGER.debug(f"job statuses ({n_workers=})")
-            # LOGGER.debug(f"{pformat(job_ads, indent=4)}")
+            # LOGGER.debug(f"{pformat(job_infos, indent=4)}")
             LOGGER.info(f"job aggregate statuses ({n_workers=})")
             LOGGER.info(f"{pformat(aggregate_statuses, indent=4)}")
             LOGGER.info(

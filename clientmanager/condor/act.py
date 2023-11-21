@@ -34,10 +34,8 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
             # make connections -- do now so we don't have any surprises downstream
             skydriver_rc = utils.connect_to_skydriver()
             # start
-            submit_dict, spool = starter.prep(
-                spool_logs_directory=(
-                    args.spool_logs_directory if args.spool_logs_directory else None
-                ),
+            submit_dict = starter.prep(
+                spool=args.spool,
                 # starter CL args -- worker
                 memory=args.memory,
                 n_cores=args.n_cores,
@@ -59,7 +57,7 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
                 schedd_obj=schedd_obj,
                 n_workers=args.n_workers,
                 submit_dict=submit_dict,
-                spool=spool,
+                spool=args.spool,
             )
             # report to SkyDriver
             skydriver_cluster_obj = dict(
