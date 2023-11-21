@@ -107,7 +107,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
 
 def prep(
     # starter CL args -- helper
-    spool_logs_directory: Path | None,
+    spool: bool,
     # starter CL args -- worker
     memory: str,
     n_cores: int,
@@ -118,14 +118,12 @@ def prep(
     image: str,
 ) -> tuple[dict[str, Any], bool]:
     """Create objects needed for starting cluster."""
-    if spool_logs_directory:
-        logs_subdir = make_condor_logs_subdir(spool_logs_directory)
-        spool = True
+    if spool:
+        logs_subdir = make_condor_logs_subdir()  # TODO- make path
     else:
         logs_subdir = None
         # NOTE: since we're not transferring any local files directly,
         # we don't need to spool. Files are on CVMFS and S3.
-        spool = False
 
     # get client args
     client_args_string = ""

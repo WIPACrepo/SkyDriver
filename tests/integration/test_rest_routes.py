@@ -14,10 +14,9 @@ from typing import Any, Callable
 
 import pytest
 import requests
-from rest_tools.client import RestClient
-
 import skydriver
 import skydriver.images  # noqa: F401  # export
+from rest_tools.client import RestClient
 
 skydriver.config.config_logging("debug")
 
@@ -642,7 +641,7 @@ def get_tms_args(
             f" --memory 8GB "
             f" --image {image} "
             f" --client-startup-json /common-space/startup.json "
-            f" --spool-logs-directory /common-space "
+            f" --spool "
         ]
 
     return tms_args
