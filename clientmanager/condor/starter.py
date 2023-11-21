@@ -10,18 +10,15 @@ from ..config import ENV, FORWARDED_ENV_VARS, LOGGER
 from ..utils import S3File
 
 
-def make_condor_logs_dir(
-    uuid: str,
-) -> Path:
+def make_condor_logs_dir() -> Path:
     """Make the condor logs subdirectory."""
-    dpath = Path(f"tms-cluster-{uuid}")
+    dpath = Path("tms-cluster")
     dpath.mkdir(parents=True)
     LOGGER.info(f"HTCondor will write log files to {dpath}")
     return dpath
 
 
-def make_condor_job_description(  # pylint: disable=too-many-arguments
-    uuid: str,
+def make_condor_job_description(
     spool: bool,
     # condor args
     memory: str,
@@ -89,7 +86,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     # outputs
     if spool:
         # this is the location where the files will go when/if *returned here*
-        logs_dir = make_condor_logs_dir(uuid)
+        logs_dir = make_condor_logs_dir()
         submit_dict.update(
             {
                 "output": str(logs_dir / "tms-worker-$(ProcId).out"),
@@ -118,7 +115,6 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
 
 
 def prep(
-    uuid: str,
     # starter CL args -- helper
     spool: bool,
     # starter CL args -- worker
@@ -146,7 +142,6 @@ def prep(
 
     # make condor job description
     submit_dict = make_condor_job_description(
-        uuid,
         spool,
         # condor args
         memory,
