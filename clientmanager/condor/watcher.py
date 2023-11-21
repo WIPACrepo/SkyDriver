@@ -3,11 +3,10 @@
 
 import collections
 import time
-from datetime import datetime as dt
 from pprint import pformat
 from typing import Any, Iterator
 
-import htcondor  # type: ignore[import]
+import htcondor  # type: ignore[import-untyped]
 from rest_tools.client import RestClient
 
 from .. import utils
@@ -46,34 +45,34 @@ DONE_JOB_STATUSES: list[int] = [
 NON_RESPONSE_LIMIT = 10
 
 
-def update_stored_job_attrs(
-    job_attrs: dict[int, dict[str, Any]],
+def _translate_special_attrs(ad: dict[str, Any]) -> None:
+    """Special handling for specific attrs."""
+    for attr in ad:
+        if attr.startswith("HTChirp"):
+            # unquote
+            if isinstance(ad[attr], str):
+                try:
+                    ad[attr] = htcondor.classad.unquote(ad[attr])
+                except Exception:
+                    # LOGGER.error(f"could not unquote: {job[attr]}")
+                    # LOGGER.exception(e)
+                    pass
+    try:
+        ad["JobStatus"] = int(ad["JobStatus"])
+    except Exception as e:
+        LOGGER.exception(e)
+
+
+def update_stored_job_ads(
+    job_ads: dict[int, dict[str, Any]],
     classad: Any,
     source: str,
 ) -> None:
-    """Update the job's classad attrs in `job_attrs`."""
+    """Update the job's classad attrs in `job_ads`."""
     procid = int(classad["ProcId"])
-    job_attrs[procid]["source"] = source
-    for attr in classad:
-        if attr.startswith("HTChirp"):
-            if isinstance(classad[attr], str):
-                try:
-                    val = htcondor.classad.unquote(classad[attr])
-                except Exception:
-                    # LOGGER.error(f"could not unquote: {classad[attr]}")
-                    # LOGGER.exception(e)
-                    val = classad[attr]
-            else:
-                val = classad[attr]
-            if attr.endswith("Timestamp"):
-                job_attrs[procid][attr] = str(dt.fromtimestamp(float(val)))
-                # TODO use float if sending to skydriver
-            else:
-                job_attrs[procid][attr] = val
-    try:
-        job_attrs[procid]["JobStatus"] = int(classad["JobStatus"])
-    except Exception as e:
-        LOGGER.exception(e)
+    job_ads[procid]["source"] = source
+    job_ads[procid].update(dict(classad))  # start with everything
+    _translate_special_attrs(job_ads[procid])
 
 
 def iter_job_classads(
@@ -103,7 +102,7 @@ def iter_job_classads(
 
 
 def get_aggregate_statuses(
-    job_attrs: dict[int, dict[str, Any]],
+    job_ads: dict[int, dict[str, Any]],
     previous: dict[str, dict[str, int]],
 ) -> tuple[dict[str, dict[str, int]], bool]:
     """Aggregate statuses of jobs & return whether this is an new value."""
@@ -115,14 +114,14 @@ def get_aggregate_statuses(
         enough to aggregate nicely with others; e.g. don't
         append a timestamp, do append a standard reason str.
         """
-        for job in job_attrs.values():
-            if job["JobStatus"] == ct.HELD:
+        for ad in job_ads.values():
+            if ad["JobStatus"] == ct.HELD:
                 yield (
                     f"{ct.job_status_to_str(ct.HELD)}: "
-                    f"{job.get('HoldReason', 'unknown reason')}"
+                    f"{ad.get('HoldReason', 'unknown reason')}"
                 )
             else:
-                yield ct.job_status_to_str(job["JobStatus"])
+                yield ct.job_status_to_str(ad["JobStatus"])
 
     statuses = {
         "JobStatus": dict(
@@ -132,7 +131,7 @@ def get_aggregate_statuses(
         ),
         "HTChirpEWMSPilotStatus": dict(
             collections.Counter(
-                [j["HTChirpEWMSPilotStatus"] for j in job_attrs.values()],
+                [j["HTChirpEWMSPilotStatus"] for j in job_ads.values()],
             )
         ),
     }
@@ -140,13 +139,13 @@ def get_aggregate_statuses(
 
 
 def get_aggregate_top_task_errors(
-    job_attrs: dict[int, dict[str, Any]],
+    job_ads: dict[int, dict[str, Any]],
     n_top_task_errors: int,
     previous: dict[str, int],
 ) -> tuple[dict[str, int], bool]:
     """Aggregate top X errors of jobs & return whether this is an new value."""
     counts = collections.Counter(
-        [dicto.get("HTChirpEWMSPilotError") for dicto in job_attrs.values()]
+        [dicto.get("HTChirpEWMSPilotError") for dicto in job_ads.values()]
     )
     counts.pop(None, None)  # remove counts of "no error"
 
@@ -169,7 +168,7 @@ def watch(
         f"Watching Skymap Scanner client workers on {cluster_id} / {collector} / {schedd}"
     )
 
-    job_attrs: dict[int, dict[str, Any]] = {
+    job_ads: dict[int, dict[str, Any]] = {
         i: {
             "JobStatus": None,
             "HTChirpEWMSPilotStatus": None,
@@ -188,7 +187,7 @@ def watch(
         all jobs are done, since there may be more attrs to be updated.
         """
         if not any(  # but only if we have done jobs
-            job_attrs[j]["JobStatus"] in DONE_JOB_STATUSES for j in job_attrs
+            job_ads[j]["JobStatus"] in DONE_JOB_STATUSES for j in job_ads
         ):
             return True
         # condor may occasionally slow down & prematurely return nothing
@@ -200,6 +199,11 @@ def watch(
         and time.time() - start
         < WATCHER_MAX_RUNTIME  # just in case, stop if taking too long
     ):
+        # wait -- sleeping at top guarantees this happens
+        time.sleep(WATCHER_INTERVAL)
+        LOGGER.info("(re)checking jobs...")
+
+        # query
         classads = iter_job_classads(
             schedd_obj,
             (
@@ -212,15 +216,16 @@ def watch(
         non_response_ct += 1  # just in case
         for ad, source in classads:
             non_response_ct = 0
-            update_stored_job_attrs(job_attrs, ad, source)
+            update_stored_job_ads(job_ads, ad, source)
+            # NOTE - if memory becomes an issue, switch to an in-iterator design
 
         # aggregate
         aggregate_statuses, has_new_statuses = get_aggregate_statuses(
-            job_attrs,
+            job_ads,
             aggregate_statuses,
         )
         aggregate_top_task_errors, has_new_errors = get_aggregate_top_task_errors(
-            job_attrs,
+            job_ads,
             WATCHER_N_TOP_TASK_ERRORS,
             aggregate_top_task_errors,
         )
@@ -229,8 +234,8 @@ def watch(
         if not has_new_statuses and not has_new_errors:
             LOGGER.info("no updates")
         else:
-            LOGGER.info(f"job statuses ({n_workers=})")
-            LOGGER.info(f"{pformat(job_attrs, indent=4)}")
+            # LOGGER.debug(f"job statuses ({n_workers=})")
+            # LOGGER.debug(f"{pformat(job_ads, indent=4)}")
             LOGGER.info(f"job aggregate statuses ({n_workers=})")
             LOGGER.info(f"{pformat(aggregate_statuses, indent=4)}")
             LOGGER.info(
@@ -245,7 +250,3 @@ def watch(
                 statuses=aggregate_statuses,
                 top_task_errors=aggregate_top_task_errors,
             )
-
-        # wait
-        time.sleep(WATCHER_INTERVAL)
-        LOGGER.info("checking jobs again...")
