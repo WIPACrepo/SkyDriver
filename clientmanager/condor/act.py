@@ -35,6 +35,7 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
             skydriver_rc = utils.connect_to_skydriver()
             # start
             submit_dict = starter.prep(
+                uuid=args.uuid,
                 spool=args.spool,
                 # starter CL args -- worker
                 memory=args.memory,

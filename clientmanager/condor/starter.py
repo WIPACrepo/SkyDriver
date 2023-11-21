@@ -1,7 +1,6 @@
 """For starting Skymap Scanner clients on an HTCondor cluster."""
 
 
-import datetime as dt
 from pathlib import Path
 from typing import Any
 
@@ -11,10 +10,11 @@ from ..config import ENV, FORWARDED_ENV_VARS, LOGGER
 from ..utils import S3File
 
 
-def make_condor_logs_dir() -> Path:
+def make_condor_logs_dir(
+    uuid: str,
+) -> Path:
     """Make the condor logs subdirectory."""
-    iso_now = dt.datetime.now().isoformat(timespec="seconds")
-    dpath = Path(f"tms-cluster-{iso_now}")
+    dpath = Path(f"tms-cluster-{uuid}")
     dpath.mkdir(parents=True)
     LOGGER.info(f"HTCondor will write log files to {dpath}")
     return dpath
@@ -106,6 +106,7 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
 
 
 def prep(
+    uuid: str,
     # starter CL args -- helper
     spool: bool,
     # starter CL args -- worker
@@ -119,7 +120,7 @@ def prep(
 ) -> dict[str, Any]:
     """Create objects needed for starting cluster."""
     if spool:
-        logs_dir = make_condor_logs_dir()
+        logs_dir = make_condor_logs_dir(uuid)
     else:
         logs_dir = None
         # NOTE: since we're not transferring any local files directly,
