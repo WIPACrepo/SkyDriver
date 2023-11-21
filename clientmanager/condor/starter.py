@@ -21,7 +21,8 @@ def make_condor_logs_dir(
 
 
 def make_condor_job_description(  # pylint: disable=too-many-arguments
-    logs_dir: Path | None,
+    uuid: str,
+    spool: bool,
     # condor args
     memory: str,
     n_cores: int,
@@ -82,7 +83,9 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     }
 
     # outputs
-    if logs_dir:
+    if spool:
+        # this is the location where the files will go when/if *returned here*
+        logs_dir = make_condor_logs_dir(uuid)
         submit_dict.update(
             {
                 "output": str(logs_dir / "tms-worker-$(ProcId).out"),
@@ -124,12 +127,6 @@ def prep(
     image: str,
 ) -> dict[str, Any]:
     """Create objects needed for starting cluster."""
-    if spool:
-        logs_dir = make_condor_logs_dir(uuid)
-    else:
-        logs_dir = None
-        # NOTE: since we're not transferring any local files directly,
-        # we don't need to spool. Files are on CVMFS and S3.
 
     # get client args
     client_args_string = ""
@@ -145,7 +142,8 @@ def prep(
 
     # make condor job description
     submit_dict = make_condor_job_description(
-        logs_dir,
+        uuid,
+        spool,
         # condor args
         memory,
         n_cores,
