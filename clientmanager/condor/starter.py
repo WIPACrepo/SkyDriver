@@ -70,6 +70,11 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
         "transfer_input_files": client_startup_json_s3.url,
         "transfer_output_files": '""',  # must be quoted for "none"
         #
+        # technically this is just needed for spooling -- since if
+        # we don't spool, the executable (/bin/bash) can't be
+        # transferred anyway and so a local version will be used
+        "transfer_executable": "false",
+        #
         "request_cpus": str(n_cores),
         "request_memory": memory,
         "+WantIOProxy": "true",  # for HTChirp
