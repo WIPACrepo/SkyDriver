@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.7 (2023-11-21)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`8625ece`](https://github.com/WIPACrepo/SkyDriver/commit/8625ece5f5765321c8a65711c34b4f7532355f9e))
+* Cluster-Watching: include `HoldReason` - 2 ([`96975ed`](https://github.com/WIPACrepo/SkyDriver/commit/96975ede756ae8a06ec09926ee0c0e0c998e31a4))
+* Cluster-Watching: include `HoldReason` ([`dd447e1`](https://github.com/WIPACrepo/SkyDriver/commit/dd447e1ccc9c685d79d01929a47cc321bba6fd3e))
+
 ## v0.7.6 (2023-11-20)
 
 ### Other
