@@ -24,6 +24,7 @@ PROJECTION = [
     "JobStatus",
     "EnteredCurrentStatus",
     "ProcId",
+    "HoldReason",
     #
     "HTChirpEWMSPilotLastUpdatedTimestamp",
     "HTChirpEWMSPilotStartedTimestamp",
@@ -38,9 +39,9 @@ PROJECTION = [
 ]
 
 
-DONE_JOB_STATUSES = [
-    ct.job_status_to_str(ct.REMOVED),
-    ct.job_status_to_str(ct.COMPLETED),
+DONE_JOB_STATUSES: list[int] = [
+    ct.REMOVED,
+    ct.COMPLETED,
 ]
 NON_RESPONSE_LIMIT = 10
 
@@ -70,7 +71,7 @@ def update_stored_job_attrs(
             else:
                 job_attrs[procid][attr] = val
     try:
-        job_attrs[procid]["JobStatus"] = ct.job_status_to_str(int(classad["JobStatus"]))
+        job_attrs[procid]["JobStatus"] = int(classad["JobStatus"])
     except Exception as e:
         LOGGER.exception(e)
 
@@ -106,12 +107,34 @@ def get_aggregate_statuses(
     previous: dict[str, dict[str, int]],
 ) -> tuple[dict[str, dict[str, int]], bool]:
     """Aggregate statuses of jobs & return whether this is an new value."""
+
+    def job_status_vals() -> Iterator[str]:
+        """Get each job status -- transforming any as needed.
+
+        NOTE: each transformation needs to be generic
+        enough to aggregate nicely with others; e.g. don't
+        append a timestamp, do append a standard reason str.
+        """
+        for job in job_attrs.values():
+            if job["JobStatus"] == ct.HELD:
+                yield (
+                    f"{ct.job_status_to_str(ct.HELD)}: "
+                    f"{job.get('HoldReason', 'unknown reason')}"
+                )
+            else:
+                yield ct.job_status_to_str(job["JobStatus"])
+
     statuses = {
-        s: dict(collections.Counter([dicto[s] for dicto in job_attrs.values()]))
-        for s in [
-            "JobStatus",
-            "HTChirpEWMSPilotStatus",
-        ]
+        "JobStatus": dict(
+            collections.Counter(
+                job_status_vals(),
+            ),
+        ),
+        "HTChirpEWMSPilotStatus": dict(
+            collections.Counter(
+                [j["HTChirpEWMSPilotStatus"] for j in job_attrs.values()],
+            )
+        ),
     }
     return statuses, statuses != previous
 
