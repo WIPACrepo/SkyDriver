@@ -116,7 +116,7 @@ def prep(
     client_args: list[tuple[str, str]],
     client_startup_json_s3: S3File,
     image: str,
-) -> tuple[dict[str, Any], bool]:
+) -> dict[str, Any]:
     """Create objects needed for starting cluster."""
     if spool:
         logs_dir = make_condor_logs_dir()
@@ -151,7 +151,7 @@ def prep(
     )
     LOGGER.info(submit_dict)
 
-    return submit_dict, spool
+    return submit_dict
 
 
 def start(
