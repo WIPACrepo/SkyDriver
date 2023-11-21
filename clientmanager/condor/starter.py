@@ -5,23 +5,23 @@ import datetime as dt
 from pathlib import Path
 from typing import Any
 
-import htcondor  # type: ignore[import]
+import htcondor  # type: ignore[import-untyped]
 
 from ..config import ENV, FORWARDED_ENV_VARS, LOGGER
 from ..utils import S3File
 
 
-def make_condor_logs_subdir(directory: Path) -> Path:
+def make_condor_logs_dir() -> Path:
     """Make the condor logs subdirectory."""
     iso_now = dt.datetime.now().isoformat(timespec="seconds")
-    subdir = directory / f"skyscan-{iso_now}"
-    subdir.mkdir(parents=True)
-    LOGGER.info(f"HTCondor will write log files to {subdir}")
-    return subdir
+    dpath = Path(f"tms-cluster-{iso_now}")
+    dpath.mkdir(parents=True)
+    LOGGER.info(f"HTCondor will write log files to {dpath}")
+    return dpath
 
 
 def make_condor_job_description(  # pylint: disable=too-many-arguments
-    logs_subdir: Path | None,
+    logs_dir: Path | None,
     # condor args
     memory: str,
     n_cores: int,
@@ -77,12 +77,12 @@ def make_condor_job_description(  # pylint: disable=too-many-arguments
     }
 
     # outputs
-    if logs_subdir:
+    if logs_dir:
         submit_dict.update(
             {
-                "output": str(logs_subdir / "client-$(ProcId).out"),
-                "error": str(logs_subdir / "client-$(ProcId).err"),
-                "log": str(logs_subdir / "clientmanager.log"),
+                "output": str(logs_dir / "tms-worker-$(ProcId).out"),
+                "error": str(logs_dir / "tms-worker-$(ProcId).err"),
+                "log": str(logs_dir / "tms-cluster.log"),
             }
         )
         # https://htcondor.readthedocs.io/en/latest/users-manual/file-transfer.html#specifying-if-and-when-to-transfer-files
@@ -119,9 +119,9 @@ def prep(
 ) -> tuple[dict[str, Any], bool]:
     """Create objects needed for starting cluster."""
     if spool:
-        logs_subdir = make_condor_logs_subdir()  # TODO- make path
+        logs_dir = make_condor_logs_dir()
     else:
-        logs_subdir = None
+        logs_dir = None
         # NOTE: since we're not transferring any local files directly,
         # we don't need to spool. Files are on CVMFS and S3.
 
@@ -139,7 +139,7 @@ def prep(
 
     # make condor job description
     submit_dict = make_condor_job_description(
-        logs_subdir,
+        logs_dir,
         # condor args
         memory,
         n_cores,

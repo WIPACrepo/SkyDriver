@@ -8,7 +8,7 @@ import pprint
 from pathlib import Path
 from typing import Any
 
-import kubernetes  # type: ignore[import]
+import kubernetes  # type: ignore[import-untyped]
 
 from ..config import (
     ENV,
@@ -19,10 +19,6 @@ from ..config import (
 )
 from ..utils import S3File
 from . import k8s_tools
-
-
-def _get_log_fpath(logs_subdir: Path) -> Path:
-    return logs_subdir / "clientmanager.log"
 
 
 def make_k8s_job_desc(
