@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.8 (2023-11-21)
+
+### Other
+
+* Spooling Bug Fix ([#91](https://github.com/WIPACrepo/SkyDriver/issues/91)) ([`266a6fb`](https://github.com/WIPACrepo/SkyDriver/commit/266a6fba7d4dc51abdbaf755e220e1a77c85dfe4))
+
 ## v0.7.7 (2023-11-21)
 
 ### Other
