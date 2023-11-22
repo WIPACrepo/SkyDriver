@@ -7,7 +7,7 @@ import json
 import uuid
 from typing import Any, Type, TypeVar
 
-import kubernetes.client  # type: ignore[import]
+import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient

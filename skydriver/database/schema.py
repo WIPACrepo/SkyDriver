@@ -251,7 +251,7 @@ class Manifest(ScanIDDataclass):
 
         def obfuscate_cl_args(args: str) -> str:
             # first, check if any sensitive strings (searches using substrings)
-            if not wdt.sensitive_data_tools.is_name_sensitive(args):
+            if not wdt.data_safety_tools.is_name_sensitive(args):
                 return args
             # now, go one-by-one
             out_args: list[str] = []
