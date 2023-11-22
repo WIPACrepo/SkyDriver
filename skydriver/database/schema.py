@@ -221,9 +221,34 @@ class Manifest(ScanIDDataclass):
                 ).encode("utf-8")
             ).hexdigest()
 
-        # obfuscate tokens & such
+        #
+        # obfuscate tokens & such (sensitive values)
+        #
+
+        def obfuscate_cl_args(args: str) -> str:
+            # first, check if any sensitive strings (searches using substrings)
+            if not wdt.sensitive_data_tools.is_name_sensitive(args):
+                return args
+            # now, go one-by-one
+            out_args: list[str] = []
+            current_option = ""
+            for string in args.split():
+                if string.startswith("--"):  # ex: --foo -> "... --foo bar baz ..."
+                    current_option = string
+                    out_args += string
+                elif current_option:  # ex: baz -> "... --foo bar baz ..."
+                    out_args += wdt.data_safety_tools.obfuscate_value_if_sensitive(
+                        current_option, string
+                    )
+                else:  # ex: my_module -> "python -m my_module ... --foo bar baz ..."
+                    out_args += string
+            return " ".join(out_args)
+
         # scanner_server_args: str
+        self.scanner_server_args = obfuscate_cl_args(self.scanner_server_args)
+
         # tms_args: list[str]
+        self.tms_args = [obfuscate_cl_args(a) for a in self.tms_args]
 
         # env_vars: dict[str, list[dict[str, Any]]]
         for env_list in self.env_vars:
