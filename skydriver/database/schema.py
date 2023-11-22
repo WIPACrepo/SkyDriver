@@ -174,6 +174,16 @@ class Cluster:
 
 @typechecked
 @dc.dataclass
+class TMSTaskDirective:
+    """Encapsulates the directive of a unique TMS task entity."""
+
+    tms_args: list[str]
+    env_vars: dict[str, Any]
+    clusters: list[Cluster] = dc.field(default_factory=list)
+
+
+@typechecked
+@dc.dataclass
 class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
 
@@ -183,16 +193,13 @@ class Manifest(ScanIDDataclass):
     # args
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ hash?
     scanner_server_args: str
-    tms_args: list[str]
-    env_vars: dict[str, Any]
+
+    tms: TMSTaskDirective
 
     classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)
 
     # special fields -- see __post_init__
     event_i3live_json_dict__hash: str = ""  # possibly overwritten
-
-    # cpus
-    clusters: list[Cluster] = dc.field(default_factory=list)
 
     # found/created during first few seconds of scanning
     event_metadata: EventMetadata | None = None
