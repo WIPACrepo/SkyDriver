@@ -6,6 +6,7 @@ import hashlib
 import json
 from typing import Any, Literal
 
+import wipac_dev_tools as wdt
 from typeguard import typechecked
 
 from .. import config
@@ -180,12 +181,15 @@ class Manifest(ScanIDDataclass):
     timestamp: float
     is_deleted: bool
 
-    # args
+    # grabbed by scanner central server
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ hash?
+
+    # args placed in k8s job obj
     scanner_server_args: str
     tms_args: list[str]
-    env_vars: dict[str, Any]
+    env_vars: dict[str, list[dict[str, Any]]]
 
+    # open to requestor
     classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)
 
     # special fields -- see __post_init__
@@ -196,7 +200,7 @@ class Manifest(ScanIDDataclass):
 
     # found/created during first few seconds of scanning
     event_metadata: EventMetadata | None = None
-    scan_metadata: dict | None = None  # open to requestor
+    scan_metadata: dict | None = None  # open to scanner
 
     # updated during scanning, multiple times
     progress: Progress | None = None
@@ -216,6 +220,18 @@ class Manifest(ScanIDDataclass):
                     ensure_ascii=True,
                 ).encode("utf-8")
             ).hexdigest()
+
+        # obfuscate tokens & such
+        # scanner_server_args: str
+        # tms_args: list[str]
+
+        # env_vars: dict[str, list[dict[str, Any]]]
+        for env_list in self.env_vars:
+            for env_entry in env_list:
+                safe_val = wdt.data_safety_tools.obfuscate_value_if_sensitive(
+                    env_entry["name"], env_entry["value"]  # type: ignore[index]
+                )
+                env_entry["value"] = safe_val  # type: ignore[index]
 
     def get_state(self) -> ScanState:
         """Determine the state of the scan by parsing attributes."""
@@ -246,7 +262,5 @@ class Manifest(ScanIDDataclass):
     def __repr__(self) -> str:
         dicto = dc.asdict(self)
         dicto.pop("event_i3live_json_dict")
-        # obfuscate tokens
-        # TODO
         rep = f"{self.__class__.__name__}{dicto}"
         return rep
