@@ -4,7 +4,7 @@ import dataclasses as dc
 import enum
 import hashlib
 import json
-from typing import Any, Literal
+from typing import Any, Iterator, Literal
 
 import wipac_dev_tools as wdt
 from typeguard import typechecked
@@ -166,11 +166,35 @@ class Cluster:
 
     def to_known_cluster(self) -> tuple[str, StrDict]:
         """Map to a config.KNOWN_CLUSTERS entry."""
-        return next(  # type: ignore[return-value]
+        return next(
             (k, v)
             for k, v in config.KNOWN_CLUSTERS.items()
-            if v["location"] == dc.asdict(self.location)  # type: ignore[index]
+            if v["location"] == dc.asdict(self.location)
         )
+
+
+@typechecked
+@dc.dataclass
+class EnvVars:
+    """Encapsulates env var object originating from K8s objects."""
+
+    scanner_server: list[StrDict]
+    tms_starters: list[list[StrDict]]
+
+    def __post_init__(self) -> None:
+        #
+        # obfuscate tokens & such (sensitive values)
+        #
+        def obfuscate(env_list: list[StrDict]) -> Iterator[StrDict]:
+            for env_entry in env_list:
+                safe_val = wdt.data_safety_tools.obfuscate_value_if_sensitive(
+                    env_entry["name"], env_entry["value"]
+                )
+                env_entry["value"] = safe_val
+                yield env_entry
+
+        self.scanner_server = list(obfuscate(self.scanner_server))
+        self.tms_starters = [list(obfuscate(s)) for s in self.tms_starters]
 
 
 @typechecked
@@ -187,7 +211,7 @@ class Manifest(ScanIDDataclass):
     # args placed in k8s job obj
     scanner_server_args: str
     tms_args: list[str]
-    env_vars: dict[str, list[dict[str, Any]]]
+    env_vars: EnvVars
 
     # open to requestor
     classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)
@@ -250,13 +274,7 @@ class Manifest(ScanIDDataclass):
         # tms_args: list[str]
         self.tms_args = [obfuscate_cl_args(a) for a in self.tms_args]
 
-        # env_vars: dict[str, list[dict[str, Any]]]
-        for env_list in self.env_vars:
-            for env_entry in env_list:
-                safe_val = wdt.data_safety_tools.obfuscate_value_if_sensitive(
-                    env_entry["name"], env_entry["value"]  # type: ignore[index]
-                )
-                env_entry["value"] = safe_val  # type: ignore[index]
+        # NOTE - self.env_vars done in EnvVars
 
     def get_state(self) -> ScanState:
         """Determine the state of the scan by parsing attributes."""
