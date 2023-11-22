@@ -60,7 +60,7 @@ typeguard==4.1.5
 typing_extensions==4.8.0
 urllib3==1.26.18
 websocket-client==1.6.4
-wipac-dev-tools==1.7.1
+wipac-dev-tools==1.8.0
 wipac-rest-tools==1.5.2
 wipac-telemetry==0.3.0
 wrapt==1.16.0
@@ -132,7 +132,7 @@ skydriver-clientmanager
 ├── tornado [required: Any, installed: 6.3.3]
 ├── typeguard [required: Any, installed: 4.1.5]
 │   └── typing-extensions [required: >=4.7.0, installed: 4.8.0]
-├── wipac-dev-tools [required: Any, installed: 1.7.1]
+├── wipac-dev-tools [required: Any, installed: 1.8.0]
 │   ├── requests [required: Any, installed: 2.31.0]
 │   │   ├── certifi [required: >=2017.4.17, installed: 2023.11.17]
 │   │   ├── charset-normalizer [required: >=2,<4, installed: 3.3.2]
@@ -157,7 +157,7 @@ skydriver-clientmanager
     │       ├── idna [required: >=2.5,<4, installed: 3.4]
     │       └── urllib3 [required: >=1.21.1,<3, installed: 1.26.18]
     ├── tornado [required: Any, installed: 6.3.3]
-    └── wipac-dev-tools [required: Any, installed: 1.7.1]
+    └── wipac-dev-tools [required: Any, installed: 1.8.0]
         ├── requests [required: Any, installed: 2.31.0]
         │   ├── certifi [required: >=2017.4.17, installed: 2023.11.17]
         │   ├── charset-normalizer [required: >=2,<4, installed: 3.3.2]
@@ -247,7 +247,7 @@ wipac-telemetry==0.3.0
 │   └── typing-extensions [required: >=3.7.4, installed: 4.8.0]
 ├── protobuf [required: Any, installed: 4.25.1]
 ├── typing-extensions [required: Any, installed: 4.8.0]
-└── wipac-dev-tools [required: Any, installed: 1.7.1]
+└── wipac-dev-tools [required: Any, installed: 1.8.0]
     ├── requests [required: Any, installed: 2.31.0]
     │   ├── certifi [required: >=2017.4.17, installed: 2023.11.17]
     │   ├── charset-normalizer [required: >=2,<4, installed: 3.3.2]
