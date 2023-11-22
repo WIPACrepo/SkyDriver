@@ -187,10 +187,11 @@ class EnvVars:
         #
         def obfuscate(env_list: list[StrDict]) -> Iterator[StrDict]:
             for env_entry in env_list:
-                safe_val = wdt.data_safety_tools.obfuscate_value_if_sensitive(
-                    env_entry["name"], env_entry["value"]
-                )
-                env_entry["value"] = safe_val
+                if env_entry["value"]:
+                    safe_val = wdt.data_safety_tools.obfuscate_value_if_sensitive(
+                        env_entry["name"], env_entry["value"]
+                    )
+                    env_entry["value"] = safe_val
                 yield env_entry
 
         self.scanner_server = list(obfuscate(self.scanner_server))
