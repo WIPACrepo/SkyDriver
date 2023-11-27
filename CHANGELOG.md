@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.10 (2023-11-27)
+
+### Other
+
+* Make Retrieving Pod Statuses Optional for `/scan/SCAN_ID/status` ([#94](https://github.com/WIPACrepo/SkyDriver/issues/94)) ([`51914b0`](https://github.com/WIPACrepo/SkyDriver/commit/51914b0d3a1e54ef8219cce557e2ca6cf460bf02))
+
 ## v0.7.9 (2023-11-27)
 
 ### Other
