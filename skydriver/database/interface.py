@@ -59,7 +59,7 @@ class ManifestClient:
         scan_id: str,
         scanner_server_args: str,
         tms_args_list: list[str],
-        env_vars: dict[str, Any],
+        env_vars: schema.EnvVars,
         classifiers: dict[str, str | bool | float | int],
     ) -> schema.Manifest:
         """Create `schema.Manifest` doc."""

@@ -16,7 +16,7 @@ def test_00__scan_finished_successfully() -> None:
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
         tms_args=[],
-        env_vars={},
+        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
         #
         complete=True,
         progress=schema.Progress(
@@ -56,7 +56,7 @@ def test_10__partial_result_generated(
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
         tms_args=[],
-        env_vars={},
+        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
         #
         complete=is_complete,
         progress=schema.Progress(
@@ -108,7 +108,7 @@ def test_20__waiting_on_first_pixel_reco(
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
         tms_args=[],
-        env_vars={},
+        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
         #
         complete=is_complete,
         progress=schema.Progress(
@@ -160,7 +160,7 @@ def test_30__waiting_on_cluster_startup(
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
         tms_args=[],
-        env_vars={},
+        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
         #
         complete=is_complete,
         progress=schema.Progress(
@@ -212,7 +212,7 @@ def test_40__waiting_on_scanner_server_startup(
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
         tms_args=[],
-        env_vars={},
+        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
         #
         complete=is_complete,
         # progress=schema.Progress(
@@ -262,7 +262,7 @@ def test_50__prestartup(is_complete: bool, state: schema.ScanState) -> None:
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
         tms_args=[],
-        env_vars={},
+        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
         #
         complete=is_complete,
         # progress=schema.Progress(

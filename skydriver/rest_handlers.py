@@ -7,7 +7,7 @@ import json
 import uuid
 from typing import Any, Type, TypeVar
 
-import kubernetes.client  # type: ignore[import]
+import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -428,7 +428,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             scan_id,
             k8s_job.scanner_server_args,
             k8s_job.tms_args_list,
-            k8s_job.env_dict,
+            from_dict(database.schema.EnvVars, k8s_job.env_dict),
             classifiers,
         )
 
