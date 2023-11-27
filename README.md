@@ -217,7 +217,10 @@ None
 _Retrieve the status of a scan_
 
 #### Arguments
-None
+| Argument                 | Type    | Required/Default | Description          |
+| ------------------------ | ------- | ---------------- | -------------------- |
+| `"include_pod_statuses"` | bool    | `False`          | whether to include the k8s pod statuses for the clientmanager & central server -- expends additional resources
+
 
 #### SkyDriver Effects
 None
@@ -228,8 +231,10 @@ None
     "scan_state": str,  # a short human-readable code
     "is_deleted": bool,
     "scan_complete": bool,  # skymap scanner finished
-    "pod_status": dict,  # a large k8s status object
-    "pod_status_message": str,  # a human-readable message explaining the pod status retrieval
+    "pods": {  # field is included only if `include_pod_statuses == True`
+        "pod_status": dict,  # a large k8s status object
+        "pod_status_message": str,  # a human-readable message explaining the pod status retrieval
+    }
     "clusters": list,  # same as Manifest's clusters field
 }
 ```

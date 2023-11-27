@@ -749,35 +749,44 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
+        include_pod_statuses = self.get_argument(
+            "include_pod_statuses",
+            type=bool,
+            default=False,
+        )
+
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         # get pod status
-        try:
-            pod_status = k8s.utils.KubeAPITools.get_pod_status(
-                self.k8s_batch_api,
-                k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
-                ENV.K8S_NAMESPACE,
-            )
-            pod_message = "retrieved"
-        except (kubernetes.client.rest.ApiException, ValueError) as e:
-            if await self.scan_backlog.is_in_backlog(scan_id):
-                pod_status = {}
-                pod_message = "in backlog"
-            else:
-                pod_status = {}
-                pod_message = "pod(s) not found"
-                LOGGER.exception(e)
+        pods_411: dict[str, Any] = {}
+        if include_pod_statuses:
+            try:
+                pods_411["pod_status"] = k8s.utils.KubeAPITools.get_pod_status(
+                    self.k8s_batch_api,
+                    k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
+                    ENV.K8S_NAMESPACE,
+                )
+                pods_411["pod_message"] = "retrieved"
+            except (kubernetes.client.rest.ApiException, ValueError) as e:
+                if await self.scan_backlog.is_in_backlog(scan_id):
+                    pods_411["pod_status"] = {}
+                    pods_411["pod_message"] = "in backlog"
+                else:
+                    pods_411["pod_status"] = {}
+                    pods_411["pod_message"] = "pod(s) not found"
+                    LOGGER.exception(e)
 
-        self.write(
-            {
-                "scan_state": manifest.get_state().name,
-                "is_deleted": manifest.is_deleted,
-                "scan_complete": manifest.complete,
-                "pod_status": pod_status,
-                "pod_message": pod_message,
-                "clusters": [dc.asdict(c) for c in manifest.clusters],
-            }
-        )
+        # respond
+        resp = {
+            "scan_state": manifest.get_state().name,
+            "is_deleted": manifest.is_deleted,
+            "scan_complete": manifest.complete,
+            "pods": pods_411,
+            "clusters": [dc.asdict(c) for c in manifest.clusters],
+        }
+        if not include_pod_statuses:
+            resp.pop("pods")
+        self.write(resp)
 
     #
     # NOTE - handler needs to stay user-read-only
