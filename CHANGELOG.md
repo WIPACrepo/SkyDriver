@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.9 (2023-11-27)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`be75262`](https://github.com/WIPACrepo/SkyDriver/commit/be75262e3a379856b053fc984b60ceb9b11a11b7))
+* Obfuscate Sensitive Info ([#92](https://github.com/WIPACrepo/SkyDriver/issues/92)) ([`20fb80b`](https://github.com/WIPACrepo/SkyDriver/commit/20fb80bfa3e813416c947243fa619b1561f15c42))
+
 ## v0.7.8 (2023-11-21)
 
 ### Other
