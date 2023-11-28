@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.11 (2023-11-28)
+
+### Other
+
+* Stop Scan If All Workers Fail ([#95](https://github.com/WIPACrepo/SkyDriver/issues/95)) ([`253d825`](https://github.com/WIPACrepo/SkyDriver/commit/253d82576dbce5d3c733f0dbf35eecff655bd576))
+
 ## v0.7.10 (2023-11-27)
 
 ### Other
