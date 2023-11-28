@@ -230,20 +230,20 @@ def watch(
             aggregate_top_task_errors,
         )
 
+        # log
+        LOGGER.info(f"job aggregate statuses ({n_workers=})")
+        LOGGER.info(f"{pformat(aggregate_statuses, indent=4)}")
+        LOGGER.info(
+            f"job aggregate top {WATCHER_N_TOP_TASK_ERRORS} task errors ({n_workers=})"
+        )
+        LOGGER.info(f"{pformat(aggregate_top_task_errors, indent=4)}")
+
         # figure updates
         if not has_new_statuses and not has_new_errors:
             LOGGER.info("no updates")
         else:
-            # LOGGER.debug(f"job statuses ({n_workers=})")
-            # LOGGER.debug(f"{pformat(job_infos, indent=4)}")
-            LOGGER.info(f"job aggregate statuses ({n_workers=})")
-            LOGGER.info(f"{pformat(aggregate_statuses, indent=4)}")
-            LOGGER.info(
-                f"job aggregate top {WATCHER_N_TOP_TASK_ERRORS} task errors ({n_workers=})"
-            )
-            LOGGER.info(f"{pformat(aggregate_top_task_errors, indent=4)}")
-
             # send updates
+            LOGGER.info("sending updates to skydriver")
             utils.update_skydriver(
                 skydriver_rc,
                 **skydriver_cluster_obj,
