@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.12 (2023-11-28)
+
+### Other
+
+* Add Optional `"skyscan_mq_client_timeout_wait_for_first_message"` ([#96](https://github.com/WIPACrepo/SkyDriver/issues/96)) ([`f91cb06`](https://github.com/WIPACrepo/SkyDriver/commit/f91cb06f9ba257ef86437975671308e26b9e867a))
+
 ## v0.7.11 (2023-11-28)
 
 ### Other
