@@ -23,7 +23,10 @@ PROJECTION = [
     "JobStatus",
     "EnteredCurrentStatus",
     "ProcId",
+    #
     "HoldReason",
+    "HoldReasonCode",
+    "HoldReasonSubCode",
     #
     "HTChirpEWMSPilotLastUpdatedTimestamp",
     "HTChirpEWMSPilotStartedTimestamp",
@@ -116,8 +119,13 @@ def get_aggregate_statuses(
         append a timestamp, do append a standard reason str.
         """
         if info["JobStatus"] == ct.HELD:
+            codes = (
+                info.get("HoldReasonCode", None),
+                info.get("HoldReasonSubCode", None),
+            )
             return (
                 f"{ct.job_status_to_str(ct.HELD)}: "
+                f"{codes} "
                 f"{info.get('HoldReason', 'unknown reason')}"
             )
         else:
