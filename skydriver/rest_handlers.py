@@ -691,13 +691,13 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
             # Job-Status -> ANY  &  Pilot-Status -> "FatalError"
             n_fatal_error = sum(
-                db_cluster.statuses[job_status]["FatalError"]  # int
+                db_cluster.statuses[job_status].get("FatalError", 0)  # int
                 for job_status in db_cluster.statuses.keys()
             )
 
             # overlap
             n_held_and_fatal_error = sum(
-                db_cluster.statuses[job_status]["FatalError"]  # int
+                db_cluster.statuses[job_status].get("FatalError", 0)  # int
                 for job_status in db_cluster.statuses.keys()
                 if job_status.startswith("Held:")
             )
