@@ -41,6 +41,7 @@ PROJECTION = [
 DONE_JOB_STATUSES: list[int] = [
     ct.REMOVED,
     ct.COMPLETED,
+    ct.HELD,
 ]
 NON_RESPONSE_LIMIT = 10
 
@@ -186,12 +187,13 @@ def watch(
         NOTE - condor may be lagging, so we can't just quit when
         all jobs are done, since there may be more attrs to be updated.
         """
-        if not any(  # but only if we have done jobs
+        if not any(  # if no done jobs, then keep going always
             job_infos[j]["JobStatus"] in DONE_JOB_STATUSES for j in job_infos
         ):
             return True
-        # condor may occasionally slow down & prematurely return nothing
-        return non_response_ct < NON_RESPONSE_LIMIT  # allow X non-responses
+        else:
+            # condor may occasionally slow down & prematurely return nothing
+            return non_response_ct < NON_RESPONSE_LIMIT  # allow X non-responses
 
     # WATCHING LOOP
     while (
