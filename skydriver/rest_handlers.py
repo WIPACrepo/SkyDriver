@@ -454,11 +454,11 @@ async def stop_scanner_instance(
     manifests: database.interface.ManifestClient,
     scan_id: str,
     k8s_batch_api: kubernetes.client.BatchV1Api,
-) -> None:
+) -> database.schema.Manifest:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     manifest = await manifests.get(scan_id, True)
     if manifest.complete:
-        return
+        return manifest
 
     stopper = k8s.scanner_instance.SkymapScannerWorkerStopper(
         k8s_batch_api,
@@ -475,7 +475,7 @@ async def stop_scanner_instance(
             log_message="Failed to stop Scanner instance",
         )
 
-    await manifests.patch(scan_id, complete=True)
+    return await manifests.patch(scan_id, complete=True)
 
 
 # -----------------------------------------------------------------------------
@@ -675,6 +675,41 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             scan_metadata,
             cluster,
         )
+
+        # NOTE - the following will be moved to TMS, then improved
+        # check cluster statuses & stop scan if workers are all failing
+        for db_cluster in manifest.clusters:
+            # Method 1: JobStatus
+            if ("JobStatus" in db_cluster.statuses) and (
+                db_cluster.statuses["JobStatus"].get("Removed", 0)
+                + db_cluster.statuses["JobStatus"].get("Completed", 0)
+                + len(  # number of held jobs
+                    list(
+                        filter(
+                            lambda x: x.startswith("Held:"),
+                            db_cluster.statuses["JobStatus"].keys(),
+                        )
+                    )
+                )
+                >= db_cluster.n_workers
+            ):
+                manifest = await stop_scanner_instance(
+                    self.manifests,
+                    scan_id,
+                    self.k8s_batch_api,
+                )
+                break
+            # Method 2: HTChirpEWMSPilotStatus
+            if ("HTChirpEWMSPilotStatus" in db_cluster.statuses) and (
+                db_cluster.statuses["HTChirpEWMSPilotStatus"].get("FatalError", 0)
+                >= db_cluster.n_workers
+            ):
+                manifest = await stop_scanner_instance(
+                    self.manifests,
+                    scan_id,
+                    self.k8s_batch_api,
+                )
+                break
 
         self.write(dc.asdict(manifest))  # don't use a projection
 
