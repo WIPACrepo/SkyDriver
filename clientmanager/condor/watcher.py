@@ -209,7 +209,7 @@ def watch(
             (
                 f"ClusterId == {cluster_id} && "
                 # only care about "older" status jobs if they are RUNNING
-                f"( JobStatus == {ct.RUNNING} || EnteredCurrentStatus >= {int(time.time()) - WATCHER_INTERVAL*5} )"
+                f"( JobStatus == {ct.RUNNING} || EnteredCurrentStatus >= {int(time.time()) - WATCHER_INTERVAL*3} )"
             ),
             PROJECTION,
         )
