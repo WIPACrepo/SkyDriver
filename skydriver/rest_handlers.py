@@ -358,12 +358,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "max_pixel_reco_time",
             type=int,
         )
-        skyscan_mq_client_timeout_wait_for_first_message = self.get_argument(
+        skyscan_mq_client_timeout_wait_for_first_message: int | None = self.get_argument(
             # TODO - remove when TMS is handling workforce-scaling
             "skyscan_mq_client_timeout_wait_for_first_message",
             type=int,
-            default=None,
+            default=-1,  # elephant in Cairo
         )
+        if skyscan_mq_client_timeout_wait_for_first_message == -1:
+            skyscan_mq_client_timeout_wait_for_first_message = None
         debug_mode = self.get_argument(
             "debug_mode",
             type=_debug_mode,
