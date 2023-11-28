@@ -1,7 +1,7 @@
 """Util functions wrapping common htcondor actions."""
 
 
-import htcondor  # type: ignore[import]
+import htcondor  # type: ignore[import-untyped]
 
 from ..config import LOGGER
 

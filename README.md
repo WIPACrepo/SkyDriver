@@ -310,8 +310,16 @@ Pseudo-code:
             n_workers: int,
             starter_info: dict,
             statuses: {
-                'JobStatus': dict[str, int],  # status value -> # of jobs
-                'HTChirpEWMSPilotStatus': dict[str, int],  # status value -> # of jobs
+                'Completed': {  # condor job status
+                    'FatalError': int,  # pilot status value -> # of jobs
+                    'Done': int,  # pilot status value -> # of jobs
+                    ...
+                },
+                'Running': {
+                    'Tasking': int,
+                    ...
+                }
+                ...
             },
             top_task_errors: dict[str, int],  # error message -> # of jobs
         },

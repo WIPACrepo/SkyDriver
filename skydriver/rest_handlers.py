@@ -454,11 +454,11 @@ async def stop_scanner_instance(
     manifests: database.interface.ManifestClient,
     scan_id: str,
     k8s_batch_api: kubernetes.client.BatchV1Api,
-) -> None:
+) -> database.schema.Manifest:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     manifest = await manifests.get(scan_id, True)
     if manifest.complete:
-        return
+        return manifest
 
     stopper = k8s.scanner_instance.SkymapScannerWorkerStopper(
         k8s_batch_api,
@@ -475,7 +475,7 @@ async def stop_scanner_instance(
             log_message="Failed to stop Scanner instance",
         )
 
-    await manifests.patch(scan_id, complete=True)
+    return await manifests.patch(scan_id, complete=True)
 
 
 # -----------------------------------------------------------------------------
@@ -675,6 +675,40 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             scan_metadata,
             cluster,
         )
+
+        # NOTE - the following will be moved to TMS, then improved
+        # check cluster statuses & stop scan if workers are all failing
+        for db_cluster in manifest.clusters:
+            # Job-Status -> "Held:*"  &  Pilot-Status -> ANY
+            # -- sum the total counts of all job-statuses prefixed with "Held:"
+            n_held = sum(
+                sum(  # pilot-status counts
+                    cts for cts in db_cluster.statuses[job_status].values()
+                )
+                for job_status in db_cluster.statuses.keys()
+                if job_status.startswith("Held:")
+            )
+
+            # Job-Status -> ANY  &  Pilot-Status -> "FatalError"
+            n_fatal_error = sum(
+                db_cluster.statuses[job_status].get("FatalError", 0)  # int
+                for job_status in db_cluster.statuses.keys()
+            )
+
+            # overlap
+            n_held_and_fatal_error = sum(
+                db_cluster.statuses[job_status].get("FatalError", 0)  # int
+                for job_status in db_cluster.statuses.keys()
+                if job_status.startswith("Held:")
+            )
+
+            if n_held + n_fatal_error - n_held_and_fatal_error >= db_cluster.n_workers:
+                manifest = await stop_scanner_instance(
+                    self.manifests,
+                    scan_id,
+                    self.k8s_batch_api,
+                )
+                break
 
         self.write(dc.asdict(manifest))  # don't use a projection
 
