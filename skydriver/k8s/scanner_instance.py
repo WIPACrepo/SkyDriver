@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-import kubernetes.client  # type: ignore[import]
+import kubernetes.client  # type: ignore[import-untyped]
 from rest_tools.client import ClientCredentialsAuth
 
 from .. import database, images
@@ -79,6 +79,7 @@ class SkymapScannerJob:
         debug_mode: list[DebugMode],
         # env
         rest_address: str,
+        skyscan_mq_client_timeout_wait_for_first_message: int | None,
     ):
         LOGGER.info(f"making k8s job for {scan_id=}")
         self.k8s_batch_api = k8s_batch_api
@@ -102,6 +103,7 @@ class SkymapScannerJob:
             self.make_skyscan_server_v1envvars(
                 rest_address=rest_address,
                 scan_id=scan_id,
+                skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
             ),
             self.scanner_server_args.split(),
             cpu=1,
@@ -246,6 +248,7 @@ class SkymapScannerJob:
     def make_skyscan_server_v1envvars(
         rest_address: str,
         scan_id: str,
+        skyscan_mq_client_timeout_wait_for_first_message: int | None,
     ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to the skyscan server.
 
@@ -281,6 +284,7 @@ class SkymapScannerJob:
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
+            "SKYSCAN_MQ_CLIENT_TIMEOUT_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
         }
         env.extend(
             [

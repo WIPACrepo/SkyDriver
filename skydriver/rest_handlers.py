@@ -358,6 +358,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "max_pixel_reco_time",
             type=int,
         )
+        skyscan_mq_client_timeout_wait_for_first_message: int | None = self.get_argument(
+            # TODO - remove when TMS is handling workforce-scaling
+            "skyscan_mq_client_timeout_wait_for_first_message",
+            type=int,
+            default=-1,  # elephant in Cairo
+        )
+        if skyscan_mq_client_timeout_wait_for_first_message == -1:
+            skyscan_mq_client_timeout_wait_for_first_message = None
         debug_mode = self.get_argument(
             "debug_mode",
             type=_debug_mode,
@@ -420,6 +428,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             debug_mode=debug_mode,
             # env
             rest_address=self.request.full_url().rstrip(self.request.uri),
+            skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
         )
 
         # put in db (do before k8s start so if k8s fail, we can debug using db's info)

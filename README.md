@@ -43,6 +43,7 @@ _Launch a new scan of an event_
 | `"nsides"`                        | dict         | *[REQUIRED]*     | the nside progression to use (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"real_or_simulated_event"`       | str          | *[REQUIRED]*     | whether this event is real or simulated. Ex: `real`, `simulated`
 | `"max_pixel_reco_time"`           | int          | *[REQUIRED]*     | the max amount of time each pixel's reco should take (accurate values will evict pixels from slow workers thereby re-delivering to faster workers -- slow workers are unavoidable due to non-deterministic errors)
+| `"skyscan_mq_client_timeout_wait_for_first_message"` | int | default: image's default value | how long a client can wait for its first message (pixel) before giving up and exiting
 | `"scanner_server_memory"`         | str          | default: `1024M` | how much memory for the scanner server to request
 | `"memory"`                        | str          | default: `8G`   | how much memory per client worker to request
 | `"debug_mode"`                    | str or list  | default: None    | what debug mode(s) to use: `"client-logs"` collects the scanner clients' stderr/stdout including icetray logs (scans are limited in # of workers)
