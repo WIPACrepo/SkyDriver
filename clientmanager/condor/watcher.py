@@ -124,18 +124,18 @@ def get_aggregate_statuses(
             else:
                 yield ct.job_status_to_str(info["JobStatus"])
 
-    statuses = {
-        "JobStatus": dict(
-            collections.Counter(
-                job_status_vals(),
-            ),
-        ),
-        "HTChirpEWMSPilotStatus": dict(
-            collections.Counter(
-                [j["HTChirpEWMSPilotStatus"] for j in job_infos.values()],
-            )
-        ),
-    }
+    statuses: dict[str, dict[str, int]] = {k: {} for k in set(job_status_vals())}
+
+    for job_status in statuses:
+        counts = collections.Counter(
+            [
+                j["HTChirpEWMSPilotStatus"] if j["JobStatus"] == job_status else None
+                for j in job_infos.values()
+            ]
+        )
+        counts.pop(None, None)  # remove counts of non-matches
+        statuses[job_status] = dict(counts)
+
     return statuses, statuses != previous
 
 
