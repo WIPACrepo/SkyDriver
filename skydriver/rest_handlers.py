@@ -789,7 +789,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/status$"
 
-    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
         include_pod_statuses = self.get_argument(
