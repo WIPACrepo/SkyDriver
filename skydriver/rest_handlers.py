@@ -699,7 +699,18 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 for job_status in db_cluster.statuses.keys()
             )
 
-            if n_held + n_fatal_error >= db_cluster.n_workers:
+            # overlap
+            n_held_and_fatal_error = sum(
+                sum(  # pilot-status counts
+                    cts
+                    for pilot_status, cts in db_cluster.statuses[job_status].items()
+                    if pilot_status == "FatalError"
+                )
+                for job_status in db_cluster.statuses.keys()
+                if job_status.startswith("Held:")
+            )
+
+            if n_held + n_fatal_error - n_held_and_fatal_error >= db_cluster.n_workers:
                 manifest = await stop_scanner_instance(
                     self.manifests,
                     scan_id,
