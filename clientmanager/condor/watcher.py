@@ -108,33 +108,38 @@ def get_aggregate_statuses(
 ) -> tuple[dict[str, dict[str, int]], bool]:
     """Aggregate statuses of jobs & return whether this is an new value."""
 
-    def job_status_vals() -> Iterator[str]:
-        """Get each job status -- transforming any as needed.
+    def transform_job_status_val(info: dict[str, Any]) -> str:
+        """Get job status -- transforming any as needed.
 
         NOTE: each transformation needs to be generic
         enough to aggregate nicely with others; e.g. don't
         append a timestamp, do append a standard reason str.
         """
-        for info in job_infos.values():
-            if info["JobStatus"] == ct.HELD:
-                yield (
-                    f"{ct.job_status_to_str(ct.HELD)}: "
-                    f"{info.get('HoldReason', 'unknown reason')}"
-                )
-            else:
-                yield ct.job_status_to_str(info["JobStatus"])
+        if info["JobStatus"] == ct.HELD:
+            return (
+                f"{ct.job_status_to_str(ct.HELD)}: "
+                f"{info.get('HoldReason', 'unknown reason')}"
+            )
+        else:
+            return ct.job_status_to_str(info["JobStatus"])
 
-    statuses: dict[str, dict[str, int]] = {k: {} for k in set(job_status_vals())}
+    statuses: dict[str, dict[str, int]] = {
+        k: {}
+        for k in set(transform_job_status_val(info) for info in job_infos.values())
+    }
 
     for job_status in statuses:
-        counts = collections.Counter(
-            [
-                j["HTChirpEWMSPilotStatus"] if j["JobStatus"] == job_status else None
-                for j in job_infos.values()
-            ]
+        ids_for_this_job_status = [  # subset of job_infos ids
+            i
+            for i, info in job_infos.items()
+            if transform_job_status_val(info) == job_status
+        ]
+        # NOTE - if the pilot did not send a status (ex: Held job), it is `None`
+        statuses[job_status] = dict(
+            collections.Counter(
+                job_infos[i]["HTChirpEWMSPilotStatus"] for i in ids_for_this_job_status
+            )
         )
-        counts.pop(None, None)  # remove counts of non-matches
-        statuses[job_status] = dict(counts)
 
     return statuses, statuses != previous
 
@@ -146,7 +151,7 @@ def get_aggregate_top_task_errors(
 ) -> tuple[dict[str, int], bool]:
     """Aggregate top X errors of jobs & return whether this is an new value."""
     counts = collections.Counter(
-        [dicto.get("HTChirpEWMSPilotError") for dicto in job_infos.values()]
+        dicto.get("HTChirpEWMSPilotError") for dicto in job_infos.values()
     )
     counts.pop(None, None)  # remove counts of "no error"
 
@@ -170,7 +175,7 @@ def watch(
     )
 
     job_infos: dict[int, dict[str, Any]] = {
-        i: {
+        i: {  # NOTE - it's important that attrs reported on later are `None` to start
             "JobStatus": None,
             "HTChirpEWMSPilotStatus": None,
         }
