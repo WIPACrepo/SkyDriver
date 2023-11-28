@@ -679,31 +679,27 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # NOTE - the following will be moved to TMS, then improved
         # check cluster statuses & stop scan if workers are all failing
         for db_cluster in manifest.clusters:
-            # Method 1: JobStatus
-            if ("JobStatus" in db_cluster.statuses) and (
-                db_cluster.statuses["JobStatus"].get("Removed", 0)
-                + db_cluster.statuses["JobStatus"].get("Completed", 0)
-                + len(  # number of held jobs
-                    list(
-                        filter(
-                            lambda x: x.startswith("Held:"),
-                            db_cluster.statuses["JobStatus"].keys(),
-                        )
-                    )
+            # Job-Status -> "Held:*"  &  Pilot-Status -> ANY
+            # -- sum the total counts of all job-statuses prefixed with "Held:"
+            n_held = sum(
+                sum(  # pilot-status counts
+                    cts for cts in db_cluster.statuses[job_status].values()
                 )
-                >= db_cluster.n_workers
-            ):
-                manifest = await stop_scanner_instance(
-                    self.manifests,
-                    scan_id,
-                    self.k8s_batch_api,
+                for job_status in db_cluster.statuses.keys()
+                if job_status.startswith("Held:")
+            )
+
+            # Job-Status -> ANY  &  Pilot-Status -> "FatalError"
+            n_fatal_error = sum(
+                sum(  # pilot-status counts
+                    cts
+                    for pilot_status, cts in db_cluster.statuses[job_status].items()
+                    if pilot_status == "FatalError"
                 )
-                break
-            # Method 2: HTChirpEWMSPilotStatus
-            if ("HTChirpEWMSPilotStatus" in db_cluster.statuses) and (
-                db_cluster.statuses["HTChirpEWMSPilotStatus"].get("FatalError", 0)
-                >= db_cluster.n_workers
-            ):
+                for job_status in db_cluster.statuses.keys()
+            )
+
+            if n_held + n_fatal_error >= db_cluster.n_workers:
                 manifest = await stop_scanner_instance(
                     self.manifests,
                     scan_id,
