@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.7.13 (2023-11-28)
+
+### Other
+
+* Fix: Scan-Status Route Role for Scanner Account ([`947a585`](https://github.com/WIPACrepo/SkyDriver/commit/947a585e990419a61b66ee0b097bbcef2b545a2c))
+
 ## v0.7.12 (2023-11-28)
 
 ### Other
