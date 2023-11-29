@@ -167,7 +167,7 @@ class ActionArgs:
         )
         sub_parser.add_argument(
             "--max-worker-runtime",
-            default=4 * 60 * 60,  # TODO - determine who is responsible for setting this
+            required=True,
             type=int,
             help="how long each worker is allowed to run -- condor only",  # TODO - set for k8s?
         )
