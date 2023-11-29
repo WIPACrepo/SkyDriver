@@ -75,6 +75,7 @@ class SkymapScannerJob:
         memory: str,
         request_clusters: list[schema.Cluster],
         max_pixel_reco_time: int,
+        max_worker_runtime: int,
         # universal
         debug_mode: list[DebugMode],
         # env
@@ -132,6 +133,7 @@ class SkymapScannerJob:
                         memory=memory,
                         request_cluster=cluster,
                         debug_mode=debug_mode,
+                        max_worker_runtime=max_worker_runtime,
                     ),
                     cpu=0.125,
                     volumes={common_space_volume_path.name: common_space_volume_path},
@@ -185,6 +187,7 @@ class SkymapScannerJob:
         memory: str,
         request_cluster: schema.Cluster,
         debug_mode: list[DebugMode],
+        max_worker_runtime: int,
     ) -> list[str]:
         """Make the starter container args.
 
@@ -220,6 +223,7 @@ class SkymapScannerJob:
             f" --image {worker_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
+            f" --max-worker-runtime {max_worker_runtime}"
         )
 
         if DebugMode.CLIENT_LOGS in debug_mode:
