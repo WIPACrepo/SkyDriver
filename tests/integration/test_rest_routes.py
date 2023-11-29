@@ -485,7 +485,7 @@ async def _delete_scan(
             "scan_id": scan_id,
             "is_deleted": True,
             "progress": last_known_manifest["progress"],
-            "complete": last_known_manifest["complete"],
+            "complete": last_known_manifest["complete"],  # whether workforce is done
             "last_updated": resp["manifest"]["last_updated"],  # see below
             # TODO: check more fields in future (hint: ctrl+F this comment)
         },
@@ -751,14 +751,14 @@ async def test_00(
     #
     # SEND RESULT(s)
     #
-    assert not manifest["complete"]
+    assert not manifest["complete"]  # workforce is not done
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
     assert manifest.pop("env_vars")  # remove to match with other requests
-    assert manifest["complete"]
+    assert manifest["complete"]  # workforce is done
 
     #
     # DELETE SCAN
@@ -987,7 +987,7 @@ async def test_01__bad_data(
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
     assert manifest.pop("env_vars")  # remove to match with other requests
-    assert manifest["complete"]
+    assert manifest["complete"]  # workforce is done
 
     #
     # DELETE SCAN

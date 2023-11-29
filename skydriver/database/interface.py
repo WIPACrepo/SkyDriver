@@ -101,7 +101,7 @@ class ManifestClient:
         event_metadata: schema.EventMetadata | None = None,
         scan_metadata: schema.StrDict | None = None,
         cluster: schema.Cluster | None = None,
-        complete: bool | None = None,
+        complete: bool | None = None,  # workforce is done
     ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching manifest for {scan_id=}")
@@ -111,7 +111,7 @@ class ManifestClient:
             or event_metadata
             or scan_metadata
             or cluster
-            or complete is not None  # True/False is ok
+            or complete is not None  # True/False is ok # workforce is done
         ):
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
             return await self.get(scan_id, incl_del=True)
@@ -162,9 +162,9 @@ class ManifestClient:
             except StopIteration:  # not found -> append
                 upserting["clusters"] = in_db.clusters + [cluster]
 
-        # complete
+        # complete # workforce is done
         if complete is not None:
-            upserting["complete"] = complete
+            upserting["complete"] = complete  # workforce is done
 
         # progress
         if progress:

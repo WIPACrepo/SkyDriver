@@ -232,7 +232,7 @@ None
 {
     "scan_state": str,  # a short human-readable code
     "is_deleted": bool,
-    "scan_complete": bool,  # skymap scanner finished
+    "scan_complete": bool,  # workforce is done
     "pods": {  # field is included only if `include_pod_statuses == True`
         "pod_status": dict,  # a large k8s status object
         "pod_status_message": str,  # a human-readable message explaining the pod status retrieval

@@ -210,9 +210,9 @@ class Manifest(ScanIDDataclass):
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ hash?
 
     # args placed in k8s job obj
-    scanner_server_args: str
-    tms_args: list[str]
-    env_vars: EnvVars
+    scanner_server_args: str  # TODO - move to TMS
+    tms_args: list[str]  # TODO - move to TMS
+    env_vars: EnvVars  # TODO - move to TMS
 
     # open to requestor
     classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)
@@ -221,7 +221,7 @@ class Manifest(ScanIDDataclass):
     event_i3live_json_dict__hash: str = ""  # possibly overwritten
 
     # cpus
-    clusters: list[Cluster] = dc.field(default_factory=list)
+    clusters: list[Cluster] = dc.field(default_factory=list)  # TODO - move to TMS
 
     # found/created during first few seconds of scanning
     event_metadata: EventMetadata | None = None
@@ -230,8 +230,8 @@ class Manifest(ScanIDDataclass):
     # updated during scanning, multiple times
     progress: Progress | None = None
 
-    # signifies k8s workers and condor cluster(s) are done
-    complete: bool = False
+    # signifies k8s workers and condor cluster(s) AKA workforce is done
+    complete: bool = False  # TODO - move to TMS
 
     last_updated: float = 0.0
 

@@ -472,7 +472,7 @@ async def stop_scanner_instance(
 ) -> database.schema.Manifest:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     manifest = await manifests.get(scan_id, True)
-    if manifest.complete:
+    if manifest.complete:  # workforce is done
         return manifest
 
     stopper = k8s.scanner_instance.SkymapScannerWorkerStopper(
@@ -490,7 +490,7 @@ async def stop_scanner_instance(
             log_message="Failed to stop Scanner instance",
         )
 
-    return await manifests.patch(scan_id, complete=True)
+    return await manifests.patch(scan_id, complete=True)  # workforce is done
 
 
 # -----------------------------------------------------------------------------
@@ -555,7 +555,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # check DB states
         manifest = await self.manifests.get(scan_id, True)
-        if manifest.complete and not delete_completed_scan:
+        if manifest.complete and not delete_completed_scan:  # workforce is done
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
                 400,
@@ -829,7 +829,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         resp = {
             "scan_state": manifest.get_state().name,
             "is_deleted": manifest.is_deleted,
-            "scan_complete": manifest.complete,
+            "scan_complete": manifest.complete,  # workforce is done
             "pods": pods_411,
             "clusters": [dc.asdict(c) for c in manifest.clusters],
         }
