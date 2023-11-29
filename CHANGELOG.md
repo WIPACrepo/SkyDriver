@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.1 (2023-11-29)
+
+### Other
+
+* Miscellaneous comments ([`e582146`](https://github.com/WIPACrepo/SkyDriver/commit/e582146f8de3865683182238d58491e1c35ecf21))
+
 ## v0.8.0 (2023-11-29)
 
 
