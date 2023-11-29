@@ -3,7 +3,7 @@
 
 import argparse
 
-import htcondor  # type: ignore[import]
+import htcondor  # type: ignore[import-untyped]
 
 from .. import utils
 from ..config import ENV, LOGGER
@@ -39,7 +39,7 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
                 # starter CL args -- worker
                 memory=args.memory,
                 n_cores=args.n_cores,
-                execution_time_limit=args.execution_time_limit,
+                max_worker_runtime=args.max_worker_runtime,
                 # starter CL args -- client
                 client_args=args.client_args,
                 client_startup_json_s3=utils.s3ify(args.client_startup_json),
