@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.2 (2023-11-30)
+
+### Other
+
+* Set `SKYSCAN_EWMS_PILOT_LOG` and `SKYSCAN_MQ_CLIENT_LOG` to "WARNIG" ([#99](https://github.com/WIPACrepo/SkyDriver/issues/99)) ([`51a4762`](https://github.com/WIPACrepo/SkyDriver/commit/51a4762c80e21e34af64acdb13b2fc3d8e2f4d3f))
+
 ## v0.8.1 (2023-11-29)
 
 ### Other
