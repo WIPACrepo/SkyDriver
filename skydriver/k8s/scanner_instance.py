@@ -284,10 +284,16 @@ class SkymapScannerJob:
         prefiltered = {
             "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
             "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
+            #
             "SKYSCAN_MQ_TIMEOUT_TO_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
+            #
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
+            #
+            "SKYSCAN_EWMS_PILOT_LOG": "WARNING",  # default is too low
+            "SKYSCAN_MQ_CLIENT_LOG": "WARNING",  # default is too low
+            #
             "SKYSCAN_MQ_CLIENT_TIMEOUT_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
         }
         env.extend(
@@ -366,8 +372,13 @@ class SkymapScannerJob:
         prefiltered = {
             "SKYSCAN_MQ_TIMEOUT_TO_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
+            #
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
+            #
+            "SKYSCAN_EWMS_PILOT_LOG": "WARNING",  # default is too low
+            "SKYSCAN_MQ_CLIENT_LOG": "WARNING",  # default is too low
+            #
             "EWMS_PILOT_QUARANTINE_TIME": ENV.EWMS_PILOT_QUARANTINE_TIME,
             "EWMS_PILOT_DUMP_TASK_OUTPUT": (
                 True if DebugMode.CLIENT_LOGS in debug_mode else None
