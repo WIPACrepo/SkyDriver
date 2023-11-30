@@ -5,8 +5,8 @@ import enum
 import logging
 from typing import Any, Optional
 
-import coloredlogs  # type: ignore[import]
-import kubernetes.client  # type: ignore[import]
+import coloredlogs  # type: ignore[import-untyped]
+import kubernetes.client  # type: ignore[import-untyped]
 from wipac_dev_tools import from_environment_as_dataclass
 
 LOGGER = logging.getLogger("skydriver")
