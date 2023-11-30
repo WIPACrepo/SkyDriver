@@ -138,6 +138,8 @@ async def _launch_scan(
         "SKYSCAN_SKYDRIVER_ADDRESS",
         "SKYSCAN_SKYDRIVER_AUTH",
         "SKYSCAN_SKYDRIVER_SCAN_ID",
+        "SKYSCAN_EWMS_PILOT_LOG",
+        "SKYSCAN_MQ_CLIENT_LOG",
     }
     assert (
         set(  # these have `value_from`s
@@ -162,6 +164,8 @@ async def _launch_scan(
             "SKYSCAN_SKYDRIVER_ADDRESS",
             "SKYSCAN_SKYDRIVER_AUTH",
             "SKYSCAN_SKYDRIVER_SCAN_ID",
+            "SKYSCAN_EWMS_PILOT_LOG",
+            "SKYSCAN_MQ_CLIENT_LOG",
             "WORKER_K8S_LOCAL_APPLICATION_NAME",
             "EWMS_PILOT_DUMP_TASK_OUTPUT",
         }
