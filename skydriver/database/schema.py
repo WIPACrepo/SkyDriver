@@ -198,6 +198,26 @@ class EnvVars:
         self.tms_starters = [list(obfuscate(s)) for s in self.tms_starters]
 
 
+def obfuscate_cl_args(args: str) -> str:
+    # first, check if any sensitive strings (searches using substrings)
+    if not wdt.data_safety_tools.is_name_sensitive(args):
+        return args
+    # now, go one-by-one
+    out_args: list[str] = []
+    current_option = ""
+    for string in args.split():
+        if string.startswith("--"):  # ex: --foo -> "... --foo bar baz ..."
+            current_option = string
+            out_args += string
+        elif current_option:  # ex: baz -> "... --foo bar baz ..."
+            out_args += wdt.data_safety_tools.obfuscate_value_if_sensitive(
+                current_option, string
+            )
+        else:  # ex: my_module -> "python -m my_module ... --foo bar baz ..."
+            out_args += string
+    return " ".join(out_args)
+
+
 @typechecked
 @dc.dataclass
 class TMSTaskDirective:
@@ -206,6 +226,9 @@ class TMSTaskDirective:
     tms_args: list[str]  # TODO - move to TMS
     env_vars: EnvVars  # TODO - move to TMS
     clusters: list[Cluster] = dc.field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.tms_args = [obfuscate_cl_args(a) for a in self.tms_args]
 
 
 @typechecked
@@ -253,35 +276,7 @@ class Manifest(ScanIDDataclass):
                 ).encode("utf-8")
             ).hexdigest()
 
-        #
-        # obfuscate tokens & such (sensitive values)
-        #
-
-        def obfuscate_cl_args(args: str) -> str:
-            # first, check if any sensitive strings (searches using substrings)
-            if not wdt.data_safety_tools.is_name_sensitive(args):
-                return args
-            # now, go one-by-one
-            out_args: list[str] = []
-            current_option = ""
-            for string in args.split():
-                if string.startswith("--"):  # ex: --foo -> "... --foo bar baz ..."
-                    current_option = string
-                    out_args += string
-                elif current_option:  # ex: baz -> "... --foo bar baz ..."
-                    out_args += wdt.data_safety_tools.obfuscate_value_if_sensitive(
-                        current_option, string
-                    )
-                else:  # ex: my_module -> "python -m my_module ... --foo bar baz ..."
-                    out_args += string
-            return " ".join(out_args)
-
-        # scanner_server_args: str
         self.scanner_server_args = obfuscate_cl_args(self.scanner_server_args)
-
-        # tms_args: list[str]
-        self.tms_args = [obfuscate_cl_args(a) for a in self.tms_args]
-
         # NOTE - self.env_vars done in EnvVars
 
     def get_state(self) -> ScanState:
@@ -291,7 +286,7 @@ class Manifest(ScanIDDataclass):
 
         def get_nonfinished_state() -> ScanState:
             if self.progress:  # from scanner server
-                if self.clusters:
+                if self.tms.clusters:
                     # NOTE - we only know if the workers have started up once the server has gotten pixels
                     if self.progress.processing_stats.rate:
                         return ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
@@ -300,7 +295,7 @@ class Manifest(ScanIDDataclass):
                 else:
                     return ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP
             else:
-                if self.clusters:
+                if self.tms.clusters:
                     return ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
                 else:
                     return ScanState.PENDING__PRESTARTUP
