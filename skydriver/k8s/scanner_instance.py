@@ -73,6 +73,7 @@ class SkymapScannerJob:
         predictive_scanning_threshold: float,
         # tms
         memory: str,
+        worker_disk: str,
         request_clusters: list[schema.Cluster],
         max_pixel_reco_time: int,
         max_worker_runtime: int,
@@ -131,6 +132,7 @@ class SkymapScannerJob:
                         common_space_volume_path=common_space_volume_path,
                         docker_tag=docker_tag,
                         memory=memory,
+                        worker_disk=worker_disk,
                         request_cluster=cluster,
                         debug_mode=debug_mode,
                         max_worker_runtime=max_worker_runtime,
@@ -185,6 +187,7 @@ class SkymapScannerJob:
         common_space_volume_path: Path,
         docker_tag: str,
         memory: str,
+        worker_disk: str,
         request_cluster: schema.Cluster,
         debug_mode: list[DebugMode],
         max_worker_runtime: int,
@@ -220,6 +223,7 @@ class SkymapScannerJob:
             # f" --dryrun"
             # f" --spool "  # see below
             f" --memory {memory} "
+            f" --worker-disk {worker_disk} "
             f" --image {worker_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory

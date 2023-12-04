@@ -323,6 +323,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default="8GB",
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
+        worker_disk = self.get_argument(
+            "worker_disk",
+            type=str,
+            default="1GB",
+            forbiddens=[r"\s*"],  # no empty string / whitespace
+        )
         request_clusters = self.get_argument(
             "cluster",
             type=_dict_or_list_to_request_clusters,
@@ -428,6 +434,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # clientmanager
             request_clusters=request_clusters,
             memory=memory,
+            worker_disk=worker_disk,
             max_pixel_reco_time=max_pixel_reco_time,
             max_worker_runtime=max_worker_runtime,
             # universal
