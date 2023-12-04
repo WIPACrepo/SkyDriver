@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.3 (2023-12-04)
+
+### Other
+
+* REST Arguments: `worker_disk` & `worker_memory` ([#102](https://github.com/WIPACrepo/SkyDriver/issues/102)) ([`d1d4d80`](https://github.com/WIPACrepo/SkyDriver/commit/d1d4d8080a9192164e321d99f8ca844f18857e99))
+
 ## v0.8.2 (2023-11-30)
 
 ### Other
