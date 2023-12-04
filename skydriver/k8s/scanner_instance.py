@@ -6,12 +6,14 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-import kubernetes.client  # type: ignore[import]
+import kubernetes.client  # type: ignore[import-untyped]
 from rest_tools.client import ClientCredentialsAuth
 
 from .. import database, images
 from ..config import (
     ENV,
+    K8S_CONTAINER_MEMORY_TMS_STARTER_BYTES,
+    K8S_CONTAINER_MEMORY_TMS_STOPPER_BYTES,
     LOGGER,
     TMS_STOPPER_K8S_JOB_N_RETRIES,
     TMS_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
@@ -66,19 +68,22 @@ class SkymapScannerJob:
         docker_tag: str,
         scan_id: str,
         # scanner
-        scanner_server_memory: str,
+        scanner_server_memory_bytes: int,
         reco_algo: str,
         nsides: dict[int, int],
         is_real_event: bool,
         predictive_scanning_threshold: float,
         # tms
-        memory: str,
+        worker_memory_bytes: int,
+        worker_disk_bytes: int,
         request_clusters: list[schema.Cluster],
         max_pixel_reco_time: int,
+        max_worker_runtime: int,
         # universal
         debug_mode: list[DebugMode],
         # env
         rest_address: str,
+        skyscan_mq_client_timeout_wait_for_first_message: int | None,
     ):
         LOGGER.info(f"making k8s job for {scan_id=}")
         self.k8s_batch_api = k8s_batch_api
@@ -102,11 +107,12 @@ class SkymapScannerJob:
             self.make_skyscan_server_v1envvars(
                 rest_address=rest_address,
                 scan_id=scan_id,
+                skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
             ),
             self.scanner_server_args.split(),
             cpu=1,
             volumes={common_space_volume_path.name: common_space_volume_path},
-            memory=scanner_server_memory,
+            memory=scanner_server_memory_bytes,
         )
         self.env_dict["scanner_server"] = [e.to_dict() for e in scanner_server.env]
 
@@ -127,13 +133,15 @@ class SkymapScannerJob:
                     args=self.get_tms_starter_args(
                         common_space_volume_path=common_space_volume_path,
                         docker_tag=docker_tag,
-                        memory=memory,
+                        worker_memory_bytes=worker_memory_bytes,
+                        worker_disk_bytes=worker_disk_bytes,
                         request_cluster=cluster,
                         debug_mode=debug_mode,
+                        max_worker_runtime=max_worker_runtime,
                     ),
                     cpu=0.125,
                     volumes={common_space_volume_path.name: common_space_volume_path},
-                    memory=ENV.K8S_CONTAINER_MEMORY_TMS_STARTER,
+                    memory=K8S_CONTAINER_MEMORY_TMS_STARTER_BYTES,
                 )
             )
         self.tms_args_list = [" ".join(c.args) for c in tms_starters]
@@ -180,9 +188,11 @@ class SkymapScannerJob:
     def get_tms_starter_args(
         common_space_volume_path: Path,
         docker_tag: str,
-        memory: str,
+        worker_memory_bytes: int,
+        worker_disk_bytes: int,
         request_cluster: schema.Cluster,
         debug_mode: list[DebugMode],
+        max_worker_runtime: int,
     ) -> list[str]:
         """Make the starter container args.
 
@@ -214,10 +224,12 @@ class SkymapScannerJob:
             f" --n-workers {request_cluster.n_workers} "
             # f" --dryrun"
             # f" --spool "  # see below
-            f" --memory {memory} "
+            f" --worker-memory-bytes {worker_memory_bytes} "
+            f" --worker-disk-bytes {worker_disk_bytes} "
             f" --image {worker_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
+            f" --max-worker-runtime {max_worker_runtime}"
         )
 
         if DebugMode.CLIENT_LOGS in debug_mode:
@@ -246,6 +258,7 @@ class SkymapScannerJob:
     def make_skyscan_server_v1envvars(
         rest_address: str,
         scan_id: str,
+        skyscan_mq_client_timeout_wait_for_first_message: int | None,
     ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to the skyscan server.
 
@@ -277,10 +290,17 @@ class SkymapScannerJob:
         prefiltered = {
             "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
             "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
+            #
             "SKYSCAN_MQ_TIMEOUT_TO_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
+            #
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
+            #
+            "SKYSCAN_EWMS_PILOT_LOG": "WARNING",  # default is too low
+            "SKYSCAN_MQ_CLIENT_LOG": "WARNING",  # default is too low
+            #
+            "SKYSCAN_MQ_CLIENT_TIMEOUT_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
         }
         env.extend(
             [
@@ -358,8 +378,13 @@ class SkymapScannerJob:
         prefiltered = {
             "SKYSCAN_MQ_TIMEOUT_TO_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
+            #
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
+            #
+            "SKYSCAN_EWMS_PILOT_LOG": "WARNING",  # default is too low
+            "SKYSCAN_MQ_CLIENT_LOG": "WARNING",  # default is too low
+            #
             "EWMS_PILOT_QUARANTINE_TIME": ENV.EWMS_PILOT_QUARANTINE_TIME,
             "EWMS_PILOT_DUMP_TASK_OUTPUT": (
                 True if DebugMode.CLIENT_LOGS in debug_mode else None
@@ -441,7 +466,7 @@ class SkymapScannerWorkerStopper:
                     cpu=0.125,
                     env=get_cluster_auth_v1envvars(cluster),
                     args=args.split(),
-                    memory=ENV.K8S_CONTAINER_MEMORY_TMS_STOPPER,
+                    memory=K8S_CONTAINER_MEMORY_TMS_STOPPER_BYTES,
                 )
             )
 

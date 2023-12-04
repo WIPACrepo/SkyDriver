@@ -7,7 +7,8 @@ import json
 import uuid
 from typing import Any, Type, TypeVar
 
-import kubernetes.client  # type: ignore[import]
+import humanfriendly
+import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -16,7 +17,9 @@ from tornado import web
 
 from . import database, images, k8s
 from .config import (
-    DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
+    DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
+    DEFAULT_WORKER_DISK_BYTES,
+    DEFAULT_WORKER_MEMORY_BYTES,
     ENV,
     KNOWN_CLUSTERS,
     LOGGER,
@@ -292,6 +295,19 @@ def _debug_mode(val: Any) -> list[DebugMode]:
     return [DebugMode(v) for v in val]  # -> ValueError
 
 
+def _data_size_parse(val: Any) -> int:
+    try:
+        return humanfriendly.parse_size(str(val))  # type: ignore[no-any-return]
+    except humanfriendly.InvalidSize:
+        raise ValueError("invalid data size")
+
+
+def _validate_arg(val: Any, test: bool, exc: Exception) -> Any:
+    if test:
+        return val
+    raise exc
+
+
 class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles starting new scans."""
 
@@ -309,19 +325,32 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
 
         # scanner server args
-        scanner_server_memory = self.get_argument(
+        scanner_server_memory_bytes = self.get_argument(
             "scanner_server_memory",
-            type=k8s.utils.KubeAPITools.validate_k8s_memory,
-            default=DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
-            forbiddens=[r"\s*"],  # no empty string / whitespace
+            type=_data_size_parse,
+            default=DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
         )
 
         # client worker args
-        memory = self.get_argument(
+        worker_memory_bytes = self.get_argument(
+            "worker_memory",
+            type=_data_size_parse,
+            default=DEFAULT_WORKER_MEMORY_BYTES,
+        )
+        self.get_argument(  # NOTE - DEPRECATED
             "memory",
-            type=str,
-            default="8GB",
+            type=lambda x: _validate_arg(
+                x,
+                not bool(x),  # False if given
+                ValueError("argument is deprecated, please use 'worker_memory'"),
+            ),
+            default=None,
             forbiddens=[r"\s*"],  # no empty string / whitespace
+        )
+        worker_disk_bytes = self.get_argument(
+            "worker_disk",
+            type=_data_size_parse,
+            default=DEFAULT_WORKER_DISK_BYTES,
         )
         request_clusters = self.get_argument(
             "cluster",
@@ -358,6 +387,19 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "max_pixel_reco_time",
             type=int,
         )
+        max_worker_runtime = self.get_argument(
+            "max_worker_runtime",
+            type=int,
+            default=4 * 60 * 60,
+        )
+        skyscan_mq_client_timeout_wait_for_first_message: int | None = self.get_argument(
+            # TODO - remove when TMS is handling workforce-scaling
+            "skyscan_mq_client_timeout_wait_for_first_message",
+            type=int,
+            default=-1,  # elephant in Cairo
+        )
+        if skyscan_mq_client_timeout_wait_for_first_message == -1:
+            skyscan_mq_client_timeout_wait_for_first_message = None
         debug_mode = self.get_argument(
             "debug_mode",
             type=_debug_mode,
@@ -407,19 +449,22 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             docker_tag=docker_tag,
             scan_id=scan_id,
             # server
-            scanner_server_memory=scanner_server_memory,
+            scanner_server_memory_bytes=scanner_server_memory_bytes,
             reco_algo=reco_algo,
             nsides=nsides,
             is_real_event=real_or_simulated_event in REAL_CHOICES,
             predictive_scanning_threshold=predictive_scanning_threshold,
             # clientmanager
             request_clusters=request_clusters,
-            memory=memory,
+            worker_memory_bytes=worker_memory_bytes,
+            worker_disk_bytes=worker_disk_bytes,
             max_pixel_reco_time=max_pixel_reco_time,
+            max_worker_runtime=max_worker_runtime,
             # universal
             debug_mode=debug_mode,
             # env
             rest_address=self.request.full_url().rstrip(self.request.uri),
+            skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
         )
 
         # put in db (do before k8s start so if k8s fail, we can debug using db's info)
@@ -428,7 +473,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             scan_id,
             k8s_job.scanner_server_args,
             k8s_job.tms_args_list,
-            k8s_job.env_dict,
+            from_dict(database.schema.EnvVars, k8s_job.env_dict),
             classifiers,
         )
 
@@ -454,11 +499,11 @@ async def stop_scanner_instance(
     manifests: database.interface.ManifestClient,
     scan_id: str,
     k8s_batch_api: kubernetes.client.BatchV1Api,
-) -> None:
+) -> database.schema.Manifest:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     manifest = await manifests.get(scan_id, True)
-    if manifest.complete:
-        return
+    if manifest.complete:  # workforce is done
+        return manifest
 
     stopper = k8s.scanner_instance.SkymapScannerWorkerStopper(
         k8s_batch_api,
@@ -475,7 +520,7 @@ async def stop_scanner_instance(
             log_message="Failed to stop Scanner instance",
         )
 
-    await manifests.patch(scan_id, complete=True)
+    return await manifests.patch(scan_id, complete=True)  # workforce is done
 
 
 # -----------------------------------------------------------------------------
@@ -540,7 +585,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # check DB states
         manifest = await self.manifests.get(scan_id, True)
-        if manifest.complete and not delete_completed_scan:
+        if manifest.complete and not delete_completed_scan:  # workforce is done
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
                 400,
@@ -676,6 +721,40 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             cluster,
         )
 
+        # NOTE - the following will be moved to TMS, then improved
+        # check cluster statuses & stop scan if workers are all failing
+        for db_cluster in manifest.clusters:
+            # Job-Status -> "Held:*"  &  Pilot-Status -> ANY
+            # -- sum the total counts of all job-statuses prefixed with "Held:"
+            n_held = sum(
+                sum(  # pilot-status counts
+                    cts for cts in db_cluster.statuses[job_status].values()
+                )
+                for job_status in db_cluster.statuses.keys()
+                if job_status.startswith("Held:")
+            )
+
+            # Job-Status -> ANY  &  Pilot-Status -> "FatalError"
+            n_fatal_error = sum(
+                db_cluster.statuses[job_status].get("FatalError", 0)  # int
+                for job_status in db_cluster.statuses.keys()
+            )
+
+            # overlap
+            n_held_and_fatal_error = sum(
+                db_cluster.statuses[job_status].get("FatalError", 0)  # int
+                for job_status in db_cluster.statuses.keys()
+                if job_status.startswith("Held:")
+            )
+
+            if n_held + n_fatal_error - n_held_and_fatal_error >= db_cluster.n_workers:
+                manifest = await stop_scanner_instance(
+                    self.manifests,
+                    scan_id,
+                    self.k8s_batch_api,
+                )
+                break
+
         self.write(dc.asdict(manifest))  # don't use a projection
 
 
@@ -746,38 +825,47 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/status$"
 
-    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
+        include_pod_statuses = self.get_argument(
+            "include_pod_statuses",
+            type=bool,
+            default=False,
+        )
+
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         # get pod status
-        try:
-            pod_status = k8s.utils.KubeAPITools.get_pod_status(
-                self.k8s_batch_api,
-                k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
-                ENV.K8S_NAMESPACE,
-            )
-            pod_message = "retrieved"
-        except (kubernetes.client.rest.ApiException, ValueError) as e:
-            if await self.scan_backlog.is_in_backlog(scan_id):
-                pod_status = {}
-                pod_message = "in backlog"
-            else:
-                pod_status = {}
-                pod_message = "pod(s) not found"
-                LOGGER.exception(e)
+        pods_411: dict[str, Any] = {}
+        if include_pod_statuses:
+            try:
+                pods_411["pod_status"] = k8s.utils.KubeAPITools.get_pod_status(
+                    self.k8s_batch_api,
+                    k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
+                    ENV.K8S_NAMESPACE,
+                )
+                pods_411["pod_message"] = "retrieved"
+            except (kubernetes.client.rest.ApiException, ValueError) as e:
+                if await self.scan_backlog.is_in_backlog(scan_id):
+                    pods_411["pod_status"] = {}
+                    pods_411["pod_message"] = "in backlog"
+                else:
+                    pods_411["pod_status"] = {}
+                    pods_411["pod_message"] = "pod(s) not found"
+                    LOGGER.exception(e)
 
-        self.write(
-            {
-                "scan_state": manifest.get_state().name,
-                "is_deleted": manifest.is_deleted,
-                "scan_complete": manifest.complete,
-                "pod_status": pod_status,
-                "pod_message": pod_message,
-                "clusters": [dc.asdict(c) for c in manifest.clusters],
-            }
-        )
+        # respond
+        resp = {
+            "scan_state": manifest.get_state().name,
+            "is_deleted": manifest.is_deleted,
+            "scan_complete": manifest.complete,  # workforce is done
+            "pods": pods_411,
+            "clusters": [dc.asdict(c) for c in manifest.clusters],
+        }
+        if not include_pod_statuses:
+            resp.pop("pods")
+        self.write(resp)
 
     #
     # NOTE - handler needs to stay user-read-only

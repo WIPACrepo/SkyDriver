@@ -5,8 +5,9 @@ import enum
 import logging
 from typing import Any, Optional
 
-import coloredlogs  # type: ignore[import]
-import kubernetes.client  # type: ignore[import]
+import coloredlogs  # type: ignore[import-untyped]
+import humanfriendly
+import kubernetes.client  # type: ignore[import-untyped]
 from wipac_dev_tools import from_environment_as_dataclass
 
 LOGGER = logging.getLogger("skydriver")
@@ -16,7 +17,15 @@ LOGGER = logging.getLogger("skydriver")
 # Constants
 
 
-DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER = "1024M"
+DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES: int = humanfriendly.parse_size(
+    "1024M"
+)
+DEFAULT_WORKER_MEMORY_BYTES: int = humanfriendly.parse_size("8GB")
+DEFAULT_WORKER_DISK_BYTES: int = humanfriendly.parse_size("1GB")
+
+K8S_CONTAINER_MEMORY_DEFAULT_BYTES: int = humanfriendly.parse_size("64M")
+K8S_CONTAINER_MEMORY_TMS_STOPPER_BYTES: int = humanfriendly.parse_size("256M")
+K8S_CONTAINER_MEMORY_TMS_STARTER_BYTES: int = humanfriendly.parse_size("256M")
 
 TMS_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED = 1 * 60 * 60
 TMS_STOPPER_K8S_JOB_N_RETRIES = 6
@@ -58,9 +67,6 @@ class EnvConfig:
     K8S_SKYSCAN_JOBS_SERVICE_ACCOUNT: str = ""
     K8S_APPLICATION_NAME: str = ""
     K8S_TTL_SECONDS_AFTER_FINISHED: int = 600
-    K8S_CONTAINER_MEMORY_DEFAULT: str = "64M"
-    K8S_CONTAINER_MEMORY_TMS_STOPPER: str = "256M"
-    K8S_CONTAINER_MEMORY_TMS_STARTER: str = "256M"
 
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""

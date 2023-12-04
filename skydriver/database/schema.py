@@ -4,8 +4,9 @@ import dataclasses as dc
 import enum
 import hashlib
 import json
-from typing import Any, Literal
+from typing import Any, Iterator, Literal
 
+import wipac_dev_tools as wdt
 from typeguard import typechecked
 
 from .. import config
@@ -165,10 +166,10 @@ class Cluster:
 
     def to_known_cluster(self) -> tuple[str, StrDict]:
         """Map to a config.KNOWN_CLUSTERS entry."""
-        return next(  # type: ignore[return-value]
+        return next(
             (k, v)
             for k, v in config.KNOWN_CLUSTERS.items()
-            if v["location"] == dc.asdict(self.location)  # type: ignore[index]
+            if v["location"] == dc.asdict(self.location)
         )
 
 
@@ -190,12 +191,18 @@ class Manifest(ScanIDDataclass):
     timestamp: float
     is_deleted: bool
 
-    # args
+    # grabbed by scanner central server
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ hash?
     scanner_server_args: str
 
     tms: TMSTaskDirective
 
+    # args placed in k8s job obj
+    scanner_server_args: str  # TODO - move to TMS
+    tms_args: list[str]  # TODO - move to TMS
+    env_vars: EnvVars  # TODO - move to TMS
+
+    # open to requestor
     classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)
 
     # special fields -- see __post_init__
@@ -203,13 +210,13 @@ class Manifest(ScanIDDataclass):
 
     # found/created during first few seconds of scanning
     event_metadata: EventMetadata | None = None
-    scan_metadata: dict | None = None  # open to requestor
+    scan_metadata: dict | None = None  # open to scanner
 
     # updated during scanning, multiple times
     progress: Progress | None = None
 
-    # signifies k8s workers and condor cluster(s) are done
-    complete: bool = False
+    # signifies k8s workers and condor cluster(s) AKA workforce is done
+    complete: bool = False  # TODO - move to TMS
 
     last_updated: float = 0.0
 
@@ -223,6 +230,37 @@ class Manifest(ScanIDDataclass):
                     ensure_ascii=True,
                 ).encode("utf-8")
             ).hexdigest()
+
+        #
+        # obfuscate tokens & such (sensitive values)
+        #
+
+        def obfuscate_cl_args(args: str) -> str:
+            # first, check if any sensitive strings (searches using substrings)
+            if not wdt.data_safety_tools.is_name_sensitive(args):
+                return args
+            # now, go one-by-one
+            out_args: list[str] = []
+            current_option = ""
+            for string in args.split():
+                if string.startswith("--"):  # ex: --foo -> "... --foo bar baz ..."
+                    current_option = string
+                    out_args += string
+                elif current_option:  # ex: baz -> "... --foo bar baz ..."
+                    out_args += wdt.data_safety_tools.obfuscate_value_if_sensitive(
+                        current_option, string
+                    )
+                else:  # ex: my_module -> "python -m my_module ... --foo bar baz ..."
+                    out_args += string
+            return " ".join(out_args)
+
+        # scanner_server_args: str
+        self.scanner_server_args = obfuscate_cl_args(self.scanner_server_args)
+
+        # tms_args: list[str]
+        self.tms_args = [obfuscate_cl_args(a) for a in self.tms_args]
+
+        # NOTE - self.env_vars done in EnvVars
 
     def get_state(self) -> ScanState:
         """Determine the state of the scan by parsing attributes."""
@@ -253,7 +291,5 @@ class Manifest(ScanIDDataclass):
     def __repr__(self) -> str:
         dicto = dc.asdict(self)
         dicto.pop("event_i3live_json_dict")
-        # obfuscate tokens
-        # TODO
         rep = f"{self.__class__.__name__}{dicto}"
         return rep

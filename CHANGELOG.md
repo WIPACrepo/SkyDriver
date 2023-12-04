@@ -2,6 +2,65 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.4 (2023-12-04)
+
+### Other
+
+* REST arg validation fix ([`30f3d9a`](https://github.com/WIPACrepo/SkyDriver/commit/30f3d9a9884690544559a8fc83c80cc7cf4ad46b))
+
+## v0.8.3 (2023-12-04)
+
+### Other
+
+* REST Arguments: `worker_disk` & `worker_memory` ([#102](https://github.com/WIPACrepo/SkyDriver/issues/102)) ([`d1d4d80`](https://github.com/WIPACrepo/SkyDriver/commit/d1d4d8080a9192164e321d99f8ca844f18857e99))
+
+## v0.8.2 (2023-11-30)
+
+### Other
+
+* Set `SKYSCAN_EWMS_PILOT_LOG` and `SKYSCAN_MQ_CLIENT_LOG` to "WARNIG" ([#99](https://github.com/WIPACrepo/SkyDriver/issues/99)) ([`51a4762`](https://github.com/WIPACrepo/SkyDriver/commit/51a4762c80e21e34af64acdb13b2fc3d8e2f4d3f))
+
+## v0.8.1 (2023-11-29)
+
+### Other
+
+* Miscellaneous comments ([`e582146`](https://github.com/WIPACrepo/SkyDriver/commit/e582146f8de3865683182238d58491e1c35ecf21))
+
+## v0.8.0 (2023-11-29)
+
+
+
+## v0.7.13 (2023-11-28)
+
+### Other
+
+* Fix: Scan-Status Route Role for Scanner Account ([`947a585`](https://github.com/WIPACrepo/SkyDriver/commit/947a585e990419a61b66ee0b097bbcef2b545a2c))
+
+## v0.7.12 (2023-11-28)
+
+### Other
+
+* Add Optional `"skyscan_mq_client_timeout_wait_for_first_message"` ([#96](https://github.com/WIPACrepo/SkyDriver/issues/96)) ([`f91cb06`](https://github.com/WIPACrepo/SkyDriver/commit/f91cb06f9ba257ef86437975671308e26b9e867a))
+
+## v0.7.11 (2023-11-28)
+
+### Other
+
+* Stop Scan If All Workers Fail ([#95](https://github.com/WIPACrepo/SkyDriver/issues/95)) ([`253d825`](https://github.com/WIPACrepo/SkyDriver/commit/253d82576dbce5d3c733f0dbf35eecff655bd576))
+
+## v0.7.10 (2023-11-27)
+
+### Other
+
+* Make Retrieving Pod Statuses Optional for `/scan/SCAN_ID/status` ([#94](https://github.com/WIPACrepo/SkyDriver/issues/94)) ([`51914b0`](https://github.com/WIPACrepo/SkyDriver/commit/51914b0d3a1e54ef8219cce557e2ca6cf460bf02))
+
+## v0.7.9 (2023-11-27)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`be75262`](https://github.com/WIPACrepo/SkyDriver/commit/be75262e3a379856b053fc984b60ceb9b11a11b7))
+* Obfuscate Sensitive Info ([#92](https://github.com/WIPACrepo/SkyDriver/issues/92)) ([`20fb80b`](https://github.com/WIPACrepo/SkyDriver/commit/20fb80bfa3e813416c947243fa619b1561f15c42))
+
 ## v0.7.8 (2023-11-21)
 
 ### Other

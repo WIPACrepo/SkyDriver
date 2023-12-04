@@ -23,7 +23,10 @@ PROJECTION = [
     "JobStatus",
     "EnteredCurrentStatus",
     "ProcId",
+    #
     "HoldReason",
+    "HoldReasonCode",
+    "HoldReasonSubCode",
     #
     "HTChirpEWMSPilotLastUpdatedTimestamp",
     "HTChirpEWMSPilotStartedTimestamp",
@@ -41,6 +44,7 @@ PROJECTION = [
 DONE_JOB_STATUSES: list[int] = [
     ct.REMOVED,
     ct.COMPLETED,
+    ct.HELD,
 ]
 NON_RESPONSE_LIMIT = 10
 
@@ -107,34 +111,44 @@ def get_aggregate_statuses(
 ) -> tuple[dict[str, dict[str, int]], bool]:
     """Aggregate statuses of jobs & return whether this is an new value."""
 
-    def job_status_vals() -> Iterator[str]:
-        """Get each job status -- transforming any as needed.
+    def transform_job_status_val(info: dict[str, Any]) -> str:
+        """Get job status -- transforming any as needed.
 
         NOTE: each transformation needs to be generic
         enough to aggregate nicely with others; e.g. don't
         append a timestamp, do append a standard reason str.
         """
-        for info in job_infos.values():
-            if info["JobStatus"] == ct.HELD:
-                yield (
-                    f"{ct.job_status_to_str(ct.HELD)}: "
-                    f"{info.get('HoldReason', 'unknown reason')}"
-                )
-            else:
-                yield ct.job_status_to_str(info["JobStatus"])
-
-    statuses = {
-        "JobStatus": dict(
-            collections.Counter(
-                job_status_vals(),
-            ),
-        ),
-        "HTChirpEWMSPilotStatus": dict(
-            collections.Counter(
-                [j["HTChirpEWMSPilotStatus"] for j in job_infos.values()],
+        if info["JobStatus"] == ct.HELD:
+            codes = (
+                info.get("HoldReasonCode", None),
+                info.get("HoldReasonSubCode", None),
             )
-        ),
+            return (
+                f"{ct.job_status_to_str(ct.HELD)}: "
+                f"{codes} "
+                f"{info.get('HoldReason', 'unknown reason')}"
+            )
+        else:
+            return ct.job_status_to_str(info["JobStatus"])
+
+    statuses: dict[str, dict[str, int]] = {
+        k: {}
+        for k in set(transform_job_status_val(info) for info in job_infos.values())
     }
+
+    for job_status in statuses:
+        ids_for_this_job_status = [  # subset of job_infos ids
+            i
+            for i, info in job_infos.items()
+            if transform_job_status_val(info) == job_status
+        ]
+        # NOTE - if the pilot did not send a status (ex: Held job), it is `None`
+        statuses[job_status] = dict(
+            collections.Counter(
+                job_infos[i]["HTChirpEWMSPilotStatus"] for i in ids_for_this_job_status
+            )
+        )
+
     return statuses, statuses != previous
 
 
@@ -145,7 +159,7 @@ def get_aggregate_top_task_errors(
 ) -> tuple[dict[str, int], bool]:
     """Aggregate top X errors of jobs & return whether this is an new value."""
     counts = collections.Counter(
-        [dicto.get("HTChirpEWMSPilotError") for dicto in job_infos.values()]
+        dicto.get("HTChirpEWMSPilotError") for dicto in job_infos.values()
     )
     counts.pop(None, None)  # remove counts of "no error"
 
@@ -169,7 +183,7 @@ def watch(
     )
 
     job_infos: dict[int, dict[str, Any]] = {
-        i: {
+        i: {  # NOTE - it's important that attrs reported on later are `None` to start
             "JobStatus": None,
             "HTChirpEWMSPilotStatus": None,
         }
@@ -186,12 +200,13 @@ def watch(
         NOTE - condor may be lagging, so we can't just quit when
         all jobs are done, since there may be more attrs to be updated.
         """
-        if not any(  # but only if we have done jobs
+        if not any(  # if no done jobs, then keep going always
             job_infos[j]["JobStatus"] in DONE_JOB_STATUSES for j in job_infos
         ):
             return True
-        # condor may occasionally slow down & prematurely return nothing
-        return non_response_ct < NON_RESPONSE_LIMIT  # allow X non-responses
+        else:
+            # condor may occasionally slow down & prematurely return nothing
+            return non_response_ct < NON_RESPONSE_LIMIT  # allow X non-responses
 
     # WATCHING LOOP
     while (
@@ -209,7 +224,7 @@ def watch(
             (
                 f"ClusterId == {cluster_id} && "
                 # only care about "older" status jobs if they are RUNNING
-                f"( JobStatus == {ct.RUNNING} || EnteredCurrentStatus >= {int(time.time()) - WATCHER_INTERVAL*5} )"
+                f"( JobStatus == {ct.RUNNING} || EnteredCurrentStatus >= {int(time.time()) - WATCHER_INTERVAL*3} )"
             ),
             PROJECTION,
         )
@@ -230,20 +245,20 @@ def watch(
             aggregate_top_task_errors,
         )
 
+        # log
+        LOGGER.info(f"job aggregate statuses ({n_workers=})")
+        LOGGER.info(f"{pformat(aggregate_statuses, indent=4)}")
+        LOGGER.info(
+            f"job aggregate top {WATCHER_N_TOP_TASK_ERRORS} task errors ({n_workers=})"
+        )
+        LOGGER.info(f"{pformat(aggregate_top_task_errors, indent=4)}")
+
         # figure updates
         if not has_new_statuses and not has_new_errors:
             LOGGER.info("no updates")
         else:
-            # LOGGER.debug(f"job statuses ({n_workers=})")
-            # LOGGER.debug(f"{pformat(job_infos, indent=4)}")
-            LOGGER.info(f"job aggregate statuses ({n_workers=})")
-            LOGGER.info(f"{pformat(aggregate_statuses, indent=4)}")
-            LOGGER.info(
-                f"job aggregate top {WATCHER_N_TOP_TASK_ERRORS} task errors ({n_workers=})"
-            )
-            LOGGER.info(f"{pformat(aggregate_top_task_errors, indent=4)}")
-
             # send updates
+            LOGGER.info("sending updates to skydriver")
             utils.update_skydriver(
                 skydriver_rc,
                 **skydriver_cluster_obj,

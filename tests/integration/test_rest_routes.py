@@ -12,6 +12,7 @@ import time
 import uuid
 from typing import Any, Callable
 
+import humanfriendly
 import pytest
 import requests
 import skydriver
@@ -138,6 +139,8 @@ async def _launch_scan(
         "SKYSCAN_SKYDRIVER_ADDRESS",
         "SKYSCAN_SKYDRIVER_AUTH",
         "SKYSCAN_SKYDRIVER_SCAN_ID",
+        "SKYSCAN_EWMS_PILOT_LOG",
+        "SKYSCAN_MQ_CLIENT_LOG",
     }
     assert (
         set(  # these have `value_from`s
@@ -162,6 +165,8 @@ async def _launch_scan(
             "SKYSCAN_SKYDRIVER_ADDRESS",
             "SKYSCAN_SKYDRIVER_AUTH",
             "SKYSCAN_SKYDRIVER_SCAN_ID",
+            "SKYSCAN_EWMS_PILOT_LOG",
+            "SKYSCAN_MQ_CLIENT_LOG",
             "WORKER_K8S_LOCAL_APPLICATION_NAME",
             "EWMS_PILOT_DUMP_TASK_OUTPUT",
         }
@@ -485,7 +490,7 @@ async def _delete_scan(
             "scan_id": scan_id,
             "is_deleted": True,
             "progress": last_known_manifest["progress"],
-            "complete": last_known_manifest["complete"],
+            "complete": last_known_manifest["complete"],  # whether workforce is done
             "last_updated": resp["manifest"]["last_updated"],  # see below
             # TODO: check more fields in future (hint: ctrl+F this comment)
         },
@@ -638,9 +643,11 @@ def get_tms_args(
             f" {' '.join(f'--{k} {v}' for k,v in location.items())} "
             f" start "
             f" --n-workers {cluster[1]} "
-            f" --memory 8GB "
+            f" --worker-memory-bytes {humanfriendly.parse_size('8GB')} "
+            f" --worker-disk-bytes {humanfriendly.parse_size('1GB')} "
             f" --image {image} "
             f" --client-startup-json /common-space/startup.json "
+            f" --max-worker-runtime {4 * 60 * 60} "
             f" --spool "
         ]
 
@@ -750,14 +757,14 @@ async def test_00(
     #
     # SEND RESULT(s)
     #
-    assert not manifest["complete"]
+    assert not manifest["complete"]  # workforce is not done
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
     assert manifest.pop("env_vars")  # remove to match with other requests
-    assert manifest["complete"]
+    assert manifest["complete"]  # workforce is done
 
     #
     # DELETE SCAN
@@ -986,7 +993,7 @@ async def test_01__bad_data(
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
     assert manifest.pop("env_vars")  # remove to match with other requests
-    assert manifest["complete"]
+    assert manifest["complete"]  # workforce is done
 
     #
     # DELETE SCAN

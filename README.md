@@ -42,9 +42,12 @@ _Launch a new scan of an event_
 | `"event_i3live_json"`             | dict or str  | *[REQUIRED]*     | Realtime's JSON event format
 | `"nsides"`                        | dict         | *[REQUIRED]*     | the nside progression to use (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"real_or_simulated_event"`       | str          | *[REQUIRED]*     | whether this event is real or simulated. Ex: `real`, `simulated`
-| `"max_pixel_reco_time"`           | int          | *[REQUIRED]*     | the max amount of time each pixel's reco should take (accurate values will evict pixels from slow workers thereby re-delivering to faster workers -- slow workers are unavoidable due to non-deterministic errors)
+| `"max_pixel_reco_time"`           | int          | *[REQUIRED]*     | the max amount of time (seconds) each pixel's reco should take (accurate values will evict pixels from slow workers thereby re-delivering to faster workers -- slow workers are unavoidable due to non-deterministic errors)
+| `"max_worker_runtime"`            | int          | default: `4*60*60` | the max amount of time (second) each client worker can work for (larger values are needed as the event size increases AND the workforce size decreases)
+| `"skyscan_mq_client_timeout_wait_for_first_message"` | int | default: image's default value | how long a client can wait for its first message (pixel) before giving up and exiting
 | `"scanner_server_memory"`         | str          | default: `1024M` | how much memory for the scanner server to request
-| `"memory"`                        | str          | default: `8G`   | how much memory per client worker to request
+| `"worker_memory"`                 | str          | default: `8G`   | how much memory per client worker to request
+| `"worker_disk"`                   | str          | default: `1G`    | how much disk per client worker to request
 | `"debug_mode"`                    | str or list  | default: None    | what debug mode(s) to use: `"client-logs"` collects the scanner clients' stderr/stdout including icetray logs (scans are limited in # of workers)
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
 | `"classifiers"` | <code>dict[str, str &#124; bool &#124; float &#124; int]</code> | default: `{}` | a user-defined collection of labels, attributes, etc. -- this is constrained in size and is intended for user-defined metadata only
@@ -217,7 +220,10 @@ None
 _Retrieve the status of a scan_
 
 #### Arguments
-None
+| Argument                 | Type    | Required/Default | Description          |
+| ------------------------ | ------- | ---------------- | -------------------- |
+| `"include_pod_statuses"` | bool    | `False`          | whether to include the k8s pod statuses for the clientmanager & central server -- expends additional resources
+
 
 #### SkyDriver Effects
 None
@@ -227,9 +233,11 @@ None
 {
     "scan_state": str,  # a short human-readable code
     "is_deleted": bool,
-    "scan_complete": bool,  # skymap scanner finished
-    "pod_status": dict,  # a large k8s status object
-    "pod_status_message": str,  # a human-readable message explaining the pod status retrieval
+    "scan_complete": bool,  # workforce is done
+    "pods": {  # field is included only if `include_pod_statuses == True`
+        "pod_status": dict,  # a large k8s status object
+        "pod_status_message": str,  # a human-readable message explaining the pod status retrieval
+    }
     "clusters": list,  # same as Manifest's clusters field
 }
 ```
@@ -305,8 +313,16 @@ Pseudo-code:
             n_workers: int,
             starter_info: dict,
             statuses: {
-                'JobStatus': dict[str, int],  # status value -> # of jobs
-                'HTChirpEWMSPilotStatus': dict[str, int],  # status value -> # of jobs
+                'Completed': {  # condor job status
+                    'FatalError': int,  # pilot status value -> # of jobs
+                    'Done': int,  # pilot status value -> # of jobs
+                    ...
+                },
+                'Running': {
+                    'Tasking': int,
+                    ...
+                }
+                ...
             },
             top_task_errors: dict[str, int],  # error message -> # of jobs
         },
