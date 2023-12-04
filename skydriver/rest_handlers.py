@@ -9,7 +9,6 @@ from typing import Any, Type, TypeVar
 
 import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
-import wipac_dev_tools
 from dacite import from_dict
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -303,6 +302,12 @@ def _data_size_parse(val: Any) -> int:
         raise ValueError("invalid data size")
 
 
+def _validate_arg(val: Any, test: bool, exc: Exception) -> Any:
+    if test:
+        return val
+    raise exc
+
+
 class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles starting new scans."""
 
@@ -334,10 +339,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         self.get_argument(  # NOTE - DEPRECATED
             "memory",
-            type=lambda x: wipac_dev_tools.argparse_tools.validate_arg(
+            type=lambda x: _validate_arg(
                 x,
                 not bool(x),  # False if given
-                ValueError("argument is deprecated, please use 'worker_memory_bytes'"),
+                ValueError("argument is deprecated, please use 'worker_memory'"),
             ),
             default=None,
             forbiddens=[r"\s*"],  # no empty string / whitespace
