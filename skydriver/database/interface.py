@@ -1,5 +1,6 @@
 """Database interface for persisted scan data."""
 
+import copy
 import dataclasses as dc
 import logging
 import time
@@ -148,27 +149,31 @@ class ManifestClient:
                 reason=msg,
             )
 
-        # cluster / clusters
-        # TODO - when TMS is up and running, it will handle cluster updating--remove then
-        # NOTE - there is a race condition inherent with list attributes, don't do this in TMS
-        if not cluster:
-            pass  # don't put in DB
-        else:
-            try:  # find by uuid -> replace
-                idx = next(
-                    i
-                    for i, c in enumerate(in_db.tms.clusters)
-                    if cluster.uuid == c.uuid
-                )
-                upserting["tms.clusters"] = (
-                    in_db.tms.clusters[:idx] + [cluster] + in_db.tms.clusters[idx + 1 :]
-                )
-            except StopIteration:  # not found -> append
-                upserting["tms.clusters"] = in_db.tms.clusters + [cluster]
-
-        # complete # workforce is done
-        if complete is not None:
-            upserting["tms.complete"] = complete  # workforce is done
+        # tms
+        if cluster or complete is not None:
+            upserting["tms"] = copy.deepcopy(in_db.tms)
+            # cluster / clusters
+            # TODO - when TMS is up and running, it will handle cluster updating--remove then
+            # NOTE - there is a race condition inherent with list attributes, don't do this in TMS
+            if not cluster:
+                pass  # don't put in DB
+            else:
+                try:  # find by uuid -> replace
+                    idx = next(
+                        i
+                        for i, c in enumerate(in_db.tms.clusters)
+                        if cluster.uuid == c.uuid
+                    )
+                    upserting["tms"].clusters = (
+                        in_db.tms.clusters[:idx]
+                        + [cluster]
+                        + in_db.tms.clusters[idx + 1 :]
+                    )
+                except StopIteration:  # not found -> append
+                    upserting["tms"].clusters = in_db.tms.clusters + [cluster]
+            # complete # workforce is done
+            if complete is not None:
+                upserting["tms"].complete = complete  # workforce is done
 
         # progress
         if progress:
