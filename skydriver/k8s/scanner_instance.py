@@ -12,8 +12,8 @@ from rest_tools.client import ClientCredentialsAuth
 from .. import database, images
 from ..config import (
     ENV,
+    K8S_CONTAINER_MEMORY_TMS_STARTER_BYTES,
     K8S_CONTAINER_MEMORY_TMS_STOPPER_BYTES,
-    K8S_CONTAINER_MEMORY_TMS_STOPPER,
     LOGGER,
     TMS_STOPPER_K8S_JOB_N_RETRIES,
     TMS_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
@@ -141,7 +141,7 @@ class SkymapScannerJob:
                     ),
                     cpu=0.125,
                     volumes={common_space_volume_path.name: common_space_volume_path},
-                    memory=K8S_CONTAINER_MEMORY_TMS_STARTER,
+                    memory=K8S_CONTAINER_MEMORY_TMS_STARTER_BYTES,
                 )
             )
         self.tms_args_list = [" ".join(c.args) for c in tms_starters]
