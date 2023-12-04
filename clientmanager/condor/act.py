@@ -37,7 +37,8 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
             submit_dict = starter.prep(
                 spool=args.spool,
                 # starter CL args -- worker
-                memory=args.memory,
+                worker_memory_bytes=args.worker_memory_bytes,
+                worker_disk_bytes=args.worker_disk_bytes,
                 n_cores=args.n_cores,
                 max_worker_runtime=args.max_worker_runtime,
                 # starter CL args -- client

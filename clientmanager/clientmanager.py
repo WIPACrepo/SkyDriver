@@ -148,10 +148,16 @@ class ActionArgs:
 
         # worker args
         sub_parser.add_argument(
-            "--memory",
+            "--worker-memory-bytes",
             required=True,
-            help="amount of memory",
-            # default="8GB",
+            type=int,
+            help="amount of worker memory (bytes)",
+        )
+        sub_parser.add_argument(
+            "--worker-disk-bytes",
+            required=True,
+            type=int,
+            help="amount of worker disk (bytes)",
         )
         sub_parser.add_argument(
             "--n-cores",

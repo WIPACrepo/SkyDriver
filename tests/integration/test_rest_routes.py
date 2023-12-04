@@ -12,6 +12,7 @@ import time
 import uuid
 from typing import Any, Callable
 
+import humanfriendly
 import pytest
 import requests
 import skydriver
@@ -642,7 +643,8 @@ def get_tms_args(
             f" {' '.join(f'--{k} {v}' for k,v in location.items())} "
             f" start "
             f" --n-workers {cluster[1]} "
-            f" --memory 8GB "
+            f" --worker-memory-bytes {humanfriendly.parse_size('8GB')} "
+            f" --worker-disk-bytes {humanfriendly.parse_size('1GB')} "
             f" --image {image} "
             f" --client-startup-json /common-space/startup.json "
             f" --max-worker-runtime {4 * 60 * 60} "

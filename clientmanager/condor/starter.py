@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import htcondor  # type: ignore[import-untyped]
+import humanfriendly
 
 from ..config import ENV, FORWARDED_ENV_VARS, LOGGER
 from ..utils import S3File
@@ -21,7 +22,8 @@ def make_condor_logs_dir() -> Path:
 def make_condor_job_description(
     spool: bool,
     # condor args
-    memory: str,
+    worker_memory_bytes: int,
+    worker_disk_bytes: int,
     n_cores: int,
     max_worker_runtime: int,
     # skymap scanner args
@@ -78,7 +80,12 @@ def make_condor_job_description(
         "transfer_executable": "false",
         #
         "request_cpus": str(n_cores),
-        "request_memory": memory,
+        "request_memory": humanfriendly.format_size(  # 1073741824 -> "1 GiB" -> "1 GB"
+            worker_memory_bytes, binary=True
+        ).replace("i", ""),
+        "request_disk": humanfriendly.format_size(  # 1073741824 -> "1 GiB" -> "1 GB"
+            worker_disk_bytes, binary=True
+        ).replace("i", ""),
         "+WantIOProxy": "true",  # for HTChirp
         "+OriginalTime": max_worker_runtime,  # Execution time limit -- 1 hour default on OSG
     }
@@ -118,7 +125,8 @@ def prep(
     # starter CL args -- helper
     spool: bool,
     # starter CL args -- worker
-    memory: str,
+    worker_memory_bytes: int,
+    worker_disk_bytes: int,
     n_cores: int,
     max_worker_runtime: int,
     # starter CL args -- client
@@ -144,7 +152,8 @@ def prep(
     submit_dict = make_condor_job_description(
         spool,
         # condor args
-        memory,
+        worker_memory_bytes,
+        worker_disk_bytes,
         n_cores,
         max_worker_runtime,
         # skymap scanner args
