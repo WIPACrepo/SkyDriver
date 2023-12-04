@@ -101,8 +101,8 @@ async def _launch_scan(
         scanner_server_args=resp["scanner_server_args"],  # see below
         tms=dict(
             clusters=[],
-            tms_args=resp["tms_args"],  # see below
-            env_vars=resp["env_vars"],  # see below
+            tms_args=resp["tms"]["tms_args"],  # see below
+            env_vars=resp["tms"]["env_vars"],  # see below
             complete=False,
         ),
         classifiers=post_scan_body["classifiers"],
@@ -285,7 +285,7 @@ async def _do_patch(
         ),
         scanner_server_args=resp["scanner_server_args"],  # not checking
         tms=dict(
-            tms_args=resp["tms_args"],  # not checking
+            tms_args=resp["tms"]["tms_args"],  # not checking
             complete=False,
             clusters=(
                 previous_clusters + [cluster]  # type: ignore[operator]  # see assert ^^^^
