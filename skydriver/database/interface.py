@@ -72,8 +72,10 @@ class ManifestClient:
             is_deleted=False,
             event_i3live_json_dict=event_i3live_json_dict,
             scanner_server_args=scanner_server_args,
-            tms_args=tms_args_list,
-            env_vars=env_vars,
+            tms=schema.TMSTaskDirective(
+                tms_args=tms_args_list,
+                env_vars=env_vars,
+            ),
             classifiers=classifiers,
         )
 
@@ -154,13 +156,15 @@ class ManifestClient:
         else:
             try:  # find by uuid -> replace
                 idx = next(
-                    i for i, c in enumerate(in_db.clusters) if cluster.uuid == c.uuid
+                    i
+                    for i, c in enumerate(in_db.tms.clusters)
+                    if cluster.uuid == c.uuid
                 )
-                upserting["clusters"] = (
-                    in_db.clusters[:idx] + [cluster] + in_db.clusters[idx + 1 :]
+                upserting["tms.clusters"] = (
+                    in_db.tms.clusters[:idx] + [cluster] + in_db.tms.clusters[idx + 1 :]
                 )
             except StopIteration:  # not found -> append
-                upserting["clusters"] = in_db.clusters + [cluster]
+                upserting["tms.clusters"] = in_db.tms.clusters + [cluster]
 
         # complete # workforce is done
         if complete is not None:

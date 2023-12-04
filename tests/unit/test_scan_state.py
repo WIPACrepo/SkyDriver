@@ -15,10 +15,12 @@ def test_00__scan_finished_successfully() -> None:
         is_deleted=False,
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
-        tms_args=[],
-        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+        tms=schema.TMSTaskDirective(
+            tms_args=[],
+            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+            complete=True,
+        ),
         #
-        complete=True,
         progress=schema.Progress(
             "summary",
             "epilogue",
@@ -55,10 +57,12 @@ def test_10__partial_result_generated(
         is_deleted=False,
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
-        tms_args=[],
-        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+        tms=schema.TMSTaskDirective(
+            tms_args=[],
+            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+            complete=is_complete,
+        ),
         #
-        complete=is_complete,
         progress=schema.Progress(
             "summary",
             "epilogue",
@@ -107,10 +111,12 @@ def test_20__waiting_on_first_pixel_reco(
         is_deleted=False,
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
-        tms_args=[],
-        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+        tms=schema.TMSTaskDirective(
+            tms_args=[],
+            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+            complete=is_complete,
+        ),
         #
-        complete=is_complete,
         progress=schema.Progress(
             "summary",
             "epilogue",
@@ -159,10 +165,12 @@ def test_30__waiting_on_cluster_startup(
         is_deleted=False,
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
-        tms_args=[],
-        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+        tms=schema.TMSTaskDirective(
+            tms_args=[],
+            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+            complete=is_complete,
+        ),
         #
-        complete=is_complete,
         progress=schema.Progress(
             "summary",
             "epilogue",
@@ -211,10 +219,12 @@ def test_40__waiting_on_scanner_server_startup(
         is_deleted=False,
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
-        tms_args=[],
-        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+        tms=schema.TMSTaskDirective(
+            tms_args=[],
+            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+            complete=is_complete,
+        ),
         #
-        complete=is_complete,
         # progress=schema.Progress(
         #     "summary",
         #     "epilogue",
@@ -261,10 +271,12 @@ def test_50__prestartup(is_complete: bool, state: schema.ScanState) -> None:
         is_deleted=False,
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
-        tms_args=[],
-        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+        tms=schema.TMSTaskDirective(
+            tms_args=[],
+            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+            complete=is_complete,
+        ),
         #
-        complete=is_complete,
         # progress=schema.Progress(
         #     "summary",
         #     "epilogue",
