@@ -80,7 +80,7 @@ def make_condor_job_description(
         #
         "request_cpus": str(n_cores),
         "request_memory": worker_memory,
-        "RequestDisk": worker_disk,
+        "request_disk": worker_disk,
         "+WantIOProxy": "true",  # for HTChirp
         "+OriginalTime": max_worker_runtime,  # Execution time limit -- 1 hour default on OSG
     }
