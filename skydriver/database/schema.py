@@ -218,14 +218,11 @@ class Manifest(ScanIDDataclass):
 
     # grabbed by scanner central server
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ hash?
-    scanner_server_args: str
 
     tms: TMSTaskDirective
 
     # args placed in k8s job obj
     scanner_server_args: str  # TODO - move to TMS
-    tms_args: list[str]  # TODO - move to TMS
-    env_vars: EnvVars  # TODO - move to TMS
 
     # open to requestor
     classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)
