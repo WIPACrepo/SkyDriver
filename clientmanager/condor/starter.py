@@ -80,8 +80,12 @@ def make_condor_job_description(
         "transfer_executable": "false",
         #
         "request_cpus": str(n_cores),
-        "request_memory": humanfriendly.format_size(worker_memory_bytes),  # -> "1 GB"
-        "request_disk": humanfriendly.format_size(worker_disk_bytes),  # -> "1 GB"
+        "request_memory": humanfriendly.format_size(  # 1073741824 -> "1 GiB" -> "1 GB"
+            worker_memory_bytes, binary=True
+        ).replace("i", ""),
+        "request_disk": humanfriendly.format_size(  # 1073741824 -> "1 GiB" -> "1 GB"
+            worker_disk_bytes, binary=True
+        ).replace("i", ""),
         "+WantIOProxy": "true",  # for HTChirp
         "+OriginalTime": max_worker_runtime,  # Execution time limit -- 1 hour default on OSG
     }
