@@ -97,12 +97,14 @@ async def _launch_scan(
         event_i3live_json_dict=post_scan_body["event_i3live_json"],
         event_metadata=None,
         scan_metadata=None,
-        clusters=[],
         progress=None,
         scanner_server_args=resp["scanner_server_args"],  # see below
-        tms_args=resp["tms_args"],  # see below
-        env_vars=resp["env_vars"],  # see below
-        complete=False,
+        tms=dict(
+            clusters=[],
+            tms_args=resp["tms_args"],  # see below
+            env_vars=resp["env_vars"],  # see below
+            complete=False,
+        ),
         classifiers=post_scan_body["classifiers"],
         last_updated=resp["last_updated"],  # see below
         # TODO: check more fields in future (hint: ctrl+F this comment)
@@ -112,7 +114,7 @@ async def _launch_scan(
 
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
-    for got_args, exp_args in zip(resp["tms_args"], tms_args):
+    for got_args, exp_args in zip(resp["tms"]["tms_args"], tms_args):
         print(got_args, exp_args)
         for got, exp in zip(got_args.split(), exp_args.split()):
             print(got, exp)
@@ -121,17 +123,17 @@ async def _launch_scan(
             else:
                 assert got == exp
         assert len(got_args.split()) == len(exp_args.split())
-    assert len(resp["tms_args"]) == len(tms_args)
+    assert len(resp["tms"]["tms_args"]) == len(tms_args)
 
     # check env vars
-    print(resp["env_vars"])
-    assert set(resp["env_vars"].keys()) == {"scanner_server", "tms_starters"}
+    print(resp["tms"]["env_vars"])
+    assert set(resp["tms"]["env_vars"].keys()) == {"scanner_server", "tms_starters"}
 
     # check env vars, more closely
     # "scanner_server"
     assert set(  # these have `value`s
         e["name"]
-        for e in resp["env_vars"]["scanner_server"]
+        for e in resp["tms"]["env_vars"]["scanner_server"]
         if e["value"] is not None and e["value_from"] is None
     ) == {
         "SKYSCAN_BROKER_ADDRESS",
@@ -145,13 +147,13 @@ async def _launch_scan(
     assert (
         set(  # these have `value_from`s
             e
-            for e in resp["env_vars"]["scanner_server"]
+            for e in resp["tms"]["env_vars"]["scanner_server"]
             if e["value_from"] is not None and e["value"] is None
         )
         == set()
     )
     # "tms_starters"
-    for env_dicts in resp["env_vars"]["tms_starters"]:
+    for env_dicts in resp["tms"]["env_vars"]["tms_starters"]:
         assert set(  # these have `value`s
             e["name"]
             for e in env_dicts
@@ -197,9 +199,9 @@ async def _launch_scan(
         }
 
     # check env vars, even MORE closely
-    for env_dicts in [resp["env_vars"]["scanner_server"]] + resp["env_vars"][
-        "tms_starters"
-    ]:
+    for env_dicts in [resp["tms"]["env_vars"]["scanner_server"]] + resp["tms"][
+        "env_vars"
+    ]["tms_starters"]:
         assert (
             next(x["value"] for x in env_dicts if x["name"] == "SKYSCAN_BROKER_ADDRESS")
             == "localhost"
@@ -228,7 +230,7 @@ async def _launch_scan(
 
     # remove fields usually not returned
     assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    assert resp.pop("env_vars")  # remove to match with other requests
+    assert resp["tms"].pop("env_vars")  # remove to match with other requests
     return resp  # type: ignore[no-any-return]
 
 
@@ -258,7 +260,7 @@ async def _do_patch(
 
     resp = await rc.request("PATCH", f"/scan/{scan_id}/manifest", body)
     assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    assert resp.pop("env_vars")  # remove to match with other requests
+    assert resp["tms"].pop("env_vars")  # remove to match with other requests
     assert resp == dict(
         scan_id=scan_id,
         is_deleted=False,
@@ -268,11 +270,6 @@ async def _do_patch(
         ],  # not checking
         event_metadata=event_metadata if event_metadata else resp["event_metadata"],
         scan_metadata=scan_metadata if scan_metadata else resp["scan_metadata"],
-        clusters=(
-            previous_clusters + [cluster]  # type: ignore[operator]  # see assert ^^^^
-            if cluster
-            else resp["clusters"]  # not checking
-        ),
         progress=(
             {  # inject the auto-filled args
                 **progress,
@@ -287,8 +284,15 @@ async def _do_patch(
             else resp["progress"]  # not checking
         ),
         scanner_server_args=resp["scanner_server_args"],  # not checking
-        tms_args=resp["tms_args"],  # not checking
-        complete=False,
+        tms=dict(
+            tms_args=resp["tms_args"],  # not checking
+            complete=False,
+            clusters=(
+                previous_clusters + [cluster]  # type: ignore[operator]  # see assert ^^^^
+                if cluster
+                else resp["clusters"]  # not checking
+            ),
+        ),
         classifiers=CLASSIFIERS,
         last_updated=resp["last_updated"],  # see below
         # TODO: check more fields in future (hint: ctrl+F this comment)
@@ -299,7 +303,7 @@ async def _do_patch(
     # query progress
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    assert resp.pop("env_vars")  # remove to match with other requests
+    assert resp["tms"].pop("env_vars")  # remove to match with other requests
     assert resp == manifest
     return manifest  # type: ignore[no-any-return]
 
@@ -451,7 +455,7 @@ async def _send_result(
     # query progress
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    assert resp.pop("env_vars")  # remove to match with other requests
+    assert resp["tms"].pop("env_vars")  # remove to match with other requests
     assert resp == last_known_manifest
 
     # query result
@@ -536,7 +540,7 @@ async def _delete_scan(
         "GET", f"/scan/{scan_id}/manifest", {"include_deleted": True}
     )
     assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    assert resp.pop("env_vars")  # remove to match with other requests
+    assert resp["tms"].pop("env_vars")  # remove to match with other requests
     assert resp == del_resp["manifest"]
 
     # RESULT: query w/ scan id (fails)
@@ -747,7 +751,7 @@ async def test_00(
             rc,
             scan_id,
             cluster_name__n_workers,
-            manifest["clusters"],
+            manifest["tms"]["clusters"],
             known_clusters,
         )
     # THEN, clients send updates
@@ -757,14 +761,14 @@ async def test_00(
     #
     # SEND RESULT(s)
     #
-    assert not manifest["complete"]  # workforce is not done
+    assert not manifest["tms"]["complete"]  # workforce is not done
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
-    assert manifest.pop("env_vars")  # remove to match with other requests
-    assert manifest["complete"]  # workforce is done
+    assert manifest["tms"].pop("env_vars")  # remove to match with other requests
+    assert manifest["tms"]["complete"]  # workforce is done
 
     #
     # DELETE SCAN
@@ -992,8 +996,8 @@ async def test_01__bad_data(
     await asyncio.sleep(test_wait_before_teardown)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
-    assert manifest.pop("env_vars")  # remove to match with other requests
-    assert manifest["complete"]  # workforce is done
+    assert manifest["tms"].pop("env_vars")  # remove to match with other requests
+    assert manifest["tms"]["complete"]  # workforce is done
 
     #
     # DELETE SCAN
