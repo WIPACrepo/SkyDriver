@@ -8,6 +8,7 @@ import uuid
 from typing import Any, Type, TypeVar
 
 import kubernetes.client  # type: ignore[import-untyped]
+import wipac_dev_tools
 from dacite import from_dict
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -318,9 +319,19 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # client worker args
         worker_memory = self.get_argument(
-            "memory",
+            "worker_memory",
             type=str,
             default="8GB",
+            forbiddens=[r"\s*"],  # no empty string / whitespace
+        )
+        self.get_argument(
+            "memory",
+            type=lambda x: wipac_dev_tools.argparse_tools.validate_arg(
+                x,
+                not bool(x),  # False if given
+                ValueError("argument is deprecated, please use 'worker_memory'"),
+            ),
+            default=None,
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
         worker_disk = self.get_argument(

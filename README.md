@@ -46,7 +46,7 @@ _Launch a new scan of an event_
 | `"max_worker_runtime"`            | int          | default: `4*60*60` | the max amount of time (second) each client worker can work for (larger values are needed as the event size increases AND the workforce size decreases)
 | `"skyscan_mq_client_timeout_wait_for_first_message"` | int | default: image's default value | how long a client can wait for its first message (pixel) before giving up and exiting
 | `"scanner_server_memory"`         | str          | default: `1024M` | how much memory for the scanner server to request
-| `"memory"`                        | str          | default: `8G`   | how much memory per client worker to request
+| `"worker_memory"`                 | str          | default: `8G`   | how much memory per client worker to request
 | `"worker_disk"`                   | str          | default: `1G`    | how much disk per client worker to request
 | `"debug_mode"`                    | str or list  | default: None    | what debug mode(s) to use: `"client-logs"` collects the scanner clients' stderr/stdout including icetray logs (scans are limited in # of workers)
 | `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
