@@ -168,7 +168,7 @@ class ManifestClient:
 
         # complete # workforce is done
         if complete is not None:
-            upserting["complete"] = complete  # workforce is done
+            upserting["tms.complete"] = complete  # workforce is done
 
         # progress
         if progress:
