@@ -92,6 +92,7 @@ skydriver-clientmanager
 │   └── humanfriendly [required: >=9.1, installed: 10.0]
 ├── dacite [required: Any, installed: 1.8.1]
 ├── htcondor [required: Any, installed: 23.2.0]
+├── humanfriendly [required: Any, installed: 10.0]
 ├── kubernetes [required: Any, installed: 28.1.0]
 │   ├── certifi [required: >=14.05.14, installed: 2023.11.17]
 │   ├── google-auth [required: >=1.0.1, installed: 2.24.0]
