@@ -148,13 +148,13 @@ class ActionArgs:
 
         # worker args
         sub_parser.add_argument(
-            "--worker-memory",
+            "--worker-memory-bytes",
             required=True,
             type=int,
             help="amount of worker memory (bytes)",
         )
         sub_parser.add_argument(
-            "--worker-disk",
+            "--worker-disk-bytes",
             required=True,
             type=int,
             help="amount of worker disk (bytes)",

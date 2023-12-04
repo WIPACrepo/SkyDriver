@@ -318,15 +318,16 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
 
         # scanner server args
-        scanner_server_memory = self.get_argument(
+        scanner_server_memory_bytes = self.get_argument(
             "scanner_server_memory",
-            type=k8s.utils.KubeAPITools.validate_k8s_memory,
-            default=DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
-            forbiddens=[r"\s*"],  # no empty string / whitespace
+            type=_data_size_parse,
+            default=humanfriendly.parse_size(
+                DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER
+            ),
         )
 
         # client worker args
-        worker_memory = self.get_argument(
+        worker_memory_bytes = self.get_argument(
             "worker_memory",
             type=_data_size_parse,
             default=humanfriendly.parse_size("8GB"),
@@ -336,12 +337,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=lambda x: wipac_dev_tools.argparse_tools.validate_arg(
                 x,
                 not bool(x),  # False if given
-                ValueError("argument is deprecated, please use 'worker_memory'"),
+                ValueError("argument is deprecated, please use 'worker_memory_bytes'"),
             ),
             default=None,
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
-        worker_disk = self.get_argument(
+        worker_disk_bytes = self.get_argument(
             "worker_disk",
             type=_data_size_parse,
             default=humanfriendly.parse_size("1GB"),
@@ -443,15 +444,15 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             docker_tag=docker_tag,
             scan_id=scan_id,
             # server
-            scanner_server_memory=scanner_server_memory,
+            scanner_server_memory_bytes=scanner_server_memory_bytes,
             reco_algo=reco_algo,
             nsides=nsides,
             is_real_event=real_or_simulated_event in REAL_CHOICES,
             predictive_scanning_threshold=predictive_scanning_threshold,
             # clientmanager
             request_clusters=request_clusters,
-            worker_memory=worker_memory,
-            worker_disk=worker_disk,
+            worker_memory_bytes=worker_memory_bytes,
+            worker_disk_bytes=worker_disk_bytes,
             max_pixel_reco_time=max_pixel_reco_time,
             max_worker_runtime=max_worker_runtime,
             # universal

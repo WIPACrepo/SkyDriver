@@ -2,20 +2,14 @@
 
 
 import json
-import re
 from pathlib import Path
 from typing import Any, Iterator
 
-import kubernetes.client  # type: ignore[import]
-from kubernetes.client.rest import ApiException  # type: ignore[import]
+import humanfriendly
+import kubernetes.client  # type: ignore[import-untyped]
+from kubernetes.client.rest import ApiException  # type: ignore[import-untyped]
 
 from ..config import ENV, LOGGER
-
-# NOTE: for security, limit the regex section lengths (with trusted input we'd use + and *)
-# https://cwe.mitre.org/data/definitions/1333.html
-K8S_MEMORY_PATTERN = re.compile(
-    r"^([+-]?[0-9.]{1,5})([eEinumkKMGTP]{0,3}[-+]?[0-9]{0,5})$"
-)
 
 
 class KubeAPITools:
@@ -108,15 +102,6 @@ class KubeAPITools:
         return body
 
     @staticmethod
-    def validate_k8s_memory(memory: str) -> str:
-        """Raise 'ValueError' if not a valid k8s value."""
-        if not K8S_MEMORY_PATTERN.match(memory):
-            raise ValueError(
-                f"Invalid memory format, must match {K8S_MEMORY_PATTERN.pattern}"
-            )
-        return memory
-
-    @staticmethod
     def create_container(
         name: str,
         image: str,
@@ -124,11 +109,9 @@ class KubeAPITools:
         args: list[str],
         cpu: float,
         volumes: dict[str, Path] | None = None,
-        memory: str = ENV.K8S_CONTAINER_MEMORY_DEFAULT,
+        memory: int = humanfriendly.parse_size(ENV.K8S_CONTAINER_MEMORY_DEFAULT),
     ) -> kubernetes.client.V1Container:
         """Make a Container instance."""
-        memory = KubeAPITools.validate_k8s_memory(memory)
-
         if not volumes:
             volumes = {}
 

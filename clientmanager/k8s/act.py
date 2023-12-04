@@ -85,8 +85,8 @@ def _act(args: argparse.Namespace, k8s_api: kubernetes.client.ApiClient) -> None
                 job_config_stub=args.job_config_stub,
                 namespace=args.namespace,
                 # starter CL args -- worker
-                worker_memory=args.worker_memory,
-                worker_disk=args.worker_disk,
+                worker_memory_bytes=args.worker_memory_bytes,
+                worker_disk_bytes=args.worker_disk_bytes,
                 n_cores=args.n_cores,
                 n_workers=args.n_workers,
                 # starter CL args -- client

@@ -66,14 +66,14 @@ class SkymapScannerJob:
         docker_tag: str,
         scan_id: str,
         # scanner
-        scanner_server_memory: str,
+        scanner_server_memory_bytes: int,
         reco_algo: str,
         nsides: dict[int, int],
         is_real_event: bool,
         predictive_scanning_threshold: float,
         # tms
-        worker_memory: int,
-        worker_disk: int,
+        worker_memory_bytes: int,
+        worker_disk_bytes: int,
         request_clusters: list[schema.Cluster],
         max_pixel_reco_time: int,
         max_worker_runtime: int,
@@ -110,7 +110,7 @@ class SkymapScannerJob:
             self.scanner_server_args.split(),
             cpu=1,
             volumes={common_space_volume_path.name: common_space_volume_path},
-            memory=scanner_server_memory,
+            memory=scanner_server_memory_bytes,
         )
         self.env_dict["scanner_server"] = [e.to_dict() for e in scanner_server.env]
 
@@ -131,8 +131,8 @@ class SkymapScannerJob:
                     args=self.get_tms_starter_args(
                         common_space_volume_path=common_space_volume_path,
                         docker_tag=docker_tag,
-                        worker_memory=worker_memory,
-                        worker_disk=worker_disk,
+                        worker_memory_bytes=worker_memory_bytes,
+                        worker_disk_bytes=worker_disk_bytes,
                         request_cluster=cluster,
                         debug_mode=debug_mode,
                         max_worker_runtime=max_worker_runtime,
@@ -186,8 +186,8 @@ class SkymapScannerJob:
     def get_tms_starter_args(
         common_space_volume_path: Path,
         docker_tag: str,
-        worker_memory: int,
-        worker_disk: int,
+        worker_memory_bytes: int,
+        worker_disk_bytes: int,
         request_cluster: schema.Cluster,
         debug_mode: list[DebugMode],
         max_worker_runtime: int,
@@ -222,8 +222,8 @@ class SkymapScannerJob:
             f" --n-workers {request_cluster.n_workers} "
             # f" --dryrun"
             # f" --spool "  # see below
-            f" --worker-memory {worker_memory} "
-            f" --worker-disk {worker_disk} "
+            f" --worker-memory-bytes {worker_memory_bytes} "
+            f" --worker-disk-bytes {worker_disk_bytes} "
             f" --image {worker_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
