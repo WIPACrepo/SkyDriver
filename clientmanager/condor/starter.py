@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import htcondor  # type: ignore[import-untyped]
+import humanfriendly
 
 from ..config import ENV, FORWARDED_ENV_VARS, LOGGER
 from ..utils import S3File
@@ -79,8 +80,8 @@ def make_condor_job_description(
         "transfer_executable": "false",
         #
         "request_cpus": str(n_cores),
-        "request_memory": str(worker_memory_bytes),
-        "request_disk": str(worker_disk_bytes),
+        "request_memory": humanfriendly.format_size(worker_memory_bytes),  # -> "1 GB"
+        "request_disk": humanfriendly.format_size(worker_disk_bytes),  # -> "1 GB"
         "+WantIOProxy": "true",  # for HTChirp
         "+OriginalTime": max_worker_runtime,  # Execution time limit -- 1 hour default on OSG
     }
