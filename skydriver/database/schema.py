@@ -227,6 +227,9 @@ class TMSTaskDirective:
     env_vars: EnvVars  # TODO - move to TMS
     clusters: list[Cluster] = dc.field(default_factory=list)
 
+    # signifies k8s workers and condor cluster(s) AKA workforce is done
+    complete: bool = False  # TODO - move to TMS
+
     def __post_init__(self) -> None:
         self.tms_args = [obfuscate_cl_args(a) for a in self.tms_args]
 
@@ -245,7 +248,7 @@ class Manifest(ScanIDDataclass):
     tms: TMSTaskDirective
 
     # args placed in k8s job obj
-    scanner_server_args: str  # TODO - move to TMS
+    scanner_server_args: str  # TODO - move to TMS???
 
     # open to requestor
     classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)
@@ -259,9 +262,6 @@ class Manifest(ScanIDDataclass):
 
     # updated during scanning, multiple times
     progress: Progress | None = None
-
-    # signifies k8s workers and condor cluster(s) AKA workforce is done
-    complete: bool = False  # TODO - move to TMS
 
     last_updated: float = 0.0
 
@@ -281,7 +281,11 @@ class Manifest(ScanIDDataclass):
 
     def get_state(self) -> ScanState:
         """Determine the state of the scan by parsing attributes."""
-        if self.complete and self.progress and self.progress.processing_stats.finished:
+        if (
+            self.tms.complete
+            and self.progress
+            and self.progress.processing_stats.finished
+        ):
             return ScanState.SCAN_FINISHED_SUCCESSFULLY
 
         def get_nonfinished_state() -> ScanState:
@@ -300,7 +304,7 @@ class Manifest(ScanIDDataclass):
                 else:
                     return ScanState.PENDING__PRESTARTUP
 
-        if self.complete:
+        if self.tms.complete:
             return ScanState[f"STOPPED__{get_nonfinished_state().name.split('__')[1]}"]
         else:
             return get_nonfinished_state()
