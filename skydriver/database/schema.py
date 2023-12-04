@@ -175,11 +175,36 @@ class Cluster:
 
 @typechecked
 @dc.dataclass
+class EnvVars:
+    """Encapsulates env var object originating from K8s objects."""
+
+    scanner_server: list[StrDict]
+    tms_starters: list[list[StrDict]]
+
+    def __post_init__(self) -> None:
+        #
+        # obfuscate tokens & such (sensitive values)
+        #
+        def obfuscate(env_list: list[StrDict]) -> Iterator[StrDict]:
+            for env_entry in env_list:
+                if env_entry["value"]:
+                    safe_val = wdt.data_safety_tools.obfuscate_value_if_sensitive(
+                        env_entry["name"], env_entry["value"]
+                    )
+                    env_entry["value"] = safe_val
+                yield env_entry
+
+        self.scanner_server = list(obfuscate(self.scanner_server))
+        self.tms_starters = [list(obfuscate(s)) for s in self.tms_starters]
+
+
+@typechecked
+@dc.dataclass
 class TMSTaskDirective:
     """Encapsulates the directive of a unique TMS task entity."""
 
-    tms_args: list[str]
-    env_vars: dict[str, Any]
+    tms_args: list[str]  # TODO - move to TMS
+    env_vars: EnvVars  # TODO - move to TMS
     clusters: list[Cluster] = dc.field(default_factory=list)
 
 
