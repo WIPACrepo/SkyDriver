@@ -5,11 +5,10 @@ import json
 from pathlib import Path
 from typing import Any, Iterator
 
-import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
 from kubernetes.client.rest import ApiException  # type: ignore[import-untyped]
 
-from ..config import ENV, LOGGER
+from ..config import ENV, K8S_CONTAINER_MEMORY_DEFAULT_BYTES, LOGGER
 
 
 class KubeAPITools:
@@ -109,7 +108,7 @@ class KubeAPITools:
         args: list[str],
         cpu: float,
         volumes: dict[str, Path] | None = None,
-        memory: int = humanfriendly.parse_size(ENV.K8S_CONTAINER_MEMORY_DEFAULT),
+        memory: int = K8S_CONTAINER_MEMORY_DEFAULT_BYTES,
     ) -> kubernetes.client.V1Container:
         """Make a Container instance."""
         if not volumes:

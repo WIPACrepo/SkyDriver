@@ -18,7 +18,9 @@ from tornado import web
 
 from . import database, images, k8s
 from .config import (
-    DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER,
+    DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
+    DEFAULT_WORKER_DISK_BYTES,
+    DEFAULT_WORKER_MEMORY_BYTES,
     ENV,
     KNOWN_CLUSTERS,
     LOGGER,
@@ -321,16 +323,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scanner_server_memory_bytes = self.get_argument(
             "scanner_server_memory",
             type=_data_size_parse,
-            default=humanfriendly.parse_size(
-                DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER
-            ),
+            default=DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
         )
 
         # client worker args
         worker_memory_bytes = self.get_argument(
             "worker_memory",
             type=_data_size_parse,
-            default=humanfriendly.parse_size("8GB"),
+            default=DEFAULT_WORKER_MEMORY_BYTES,
         )
         self.get_argument(  # NOTE - DEPRECATED
             "memory",
@@ -345,7 +345,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         worker_disk_bytes = self.get_argument(
             "worker_disk",
             type=_data_size_parse,
-            default=humanfriendly.parse_size("1GB"),
+            default=DEFAULT_WORKER_DISK_BYTES,
         )
         request_clusters = self.get_argument(
             "cluster",
