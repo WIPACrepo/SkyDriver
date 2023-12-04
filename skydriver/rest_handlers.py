@@ -7,6 +7,7 @@ import json
 import uuid
 from typing import Any, Type, TypeVar
 
+import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
 import wipac_dev_tools
 from dacite import from_dict
@@ -293,6 +294,13 @@ def _debug_mode(val: Any) -> list[DebugMode]:
     return [DebugMode(v) for v in val]  # -> ValueError
 
 
+def _data_size_parse(val: Any) -> int:
+    try:
+        return humanfriendly.parse_size(str(val))  # type: ignore[no-any-return]
+    except humanfriendly.InvalidSize:
+        raise ValueError("invalid data size")
+
+
 class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles starting new scans."""
 
@@ -320,9 +328,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # client worker args
         worker_memory = self.get_argument(
             "worker_memory",
-            type=str,
-            default="8GB",
-            forbiddens=[r"\s*"],  # no empty string / whitespace
+            type=_data_size_parse,
+            default=humanfriendly.parse_size("8GB"),
         )
         self.get_argument(  # NOTE - DEPRECATED
             "memory",
@@ -336,9 +343,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         worker_disk = self.get_argument(
             "worker_disk",
-            type=str,
-            default="1GB",
-            forbiddens=[r"\s*"],  # no empty string / whitespace
+            type=_data_size_parse,
+            default=humanfriendly.parse_size("1GB"),
         )
         request_clusters = self.get_argument(
             "cluster",

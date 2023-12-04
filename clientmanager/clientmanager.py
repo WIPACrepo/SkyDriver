@@ -150,12 +150,14 @@ class ActionArgs:
         sub_parser.add_argument(
             "--worker-memory",
             required=True,
-            help="amount of memory",
+            type=int,
+            help="amount of worker memory (bytes)",
         )
         sub_parser.add_argument(
             "--worker-disk",
             required=True,
-            help="amount of disk",
+            type=int,
+            help="amount of worker disk (bytes)",
         )
         sub_parser.add_argument(
             "--n-cores",

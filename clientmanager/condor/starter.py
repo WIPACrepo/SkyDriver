@@ -21,8 +21,8 @@ def make_condor_logs_dir() -> Path:
 def make_condor_job_description(
     spool: bool,
     # condor args
-    worker_memory: str,
-    worker_disk: str,
+    worker_memory: int,
+    worker_disk: int,
     n_cores: int,
     max_worker_runtime: int,
     # skymap scanner args
@@ -120,8 +120,8 @@ def prep(
     # starter CL args -- helper
     spool: bool,
     # starter CL args -- worker
-    worker_memory: str,
-    worker_disk: str,
+    worker_memory: int,
+    worker_disk: int,
     n_cores: int,
     max_worker_runtime: int,
     # starter CL args -- client

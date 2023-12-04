@@ -72,8 +72,8 @@ class SkymapScannerJob:
         is_real_event: bool,
         predictive_scanning_threshold: float,
         # tms
-        worker_memory: str,
-        worker_disk: str,
+        worker_memory: int,
+        worker_disk: int,
         request_clusters: list[schema.Cluster],
         max_pixel_reco_time: int,
         max_worker_runtime: int,
@@ -186,8 +186,8 @@ class SkymapScannerJob:
     def get_tms_starter_args(
         common_space_volume_path: Path,
         docker_tag: str,
-        worker_memory: str,
-        worker_disk: str,
+        worker_memory: int,
+        worker_disk: int,
         request_cluster: schema.Cluster,
         debug_mode: list[DebugMode],
         max_worker_runtime: int,

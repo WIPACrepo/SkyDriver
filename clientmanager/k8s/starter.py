@@ -27,8 +27,8 @@ def make_k8s_job_desc(
     host: str,
     namespace: str,
     cluster_id: str,
-    worker_memory: str,
-    worker_disk: str,
+    worker_memory: int,
+    worker_disk: int,
     n_workers: int,
     n_cores: int,
     # skymap scanner args
@@ -165,8 +165,8 @@ def prep(
     namespace: str,
     cpu_arch: str,
     # starter CL args -- worker
-    worker_memory: str,
-    worker_disk: str,
+    worker_memory: int,
+    worker_disk: int,
     n_workers: int,
     n_cores: int,
     # starter CL args -- client
