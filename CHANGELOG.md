@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.4 (2023-12-04)
+
+### Other
+
+* REST arg validation fix ([`30f3d9a`](https://github.com/WIPACrepo/SkyDriver/commit/30f3d9a9884690544559a8fc83c80cc7cf4ad46b))
+
 ## v0.8.3 (2023-12-04)
 
 ### Other
