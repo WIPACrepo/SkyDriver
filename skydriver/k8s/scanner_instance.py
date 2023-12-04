@@ -223,7 +223,7 @@ class SkymapScannerJob:
             # f" --dryrun"
             # f" --spool "  # see below
             f" --worker-memory {worker_memory} "
-            # f" --worker-disk {worker_disk} "
+            f" --worker-disk {worker_disk} "
             f" --image {worker_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory

@@ -28,6 +28,7 @@ def make_k8s_job_desc(
     namespace: str,
     cluster_id: str,
     worker_memory: str,
+    worker_disk: str,
     n_workers: int,
     n_cores: int,
     # skymap scanner args
@@ -102,10 +103,12 @@ def make_k8s_job_desc(
             "cpu": str(n_cores),
             # TODO: give a bit more just in case?
             "memory": worker_memory.upper().replace("B", ""),  # 4Gb -> 4G
+            "ephemeral-storage": worker_disk.upper().replace("B", ""),  # 4Gb -> 4G
         },
         "requests": {
             "cpu": str(n_cores),
             "memory": worker_memory.upper().replace("B", ""),  # 4Gb -> 4G
+            "ephemeral-storage": worker_disk.upper().replace("B", ""),  # 4Gb -> 4G
         },
     }
 
@@ -163,6 +166,7 @@ def prep(
     cpu_arch: str,
     # starter CL args -- worker
     worker_memory: str,
+    worker_disk: str,
     n_workers: int,
     n_cores: int,
     # starter CL args -- client
@@ -185,6 +189,7 @@ def prep(
         cluster_id,
         # condor args
         worker_memory,
+        worker_disk,
         n_workers,
         n_cores,
         # skymap scanner args

@@ -38,6 +38,7 @@ def _act(args: argparse.Namespace, schedd_obj: htcondor.Schedd) -> None:
                 spool=args.spool,
                 # starter CL args -- worker
                 worker_memory=args.worker_memory,
+                worker_disk=args.worker_disk,
                 n_cores=args.n_cores,
                 max_worker_runtime=args.max_worker_runtime,
                 # starter CL args -- client

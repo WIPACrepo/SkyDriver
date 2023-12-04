@@ -22,6 +22,7 @@ def make_condor_job_description(
     spool: bool,
     # condor args
     worker_memory: str,
+    worker_disk: str,
     n_cores: int,
     max_worker_runtime: int,
     # skymap scanner args
@@ -79,6 +80,7 @@ def make_condor_job_description(
         #
         "request_cpus": str(n_cores),
         "request_memory": worker_memory,
+        "RequestDisk": worker_disk,
         "+WantIOProxy": "true",  # for HTChirp
         "+OriginalTime": max_worker_runtime,  # Execution time limit -- 1 hour default on OSG
     }
@@ -119,6 +121,7 @@ def prep(
     spool: bool,
     # starter CL args -- worker
     worker_memory: str,
+    worker_disk: str,
     n_cores: int,
     max_worker_runtime: int,
     # starter CL args -- client
@@ -145,6 +148,7 @@ def prep(
         spool,
         # condor args
         worker_memory,
+        worker_disk,
         n_cores,
         max_worker_runtime,
         # skymap scanner args
