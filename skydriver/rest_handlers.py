@@ -324,7 +324,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default="8GB",
             forbiddens=[r"\s*"],  # no empty string / whitespace
         )
-        self.get_argument(
+        self.get_argument(  # NOTE - DEPRECATED
             "memory",
             type=lambda x: wipac_dev_tools.argparse_tools.validate_arg(
                 x,
