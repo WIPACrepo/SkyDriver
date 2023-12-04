@@ -317,7 +317,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
 
         # client worker args
-        memory = self.get_argument(
+        worker_memory = self.get_argument(
             "memory",
             type=str,
             default="8GB",
@@ -433,7 +433,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             predictive_scanning_threshold=predictive_scanning_threshold,
             # clientmanager
             request_clusters=request_clusters,
-            memory=memory,
+            worker_memory=worker_memory,
             worker_disk=worker_disk,
             max_pixel_reco_time=max_pixel_reco_time,
             max_worker_runtime=max_worker_runtime,

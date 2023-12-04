@@ -21,7 +21,7 @@ def make_condor_logs_dir() -> Path:
 def make_condor_job_description(
     spool: bool,
     # condor args
-    memory: str,
+    worker_memory: str,
     n_cores: int,
     max_worker_runtime: int,
     # skymap scanner args
@@ -78,7 +78,7 @@ def make_condor_job_description(
         "transfer_executable": "false",
         #
         "request_cpus": str(n_cores),
-        "request_memory": memory,
+        "request_memory": worker_memory,
         "+WantIOProxy": "true",  # for HTChirp
         "+OriginalTime": max_worker_runtime,  # Execution time limit -- 1 hour default on OSG
     }
@@ -118,7 +118,7 @@ def prep(
     # starter CL args -- helper
     spool: bool,
     # starter CL args -- worker
-    memory: str,
+    worker_memory: str,
     n_cores: int,
     max_worker_runtime: int,
     # starter CL args -- client
@@ -144,7 +144,7 @@ def prep(
     submit_dict = make_condor_job_description(
         spool,
         # condor args
-        memory,
+        worker_memory,
         n_cores,
         max_worker_runtime,
         # skymap scanner args

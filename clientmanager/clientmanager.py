@@ -148,7 +148,7 @@ class ActionArgs:
 
         # worker args
         sub_parser.add_argument(
-            "--memory",
+            "--worker-memory",
             required=True,
             help="amount of memory",
             # default="8GB",

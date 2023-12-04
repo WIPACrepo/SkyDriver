@@ -72,7 +72,7 @@ class SkymapScannerJob:
         is_real_event: bool,
         predictive_scanning_threshold: float,
         # tms
-        memory: str,
+        worker_memory: str,
         worker_disk: str,
         request_clusters: list[schema.Cluster],
         max_pixel_reco_time: int,
@@ -131,7 +131,7 @@ class SkymapScannerJob:
                     args=self.get_tms_starter_args(
                         common_space_volume_path=common_space_volume_path,
                         docker_tag=docker_tag,
-                        memory=memory,
+                        worker_memory=worker_memory,
                         worker_disk=worker_disk,
                         request_cluster=cluster,
                         debug_mode=debug_mode,
@@ -186,7 +186,7 @@ class SkymapScannerJob:
     def get_tms_starter_args(
         common_space_volume_path: Path,
         docker_tag: str,
-        memory: str,
+        worker_memory: str,
         worker_disk: str,
         request_cluster: schema.Cluster,
         debug_mode: list[DebugMode],
@@ -222,7 +222,7 @@ class SkymapScannerJob:
             f" --n-workers {request_cluster.n_workers} "
             # f" --dryrun"
             # f" --spool "  # see below
-            f" --memory {memory} "
+            f" --worker-memory {worker_memory} "
             f" --worker-disk {worker_disk} "
             f" --image {worker_image} "
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
