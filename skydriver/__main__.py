@@ -10,11 +10,9 @@ async def database_schema_migration(motor_client) -> None:  # type: ignore[no-un
     from dacite import from_dict
     from motor.motor_asyncio import AsyncIOMotorCollection
 
-    from .utils import _DB_NAME, _MANIFEST_COLL_NAME
-
     collection = AsyncIOMotorCollection(
-        motor_client[_DB_NAME],
-        _MANIFEST_COLL_NAME,
+        motor_client[database.utils._DB_NAME],
+        database.utils._MANIFEST_COLL_NAME,
     )
 
     m = 0
