@@ -295,50 +295,54 @@ Pseudo-code:
 
     event_i3live_json_dict: dict,
     scanner_server_args: str,
-    tms_args: list[str],
-    env_vars: dict[str, dict[str, Any]],
 
     classifiers: dict[str, str | bool | float | int]
 
     event_i3live_json_dict__hash: str,  # a deterministic hash of the event json
 
-    clusters: [  # 2 types: condor & k8s -- different 'location' sub-fields
-        {
-            orchestrator: 'condor',
-            location: {
-                collector: str,
-                schedd: str,
-            },
-            cluster_id: int,
-            n_workers: int,
-            starter_info: dict,
-            statuses: {
-                'Completed': {  # condor job status
-                    'FatalError': int,  # pilot status value -> # of jobs
-                    'Done': int,  # pilot status value -> # of jobs
+    tms: {
+        tms_args: list[str],
+        env_vars: dict[str, dict[str, Any]],
+        clusters: [  # 2 types: condor & k8s -- different 'location' sub-fields
+            {
+                orchestrator: 'condor',
+                location: {
+                    collector: str,
+                    schedd: str,
+                },
+                cluster_id: int,
+                n_workers: int,
+                starter_info: dict,
+                statuses: {
+                    'Completed': {  # condor job status
+                        'FatalError': int,  # pilot status value -> # of jobs
+                        'Done': int,  # pilot status value -> # of jobs
+                        ...
+                    },
+                    'Running': {
+                        'Tasking': int,
+                        ...
+                    }
                     ...
                 },
-                'Running': {
-                    'Tasking': int,
-                    ...
-                }
-                ...
+                top_task_errors: dict[str, int],  # error message -> # of jobs
             },
-            top_task_errors: dict[str, int],  # error message -> # of jobs
-        },
-        ...
-        {
-            orchestrator: 'k8s',
-            location: {
-                host: str,
-                namespace: str,
+            ...
+            {
+                orchestrator: 'k8s',
+                location: {
+                    host: str,
+                    namespace: str,
+                },
+                cluster_id: int,
+                n_workers: int,
+                starter_info: dict,
             },
-            cluster_id: int,
-            n_workers: int,
-            starter_info: dict,
-        },
-        ...
-    ],
+            ...
+        ],
+        # signifies scanner is done (server and worker cluster(s))
+        complete: bool,
+    },
 
     # found/created during first few seconds of scanning
     event_metadata: {
@@ -366,9 +370,6 @@ Pseudo-code:
         predictive_scanning_threshold: float,
         last_updated: str,
     },
-
-    # signifies scanner is done (server and worker cluster(s))
-    complete: bool,
 
     # timestamp of any update to manifest -- also see `progress.last_updated`
     last_updated: float,
