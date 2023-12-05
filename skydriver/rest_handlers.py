@@ -40,7 +40,6 @@ WAIT_BEFORE_TEARDOWN = 60
 
 DEFAULT_EXCLUDED_MANIFEST_FIELDS = {
     "event_i3live_json_dict",
-    "env_vars",
 }
 
 
