@@ -15,10 +15,9 @@ from typing import Any, Callable
 import humanfriendly
 import pytest
 import requests
-from rest_tools.client import RestClient
-
 import skydriver
 import skydriver.images  # noqa: F401  # export
+from rest_tools.client import RestClient
 
 skydriver.config.config_logging("debug")
 
@@ -768,7 +767,7 @@ async def test_00(
     await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
-    assert manifest["tms"].pop("env_vars")  # remove to match with other requests
+    # assert manifest["tms"].pop("env_vars")  # remove to match with other requests
     assert manifest["tms"]["complete"]  # workforce is done
 
     #
@@ -997,7 +996,7 @@ async def test_01__bad_data(
     await asyncio.sleep(test_wait_before_teardown)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
-    assert manifest["tms"].pop("env_vars")  # remove to match with other requests
+    # assert manifest["tms"].pop("env_vars")  # remove to match with other requests
     assert manifest["tms"]["complete"]  # workforce is done
 
     #
