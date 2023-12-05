@@ -232,6 +232,7 @@ class TMSTaskDirective:
 
     def __post_init__(self) -> None:
         self.tms_args = [obfuscate_cl_args(a) for a in self.tms_args]
+        # NOTE - self.env_vars done in EnvVars
 
 
 @typechecked
@@ -277,7 +278,6 @@ class Manifest(ScanIDDataclass):
             ).hexdigest()
 
         self.scanner_server_args = obfuscate_cl_args(self.scanner_server_args)
-        # NOTE - self.env_vars done in EnvVars
 
     def get_state(self) -> ScanState:
         """Determine the state of the scan by parsing attributes."""
