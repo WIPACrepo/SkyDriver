@@ -15,9 +15,10 @@ from typing import Any, Callable
 import humanfriendly
 import pytest
 import requests
+from rest_tools.client import RestClient
+
 import skydriver
 import skydriver.images  # noqa: F401  # export
-from rest_tools.client import RestClient
 
 skydriver.config.config_logging("debug")
 

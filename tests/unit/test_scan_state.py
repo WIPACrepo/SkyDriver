@@ -4,6 +4,7 @@
 import time
 
 import pytest
+
 from skydriver.database import schema
 
 
