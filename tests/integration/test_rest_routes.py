@@ -286,6 +286,7 @@ async def _do_patch(
         scanner_server_args=resp["scanner_server_args"],  # not checking
         tms=dict(
             tms_args=resp["tms"]["tms_args"],  # not checking
+            env_vars=resp["tms"]["env_vars"],  # not checking
             complete=False,
             clusters=(
                 previous_clusters + [cluster]  # type: ignore[operator]  # see assert ^^^^
