@@ -43,7 +43,13 @@ async def main() -> None:
     await asyncio.sleep(0)  # start up previous task
     LOGGER.info("Mongo client connected.")
 
-    await database_schema_migration(mongo_client)
+    try:
+        await database_schema_migration(mongo_client)
+    except:  # noqa: E722
+        # if this triggers, Ric is working on a fix :-)
+        import time
+
+        time.sleep(60 * 60 * 24)  # one day
 
     # K8s client
     LOGGER.info("Setting up k8s client...")
