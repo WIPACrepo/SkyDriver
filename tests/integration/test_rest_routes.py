@@ -290,7 +290,7 @@ async def _do_patch(
             clusters=(
                 previous_clusters + [cluster]  # type: ignore[operator]  # see assert ^^^^
                 if cluster
-                else resp["clusters"]  # not checking
+                else resp["tms"]["clusters"]  # not checking
             ),
         ),
         classifiers=CLASSIFIERS,
