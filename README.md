@@ -300,7 +300,7 @@ Pseudo-code:
 
     event_i3live_json_dict__hash: str,  # a deterministic hash of the event json
 
-    tms: {
+    ewms_task: {
         tms_args: list[str],
         env_vars: dict[str, dict[str, Any]],
         clusters: [  # 2 types: condor & k8s -- different 'location' sub-fields

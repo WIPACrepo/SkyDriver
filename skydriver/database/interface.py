@@ -73,7 +73,7 @@ class ManifestClient:
             is_deleted=False,
             event_i3live_json_dict=event_i3live_json_dict,
             scanner_server_args=scanner_server_args,
-            tms=schema.TMSTaskDirective(
+            ewms_task=schema.EWMSTaskDirective(
                 tms_args=tms_args_list,
                 env_vars=env_vars,
             ),
@@ -151,7 +151,7 @@ class ManifestClient:
 
         # tms
         if cluster or complete is not None:
-            upserting["tms"] = copy.deepcopy(in_db.tms)
+            upserting["ewms_task"] = copy.deepcopy(in_db.ewms_task)
             # cluster / clusters
             # TODO - when TMS is up and running, it will handle cluster updating--remove then
             # NOTE - there is a race condition inherent with list attributes, don't do this in TMS
@@ -161,19 +161,21 @@ class ManifestClient:
                 try:  # find by uuid -> replace
                     idx = next(
                         i
-                        for i, c in enumerate(in_db.tms.clusters)
+                        for i, c in enumerate(in_db.ewms_task.clusters)
                         if cluster.uuid == c.uuid
                     )
-                    upserting["tms"].clusters = (
-                        in_db.tms.clusters[:idx]
+                    upserting["ewms_task"].clusters = (
+                        in_db.ewms_task.clusters[:idx]
                         + [cluster]
-                        + in_db.tms.clusters[idx + 1 :]
+                        + in_db.ewms_task.clusters[idx + 1 :]
                     )
                 except StopIteration:  # not found -> append
-                    upserting["tms"].clusters = in_db.tms.clusters + [cluster]
+                    upserting["ewms_task"].clusters = in_db.ewms_task.clusters + [
+                        cluster
+                    ]
             # complete # workforce is done
             if complete is not None:
-                upserting["tms"].complete = complete  # workforce is done
+                upserting["ewms_task"].complete = complete  # workforce is done
 
         # progress
         if progress:

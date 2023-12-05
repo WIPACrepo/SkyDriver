@@ -220,8 +220,8 @@ def obfuscate_cl_args(args: str) -> str:
 
 @typechecked
 @dc.dataclass
-class TMSTaskDirective:
-    """Encapsulates the directive of a unique TMS task entity."""
+class EWMSTaskDirective:
+    """Encapsulates the directive of a unique EWMS task entity."""
 
     tms_args: list[str]  # TODO - move to TMS
     env_vars: EnvVars  # TODO - move to TMS
@@ -246,7 +246,7 @@ class Manifest(ScanIDDataclass):
     # grabbed by scanner central server
     event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ hash?
 
-    tms: TMSTaskDirective
+    ewms_task: EWMSTaskDirective
 
     # args placed in k8s job obj
     scanner_server_args: str  # TODO - move to TMS???
@@ -282,7 +282,7 @@ class Manifest(ScanIDDataclass):
     def get_state(self) -> ScanState:
         """Determine the state of the scan by parsing attributes."""
         if (
-            self.tms.complete
+            self.ewms_task.complete
             and self.progress
             and self.progress.processing_stats.finished
         ):
@@ -290,7 +290,7 @@ class Manifest(ScanIDDataclass):
 
         def get_nonfinished_state() -> ScanState:
             if self.progress:  # from scanner server
-                if self.tms.clusters:
+                if self.ewms_task.clusters:
                     # NOTE - we only know if the workers have started up once the server has gotten pixels
                     if self.progress.processing_stats.rate:
                         return ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
@@ -299,12 +299,12 @@ class Manifest(ScanIDDataclass):
                 else:
                     return ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP
             else:
-                if self.tms.clusters:
+                if self.ewms_task.clusters:
                     return ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
                 else:
                     return ScanState.PENDING__PRESTARTUP
 
-        if self.tms.complete:
+        if self.ewms_task.complete:
             return ScanState[f"STOPPED__{get_nonfinished_state().name.split('__')[1]}"]
         else:
             return get_nonfinished_state()

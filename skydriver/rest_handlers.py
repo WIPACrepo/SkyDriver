@@ -501,13 +501,13 @@ async def stop_scanner_instance(
 ) -> database.schema.Manifest:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     manifest = await manifests.get(scan_id, True)
-    if manifest.tms.complete:  # workforce is done
+    if manifest.ewms_task.complete:  # workforce is done
         return manifest
 
     stopper = k8s.scanner_instance.SkymapScannerWorkerStopper(
         k8s_batch_api,
         scan_id,
-        manifest.tms.clusters,
+        manifest.ewms_task.clusters,
     )
 
     try:
@@ -584,7 +584,9 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # check DB states
         manifest = await self.manifests.get(scan_id, True)
-        if manifest.tms.complete and not delete_completed_scan:  # workforce is done
+        if (
+            manifest.ewms_task.complete and not delete_completed_scan
+        ):  # workforce is done
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
                 400,
@@ -722,7 +724,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # NOTE - the following will be moved to TMS, then improved
         # check cluster statuses & stop scan if workers are all failing
-        for db_cluster in manifest.tms.clusters:
+        for db_cluster in manifest.ewms_task.clusters:
             # Job-Status -> "Held:*"  &  Pilot-Status -> ANY
             # -- sum the total counts of all job-statuses prefixed with "Held:"
             n_held = sum(
@@ -858,9 +860,9 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         resp = {
             "scan_state": manifest.get_state().name,
             "is_deleted": manifest.is_deleted,
-            "scan_complete": manifest.tms.complete,  # workforce is done
+            "scan_complete": manifest.ewms_task.complete,  # workforce is done
             "pods": pods_411,
-            "clusters": [dc.asdict(c) for c in manifest.tms.clusters],
+            "clusters": [dc.asdict(c) for c in manifest.ewms_task.clusters],
         }
         if not include_pod_statuses:
             resp.pop("pods")
