@@ -497,9 +497,8 @@ async def _delete_scan(
             "progress": last_known_manifest["progress"],
             "tms": {
                 **resp["manifest"]["tms"],
-                "complete": last_known_manifest[
-                    "complete"
-                ],  # whether workforce is done
+                # whether workforce is done
+                "complete": last_known_manifest["tms"]["complete"],
             },
             "last_updated": resp["manifest"]["last_updated"],  # see below
             # TODO: check more fields in future (hint: ctrl+F this comment)
