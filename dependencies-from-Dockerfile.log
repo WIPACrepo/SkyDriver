@@ -7,8 +7,8 @@
 #  pip freeze
 ########################################################################
 backoff==2.2.1
-boto3==1.33.6
-botocore==1.33.6
+boto3==1.33.8
+botocore==1.33.8
 cachetools==5.3.2
 certifi==2023.11.17
 cffi==1.16.0
@@ -18,7 +18,7 @@ cryptography==41.0.7
 dacite==1.8.1
 Deprecated==1.2.14
 dnspython==2.4.2
-google-auth==2.24.0
+google-auth==2.25.1
 googleapis-common-protos==1.59.1
 grpcio==1.59.3
 htcondor==23.2.0
@@ -75,15 +75,15 @@ pip==23.2.1
 pipdeptree==2.13.1
 setuptools==65.5.1
 skydriver-clientmanager
-├── boto3 [required: Any, installed: 1.33.6]
-│   ├── botocore [required: >=1.33.6,<1.34.0, installed: 1.33.6]
+├── boto3 [required: Any, installed: 1.33.8]
+│   ├── botocore [required: >=1.33.8,<1.34.0, installed: 1.33.8]
 │   │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   │   ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.8.2]
 │   │   │   └── six [required: >=1.5, installed: 1.16.0]
 │   │   └── urllib3 [required: >=1.25.4,<2.1, installed: 1.26.18]
 │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   └── s3transfer [required: >=0.8.2,<0.9.0, installed: 0.8.2]
-│       └── botocore [required: >=1.33.2,<2.0a.0, installed: 1.33.6]
+│       └── botocore [required: >=1.33.2,<2.0a.0, installed: 1.33.8]
 │           ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │           ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.8.2]
 │           │   └── six [required: >=1.5, installed: 1.16.0]
@@ -95,7 +95,7 @@ skydriver-clientmanager
 ├── humanfriendly [required: Any, installed: 10.0]
 ├── kubernetes [required: Any, installed: 28.1.0]
 │   ├── certifi [required: >=14.05.14, installed: 2023.11.17]
-│   ├── google-auth [required: >=1.0.1, installed: 2.24.0]
+│   ├── google-auth [required: >=1.0.1, installed: 2.25.1]
 │   │   ├── cachetools [required: >=2.0.0,<6.0, installed: 5.3.2]
 │   │   ├── pyasn1-modules [required: >=0.2.1, installed: 0.3.0]
 │   │   │   └── pyasn1 [required: >=0.4.6,<0.6.0, installed: 0.5.1]

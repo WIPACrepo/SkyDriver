@@ -1,5 +1,6 @@
 """Database interface for persisted scan data."""
 
+import copy
 import dataclasses as dc
 import logging
 import time
@@ -72,8 +73,10 @@ class ManifestClient:
             is_deleted=False,
             event_i3live_json_dict=event_i3live_json_dict,
             scanner_server_args=scanner_server_args,
-            tms_args=tms_args_list,
-            env_vars=env_vars,
+            ewms_task=schema.EWMSTaskDirective(
+                tms_args=tms_args_list,
+                env_vars=env_vars,
+            ),
             classifiers=classifiers,
         )
 
@@ -146,25 +149,33 @@ class ManifestClient:
                 reason=msg,
             )
 
-        # cluster / clusters
-        # TODO - when TMS is up and running, it will handle cluster updating--remove then
-        # NOTE - there is a race condition inherent with list attributes, don't do this in TMS
-        if not cluster:
-            pass  # don't put in DB
-        else:
-            try:  # find by uuid -> replace
-                idx = next(
-                    i for i, c in enumerate(in_db.clusters) if cluster.uuid == c.uuid
-                )
-                upserting["clusters"] = (
-                    in_db.clusters[:idx] + [cluster] + in_db.clusters[idx + 1 :]
-                )
-            except StopIteration:  # not found -> append
-                upserting["clusters"] = in_db.clusters + [cluster]
-
-        # complete # workforce is done
-        if complete is not None:
-            upserting["complete"] = complete  # workforce is done
+        # tms
+        if cluster or complete is not None:
+            upserting["ewms_task"] = copy.deepcopy(in_db.ewms_task)
+            # cluster / clusters
+            # TODO - when TMS is up and running, it will handle cluster updating--remove then
+            # NOTE - there is a race condition inherent with list attributes, don't do this in TMS
+            if not cluster:
+                pass  # don't put in DB
+            else:
+                try:  # find by uuid -> replace
+                    idx = next(
+                        i
+                        for i, c in enumerate(in_db.ewms_task.clusters)
+                        if cluster.uuid == c.uuid
+                    )
+                    upserting["ewms_task"].clusters = (
+                        in_db.ewms_task.clusters[:idx]
+                        + [cluster]
+                        + in_db.ewms_task.clusters[idx + 1 :]
+                    )
+                except StopIteration:  # not found -> append
+                    upserting["ewms_task"].clusters = in_db.ewms_task.clusters + [
+                        cluster
+                    ]
+            # complete # workforce is done
+            if complete is not None:
+                upserting["ewms_task"].complete = complete  # workforce is done
 
         # progress
         if progress:

@@ -15,10 +15,12 @@ def test_00__scan_finished_successfully() -> None:
         is_deleted=False,
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
-        tms_args=[],
-        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+        ewms_task=schema.EWMSTaskDirective(
+            tms_args=[],
+            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+            complete=True,
+        ),
         #
-        complete=True,
         progress=schema.Progress(
             "summary",
             "epilogue",
@@ -55,10 +57,24 @@ def test_10__partial_result_generated(
         is_deleted=False,
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
-        tms_args=[],
-        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+        ewms_task=schema.EWMSTaskDirective(
+            tms_args=[],
+            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+            complete=is_complete,
+            clusters=[
+                schema.Cluster(
+                    orchestrator="condor",
+                    location=schema.HTCondorLocation(
+                        collector="foo",
+                        schedd="bar",
+                    ),
+                    n_workers=111,
+                    cluster_id="abc123",  # "" is a non-started cluster
+                    starter_info={"abc": 123},
+                )
+            ],
+        ),
         #
-        complete=is_complete,
         progress=schema.Progress(
             "summary",
             "epilogue",
@@ -74,18 +90,6 @@ def test_10__partial_result_generated(
             1.0,
             str(time.time()),
         ),
-        clusters=[
-            schema.Cluster(
-                orchestrator="condor",
-                location=schema.HTCondorLocation(
-                    collector="foo",
-                    schedd="bar",
-                ),
-                n_workers=111,
-                cluster_id="abc123",  # "" is a non-started cluster
-                starter_info={"abc": 123},
-            )
-        ],
     )
     assert manifest.get_state() == state
 
@@ -107,10 +111,24 @@ def test_20__waiting_on_first_pixel_reco(
         is_deleted=False,
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
-        tms_args=[],
-        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+        ewms_task=schema.EWMSTaskDirective(
+            tms_args=[],
+            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+            complete=is_complete,
+            clusters=[
+                schema.Cluster(
+                    orchestrator="condor",
+                    location=schema.HTCondorLocation(
+                        collector="foo",
+                        schedd="bar",
+                    ),
+                    n_workers=111,
+                    cluster_id="abc123",  # "" is a non-started cluster
+                    starter_info={"abc": 123},
+                )
+            ],
+        ),
         #
-        complete=is_complete,
         progress=schema.Progress(
             "summary",
             "epilogue",
@@ -126,18 +144,6 @@ def test_20__waiting_on_first_pixel_reco(
             1.0,
             str(time.time()),
         ),
-        clusters=[
-            schema.Cluster(
-                orchestrator="condor",
-                location=schema.HTCondorLocation(
-                    collector="foo",
-                    schedd="bar",
-                ),
-                n_workers=111,
-                cluster_id="abc123",  # "" is a non-started cluster
-                starter_info={"abc": 123},
-            )
-        ],
     )
     assert manifest.get_state() == state
 
@@ -159,10 +165,24 @@ def test_30__waiting_on_cluster_startup(
         is_deleted=False,
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
-        tms_args=[],
-        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+        ewms_task=schema.EWMSTaskDirective(
+            tms_args=[],
+            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+            complete=is_complete,
+            # clusters=[
+            #     schema.Cluster(
+            #         orchestrator="condor",
+            #         location=schema.HTCondorLocation(
+            #             collector="foo",
+            #             schedd="bar",
+            #         ),
+            #         n_workers=111,
+            #         cluster_id="abc123",  # "" is a non-started cluster
+            #         starter_info={"abc": 123},
+            #     )
+            # ],
+        ),
         #
-        complete=is_complete,
         progress=schema.Progress(
             "summary",
             "epilogue",
@@ -178,18 +198,6 @@ def test_30__waiting_on_cluster_startup(
             1.0,
             str(time.time()),
         ),
-        # clusters=[
-        #     schema.Cluster(
-        #         orchestrator="condor",
-        #         location=schema.HTCondorLocation(
-        #             collector="foo",
-        #             schedd="bar",
-        #         ),
-        #         n_workers=111,
-        #         cluster_id="abc123",  # "" is a non-started cluster
-        #         starter_info={"abc": 123},
-        #     )
-        # ],
     )
     assert manifest.get_state() == state
 
@@ -211,10 +219,24 @@ def test_40__waiting_on_scanner_server_startup(
         is_deleted=False,
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
-        tms_args=[],
-        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+        ewms_task=schema.EWMSTaskDirective(
+            tms_args=[],
+            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+            complete=is_complete,
+            clusters=[
+                schema.Cluster(
+                    orchestrator="condor",
+                    location=schema.HTCondorLocation(
+                        collector="foo",
+                        schedd="bar",
+                    ),
+                    n_workers=111,
+                    cluster_id="abc123",  # "" is a non-started cluster
+                    starter_info={"abc": 123},
+                )
+            ],
+        ),
         #
-        complete=is_complete,
         # progress=schema.Progress(
         #     "summary",
         #     "epilogue",
@@ -230,18 +252,6 @@ def test_40__waiting_on_scanner_server_startup(
         #     1.0,
         #     str(time.time()),
         # ),
-        clusters=[
-            schema.Cluster(
-                orchestrator="condor",
-                location=schema.HTCondorLocation(
-                    collector="foo",
-                    schedd="bar",
-                ),
-                n_workers=111,
-                cluster_id="abc123",  # "" is a non-started cluster
-                starter_info={"abc": 123},
-            )
-        ],
     )
     assert manifest.get_state() == state
 
@@ -254,17 +264,31 @@ def test_40__waiting_on_scanner_server_startup(
     ],
 )
 def test_50__prestartup(is_complete: bool, state: schema.ScanState) -> None:
-    """Test normal and stopped variants."""
+    """Test normal and stopped varriants."""
     manifest = schema.Manifest(
         scan_id="abc123",
         timestamp=time.time(),
         is_deleted=False,
         event_i3live_json_dict={"abc": 123},
         scanner_server_args="",
-        tms_args=[],
-        env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+        ewms_task=schema.EWMSTaskDirective(
+            tms_args=[],
+            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
+            complete=is_complete,
+            # clusters=[
+            #     schema.Cluster(
+            #         orchestrator="condor",
+            #         location=schema.HTCondorLocation(
+            #             collector="foo",
+            #             schedd="bar",
+            #         ),
+            #         n_workers=111,
+            #         cluster_id="abc123",  # "" is a non-started cluster
+            #         starter_info={"abc": 123},
+            #     )
+            # ],
+        ),
         #
-        complete=is_complete,
         # progress=schema.Progress(
         #     "summary",
         #     "epilogue",
@@ -280,17 +304,5 @@ def test_50__prestartup(is_complete: bool, state: schema.ScanState) -> None:
         #     1.0,
         #     str(time.time()),
         # ),
-        # clusters=[
-        #     schema.Cluster(
-        #         orchestrator="condor",
-        #         location=schema.HTCondorLocation(
-        #             collector="foo",
-        #             schedd="bar",
-        #         ),
-        #         n_workers=111,
-        #         cluster_id="abc123",  # "" is a non-started cluster
-        #         starter_info={"abc": 123},
-        #     )
-        # ],
     )
     assert manifest.get_state() == state
