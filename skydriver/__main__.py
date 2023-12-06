@@ -15,11 +15,8 @@ async def database_schema_migration(motor_client) -> None:  # type: ignore[no-un
         database.utils._MANIFEST_COLL_NAME,
     )
 
-    all_documents = [
-        d async for d in collection.find({"ewms_task": {"$exists": False}})
-    ]
     m = 0
-    for i, doc in enumerate(all_documents):
+    async for doc in collection.find({"ewms_task": {"$exists": False}}):
         m += 1
         LOGGER.info(f"migrating {doc}...")
         doc["ewms_task"] = {
@@ -32,7 +29,7 @@ async def database_schema_migration(motor_client) -> None:  # type: ignore[no-un
         from_dict(database.schema.Manifest, doc)  # validate
         await collection.find_one_and_replace({"_id": _id}, doc)
         LOGGER.info(f"migrated {doc}")
-    LOGGER.info(f"total migrated: {m} (looked at {i+1} docs)")
+    LOGGER.info(f"total migrated: {m}")
 
 
 async def main() -> None:
