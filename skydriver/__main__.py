@@ -6,32 +6,6 @@ from . import database, k8s, server
 from .config import ENV, LOGGER, config_logging
 
 
-async def database_schema_migration(motor_client) -> None:  # type: ignore[no-untyped-def]
-    from dacite import from_dict
-    from motor.motor_asyncio import AsyncIOMotorCollection
-
-    collection = AsyncIOMotorCollection(
-        motor_client[database.utils._DB_NAME],
-        database.utils._MANIFEST_COLL_NAME,
-    )
-
-    m = 0
-    async for doc in collection.find({"ewms_task": {"$exists": False}}):
-        m += 1
-        LOGGER.info(f"migrating {doc}...")
-        doc["ewms_task"] = {
-            "tms_args": doc.pop("tms_args"),
-            "env_vars": doc.pop("env_vars"),
-            "clusters": doc.pop("clusters"),
-            "complete": doc.pop("complete"),
-        }
-        _id = doc.pop("_id")
-        from_dict(database.schema.Manifest, doc)  # validate
-        await collection.find_one_and_replace({"_id": _id}, doc)
-        LOGGER.info(f"migrated {doc}")
-    LOGGER.info(f"total migrated: {m}")
-
-
 async def main() -> None:
     """Establish connections and start components."""
 
@@ -41,17 +15,6 @@ async def main() -> None:
     indexing_task = asyncio.create_task(database.utils.ensure_indexes(mongo_client))
     await asyncio.sleep(0)  # start up previous task
     LOGGER.info("Mongo client connected.")
-
-    try:
-        await database_schema_migration(mongo_client)
-    except Exception as e:  # noqa: E722
-        # if this triggers, Ric is working on a fix :-)
-        LOGGER.exception(e)
-        LOGGER.error("failed to migrate database data...")
-
-        import time
-
-        time.sleep(60 * 60 * 24)  # one day
 
     # K8s client
     LOGGER.info("Setting up k8s client...")
