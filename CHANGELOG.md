@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.7 (2023-12-06)
+
+### Other
+
+* EWMS/TMS Prep: Schema - Final ([`17929c5`](https://github.com/WIPACrepo/SkyDriver/commit/17929c5690bd1b3f365196492c9b1f8b30d45198))
+
 ## v0.8.6 (2023-12-06)
 
 ### Other
