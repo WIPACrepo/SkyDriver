@@ -15,10 +15,11 @@ async def database_schema_migration(motor_client) -> None:  # type: ignore[no-un
         database.utils._MANIFEST_COLL_NAME,
     )
 
+    all_documents = [
+        d async for d in collection.find({"ewms_task": {"$exists": False}})
+    ]
     m = 0
-    for i, doc in enumerate([d async for d in collection.find({})]):
-        if "ewms_task" in doc:
-            continue
+    for i, doc in enumerate(all_documents):
         m += 1
         LOGGER.info(f"migrating {doc}...")
         doc["ewms_task"] = {
