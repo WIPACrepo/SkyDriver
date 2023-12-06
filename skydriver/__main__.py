@@ -27,8 +27,9 @@ async def database_schema_migration(motor_client) -> None:  # type: ignore[no-un
             "clusters": doc.pop("clusters"),
             "complete": doc.pop("complete"),
         }
-        from_dict(database.schemar.Manifest, doc)  # validate
-        await collection.find_one_and_replace({"_id": doc["_id"]}, doc)
+        _id = doc.pop("_id")
+        from_dict(database.schema.Manifest, doc)  # validate
+        await collection.find_one_and_replace({"_id": _id}, doc)
         LOGGER.info(f"migrated {doc}")
     LOGGER.info(f"total migrated: {m} (looked at {i+1} docs)")
 
