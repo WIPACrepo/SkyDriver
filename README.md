@@ -9,6 +9,7 @@ SkyDriver automates the entire scanning of an event: starting all servers and wo
 
 One of many workflows may be:
 1. Request a scan ([POST @ `/scan`](#scan---post))
+1. Monitor the scanning status ([GET @ `/scan/SCAN_ID/status`](#scanscan_idstatus---get))
 2. Check for progress updates ([GET @ `/scan/SCAN_ID/manifest`](#scanscan_idmanifest---get))
 3. Check for partial results ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get))
 4. Get a final result ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get))
@@ -60,7 +61,7 @@ manifest = rc.request_seq("POST", "/scan", {"docker_tag": ...})
 print(json.dumps(manifest))
 ```
 
-To see your scan's status (see [POST @ `/scan`](#scan---post)):
+To see your scan's status (see [GET @ `/scan/SCAN_ID/status`](#scanscan_idstatus---get)):
 ```python
 status = rc.request_seq("GET", f"/scan/{scan_id}/status")
 print(json.dumps(status))
