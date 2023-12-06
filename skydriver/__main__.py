@@ -27,7 +27,7 @@ async def database_schema_migration(motor_client) -> None:  # type: ignore[no-un
             "clusters": doc.pop("clusters"),
             "complete": doc.pop("complete"),
         }
-        from_dict(database.schema.Manifest, doc)  # validate
+        from_dict(database.schemar.Manifest, doc)  # validate
         await collection.find_one_and_replace({"_id": doc["_id"]}, doc)
         LOGGER.info(f"migrated {doc}")
     LOGGER.info(f"total migrated: {m} (looked at {i+1} docs)")
@@ -45,8 +45,11 @@ async def main() -> None:
 
     try:
         await database_schema_migration(mongo_client)
-    except:  # noqa: E722
+    except Exception as e:  # noqa: E722
         # if this triggers, Ric is working on a fix :-)
+        LOGGER.exception(e)
+        LOGGER.error("failed to migrate database data...")
+
         import time
 
         time.sleep(60 * 60 * 24)  # one day
