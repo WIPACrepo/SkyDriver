@@ -9,6 +9,7 @@ SkyDriver automates the entire scanning of an event: starting all servers and wo
 
 One of many workflows may be:
 1. Request a scan ([POST @ `/scan`](#scan---post))
+1. Monitor the scanning status ([GET @ `/scan/SCAN_ID/status`](#scanscan_idstatus---get))
 2. Check for progress updates ([GET @ `/scan/SCAN_ID/manifest`](#scanscan_idmanifest---get))
 3. Check for partial results ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get))
 4. Get a final result ([GET @ `/scan/SCAN_ID/result`](#scanscan_idresult---get))
@@ -19,6 +20,55 @@ Another workflow:
 2. Get the scan's manifest and result ([GET @ `/scan/SCAN_ID`](#scanscan_id---get))
 
 For more examples see [examples](#examples)
+
+
+&nbsp;
+## Getting Started
+Users interface with SkyDriver via REST calls, so first, you will need to get a connection. This example uses [wipac-rest-tools](https://pypi.org/project/wipac-rest-tools/):
+```python
+from rest_tools.client import RestClient, SavedDeviceGrantAuth
+
+def get_rest_client() -> RestClient:
+    """Get REST client for talking to SkyDriver.
+
+    This will present a QR code in the terminal for initial validation.
+    """
+
+    # NOTE: If your script will not be interactive (like a cron job),
+    # then you need to first run your script manually to validate using
+    # the QR code in the terminal.
+
+    return SavedDeviceGrantAuth(
+        "https://skydriver.icecube.aq",
+        token_url="https://keycloak.icecube.wisc.edu/auth/realms/IceCube",
+        filename="device-refresh-token",
+        client_id="skydriver-external",
+        retries=0,
+    )
+
+rc = get_rest_client()
+```
+Now, you can make all the REST calls needed:
+```python
+rc.request_seq(method, path, args_dict)
+```
+
+### Two Quick Examples
+
+To request a new scan (see [POST @ `/scan`](#scan---post)):
+```python
+manifest = rc.request_seq("POST", "/scan", {"docker_tag": ...})
+print(json.dumps(manifest))
+```
+
+To see your scan's status (see [GET @ `/scan/SCAN_ID/status`](#scanscan_idstatus---get)):
+```python
+status = rc.request_seq("GET", f"/scan/{scan_id}/status")
+print(json.dumps(status))
+```
+
+Refer to the [REST API](#rest-api) section for comprehensive documentation detailing the available interactions with SkyDriver.
+
 
 
 &nbsp;
