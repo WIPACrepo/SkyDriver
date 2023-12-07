@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.8 (2023-12-07)
+
+### Other
+
+* Move Examples to README ([#104](https://github.com/WIPACrepo/SkyDriver/issues/104)) ([`253c04f`](https://github.com/WIPACrepo/SkyDriver/commit/253c04f272ba2d70d1b2d26d12f40fe81f538766))
+
 ## v0.8.7 (2023-12-06)
 
 ### Other
