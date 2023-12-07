@@ -19,7 +19,6 @@ Another workflow:
 1. Find a scan id for a particular run and event ([GET @ `/scans/find`](#scansfind---post))
 2. Get the scan's manifest and result ([GET @ `/scan/SCAN_ID`](#scanscan_id---get))
 
-For more examples see [examples](#examples)
 
 
 &nbsp;
@@ -68,6 +67,8 @@ print(json.dumps(status))
 ```
 
 Refer to the [REST API](#rest-api) section for comprehensive documentation detailing the available interactions with SkyDriver.
+
+Also, see [Using a Scan Result Outside of SkyDriver](#using-a-scan-result-outside-of-skydriver).
 
 
 
@@ -450,13 +451,7 @@ Pseudo-code:
 
 
 &nbsp;
-## Examples
-### Scanning an Event
-See [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
-### Monitoring: Progress, Partial Results, and Final Result
-Also, see [examples/scan_one.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_one.py)
-### Scanning Multiple Events
-See [examples/scan_many.py](https://github.com/WIPACrepo/SkyDriver/blob/main/examples/scan_many.py)
+## Using a Scan Result Outside of SkyDriver
 ### Making Plots with a Scan's Result (using the `scan_id`)
 See skyreader's [plot_skydriver_scan_result.py](https://github.com/icecube/skyreader/blob/main/examples/plot_skydriver_scan_result.py)
 ### Creating a `SkyScanResult` Instance from a Scan's Result (using the `scan_id`)
