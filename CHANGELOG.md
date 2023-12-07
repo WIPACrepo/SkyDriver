@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v0.8.9 (2023-12-07)
+
+### Other
+
+* README: Using a Scan Result Outside of SkyDriver ([`164a816`](https://github.com/WIPACrepo/SkyDriver/commit/164a816b45186f9b05857c58cbad8a8dbc8c14e2))
+
 ## v0.8.8 (2023-12-07)
 
 ### Other
