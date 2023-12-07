@@ -67,7 +67,7 @@ status = rc.request_seq("GET", f"/scan/{scan_id}/status")
 print(json.dumps(status))
 ```
 
-Refer to the [REST API](#restapi) section for comprehensive documentation detailing the available interactions with SkyDriver.
+Refer to the [REST API](#rest-api) section for comprehensive documentation detailing the available interactions with SkyDriver.
 
 
 
