@@ -507,7 +507,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             except Exception as e:
                 LOGGER.exception(e)
                 raise web.HTTPError(
-                    500,
+                    400,
                     log_message="Failed to enqueue Kubernetes job for Scanner instance",
                 )
 
@@ -540,7 +540,7 @@ async def stop_scanner_instance(
     except kubernetes.client.exceptions.ApiException as e:
         LOGGER.exception(e)
         raise web.HTTPError(
-            500,
+            400,
             log_message="Failed to stop Scanner instance",
         )
 
