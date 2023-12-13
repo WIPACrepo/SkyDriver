@@ -20,7 +20,6 @@ from ..config import (
     DebugMode,
 )
 from ..database import schema
-from . import scan_backlog
 from .utils import KubeAPITools
 
 
@@ -62,8 +61,6 @@ class SkymapScannerJob:
 
     def __init__(
         self,
-        k8s_batch_api: kubernetes.client.BatchV1Api,
-        scan_backlog: database.interface.ScanBacklogClient,
         #
         docker_tag: str,
         scan_id: str,
@@ -87,7 +84,6 @@ class SkymapScannerJob:
     ):
         LOGGER.info(f"making k8s job for {scan_id=}")
         self.k8s_batch_api = k8s_batch_api
-        self.scan_backlog = scan_backlog
         self.scan_id = scan_id
         self.env_dict = {}
 
@@ -419,11 +415,6 @@ class SkymapScannerJob:
         )
 
         return env
-
-    async def enqueue_job(self) -> Any:
-        """Enqueue the k8s job onto the Scan Backlog."""
-        LOGGER.info(f"enqueuing k8s job for {self.scan_id=}")
-        await scan_backlog.enqueue(self.scan_id, self.job_obj, self.scan_backlog)
 
 
 class SkymapScannerWorkerStopper:

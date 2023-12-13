@@ -1,6 +1,5 @@
 """Handlers for the SkyDriver REST API server interface."""
 
-
 import asyncio
 import dataclasses as dc
 import json
@@ -447,9 +446,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # get the container info ready
         k8s_job = k8s.scanner_instance.SkymapScannerJob(
-            k8s_batch_api=self.k8s_batch_api,
-            scan_backlog=self.scan_backlog,
-            #
             docker_tag=docker_tag,
             scan_id=scan_id,
             # server
@@ -482,15 +478,35 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             priority,
         )
 
-        # enqueue skymap scanner instance to be started in-time
-        try:
-            await k8s_job.enqueue_job()
-        except Exception as e:
-            LOGGER.exception(e)
-            raise web.HTTPError(
-                500,
-                log_message="Failed to enqueue Kubernetes job for Scanner instance",
-            )
+        enqueue = True
+
+        # start now?
+        if priority >= 10:
+            try:
+                resp = k8s.utils.KubeAPITools.start_job(
+                    self.k8s_batch_api, k8s_job.job_obj
+                )
+                LOGGER.info(resp)
+            except kubernetes.client.exceptions.ApiException as e:
+                # job (entry) will be revived & restarted in future iteration
+                LOGGER.exception(e)
+            else:
+                enqueue = False
+
+        # start later?
+        if enqueue:
+            # enqueue skymap scanner instance to be started in-time
+            try:
+                LOGGER.info(f"enqueuing k8s job for {scan_id=}")
+                await k8s.scan_backlog.enqueue(
+                    scan_id, k8s_job.job_obj, self.scan_backlog
+                )
+            except Exception as e:
+                LOGGER.exception(e)
+                raise web.HTTPError(
+                    500,
+                    log_message="Failed to enqueue Kubernetes job for Scanner instance",
+                )
 
         self.write(
             dict_projection(dc.asdict(manifest), manifest_projection),
