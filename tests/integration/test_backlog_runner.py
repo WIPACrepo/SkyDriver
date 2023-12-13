@@ -74,8 +74,10 @@ async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     print_it(await rc.request("GET", "/scans/backlog"))
 
 
-# mock skydriver.k8s.scanner_instance.SkymapScannerWorkerStopper.go b/c it calls start_job
-@mock.patch("skydriver.k8s.scanner_instance.SkymapScannerWorkerStopper.go", new=Mock())
+# mock skydriver.k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper.go b/c it calls start_job
+@mock.patch(
+    "skydriver.k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper.go", new=Mock()
+)
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 async def test_10(
     kapitsj_mock: Mock,

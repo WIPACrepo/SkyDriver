@@ -56,7 +56,7 @@ def get_tms_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
     ]
 
 
-class SkymapScannerJob:
+class SkymapScannerK8sWrapper:
     """Wraps a Skymap Scanner Kubernetes job with tools to start and manage."""
 
     def __init__(
@@ -308,12 +308,12 @@ class SkymapScannerJob:
 
         # 4. generate & add auth tokens
         tokens = {
-            "SKYSCAN_BROKER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+            "SKYSCAN_BROKER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_BROKER,
                 ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
             ),
-            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
@@ -396,12 +396,12 @@ class SkymapScannerJob:
 
         # 4. generate & add auth tokens
         tokens = {
-            "SKYSCAN_BROKER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+            "SKYSCAN_BROKER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_BROKER,
                 ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
             ),
-            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
@@ -417,7 +417,7 @@ class SkymapScannerJob:
         return env
 
 
-class SkymapScannerWorkerStopper:
+class SkymapScannerWorkerStopperK8sWrapper:
     """Wraps K8s logic to stop workers of a Skymap Scanner instance."""
 
     def __init__(
@@ -483,7 +483,7 @@ class SkymapScannerWorkerStopper:
         #     f"requesting removal of Skymap Scanner Job (server & tms starters) -- {self.scan_id=}..."
         # )
         # resp = self.k8s_batch_api.delete_namespaced_job(
-        #     name=SkymapScannerJob.get_job_name(self.scan_id),
+        #     name=SkymapScannerK8sWrapper.get_job_name(self.scan_id),
         #     namespace=ENV.K8S_NAMESPACE,
         #     body=kubernetes.client.V1DeleteOptions(
         #         propagation_policy="Foreground", grace_period_seconds=5
