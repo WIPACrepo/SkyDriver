@@ -9,7 +9,7 @@ from typing import Any
 import kubernetes.client  # type: ignore[import-untyped]
 from rest_tools.client import ClientCredentialsAuth
 
-from .. import database, images
+from .. import images
 from ..config import (
     ENV,
     K8S_CONTAINER_MEMORY_TMS_STARTER_BYTES,
@@ -83,7 +83,6 @@ class SkymapScannerK8sWrapper:
         skyscan_mq_client_timeout_wait_for_first_message: int | None,
     ):
         LOGGER.info(f"making k8s job for {scan_id=}")
-        self.k8s_batch_api = k8s_batch_api
         self.scan_id = scan_id
         self.env_dict = {}
 
