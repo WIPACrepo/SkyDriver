@@ -426,6 +426,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=_classifiers_validator,
             default={},
         )
+        priority = self.get_argument(
+            "priority",
+            type=int,
+            default=0,
+        )
 
         # response args
         manifest_projection = self.get_argument(
@@ -474,6 +479,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             k8s_job.tms_args_list,
             from_dict(database.schema.EnvVars, k8s_job.env_dict),
             classifiers,
+            priority,
         )
 
         # enqueue skymap scanner instance to be started in-time

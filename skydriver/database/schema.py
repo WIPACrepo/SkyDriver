@@ -249,7 +249,9 @@ class Manifest(ScanIDDataclass):
     ewms_task: EWMSTaskDirective
 
     # args placed in k8s job obj
-    scanner_server_args: str  # TODO - move to TMS???
+    scanner_server_args: str
+
+    priority: int = 0  # same as https://htcondor.readthedocs.io/en/latest/users-manual/priorities-and-preemption.html#job-priority
 
     # open to requestor
     classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)

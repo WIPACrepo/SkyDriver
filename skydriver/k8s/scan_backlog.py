@@ -7,7 +7,7 @@ import pickle
 import time
 
 import bson
-import kubernetes.client  # type: ignore[import]
+import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from .. import database

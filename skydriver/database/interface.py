@@ -62,6 +62,7 @@ class ManifestClient:
         tms_args_list: list[str],
         env_vars: schema.EnvVars,
         classifiers: dict[str, str | bool | float | int],
+        priority: int,
     ) -> schema.Manifest:
         """Create `schema.Manifest` doc."""
         LOGGER.debug("creating new manifest")
@@ -78,6 +79,7 @@ class ManifestClient:
                 env_vars=env_vars,
             ),
             classifiers=classifiers,
+            priority=priority,
         )
 
         # db
