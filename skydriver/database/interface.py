@@ -7,7 +7,7 @@ import time
 from typing import Any, AsyncIterator
 
 from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo import ASCENDING, ReturnDocument
+from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from tornado import web
 
 from ..config import ENV
@@ -341,7 +341,10 @@ class ScanBacklogClient:
                 "$set": {"pending_timestamp": time.time()},
                 "$inc": {"next_attempt": 1},
             },
-            sort=[("timestamp", ASCENDING)],
+            sort=[
+                ("priority", DESCENDING),  # highest first
+                ("timestamp", ASCENDING),  # then, oldest
+            ],
             return_document=ReturnDocument.AFTER,
             return_dclass=schema.ScanBacklogEntry,
         )

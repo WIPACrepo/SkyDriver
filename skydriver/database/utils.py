@@ -45,6 +45,11 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:  # type: ign
         unique=False,
     )
     await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(  # type: ignore[index]
+        [("priority", DESCENDING)],
+        name="priority_index",
+        unique=False,
+    )
+    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(  # type: ignore[index]
         "scan_id",
         name="scan_id_index",
         unique=True,

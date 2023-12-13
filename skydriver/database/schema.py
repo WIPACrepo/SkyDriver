@@ -47,6 +47,7 @@ class ScanBacklogEntry(ScanIDDataclass):
 
     timestamp: float
     pickled_k8s_job: bytes
+    priority: int = 0
     pending_timestamp: float = 0.0
     next_attempt: int = 0
 

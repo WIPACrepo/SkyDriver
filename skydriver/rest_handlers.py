@@ -503,6 +503,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                     scan_id,
                     scanner_wrapper.job_obj,
                     self.scan_backlog,
+                    manifest.priority,
                 )
             except Exception as e:
                 LOGGER.exception(e)
