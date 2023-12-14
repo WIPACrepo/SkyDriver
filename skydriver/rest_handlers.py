@@ -22,6 +22,7 @@ from .config import (
     ENV,
     KNOWN_CLUSTERS,
     LOGGER,
+    SCAN_MIN_PRIORITY_TO_START_NOW,
     DebugMode,
     is_testing,
 )
@@ -482,7 +483,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         enqueue = True
 
         # start now?
-        if priority >= 10:
+        if priority >= SCAN_MIN_PRIORITY_TO_START_NOW:
             try:
                 resp = k8s.utils.KubeAPITools.start_job(
                     self.k8s_batch_api,
