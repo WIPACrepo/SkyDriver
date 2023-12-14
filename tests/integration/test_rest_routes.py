@@ -662,6 +662,7 @@ def get_tms_args(
             f" --image {image} "
             f" --client-startup-json /common-space/startup.json "
             f" --max-worker-runtime {4 * 60 * 60} "
+            f" --priority 0 "
             f" --spool "
         ]
 

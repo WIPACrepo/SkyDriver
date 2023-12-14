@@ -76,6 +76,7 @@ class SkymapScannerK8sWrapper:
         request_clusters: list[schema.Cluster],
         max_pixel_reco_time: int,
         max_worker_runtime: int,
+        priority: int,
         # universal
         debug_mode: list[DebugMode],
         # env
@@ -133,6 +134,7 @@ class SkymapScannerK8sWrapper:
                         request_cluster=cluster,
                         debug_mode=debug_mode,
                         max_worker_runtime=max_worker_runtime,
+                        priority=priority,
                     ),
                     cpu=0.125,
                     volumes={common_space_volume_path.name: common_space_volume_path},
@@ -188,6 +190,7 @@ class SkymapScannerK8sWrapper:
         request_cluster: schema.Cluster,
         debug_mode: list[DebugMode],
         max_worker_runtime: int,
+        priority: int,
     ) -> list[str]:
         """Make the starter container args.
 
@@ -225,6 +228,7 @@ class SkymapScannerK8sWrapper:
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
             f" --max-worker-runtime {max_worker_runtime}"
+            f" --priority {priority}"
         )
 
         if DebugMode.CLIENT_LOGS in debug_mode:

@@ -460,6 +460,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             worker_disk_bytes=worker_disk_bytes,
             max_pixel_reco_time=max_pixel_reco_time,
             max_worker_runtime=max_worker_runtime,
+            priority=priority,
             # universal
             debug_mode=debug_mode,
             # env

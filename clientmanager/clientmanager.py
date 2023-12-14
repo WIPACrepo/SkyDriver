@@ -177,6 +177,11 @@ class ActionArgs:
             type=int,
             help="how long each worker is allowed to run -- condor only",  # TODO - set for k8s?
         )
+        sub_parser.add_argument(
+            "--priority",
+            required=True,
+            help="relative priority of this job/jobs -- condor only",  # TODO - set for k8s?
+        )
 
         # client args
         sub_parser.add_argument(

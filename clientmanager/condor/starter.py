@@ -26,6 +26,7 @@ def make_condor_job_description(
     worker_disk_bytes: int,
     n_cores: int,
     max_worker_runtime: int,
+    priority: int,
     # skymap scanner args
     image: str,
     client_startup_json_s3: S3File,
@@ -86,6 +87,7 @@ def make_condor_job_description(
         "request_disk": humanfriendly.format_size(  # 1073741824 -> "1 GiB" -> "1 GB"
             worker_disk_bytes, binary=True
         ).replace("i", ""),
+        "priority": int(priority),
         "+WantIOProxy": "true",  # for HTChirp
         "+OriginalTime": max_worker_runtime,  # Execution time limit -- 1 hour default on OSG
     }
@@ -129,6 +131,7 @@ def prep(
     worker_disk_bytes: int,
     n_cores: int,
     max_worker_runtime: int,
+    priority: int,
     # starter CL args -- client
     client_args: list[tuple[str, str]],
     client_startup_json_s3: S3File,
@@ -156,6 +159,7 @@ def prep(
         worker_disk_bytes,
         n_cores,
         max_worker_runtime,
+        priority,
         # skymap scanner args
         image,
         client_startup_json_s3,
