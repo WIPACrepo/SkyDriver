@@ -490,7 +490,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 )
                 LOGGER.info(resp)
             except kubernetes.client.exceptions.ApiException as e:
-                # job (entry) will be revived & restarted in future iteration
+                # job (entry) will be enqueued and tried again per priority
                 LOGGER.exception(e)
             else:
                 enqueue = False
