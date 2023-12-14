@@ -348,6 +348,8 @@ Pseudo-code:
     event_i3live_json_dict: dict,
     scanner_server_args: str,
 
+    priority: int,
+
     classifiers: dict[str, str | bool | float | int]
 
     event_i3live_json_dict__hash: str,  # a deterministic hash of the event json
