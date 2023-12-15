@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.1 (2023-12-15)
+
+### Other
+
+* Patch for Argo CD Bot ([`270b36a`](https://github.com/WIPACrepo/SkyDriver/commit/270b36a68f46ba918288c07a2877b146f751b85f))
+
 ## v1.0.0 (2023-12-15)
 
 ### Breaking
