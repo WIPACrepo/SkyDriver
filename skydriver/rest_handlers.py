@@ -1,6 +1,5 @@
 """Handlers for the SkyDriver REST API server interface."""
 
-
 import asyncio
 import dataclasses as dc
 import json
@@ -23,6 +22,7 @@ from .config import (
     ENV,
     KNOWN_CLUSTERS,
     LOGGER,
+    SCAN_MIN_PRIORITY_TO_START_NOW,
     DebugMode,
     is_testing,
 )
@@ -426,6 +426,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=_classifiers_validator,
             default={},
         )
+        priority = self.get_argument(
+            "priority",
+            type=int,
+            default=0,
+        )
 
         # response args
         manifest_projection = self.get_argument(
@@ -441,10 +446,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scan_id = uuid.uuid4().hex
 
         # get the container info ready
-        k8s_job = k8s.scanner_instance.SkymapScannerJob(
-            k8s_batch_api=self.k8s_batch_api,
-            scan_backlog=self.scan_backlog,
-            #
+        scanner_wrapper = k8s.scanner_instance.SkymapScannerK8sWrapper(
             docker_tag=docker_tag,
             scan_id=scan_id,
             # server
@@ -459,6 +461,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             worker_disk_bytes=worker_disk_bytes,
             max_pixel_reco_time=max_pixel_reco_time,
             max_worker_runtime=max_worker_runtime,
+            priority=priority,
             # universal
             debug_mode=debug_mode,
             # env
@@ -470,21 +473,46 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await self.manifests.post(
             event_i3live_json_dict,
             scan_id,
-            k8s_job.scanner_server_args,
-            k8s_job.tms_args_list,
-            from_dict(database.schema.EnvVars, k8s_job.env_dict),
+            scanner_wrapper.scanner_server_args,
+            scanner_wrapper.tms_args_list,
+            from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
             classifiers,
+            priority,
         )
 
-        # enqueue skymap scanner instance to be started in-time
-        try:
-            await k8s_job.enqueue_job()
-        except Exception as e:
-            LOGGER.exception(e)
-            raise web.HTTPError(
-                500,
-                log_message="Failed to enqueue Kubernetes job for Scanner instance",
-            )
+        enqueue = True
+
+        # start now?
+        if priority >= SCAN_MIN_PRIORITY_TO_START_NOW:
+            try:
+                resp = k8s.utils.KubeAPITools.start_job(
+                    self.k8s_batch_api,
+                    scanner_wrapper.job_obj,
+                )
+                LOGGER.info(resp)
+            except kubernetes.client.exceptions.ApiException as e:
+                # job (entry) will be enqueued and tried again per priority
+                LOGGER.exception(e)
+            else:
+                enqueue = False
+
+        # start later?
+        if enqueue:
+            # enqueue skymap scanner instance to be started in-time
+            try:
+                LOGGER.info(f"enqueuing k8s job for {scan_id=}")
+                await k8s.scan_backlog.enqueue(
+                    scan_id,
+                    scanner_wrapper.job_obj,
+                    self.scan_backlog,
+                    manifest.priority,
+                )
+            except Exception as e:
+                LOGGER.exception(e)
+                raise web.HTTPError(
+                    400,
+                    log_message="Failed to enqueue Kubernetes job for Scanner instance",
+                )
 
         self.write(
             dict_projection(dc.asdict(manifest), manifest_projection),
@@ -504,18 +532,18 @@ async def stop_scanner_instance(
     if manifest.ewms_task.complete:  # workforce is done
         return manifest
 
-    stopper = k8s.scanner_instance.SkymapScannerWorkerStopper(
+    stopper_wrapper = k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper(
         k8s_batch_api,
         scan_id,
         manifest.ewms_task.clusters,
     )
 
     try:
-        stopper.go()
+        stopper_wrapper.go()
     except kubernetes.client.exceptions.ApiException as e:
         LOGGER.exception(e)
         raise web.HTTPError(
-            500,
+            400,
             log_message="Failed to stop Scanner instance",
         )
 
@@ -843,7 +871,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             try:
                 pods_411["pod_status"] = k8s.utils.KubeAPITools.get_pod_status(
                     self.k8s_batch_api,
-                    k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
+                    k8s.scanner_instance.SkymapScannerK8sWrapper.get_job_name(scan_id),
                     ENV.K8S_NAMESPACE,
                 )
                 pods_411["pod_message"] = "retrieved"
@@ -887,7 +915,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         try:
             pod_container_logs = k8s.utils.KubeAPITools.get_container_logs(
                 self.k8s_batch_api,
-                k8s.scanner_instance.SkymapScannerJob.get_job_name(scan_id),
+                k8s.scanner_instance.SkymapScannerK8sWrapper.get_job_name(scan_id),
                 ENV.K8S_NAMESPACE,
             )
             pod_container_logs_message = "retrieved"

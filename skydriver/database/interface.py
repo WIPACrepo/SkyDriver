@@ -7,7 +7,7 @@ import time
 from typing import Any, AsyncIterator
 
 from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo import ASCENDING, ReturnDocument
+from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from tornado import web
 
 from ..config import ENV
@@ -62,6 +62,7 @@ class ManifestClient:
         tms_args_list: list[str],
         env_vars: schema.EnvVars,
         classifiers: dict[str, str | bool | float | int],
+        priority: int,
     ) -> schema.Manifest:
         """Create `schema.Manifest` doc."""
         LOGGER.debug("creating new manifest")
@@ -78,6 +79,7 @@ class ManifestClient:
                 env_vars=env_vars,
             ),
             classifiers=classifiers,
+            priority=priority,
         )
 
         # db
@@ -339,7 +341,10 @@ class ScanBacklogClient:
                 "$set": {"pending_timestamp": time.time()},
                 "$inc": {"next_attempt": 1},
             },
-            sort=[("timestamp", ASCENDING)],
+            sort=[
+                ("priority", DESCENDING),  # highest first
+                ("timestamp", ASCENDING),  # then, oldest
+            ],
             return_document=ReturnDocument.AFTER,
             return_dclass=schema.ScanBacklogEntry,
         )

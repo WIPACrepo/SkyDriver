@@ -7,7 +7,7 @@ import pickle
 import time
 
 import bson
-import kubernetes.client  # type: ignore[import]
+import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from .. import database
@@ -21,12 +21,14 @@ async def enqueue(
     scan_id: str,
     job_obj: kubernetes.client.V1Job,
     scan_backlog: database.interface.ScanBacklogClient,
+    priority: int,
 ) -> None:
     """Enqueue k8s job to be started by job-starter thread."""
     entry = database.schema.ScanBacklogEntry(
         scan_id=scan_id,
         timestamp=time.time(),
         pickled_k8s_job=bson.Binary(pickle.dumps(job_obj)),
+        priority=priority,
     )
     await scan_backlog.insert(entry)
 

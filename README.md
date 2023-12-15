@@ -100,7 +100,8 @@ _Launch a new scan of an event_
 | `"worker_memory"`                 | str          | default: `8G`   | how much memory per client worker to request
 | `"worker_disk"`                   | str          | default: `1G`    | how much disk per client worker to request
 | `"debug_mode"`                    | str or list  | default: None    | what debug mode(s) to use: `"client-logs"` collects the scanner clients' stderr/stdout including icetray logs (scans are limited in # of workers)
-| `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold [0.1, 1.0] (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
+| `"predictive_scanning_threshold"` | float        | default: `1.0`   | the predictive scanning threshold `[0.1, 1.0]` (see [Skymap Scanner](https://github.com/icecube/skymap_scanner))
+| `"priority"`                      | int          | default: `0`     | the relative priority of this scan -- higher values indicate higher priority. **NOTE: Values `>= 10` are reserved for Realtime alert scans (these scan requests are not throttled).** Also, see [HTCondor jobs](https://htcondor.readthedocs.io/en/latest/users-manual/priorities-and-preemption.html#job-priority)
 | `"classifiers"` | <code>dict[str, str &#124; bool &#124; float &#124; int]</code> | default: `{}` | a user-defined collection of labels, attributes, etc. -- this is constrained in size and is intended for user-defined metadata only
 | `"manifest_projection"` | list | default: all fields but [these](#manifest-fields-excluded-by-default-in-response) | which `Manifest` fields to include in the response (include `*` to include all fields)
 
@@ -346,6 +347,8 @@ Pseudo-code:
 
     event_i3live_json_dict: dict,
     scanner_server_args: str,
+
+    priority: int,
 
     classifiers: dict[str, str | bool | float | int]
 

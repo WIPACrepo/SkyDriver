@@ -9,7 +9,7 @@ from typing import Any
 import kubernetes.client  # type: ignore[import-untyped]
 from rest_tools.client import ClientCredentialsAuth
 
-from .. import database, images
+from .. import images
 from ..config import (
     ENV,
     K8S_CONTAINER_MEMORY_TMS_STARTER_BYTES,
@@ -20,7 +20,6 @@ from ..config import (
     DebugMode,
 )
 from ..database import schema
-from . import scan_backlog
 from .utils import KubeAPITools
 
 
@@ -57,13 +56,11 @@ def get_tms_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
     ]
 
 
-class SkymapScannerJob:
+class SkymapScannerK8sWrapper:
     """Wraps a Skymap Scanner Kubernetes job with tools to start and manage."""
 
     def __init__(
         self,
-        k8s_batch_api: kubernetes.client.BatchV1Api,
-        scan_backlog: database.interface.ScanBacklogClient,
         #
         docker_tag: str,
         scan_id: str,
@@ -79,6 +76,7 @@ class SkymapScannerJob:
         request_clusters: list[schema.Cluster],
         max_pixel_reco_time: int,
         max_worker_runtime: int,
+        priority: int,
         # universal
         debug_mode: list[DebugMode],
         # env
@@ -86,8 +84,6 @@ class SkymapScannerJob:
         skyscan_mq_client_timeout_wait_for_first_message: int | None,
     ):
         LOGGER.info(f"making k8s job for {scan_id=}")
-        self.k8s_batch_api = k8s_batch_api
-        self.scan_backlog = scan_backlog
         self.scan_id = scan_id
         self.env_dict = {}
 
@@ -138,6 +134,7 @@ class SkymapScannerJob:
                         request_cluster=cluster,
                         debug_mode=debug_mode,
                         max_worker_runtime=max_worker_runtime,
+                        priority=priority,
                     ),
                     cpu=0.125,
                     volumes={common_space_volume_path.name: common_space_volume_path},
@@ -193,6 +190,7 @@ class SkymapScannerJob:
         request_cluster: schema.Cluster,
         debug_mode: list[DebugMode],
         max_worker_runtime: int,
+        priority: int,
     ) -> list[str]:
         """Make the starter container args.
 
@@ -230,6 +228,7 @@ class SkymapScannerJob:
             f" --client-startup-json {common_space_volume_path/'startup.json'} "
             # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
             f" --max-worker-runtime {max_worker_runtime}"
+            f" --priority {priority}"
         )
 
         if DebugMode.CLIENT_LOGS in debug_mode:
@@ -312,12 +311,12 @@ class SkymapScannerJob:
 
         # 4. generate & add auth tokens
         tokens = {
-            "SKYSCAN_BROKER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+            "SKYSCAN_BROKER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_BROKER,
                 ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
             ),
-            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
@@ -400,12 +399,12 @@ class SkymapScannerJob:
 
         # 4. generate & add auth tokens
         tokens = {
-            "SKYSCAN_BROKER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+            "SKYSCAN_BROKER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_BROKER,
                 ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
             ),
-            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerJob._get_token_from_keycloak(
+            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
@@ -420,13 +419,8 @@ class SkymapScannerJob:
 
         return env
 
-    async def enqueue_job(self) -> Any:
-        """Enqueue the k8s job onto the Scan Backlog."""
-        LOGGER.info(f"enqueuing k8s job for {self.scan_id=}")
-        await scan_backlog.enqueue(self.scan_id, self.job_obj, self.scan_backlog)
 
-
-class SkymapScannerWorkerStopper:
+class SkymapScannerWorkerStopperK8sWrapper:
     """Wraps K8s logic to stop workers of a Skymap Scanner instance."""
 
     def __init__(
@@ -492,7 +486,7 @@ class SkymapScannerWorkerStopper:
         #     f"requesting removal of Skymap Scanner Job (server & tms starters) -- {self.scan_id=}..."
         # )
         # resp = self.k8s_batch_api.delete_namespaced_job(
-        #     name=SkymapScannerJob.get_job_name(self.scan_id),
+        #     name=SkymapScannerK8sWrapper.get_job_name(self.scan_id),
         #     namespace=ENV.K8S_NAMESPACE,
         #     body=kubernetes.client.V1DeleteOptions(
         #         propagation_policy="Foreground", grace_period_seconds=5
