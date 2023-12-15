@@ -7,7 +7,7 @@
 # is zero for an official release, positive for a development branch,
 # or negative for a release candidate or beta (after the base version
 # number has been incremented)
-__version__ = "0.8.9"
+__version__ = "1.0.0"
 version_info = (
     int(__version__.split(".")[0]),
     int(__version__.split(".")[1]),

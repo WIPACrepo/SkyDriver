@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.0 (2023-12-15)
+
+### Breaking
+
+* Co-authored-by: github-actions <github-actions@github.com> ([`14308e7`](https://github.com/WIPACrepo/SkyDriver/commit/14308e781368f50c12429e0eda616c7b7aef10cd))
+
 ## v0.8.9 (2023-12-07)
 
 ### Other
