@@ -504,7 +504,7 @@ class SkymapScannerWorkerStopperK8sWrapper:
 
         # stop workers
         if self.worker_stopper_job_obj:
-                LOGGER.info(f"starting k8s CLUSTER-STOPPER job for {self.scan_id=}")
+            LOGGER.info(f"starting k8s CLUSTER-STOPPER job for {self.scan_id=}")
             KubeAPITools.start_job(self.k8s_batch_api, self.worker_stopper_job_obj)
         else:
             LOGGER.info(f"no workers to stop for {self.scan_id=}")
