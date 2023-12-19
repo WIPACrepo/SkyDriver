@@ -18,6 +18,14 @@ def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
+    # method
+    parser.add_argument(
+        required=True,
+        dest="method",
+        help="how to start up the jobs",  # TODO - remove once EWMS is full-time
+        choices=["remote-condor"],  # , "ewms"],
+    )
+
     parser.add_argument(
         "--uuid",
         required=True,
@@ -39,7 +47,13 @@ def main() -> None:
     logging_tools.log_argparse_args(args, logger=LOGGER, level="WARNING")
 
     # Go!
-    condor.act(args)
+    match args.method:
+        case "remote-condor":
+            condor.act(args)
+        # case "ewms":
+        #     ewms.act(args)
+        case other:
+            raise RuntimeError(f"method not supported: {other}")
 
 
 class SidecarArgs:
