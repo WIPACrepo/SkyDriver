@@ -11,12 +11,12 @@ from rest_tools.client import ClientCredentialsAuth
 
 from .. import images
 from ..config import (
+    CLUSTER_STOPPER_K8S_JOB_N_RETRIES,
+    CLUSTER_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
     ENV,
-    K8S_CONTAINER_MEMORY_TMS_STARTER_BYTES,
-    K8S_CONTAINER_MEMORY_TMS_STOPPER_BYTES,
+    K8S_CONTAINER_MEMORY_CLUSTER_STARTER_BYTES,
+    K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES,
     LOGGER,
-    TMS_STOPPER_K8S_JOB_N_RETRIES,
-    TMS_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
     DebugMode,
 )
 from ..database import schema
@@ -32,7 +32,7 @@ def get_cluster_auth_v1envvars(
     return info["v1envvars"]  # type: ignore[no-any-return]
 
 
-def get_tms_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
+def get_cluster_starter_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
     """Get the `V1EnvVar`s for TMS's S3 auth."""
     return [
         kubernetes.client.V1EnvVar(
@@ -70,7 +70,8 @@ class SkymapScannerK8sWrapper:
         nsides: dict[int, int],
         is_real_event: bool,
         predictive_scanning_threshold: float,
-        # tms
+        # cluster starter
+        starter_exc: str,  # TODO - remove once tested in prod
         worker_memory_bytes: int,
         worker_disk_bytes: int,
         request_clusters: list[schema.Cluster],
@@ -112,22 +113,22 @@ class SkymapScannerK8sWrapper:
         )
         self.env_dict["scanner_server"] = [e.to_dict() for e in scanner_server.env]
 
-        # CONTAINER(S): TMS Starter(s)
+        # CONTAINER(S): Cluster Starter(s)
         tms_starters = []
         for i, cluster in enumerate(request_clusters):
             tms_starters.append(
                 KubeAPITools.create_container(
-                    f"tms-starter-{i}-{scan_id}",
-                    ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
-                    env=self.make_tms_starter_v1envvars(
+                    f"{starter_exc}-{i}-{scan_id}",  # TODO - replace once tested in prod
+                    ENV.THIS_IMAGE_WITH_TAG,
+                    env=self.make_cluster_starter_v1envvars(
                         rest_address=rest_address,
                         scan_id=scan_id,
                         cluster=cluster,
                         max_pixel_reco_time=max_pixel_reco_time,
                         debug_mode=debug_mode,
                     ),
-                    args=self.get_tms_starter_args(
-                        starter_exc="clientmanager",  # TODO - handle ewms_sidecar  # TODO - remove once tested in prod
+                    args=self.get_cluster_starter_args(
+                        starter_exc=starter_exc,  # TODO - remove once tested in prod
                         common_space_volume_path=common_space_volume_path,
                         docker_tag=docker_tag,
                         worker_memory_bytes=worker_memory_bytes,
@@ -139,10 +140,10 @@ class SkymapScannerK8sWrapper:
                     ),
                     cpu=0.125,
                     volumes={common_space_volume_path.name: common_space_volume_path},
-                    memory=K8S_CONTAINER_MEMORY_TMS_STARTER_BYTES,
+                    memory=K8S_CONTAINER_MEMORY_CLUSTER_STARTER_BYTES,
                 )
             )
-        self.tms_args_list = [" ".join(c.args) for c in tms_starters]
+        self.cluster_starter_args_list = [" ".join(c.args) for c in tms_starters]
         self.env_dict["tms_starters"] = [
             [e.to_dict() for e in c.env] for c in tms_starters
         ]
@@ -183,7 +184,7 @@ class SkymapScannerK8sWrapper:
         return args
 
     @staticmethod
-    def get_tms_starter_args(
+    def get_cluster_starter_args(
         starter_exc: str,  # TODO - remove once tested in prod
         common_space_volume_path: Path,
         docker_tag: str,
@@ -194,11 +195,7 @@ class SkymapScannerK8sWrapper:
         max_worker_runtime: int,
         priority: int,
     ) -> list[str]:
-        """Make the starter container args.
-
-        This also includes any client args not added by the
-        clientmanager.
-        """
+        """Make the starter container args."""
         args = f"python -m clientmanager --uuid {str(uuid.uuid4().hex)}"
 
         match request_cluster.orchestrator:
@@ -341,7 +338,7 @@ class SkymapScannerK8sWrapper:
         return env
 
     @staticmethod
-    def make_tms_starter_v1envvars(
+    def make_cluster_starter_v1envvars(
         rest_address: str,
         scan_id: str,
         cluster: schema.Cluster,
@@ -352,13 +349,13 @@ class SkymapScannerK8sWrapper:
 
         Also, get the secrets' keys & their values.
         """
-        LOGGER.debug(f"making tms starter env vars for {scan_id=}")
+        LOGGER.debug(f"making cluster starter env vars for {scan_id=}")
         env = []
 
         # 1. start w/ secrets
         # NOTE: the values come from an existing secret in the current namespace
         env.extend(get_cluster_auth_v1envvars(cluster))
-        env.extend(get_tms_s3_v1envvars())
+        env.extend(get_cluster_starter_s3_v1envvars())
 
         # 2. add required env vars
         required = {
@@ -464,12 +461,12 @@ class SkymapScannerWorkerStopperK8sWrapper:
 
             containers.append(
                 KubeAPITools.create_container(
-                    f"tms-stopper-{i}-{scan_id}",
-                    ENV.CLIENTMANAGER_IMAGE_WITH_TAG,
+                    f"cluster-stopper-{i}-{scan_id}",
+                    ENV.THIS_IMAGE_WITH_TAG,
                     cpu=0.125,
                     env=get_cluster_auth_v1envvars(cluster),
                     args=args.split(),
-                    memory=K8S_CONTAINER_MEMORY_TMS_STOPPER_BYTES,
+                    memory=K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES,
                 )
             )
 
@@ -477,11 +474,11 @@ class SkymapScannerWorkerStopperK8sWrapper:
             self.worker_stopper_job_obj = None
         else:
             self.worker_stopper_job_obj = KubeAPITools.kube_create_job_object(
-                f"tms-stopper-{scan_id}",
+                f"cluster-stopper-{scan_id}",
                 containers,
                 ENV.K8S_NAMESPACE,
-                TMS_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
-                n_retries=TMS_STOPPER_K8S_JOB_N_RETRIES,
+                CLUSTER_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
+                n_retries=CLUSTER_STOPPER_K8S_JOB_N_RETRIES,
             )
 
     def go(self) -> Any:
@@ -490,9 +487,9 @@ class SkymapScannerWorkerStopperK8sWrapper:
         # NOTE - we don't want to stop the first k8s job because its containers will stop themselves.
         #        plus, 'K8S_TTL_SECONDS_AFTER_FINISHED' will allow logs & pod status to be retrieved for some time
         #
-        # stop first k8s job (server & tms starters) -- may not be instantaneous
+        # stop first k8s job (server & cluster starters) -- may not be instantaneous
         # LOGGER.info(
-        #     f"requesting removal of Skymap Scanner Job (server & tms starters) -- {self.scan_id=}..."
+        #     f"requesting removal of Skymap Scanner Job (server & cluster starters) -- {self.scan_id=}..."
         # )
         # resp = self.k8s_batch_api.delete_namespaced_job(
         #     name=SkymapScannerK8sWrapper.get_job_name(self.scan_id),
@@ -507,7 +504,7 @@ class SkymapScannerWorkerStopperK8sWrapper:
 
         # stop workers
         if self.worker_stopper_job_obj:
-            LOGGER.info(f"starting k8s TMS-STOPPER job for {self.scan_id=}")
+                LOGGER.info(f"starting k8s CLUSTER-STOPPER job for {self.scan_id=}")
             KubeAPITools.start_job(self.k8s_batch_api, self.worker_stopper_job_obj)
         else:
             LOGGER.info(f"no workers to stop for {self.scan_id=}")

@@ -63,7 +63,9 @@ REQUIRED_FIELDS = [
 
 
 async def _launch_scan(
-    rc: RestClient, post_scan_body: dict, tms_args: list[str]
+    rc: RestClient,
+    post_scan_body: dict,
+    cluster_starter_args: list[str],
 ) -> dict:
     # launch scan
     launch_time = time.time()
@@ -115,7 +117,7 @@ async def _launch_scan(
 
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
-    for got_args, exp_args in zip(resp["ewms_task"]["tms_args"], tms_args):
+    for got_args, exp_args in zip(resp["ewms_task"]["tms_args"], cluster_starter_args):
         print(got_args, exp_args)
         for got, exp in zip(got_args.split(), exp_args.split()):
             print(got, exp)
@@ -124,7 +126,7 @@ async def _launch_scan(
             else:
                 assert got == exp
         assert len(got_args.split()) == len(exp_args.split())
-    assert len(resp["ewms_task"]["tms_args"]) == len(tms_args)
+    assert len(resp["ewms_task"]["tms_args"]) == len(cluster_starter_args)
 
     # check env vars
     print(resp["ewms_task"]["env_vars"])
@@ -408,14 +410,14 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
     return event_metadata
 
 
-async def _clientmanager_reply(
+async def _cluster_starter_reply(
     rc: RestClient,
     scan_id: str,
     cluster_name__n_workers: tuple[str, int],
     previous_clusters: list[StrDict],
     known_clusters: dict,
 ) -> StrDict:
-    # reply as the clientmanager with a new cluster
+    # reply as the cluster_starter with a new cluster
     cluster = dict(
         orchestrator=known_clusters[cluster_name__n_workers[0]]["orchestrator"],
         location=known_clusters[cluster_name__n_workers[0]]["location"],
@@ -636,12 +638,12 @@ async def _delete_scan(
     assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
 
 
-def get_tms_args(
+def get_cluster_starter_args(
     clusters: list | dict,
     docker_tag_expected: str,
     known_clusters: dict,
 ) -> list[str]:
-    tms_args = []
+    cluster_starter_args = []
     for cluster in clusters if isinstance(clusters, list) else list(clusters.items()):
         orchestrator = known_clusters[cluster[0]]["orchestrator"]
         location = known_clusters[cluster[0]]["location"]
@@ -650,7 +652,7 @@ def get_tms_args(
             if orchestrator == "condor"
             else f"icecube/skymap_scanner:{docker_tag_expected}"
         )
-        tms_args += [
+        cluster_starter_args += [
             f"python -m clientmanager "
             f" --uuid {CLUSTER_ID_PLACEHOLDER} "
             f" {orchestrator} "
@@ -666,7 +668,7 @@ def get_tms_args(
             f" --spool "
         ]
 
-    return tms_args
+    return cluster_starter_args
 
 
 ########################################################################################
@@ -717,7 +719,7 @@ async def test_00(
             "docker_tag": docker_tag_input,
             "cluster": clusters,
         },
-        get_tms_args(clusters, docker_tag_expected, known_clusters),
+        get_cluster_starter_args(clusters, docker_tag_expected, known_clusters),
     )
     scan_id = manifest["scan_id"]
     # follow-up query
@@ -730,7 +732,7 @@ async def test_00(
     # INITIAL UPDATES
     #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    manifest = await _clientmanager_reply(
+    manifest = await _cluster_starter_reply(
         rc,
         scan_id,
         clusters[0] if isinstance(clusters, list) else list(clusters.items())[0],
@@ -758,7 +760,7 @@ async def test_00(
     for cluster_name__n_workers in (
         clusters[1:] if isinstance(clusters, list) else list(clusters.items())[1:]
     ):
-        manifest = await _clientmanager_reply(
+        manifest = await _cluster_starter_reply(
             rc,
             scan_id,
             cluster_name__n_workers,
@@ -880,7 +882,7 @@ async def test_01__bad_data(
     manifest = await _launch_scan(
         rc,
         POST_SCAN_BODY_FOR_TEST_01,
-        get_tms_args(
+        get_cluster_starter_args(
             POST_SCAN_BODY_FOR_TEST_01["cluster"],  # type: ignore[arg-type]
             os.environ["LATEST_TAG"],
             known_clusters,
@@ -897,7 +899,7 @@ async def test_01__bad_data(
     # INITIAL UPDATES
     #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    manifest = await _clientmanager_reply(
+    manifest = await _cluster_starter_reply(
         rc,
         scan_id,
         ("foobar", random.randint(1, 10000)),

@@ -24,11 +24,11 @@ DEFAULT_WORKER_MEMORY_BYTES: int = humanfriendly.parse_size("8GB")
 DEFAULT_WORKER_DISK_BYTES: int = humanfriendly.parse_size("1GB")
 
 K8S_CONTAINER_MEMORY_DEFAULT_BYTES: int = humanfriendly.parse_size("64M")
-K8S_CONTAINER_MEMORY_TMS_STOPPER_BYTES: int = humanfriendly.parse_size("256M")
-K8S_CONTAINER_MEMORY_TMS_STARTER_BYTES: int = humanfriendly.parse_size("256M")
+K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES: int = humanfriendly.parse_size("256M")
+K8S_CONTAINER_MEMORY_CLUSTER_STARTER_BYTES: int = humanfriendly.parse_size("256M")
 
-TMS_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED = 1 * 60 * 60
-TMS_STOPPER_K8S_JOB_N_RETRIES = 6
+CLUSTER_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED = 1 * 60 * 60
+CLUSTER_STOPPER_K8S_JOB_N_RETRIES = 6
 
 SCAN_MIN_PRIORITY_TO_START_NOW = 10
 
@@ -61,7 +61,7 @@ class EnvConfig:
     SCAN_BACKLOG_RUNNER_DELAY: int = 5 * 60
     SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: int = 5 * 60  # entry is revived after N secs
 
-    CLIENTMANAGER_IMAGE_WITH_TAG: str = ""
+    THIS_IMAGE_WITH_TAG: str = ""
 
     # k8s
     K8S_NAMESPACE: str = ""
@@ -96,7 +96,7 @@ class EnvConfig:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
 
         # check missing env var(s)
-        if not self.CLIENTMANAGER_IMAGE_WITH_TAG:
+        if not self.THIS_IMAGE_WITH_TAG:
             raise RuntimeError(
                 "Missing required environment variable: 'CLIENTMANAGER_IMAGE_WITH_TAG'"
             )

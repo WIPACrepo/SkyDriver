@@ -477,7 +477,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             event_i3live_json_dict,
             scan_id,
             scanner_wrapper.scanner_server_args,
-            scanner_wrapper.tms_args_list,
+            scanner_wrapper.cluster_starter_args_list,
             from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
             classifiers,
             priority,
