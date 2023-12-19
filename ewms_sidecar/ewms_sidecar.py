@@ -14,7 +14,7 @@ from .config import ENV, LOGGER
 def main() -> None:
     """Main."""
     parser = argparse.ArgumentParser(
-        description="Handle EWMS requests beside a Skymap Scanner central server",
+        description="Handle EWMS requests adjacent to a Skymap Scanner central server",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
