@@ -455,7 +455,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             nsides=nsides,
             is_real_event=real_or_simulated_event in REAL_CHOICES,
             predictive_scanning_threshold=predictive_scanning_threshold,
-            # clientmanager
+            # cluster starter
+            starter_exc=str(  # TODO - remove once tested in prod
+                classifiers.get("unstable_testing__starter_exc", "clientmanager")
+            ),
             request_clusters=request_clusters,
             worker_memory_bytes=worker_memory_bytes,
             worker_disk_bytes=worker_disk_bytes,
