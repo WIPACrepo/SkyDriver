@@ -127,6 +127,7 @@ class SkymapScannerK8sWrapper:
                         debug_mode=debug_mode,
                     ),
                     args=self.get_tms_starter_args(
+                        starter_exc="clientmanager",  # TODO - handle ewms_sidecar  # TODO - remove once tested in prod
                         common_space_volume_path=common_space_volume_path,
                         docker_tag=docker_tag,
                         worker_memory_bytes=worker_memory_bytes,
@@ -183,6 +184,7 @@ class SkymapScannerK8sWrapper:
 
     @staticmethod
     def get_tms_starter_args(
+        starter_exc: str,  # TODO - remove once tested in prod
         common_space_volume_path: Path,
         docker_tag: str,
         worker_memory_bytes: int,
@@ -233,6 +235,13 @@ class SkymapScannerK8sWrapper:
 
         if DebugMode.CLIENT_LOGS in debug_mode:
             args += " --spool "
+
+        # ADAPT args for EWMS Sidecar
+        # TODO - remove once tested in prod
+        if starter_exc == "ewms_sidecar" and request_cluster.orchestrator == "condor":
+            args.replace("clientmanager", "ewms_sidecar remote-condor")
+            args.replace(" condor ", " ")
+            args.replace(" start ", " ")
 
         return args.split()
 
