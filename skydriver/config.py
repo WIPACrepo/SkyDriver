@@ -98,7 +98,7 @@ class EnvConfig:
         # check missing env var(s)
         if not self.THIS_IMAGE_WITH_TAG:
             raise RuntimeError(
-                "Missing required environment variable: 'CLIENTMANAGER_IMAGE_WITH_TAG'"
+                "Missing required environment variable: 'THIS_IMAGE_WITH_TAG'"
             )
 
         if self.SCAN_BACKLOG_RUNNER_SHORT_DELAY > self.SCAN_BACKLOG_RUNNER_DELAY:
