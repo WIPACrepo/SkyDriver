@@ -7,7 +7,7 @@ import os
 
 from wipac_dev_tools import from_environment_as_dataclass
 
-LOGGER = logging.getLogger("clientmanager")
+LOGGER = logging.getLogger("ewms-sidecar")
 
 LOCAL_K8S_HOST = "local"
 
@@ -33,13 +33,6 @@ class EnvConfig:
     # pylint:disable=invalid-name
     CLIENT_STARTER_WAIT_FOR_STARTUP_JSON: int = 60
     CONDOR_TOKEN: str = ""
-    #
-    WORKER_K8S_TOKEN: str = ""
-    WORKER_K8S_CACERT: str = ""
-    WORKER_K8S_CONFIG_FILE_BASE64: str = ""
-    # local k8s
-    WORKER_K8S_LOCAL_APPLICATION_NAME: str = ""
-    WORKER_K8S_LOCAL_WORKERS_MAX: int = 3  # don't want too many *local* workers
     #
     EWMS_PILOT_QUARANTINE_TIME: int = 0
     #
