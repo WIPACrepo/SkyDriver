@@ -23,7 +23,7 @@ def main() -> None:
         required=True,
         dest="method",
         help="how to start up the jobs",  # TODO - remove once EWMS is full-time
-        choices=["remote-condor"],  # , "ewms"],
+        choices=["direct-remote-condor"],  # , "ewms"],
     )
 
     parser.add_argument(
@@ -48,7 +48,7 @@ def main() -> None:
 
     # Go!
     match args.method:
-        case "remote-condor":
+        case "direct-remote-condor":
             condor.act(args)
         # case "ewms":
         #     ewms.act(args)
