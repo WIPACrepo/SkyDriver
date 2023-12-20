@@ -118,7 +118,7 @@ class SkymapScannerK8sWrapper:
         for i, cluster in enumerate(request_clusters):
             tms_starters.append(
                 KubeAPITools.create_container(
-                    f"{starter_exc}-{i}-{scan_id}",  # TODO - replace once tested in prod
+                    f"{starter_exc.replace('_','-')}-{i}-{scan_id}",  # TODO - replace once tested in prod
                     ENV.THIS_IMAGE_WITH_TAG,
                     env=self.make_cluster_starter_v1envvars(
                         rest_address=rest_address,
