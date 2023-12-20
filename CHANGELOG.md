@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.6 (2023-12-20)
+
+### Other
+
+* EWMS Sidecar Pt-7 ([#116](https://github.com/WIPACrepo/SkyDriver/issues/116)) ([`6201651`](https://github.com/WIPACrepo/SkyDriver/commit/62016513c92f680321070f080deec059f5c6cbfc))
+
 ## v1.0.5 (2023-12-20)
 
 ### Other
