@@ -19,11 +19,9 @@ def main() -> None:
     )
 
     # method
-    parser.add_argument(
-        required=True,
+    parser.add_argument(  # TODO - remove once EWMS is full-time
         dest="method",
-        help="how to start up the jobs",  # TODO - remove once EWMS is full-time
-        choices=["direct-remote-condor"],  # , "ewms"],
+        help="how to start up the jobs",
     )
 
     parser.add_argument(
