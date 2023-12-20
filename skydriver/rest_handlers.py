@@ -34,7 +34,7 @@ from .config import (
 REAL_CHOICES = ["real", "real_event"]
 SIM_CHOICES = ["sim", "simulated", "simulated_event"]
 
-MAX_CLASSIFIERS_LEN = 15
+MAX_CLASSIFIERS_LEN = 25
 
 WAIT_BEFORE_TEARDOWN = 60
 
@@ -457,7 +457,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             predictive_scanning_threshold=predictive_scanning_threshold,
             # cluster starter
             starter_exc=str(  # TODO - remove once tested in prod
-                classifiers.get("unstable_testing__starter_exc", "clientmanager")
+                classifiers.get("__unstable_starter_exc", "clientmanager")
             ),
             request_clusters=request_clusters,
             worker_memory_bytes=worker_memory_bytes,
