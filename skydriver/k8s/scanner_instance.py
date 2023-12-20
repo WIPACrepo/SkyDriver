@@ -236,9 +236,9 @@ class SkymapScannerK8sWrapper:
         # ADAPT args for EWMS Sidecar
         # TODO - remove once tested in prod
         if starter_exc == "ewms_sidecar" and request_cluster.orchestrator == "condor":
-            args.replace("clientmanager", "ewms_sidecar direct-remote-condor")
-            args.replace(" condor ", " ")
-            args.replace(" start ", " ")
+            args = args.replace("clientmanager", "ewms_sidecar direct-remote-condor")
+            args = args.replace(" condor ", " ")
+            args = args.replace(" start ", " ")
 
         return args.split()
 
