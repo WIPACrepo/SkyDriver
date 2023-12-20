@@ -2,6 +2,17 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.2 (2023-12-20)
+
+### Other
+
+* EWMS Sidecar Pt-3 ([#112](https://github.com/WIPACrepo/SkyDriver/issues/112)) ([`2cd3470`](https://github.com/WIPACrepo/SkyDriver/commit/2cd3470032b20ab4edfeb1078e21a265e30f4628))
+* EWMS Sidecar Pt-2 ([#111](https://github.com/WIPACrepo/SkyDriver/issues/111)) ([`44335c2`](https://github.com/WIPACrepo/SkyDriver/commit/44335c208edf89b1e5cb60727e747804c865dbfe))
+* Duplicated `clientmanager/` to `ewms_sidecar` with git line history ([`0f089f4`](https://github.com/WIPACrepo/SkyDriver/commit/0f089f41c707e2e642b306de74df55b4ac882359))
+* [duplicating `clientmanager/`: merge over `ewms_sidecar`] ([`bdde649`](https://github.com/WIPACrepo/SkyDriver/commit/bdde6491702ef57592ec52f0b63941f633d6fd69))
+* [duplicating `clientmanager/`: store in `temp`] ([`4355f70`](https://github.com/WIPACrepo/SkyDriver/commit/4355f704f94581549914bb549a116a6835166211))
+* [duplicating `clientmanager/`: make `ewms_sidecar` (temp branch)] ([`2ade2c9`](https://github.com/WIPACrepo/SkyDriver/commit/2ade2c9996cc7eaa0eb58084a350ab32530c1ea3))
+
 ## v1.0.1 (2023-12-15)
 
 ### Other
