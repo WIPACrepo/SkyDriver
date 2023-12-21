@@ -47,6 +47,8 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    assert "." not in LOGGER.name
+    assert "." in LOGGER.name
     # "%(asctime)s.%(msecs)03d [%(levelname)8s] %(hostname)s %(name)s[%(process)d] %(message)s <%(filename)s:%(lineno)s/%(funcName)s()>"
     logging_tools.set_level(
         ENV.LOG_LEVEL,  # type: ignore[arg-type]
