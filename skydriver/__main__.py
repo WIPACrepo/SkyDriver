@@ -4,8 +4,10 @@
 import asyncio
 import logging
 
+from wipac_dev_tools import logging_tools
+
 from . import database, k8s, server
-from .config import ENV, config_logging
+from .config import ENV
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,5 +47,12 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    config_logging(ENV.LOG_LEVEL)
+    # "%(asctime)s.%(msecs)03d [%(levelname)8s] %(hostname)s %(name)s[%(process)d] %(message)s <%(filename)s:%(lineno)s/%(funcName)s()>"
+    logging_tools.set_level(
+        ENV.LOG_LEVEL,  # type: ignore[arg-type]
+        first_party_loggers=LOGGER,
+        third_party_level=ENV.LOG_LEVEL_THIRD_PARTY,  # type: ignore[arg-type]
+        use_coloredlogs=True,  # for formatting
+        future_third_parties=[],
+    )
     asyncio.run(main())

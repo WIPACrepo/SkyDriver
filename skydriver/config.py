@@ -52,6 +52,7 @@ class EnvConfig:
     REST_PORT: int = 8080
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
+    LOG_LEVEL_THIRD_PARTY: str = "WARNING"
 
     SCAN_BACKLOG_MAX_ATTEMPTS: int = 3
     SCAN_BACKLOG_RUNNER_SHORT_DELAY: int = 15
@@ -177,15 +178,3 @@ def is_testing() -> bool:
     Note: this needs to run on import.
     """
     return ENV.CI_TEST
-
-
-def config_logging(level: str) -> None:
-    """Configure the logging level and format.
-
-    This is separated into a function for consistency between app and
-    testing environments.
-    """
-    coloredlogs.install(
-        fmt="%(asctime)s.%(msecs)03d [%(levelname)8s] %(hostname)s %(name)s[%(process)d] %(message)s <%(filename)s:%(lineno)s/%(funcName)s()>",
-        level=level.upper(),
-    )
