@@ -2,12 +2,9 @@
 
 
 import dataclasses as dc
-import logging
 import os
 
 from wipac_dev_tools import from_environment_as_dataclass
-
-LOGGER = logging.getLogger("clientmanager")
 
 LOCAL_K8S_HOST = "local"
 

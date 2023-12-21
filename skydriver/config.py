@@ -1,17 +1,14 @@
 """Config settings."""
 
+
 import dataclasses as dc
 import enum
-import logging
 from typing import Any, Optional
 
 import coloredlogs  # type: ignore[import-untyped]
 import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
 from wipac_dev_tools import from_environment_as_dataclass
-
-LOGGER = logging.getLogger("skydriver")
-
 
 # --------------------------------------------------------------------------------------
 # Constants
