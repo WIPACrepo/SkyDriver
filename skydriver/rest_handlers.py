@@ -1,8 +1,10 @@
 """Handlers for the SkyDriver REST API server interface."""
 
+
 import asyncio
 import dataclasses as dc
 import json
+import logging
 import uuid
 from typing import Any, Type, TypeVar
 
@@ -21,11 +23,13 @@ from .config import (
     DEFAULT_WORKER_MEMORY_BYTES,
     ENV,
     KNOWN_CLUSTERS,
-    LOGGER,
     SCAN_MIN_PRIORITY_TO_START_NOW,
     DebugMode,
     is_testing,
 )
+
+LOGGER = logging.getLogger(__name__)
+
 
 # -----------------------------------------------------------------------------
 # constants
