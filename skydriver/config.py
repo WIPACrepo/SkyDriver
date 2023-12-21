@@ -3,11 +3,12 @@
 
 import dataclasses as dc
 import enum
+import logging
 from typing import Any, Optional
 
 import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
-from wipac_dev_tools import from_environment_as_dataclass
+from wipac_dev_tools import from_environment_as_dataclass, logging_tools
 
 # --------------------------------------------------------------------------------------
 # Constants
@@ -177,3 +178,19 @@ def is_testing() -> bool:
     Note: this needs to run on import.
     """
     return ENV.CI_TEST
+
+
+def config_logging() -> None:
+    """Configure the logging level and format.
+
+    This is separated into a function for consistency between app and
+    testing environments.
+    """
+    # "%(asctime)s.%(msecs)03d [%(levelname)8s] %(hostname)s %(name)s[%(process)d] %(message)s <%(filename)s:%(lineno)s/%(funcName)s()>"
+    logging_tools.set_level(
+        ENV.LOG_LEVEL,  # type: ignore[arg-type]
+        first_party_loggers=__name__.split(".", maxsplit=1)[0],
+        third_party_level=ENV.LOG_LEVEL_THIRD_PARTY,  # type: ignore[arg-type]
+        use_coloredlogs=True,  # for formatting
+        future_third_parties=[],
+    )

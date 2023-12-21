@@ -25,7 +25,7 @@ LOGGER = logging.getLogger(__name__)
 # pylint: disable=redefined-outer-name
 
 
-skydriver.config.config_logging("debug")
+skydriver.config.config_logging()
 
 StrDict = dict[str, Any]
 
