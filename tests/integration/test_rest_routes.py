@@ -1040,3 +1040,5 @@ async def test_01__bad_data(
 
     # also OK
     await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
+
+    assert 0
