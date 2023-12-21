@@ -1,7 +1,13 @@
 """Entry-point to start up clientmanager service."""
 
-from . import clientmanager, config
+
+import logging
+
+from . import clientmanager
+
+LOGGER = logging.getLogger(__name__)
+
 
 if __name__ == "__main__":
     clientmanager.main()
-    config.LOGGER.info("Done.")
+    LOGGER.info("Done.")
