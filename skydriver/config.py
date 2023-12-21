@@ -3,7 +3,6 @@
 
 import dataclasses as dc
 import enum
-import logging
 from typing import Any, Optional
 
 import humanfriendly
