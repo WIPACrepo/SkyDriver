@@ -1,9 +1,13 @@
 """Start server as application."""
 
+
 import asyncio
+import logging
 
 from . import database, k8s, server
-from .config import ENV, LOGGER, config_logging
+from .config import ENV, config_logging
+
+LOGGER = logging.getLogger(__name__)
 
 
 async def main() -> None:

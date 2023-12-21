@@ -1,9 +1,13 @@
 """An interface to the Kubernetes cluster."""
 
 
-import kubernetes.client  # type: ignore[import]
+import logging
 
-from ..config import ENV, LOCAL_K8S_HOST, LOGGER
+import kubernetes.client  # type: ignore[import-untyped]
+
+from ..config import ENV, LOCAL_K8S_HOST
+
+LOGGER = logging.getLogger(__name__)
 
 
 def get_worker_k8s_secret_name(cluster_id: str) -> str:

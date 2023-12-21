@@ -3,14 +3,17 @@
 
 import argparse
 import base64
+import logging
 import time
 from tempfile import NamedTemporaryFile
 
 import kubernetes  # type: ignore[import-untyped]
 
 from .. import utils
-from ..config import ENV, LOCAL_K8S_HOST, LOGGER
+from ..config import ENV, LOCAL_K8S_HOST
 from . import starter, stopper
+
+LOGGER = logging.getLogger(__name__)
 
 
 def act(args: argparse.Namespace) -> None:

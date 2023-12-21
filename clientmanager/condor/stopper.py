@@ -1,9 +1,11 @@
 """For stopping Skymap Scanner clients on an HTCondor cluster."""
 
 
-import htcondor  # type: ignore[import]
+import logging
 
-from ..config import LOGGER
+import htcondor  # type: ignore[import-untyped]
+
+LOGGER = logging.getLogger(__name__)
 
 
 def stop(

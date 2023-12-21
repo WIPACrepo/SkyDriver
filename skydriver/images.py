@@ -1,12 +1,15 @@
 """Utilities for dealing with docker/cvmfs/singularity images."""
 
+
+import logging
 import re
 from pathlib import Path
 
 import cachetools.func
 import requests
 
-from .config import LOGGER
+LOGGER = logging.getLogger(__name__)
+
 
 # ---------------------------------------------------------------------------------------
 # constants
