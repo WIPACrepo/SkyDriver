@@ -1,10 +1,10 @@
 """Integration tests for the REST server."""
 
-# pylint: disable=redefined-outer-name
 
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import random
 import re
@@ -19,7 +19,13 @@ import skydriver
 import skydriver.images  # noqa: F401  # export
 from rest_tools.client import RestClient
 
-skydriver.config.config_logging("debug")
+LOGGER = logging.getLogger(__name__)
+
+
+# pylint: disable=redefined-outer-name
+
+
+skydriver.config.config_logging()
 
 StrDict = dict[str, Any]
 

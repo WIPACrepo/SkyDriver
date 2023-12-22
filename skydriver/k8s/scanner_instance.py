@@ -2,6 +2,7 @@
 instances."""
 
 
+import logging
 import uuid
 from pathlib import Path
 from typing import Any
@@ -16,11 +17,12 @@ from ..config import (
     ENV,
     K8S_CONTAINER_MEMORY_CLUSTER_STARTER_BYTES,
     K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES,
-    LOGGER,
     DebugMode,
 )
 from ..database import schema
 from .utils import KubeAPITools
+
+LOGGER = logging.getLogger(__name__)
 
 
 def get_cluster_auth_v1envvars(

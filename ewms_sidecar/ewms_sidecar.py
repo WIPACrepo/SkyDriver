@@ -2,13 +2,16 @@
 
 
 import argparse
+import logging
 import time
 from pathlib import Path
 
 from wipac_dev_tools import argparse_tools, logging_tools
 
 from . import condor
-from .config import ENV, LOGGER
+from .config import ENV
+
+LOGGER = logging.getLogger(__name__)
 
 
 def main() -> None:

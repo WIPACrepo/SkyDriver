@@ -1,14 +1,17 @@
 """Root python script for SkyDriver REST API server interface."""
 
 
+import logging
 from typing import Any
 
-import kubernetes.client  # type: ignore[import]
+import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient
 from rest_tools.server import RestHandlerSetup, RestServer
 
 from . import rest_handlers
-from .config import ENV, LOGGER, is_testing
+from .config import ENV, is_testing
+
+LOGGER = logging.getLogger(__name__)
 
 
 async def make(

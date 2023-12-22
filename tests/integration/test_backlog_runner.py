@@ -1,5 +1,6 @@
 """Integration tests for backlog runner."""
 
+
 # pylint: disable=redefined-outer-name
 
 import asyncio
@@ -12,7 +13,7 @@ import skydriver
 import skydriver.images  # noqa: F401  # export
 from rest_tools.client import RestClient
 
-skydriver.config.config_logging("debug")
+skydriver.config.config_logging()
 
 
 def print_it(obj: Any) -> None:

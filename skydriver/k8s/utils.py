@@ -2,13 +2,16 @@
 
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Iterator
 
 import kubernetes.client  # type: ignore[import-untyped]
 from kubernetes.client.rest import ApiException  # type: ignore[import-untyped]
 
-from ..config import ENV, K8S_CONTAINER_MEMORY_DEFAULT_BYTES, LOGGER
+from ..config import ENV, K8S_CONTAINER_MEMORY_DEFAULT_BYTES
+
+LOGGER = logging.getLogger(__name__)
 
 
 class KubeAPITools:

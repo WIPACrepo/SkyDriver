@@ -1,9 +1,11 @@
 """Util functions wrapping common htcondor actions."""
 
 
+import logging
+
 import htcondor  # type: ignore[import-untyped]
 
-from ..config import LOGGER
+LOGGER = logging.getLogger(__name__)
 
 
 def get_schedd_obj(collector: str, schedd: str) -> htcondor.Schedd:

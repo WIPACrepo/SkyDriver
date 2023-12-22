@@ -2,14 +2,17 @@
 
 
 import dataclasses as dc
+import logging
 from pathlib import Path
 from typing import Any
 
-import boto3  # type: ignore[import]
+import boto3  # type: ignore[import-untyped]
 import requests
 from rest_tools.client import RestClient
 
-from .config import ENV, LOGGER
+from .config import ENV
+
+LOGGER = logging.getLogger(__name__)
 
 
 def connect_to_skydriver() -> RestClient:

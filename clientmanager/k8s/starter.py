@@ -3,6 +3,7 @@
 
 import base64
 import json
+import logging
 import os
 import pprint
 from pathlib import Path
@@ -10,15 +11,11 @@ from typing import Any
 
 import kubernetes  # type: ignore[import-untyped]
 
-from ..config import (
-    ENV,
-    FORWARDED_ENV_VARS,
-    LOCAL_K8S_HOST,
-    LOGGER,
-    SECRET_FORWARDED_ENV_VARS,
-)
+from ..config import ENV, FORWARDED_ENV_VARS, LOCAL_K8S_HOST, SECRET_FORWARDED_ENV_VARS
 from ..utils import S3File
 from . import k8s_tools
+
+LOGGER = logging.getLogger(__name__)
 
 
 def make_k8s_job_desc(

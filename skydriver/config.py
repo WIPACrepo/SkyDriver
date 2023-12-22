@@ -1,17 +1,14 @@
 """Config settings."""
 
+
 import dataclasses as dc
 import enum
 import logging
 from typing import Any, Optional
 
-import coloredlogs  # type: ignore[import-untyped]
 import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
-from wipac_dev_tools import from_environment_as_dataclass
-
-LOGGER = logging.getLogger("skydriver")
-
+from wipac_dev_tools import from_environment_as_dataclass, logging_tools
 
 # --------------------------------------------------------------------------------------
 # Constants
@@ -55,6 +52,7 @@ class EnvConfig:
     REST_PORT: int = 8080
     CI_TEST: bool = False
     LOG_LEVEL: str = "DEBUG"
+    LOG_LEVEL_THIRD_PARTY: str = "WARNING"
 
     SCAN_BACKLOG_MAX_ATTEMPTS: int = 3
     SCAN_BACKLOG_RUNNER_SHORT_DELAY: int = 15
@@ -182,13 +180,23 @@ def is_testing() -> bool:
     return ENV.CI_TEST
 
 
-def config_logging(level: str) -> None:
+def config_logging() -> None:
     """Configure the logging level and format.
 
     This is separated into a function for consistency between app and
     testing environments.
     """
-    coloredlogs.install(
-        fmt="%(asctime)s.%(msecs)03d [%(levelname)8s] %(hostname)s %(name)s[%(process)d] %(message)s <%(filename)s:%(lineno)s/%(funcName)s()>",
-        level=level.upper(),
+    hand = logging.StreamHandler()
+    hand.setFormatter(
+        logging.Formatter(
+            "%(asctime)s.%(msecs)03d [%(levelname)8s] %(name)s[%(process)d] %(message)s <%(filename)s:%(lineno)s/%(funcName)s()>",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    logging.getLogger().addHandler(hand)
+    logging_tools.set_level(
+        ENV.LOG_LEVEL,  # type: ignore[arg-type]
+        first_party_loggers=__name__.split(".", maxsplit=1)[0],
+        third_party_level=ENV.LOG_LEVEL_THIRD_PARTY,  # type: ignore[arg-type]
+        future_third_parties=[],
     )

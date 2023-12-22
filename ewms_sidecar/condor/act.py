@@ -2,12 +2,15 @@
 
 
 import argparse
+import logging
 
 import htcondor  # type: ignore[import-untyped]
 
 from .. import utils
-from ..config import ENV, LOGGER
+from ..config import ENV
 from . import condor_tools, starter, watcher
+
+LOGGER = logging.getLogger(__name__)
 
 
 def act(args: argparse.Namespace) -> None:

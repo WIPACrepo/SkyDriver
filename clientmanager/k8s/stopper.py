@@ -1,10 +1,13 @@
 """For stopping Skymap Scanner clients on a K8s cluster."""
 
 
-import kubernetes  # type: ignore[import]
+import logging
 
-from ..config import LOGGER
+import kubernetes  # type: ignore[import-untyped]
+
 from . import k8s_tools
+
+LOGGER = logging.getLogger(__name__)
 
 
 def stop(

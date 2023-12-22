@@ -2,6 +2,7 @@
 
 
 import collections
+import logging
 import time
 from pprint import pformat
 from typing import Any, Iterator
@@ -10,13 +11,11 @@ import htcondor  # type: ignore[import-untyped]
 from rest_tools.client import RestClient
 
 from .. import utils
-from ..config import (
-    LOGGER,
-    WATCHER_INTERVAL,
-    WATCHER_MAX_RUNTIME,
-    WATCHER_N_TOP_TASK_ERRORS,
-)
+from ..config import WATCHER_INTERVAL, WATCHER_MAX_RUNTIME, WATCHER_N_TOP_TASK_ERRORS
 from . import condor_tools as ct
+
+LOGGER = logging.getLogger(__name__)
+
 
 PROJECTION = [
     "ClusterId",

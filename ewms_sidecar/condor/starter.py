@@ -1,14 +1,17 @@
 """For starting Skymap Scanner clients on an HTCondor cluster."""
 
 
+import logging
 from pathlib import Path
 from typing import Any
 
 import htcondor  # type: ignore[import-untyped]
 import humanfriendly
 
-from ..config import ENV, FORWARDED_ENV_VARS, LOGGER
+from ..config import ENV, FORWARDED_ENV_VARS
 from ..utils import S3File
+
+LOGGER = logging.getLogger(__name__)
 
 
 def make_condor_logs_dir() -> Path:
