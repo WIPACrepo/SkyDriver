@@ -88,8 +88,6 @@ skydriver-clientmanager-ewms-sidecar
 │           ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.8.2]
 │           │   └── six [required: >=1.5, installed: 1.16.0]
 │           └── urllib3 [required: >=1.25.4,<2.1, installed: 1.26.18]
-├── coloredlogs [required: Any, installed: 15.0.1]
-│   └── humanfriendly [required: >=9.1, installed: 10.0]
 ├── dacite [required: Any, installed: 1.8.1]
 ├── htcondor [required: Any, installed: 23.2.0]
 ├── humanfriendly [required: Any, installed: 10.0]
