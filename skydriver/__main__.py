@@ -34,7 +34,7 @@ async def main() -> None:
     # REST Server
     LOGGER.info("Setting up REST server...")
     rs = await server.make(mongo_client, k8s_batch_api)
-    rs.run(address=ENV.REST_HOST, port=ENV.REST_PORT)  # type: ignore[no-untyped-call]
+    rs.startup(address=ENV.REST_HOST, port=ENV.REST_PORT)  # type: ignore[no-untyped-call]
     try:
         await asyncio.Event().wait()
     finally:

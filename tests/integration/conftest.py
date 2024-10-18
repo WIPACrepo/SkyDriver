@@ -136,7 +136,7 @@ async def server(
     )
     await asyncio.sleep(0)  # start up previous task
     rs = await make(mongo_client, k8s_batch_api)
-    rs.run(address="localhost", port=port)  # type: ignore[no-untyped-call]
+    rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:
         return RestClient(f"http://localhost:{port}", retries=0)
