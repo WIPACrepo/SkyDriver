@@ -64,9 +64,27 @@ async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
-    """The main loop."""
+    """Error-handling around the scan backlog runner loop."""
     LOGGER.info("Started scan backlog runner.")
 
+    while True:
+        # let's go!
+        try:
+            await _run(mongo_client, k8s_batch_api)
+        except Exception as e:
+            LOGGER.exception(e)
+
+        # wait hopefully log enough that any transient errors are resolved,
+        #   like a mongo pod failure and restart
+        await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
+        LOGGER.info("Restarted scan backlog runner.")
+
+
+async def _run(
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    k8s_batch_api: kubernetes.client.BatchV1Api,
+) -> None:
+    """The (actual) main loop."""
     manifests = database.interface.ManifestClient(mongo_client)
     scan_backlog = database.interface.ScanBacklogClient(mongo_client)
 
