@@ -10,7 +10,6 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from tornado import web
 
-from ..config import ENV
 from . import mongodc, schema
 from .utils import (
     _DB_NAME,
@@ -18,6 +17,7 @@ from .utils import (
     _RESULTS_COLL_NAME,
     _SCAN_BACKLOG_COLL_NAME,
 )
+from ..config import ENV
 
 LOGGER = logging.getLogger(__name__)
 
@@ -255,7 +255,9 @@ class ResultClient:
     """Wraps the attribute for the result of a scan."""
 
     def __init__(self, motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
-        self.collection: mongodc.MotorDataclassCollection = mongodc.MotorDataclassCollection(
+        self.collection: (
+            mongodc.MotorDataclassCollection
+        ) = mongodc.MotorDataclassCollection(
             motor_client[_DB_NAME], _RESULTS_COLL_NAME  # type: ignore[index]
         )
 
@@ -315,7 +317,9 @@ class ScanBacklogClient:
     """Wraps the attribute for the result of a scan."""
 
     def __init__(self, motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
-        self.collection: mongodc.MotorDataclassCollection = mongodc.MotorDataclassCollection(
+        self.collection: (
+            mongodc.MotorDataclassCollection
+        ) = mongodc.MotorDataclassCollection(
             motor_client[_DB_NAME], _SCAN_BACKLOG_COLL_NAME  # type: ignore[index]
         )
 
@@ -324,7 +328,8 @@ class ScanBacklogClient:
 
         This for when the container is restarted (process is killed).
         """
-        LOGGER.debug("fetching & marking top backlog entry as a pending...")
+        # LOGGER.debug("fetching & marking top backlog entry as a pending...")
+        # ^^^ don't log too often
 
         # atomically find & update
         entry = await self.collection.find_one_and_update(

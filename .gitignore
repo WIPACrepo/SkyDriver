@@ -139,3 +139,6 @@ gke-cluster-config.yaml
 
 # wipac-dev-py-setup-action
 !dependencies*.log
+
+.idea/
+

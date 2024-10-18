@@ -1,6 +1,5 @@
 """Start server as application."""
 
-
 import asyncio
 import logging
 
@@ -28,14 +27,14 @@ async def main() -> None:
     # Scan Backlog Runner
     LOGGER.info("Starting scan backlog runner...")
     backlog_task = asyncio.create_task(
-        k8s.scan_backlog.startup(mongo_client, k8s_batch_api)
+        k8s.scan_backlog.run(mongo_client, k8s_batch_api)
     )
     await asyncio.sleep(0)  # start up previous task
 
     # REST Server
     LOGGER.info("Setting up REST server...")
     rs = await server.make(mongo_client, k8s_batch_api)
-    rs.startup(address=ENV.REST_HOST, port=ENV.REST_PORT)  # type: ignore[no-untyped-call]
+    rs.run(address=ENV.REST_HOST, port=ENV.REST_PORT)  # type: ignore[no-untyped-call]
     try:
         await asyncio.Event().wait()
     finally:
