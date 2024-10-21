@@ -1,6 +1,5 @@
 """The queuing logic for launching skymap scanner instances."""
 
-
 import asyncio
 import logging
 import pickle
@@ -10,9 +9,9 @@ import bson
 import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from .utils import KubeAPITools
 from .. import database
 from ..config import ENV
-from .utils import KubeAPITools
 
 LOGGER = logging.getLogger(__name__)
 
@@ -61,17 +60,37 @@ async def get_next_backlog_entry(
         return entry  # ready to start job
 
 
-async def startup(
+async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
-    """The main loop."""
+    """Error-handling around the scan backlog runner loop."""
     LOGGER.info("Started scan backlog runner.")
 
+    while True:
+        # let's go!
+        try:
+            await _run(mongo_client, k8s_batch_api)
+        except Exception as e:
+            LOGGER.exception(e)
+
+        # wait hopefully log enough that any transient errors are resolved,
+        #   like a mongo pod failure and restart
+        await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
+        LOGGER.info("Restarted scan backlog runner.")
+
+
+async def _run(
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    k8s_batch_api: kubernetes.client.BatchV1Api,
+) -> None:
+    """The (actual) main loop."""
     manifests = database.interface.ManifestClient(mongo_client)
     scan_backlog = database.interface.ScanBacklogClient(mongo_client)
 
     short_sleep = True  # don't wait for full delay after first starting up (helpful for testing new changes)
+
+    last_log_time = 0.0  # keep track of last time a log was made so we're not annoying
 
     while True:
         if short_sleep:
@@ -79,12 +98,18 @@ async def startup(
         else:
             await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
 
+        # like a heartbeat for the logs
+        if time.time() - last_log_time > ENV.SCAN_BACKLOG_RUNNER_DELAY:
+            LOGGER.info("scan backlog runner is still alive")
+            last_log_time = time.time()
+
         # get next entry
         try:
             entry = await get_next_backlog_entry(scan_backlog, manifests)
             short_sleep = False
         except database.mongodc.DocumentNotFoundException:
-            LOGGER.debug("no backlog entry found")
+            if not short_sleep:  # don't log too often
+                LOGGER.debug("no backlog entry found")
             short_sleep = True
             continue  # empty queue
 

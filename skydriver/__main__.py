@@ -1,6 +1,5 @@
 """Start server as application."""
 
-
 import asyncio
 import logging
 
@@ -28,7 +27,7 @@ async def main() -> None:
     # Scan Backlog Runner
     LOGGER.info("Starting scan backlog runner...")
     backlog_task = asyncio.create_task(
-        k8s.scan_backlog.startup(mongo_client, k8s_batch_api)
+        k8s.scan_backlog.run(mongo_client, k8s_batch_api)
     )
     await asyncio.sleep(0)  # start up previous task
 

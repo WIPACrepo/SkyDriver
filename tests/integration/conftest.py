@@ -1,6 +1,5 @@
 """Fixtures."""
 
-
 import asyncio
 import socket
 from typing import Any, AsyncIterator, Callable
@@ -9,9 +8,10 @@ from unittest.mock import Mock
 import kubernetes.client  # type: ignore[import]
 import pytest
 import pytest_asyncio
+from rest_tools.client import RestClient
+
 import skydriver
 import skydriver.images  # noqa: F401  # export
-from rest_tools.client import RestClient
 from skydriver.database import create_mongodb_client
 from skydriver.database.utils import drop_collections
 from skydriver.server import make
@@ -132,7 +132,7 @@ async def server(
     mongo_client = await create_mongodb_client()
     k8s_batch_api = Mock()
     backlog_task = asyncio.create_task(
-        skydriver.k8s.scan_backlog.startup(mongo_client, k8s_batch_api)
+        skydriver.k8s.scan_backlog.run(mongo_client, k8s_batch_api)
     )
     await asyncio.sleep(0)  # start up previous task
     rs = await make(mongo_client, k8s_batch_api)

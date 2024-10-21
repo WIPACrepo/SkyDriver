@@ -107,8 +107,10 @@ def friendly_nested_asdict(value: Any) -> Any:
     if isinstance(value, list):
         return [friendly_nested_asdict(v) for v in value]
 
-    if dc.is_dataclass(value):
+    try:
         return dc.asdict(value)
+    except TypeError:  # happens when the value is not a dataclass instance
+        pass
 
     return value
 
