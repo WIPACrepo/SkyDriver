@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.7 (2024-10-21)
+
+### Other
+
+* Turn Off Auto-Patch Releases ([#118](https://github.com/WIPACrepo/SkyDriver/issues/118)) ([`3a8e846`](https://github.com/WIPACrepo/SkyDriver/commit/3a8e846b2b55f2bbffc758ba796088f481b37b13))
+* Use Local Loggers ([#117](https://github.com/WIPACrepo/SkyDriver/issues/117)) ([`70ad00d`](https://github.com/WIPACrepo/SkyDriver/commit/70ad00d2e7dadea427b96b39e4f75c827760fe81))
+
 ## v1.0.6 (2023-12-20)
 
 ### Other
