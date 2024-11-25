@@ -11,8 +11,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from tornado import web
 
 from .utils import KubeAPITools
-from .. import database, k8s
-from ..config import ENV, SCAN_MIN_PRIORITY_TO_START_NOW
+from .. import database
+from ..config import ENV
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,24 +22,8 @@ async def designate_for_startup(
     job_obj: kubernetes.client.V1Job,
     scan_backlog: database.interface.ScanBacklogClient,
     priority: int,
-    k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
     """Enqueue k8s job to be started by job-starter thread."""
-
-    # start now? -- skip the backlog
-    if priority >= SCAN_MIN_PRIORITY_TO_START_NOW:
-        try:
-            resp = k8s.utils.KubeAPITools.start_job(
-                k8s_batch_api,
-                job_obj,
-            )
-            LOGGER.info(resp)
-            return
-        except kubernetes.client.exceptions.ApiException as e:
-            # job (entry) will be enqueued and tried again per priority
-            LOGGER.exception(e)
-
-    # start later?
     try:
         LOGGER.info(f"enqueuing k8s job for {scan_id=}")
         entry = database.schema.ScanBacklogEntry(

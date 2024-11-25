@@ -4,6 +4,7 @@ import asyncio
 import dataclasses as dc
 import json
 import logging
+import pickle
 import uuid
 from typing import Any, Type, TypeVar
 
@@ -25,6 +26,7 @@ from .config import (
     KNOWN_CLUSTERS,
     is_testing,
 )
+from .database import schema
 from .k8s.scan_backlog import designate_for_startup
 
 LOGGER = logging.getLogger(__name__)
@@ -493,7 +495,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             scanner_wrapper.job_obj,
             self.scan_backlog,
             priority,
-            self.k8s_batch_api,
         )
 
         self.write(
