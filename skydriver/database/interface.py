@@ -344,7 +344,7 @@ class ScanBacklogClient:
                 "pending_timestamp": {
                     "$lt": time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
                 },
-                "archived": {"$ne": True},  # not started
+                "archived": {"$ne": True},  # aka, only relevant entries
             },
             {
                 "$set": {"pending_timestamp": time.time()},
@@ -389,26 +389,31 @@ class ScanBacklogClient:
         LOGGER.debug(f"Inserted backlog entry for {entry.scan_id=}")
 
     async def get_all(self) -> AsyncIterator[dict]:
-        """Get all entries in backlog.
+        """Get all entries in backlog (excluding archived entries).
 
         Doesn't include all fields.
         """
         LOGGER.debug("getting all entries in backlog")
         async for entry in self.collection.find(
-            {},
-            {"_id": False, "pickled_k8s_job": False},
+            {
+                "archived": {"$ne": True},  # aka, only relevant entries
+            },
+            {
+                "_id": False,
+                "pickled_k8s_job": False,
+            },
             sort=[("timestamp", ASCENDING)],
             return_dclass=dict,
         ):
             yield entry
 
     async def is_in_backlog(self, scan_id: str) -> bool:
-        """Return whether the scan id is in the backlog."""
+        """Return whether the scan id is in the backlog (excluding archived entries)."""
         LOGGER.debug(f"looking for {scan_id} in backlog")
         async for _ in self.collection.find(
             {
                 "scan_id": scan_id,
-                "archived": {"$ne": True},  # not started
+                "archived": {"$ne": True},  # aka, only relevant entries
             },
             return_dclass=dict,
         ):
