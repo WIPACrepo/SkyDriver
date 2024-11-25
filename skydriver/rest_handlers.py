@@ -570,6 +570,56 @@ async def get_result_safely(
 # -----------------------------------------------------------------------------
 
 
+class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles actions on copying a scan's manifest and starting that."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/actions/rescan$"
+
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    async def post(self, scan_id: str) -> None:
+        # response args
+        manifest_projection = self.get_argument(
+            "manifest_projection",
+            default=(
+                all_dc_fields(database.schema.Manifest)
+                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+            ),
+            type=set[str],
+        )
+
+        # replicate original manifest
+        manifest = await self.manifests.get(scan_id, True)
+        manifest.scan_id = uuid.uuid4().hex  # make new id
+        manifest.classifiers.update({"rescan": True, "origin_scan_id": scan_id})
+        manifest = await self.manifests.put(manifest)
+
+        # grab old backlog entry
+        scan_backlog_entry = await self.scan_backlog.collection.find_one(
+            {"scan_id": scan_id},
+            return_dclass=schema.ScanBacklogEntry,
+        )
+        # -> change fields as needed
+        #       kubernetes:     'name' must be unique
+        #       internal logic: 'name' must be deterministic (based on scan_id)
+        k8s_job = pickle.loads(scan_backlog_entry.pickled_k8s_job)
+        k8s_job.metadata.name = SkymapScannerK8sWrapper.get_job_name(manifest.scan_id)
+
+        # start
+        await designate_for_startup(
+            manifest.scan_id,
+            k8s_job,
+            self.scan_backlog,
+            manifest.priority,
+        )
+
+        self.write(
+            dict_projection(dc.asdict(manifest), manifest_projection),
+        )
+
+
+# -----------------------------------------------------------------------------
+
+
 class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles actions on scan's manifest."""
 
