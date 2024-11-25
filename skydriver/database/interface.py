@@ -82,7 +82,10 @@ class ManifestClient:
             priority=priority,
         )
 
-        # db
+        return await self.put(manifest)
+
+    async def put(self, manifest: schema.Manifest) -> schema.Manifest:
+        """Put into db."""
         try:
             manifest = await self.collection.find_one_and_update(
                 {"scan_id": manifest.scan_id},
@@ -94,7 +97,7 @@ class ManifestClient:
         except mongodc.DocumentNotFoundException as e:
             raise web.HTTPError(
                 500,
-                log_message=f"Failed to post {self.collection.name} document ({scan_id})",
+                log_message=f"Failed to post {self.collection.name} document ({manifest.scan_id})",
             ) from e
 
         return manifest

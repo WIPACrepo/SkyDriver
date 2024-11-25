@@ -1,6 +1,5 @@
 """Handlers for the SkyDriver REST API server interface."""
 
-
 import asyncio
 import dataclasses as dc
 import json
@@ -21,12 +20,12 @@ from .config import (
     DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
     DEFAULT_WORKER_DISK_BYTES,
     DEFAULT_WORKER_MEMORY_BYTES,
+    DebugMode,
     ENV,
     KNOWN_CLUSTERS,
-    SCAN_MIN_PRIORITY_TO_START_NOW,
-    DebugMode,
     is_testing,
 )
+from .k8s.scan_backlog import designate_for_startup
 
 LOGGER = logging.getLogger(__name__)
 
@@ -395,11 +394,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=int,
             default=4 * 60 * 60,
         )
-        skyscan_mq_client_timeout_wait_for_first_message: int | None = self.get_argument(
-            # TODO - remove when TMS is handling workforce-scaling
-            "skyscan_mq_client_timeout_wait_for_first_message",
-            type=int,
-            default=-1,  # elephant in Cairo
+        skyscan_mq_client_timeout_wait_for_first_message: int | None = (
+            self.get_argument(
+                # TODO - remove when TMS is handling workforce-scaling
+                "skyscan_mq_client_timeout_wait_for_first_message",
+                type=int,
+                default=-1,  # elephant in Cairo
+            )
         )
         if skyscan_mq_client_timeout_wait_for_first_message == -1:
             skyscan_mq_client_timeout_wait_for_first_message = None
@@ -487,39 +488,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             priority,
         )
 
-        enqueue = True
-
-        # start now?
-        if priority >= SCAN_MIN_PRIORITY_TO_START_NOW:
-            try:
-                resp = k8s.utils.KubeAPITools.start_job(
-                    self.k8s_batch_api,
-                    scanner_wrapper.job_obj,
-                )
-                LOGGER.info(resp)
-            except kubernetes.client.exceptions.ApiException as e:
-                # job (entry) will be enqueued and tried again per priority
-                LOGGER.exception(e)
-            else:
-                enqueue = False
-
-        # start later?
-        if enqueue:
-            # enqueue skymap scanner instance to be started in-time
-            try:
-                LOGGER.info(f"enqueuing k8s job for {scan_id=}")
-                await k8s.scan_backlog.enqueue(
-                    scan_id,
-                    scanner_wrapper.job_obj,
-                    self.scan_backlog,
-                    manifest.priority,
-                )
-            except Exception as e:
-                LOGGER.exception(e)
-                raise web.HTTPError(
-                    400,
-                    log_message="Failed to enqueue Kubernetes job for Scanner instance",
-                )
+        await designate_for_startup(
+            scan_id,
+            scanner_wrapper.job_obj,
+            self.scan_backlog,
+            priority,
+            self.k8s_batch_api,
+        )
 
         self.write(
             dict_projection(dc.asdict(manifest), manifest_projection),
