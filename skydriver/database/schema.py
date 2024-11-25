@@ -50,6 +50,7 @@ class ScanBacklogEntry(ScanIDDataclass):
     priority: int = 0
     pending_timestamp: float = 0.0
     next_attempt: int = 0
+    archived: bool = False  # aka, the entry is no longer relevant to the backlog
 
     def __repr__(self) -> str:
         dicto = dc.asdict(self)
@@ -252,7 +253,9 @@ class Manifest(ScanIDDataclass):
     # args placed in k8s job obj
     scanner_server_args: str
 
-    priority: int = 0  # same as https://htcondor.readthedocs.io/en/latest/users-manual/priorities-and-preemption.html#job-priority
+    priority: int = (
+        0  # same as https://htcondor.readthedocs.io/en/latest/users-manual/priorities-and-preemption.html#job-priority
+    )
 
     # open to requestor
     classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)

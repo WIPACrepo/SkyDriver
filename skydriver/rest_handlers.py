@@ -28,6 +28,7 @@ from .config import (
 )
 from .database import schema
 from .k8s.scan_backlog import designate_for_startup
+from .k8s.scanner_instance import SkymapScannerK8sWrapper
 
 LOGGER = logging.getLogger(__name__)
 
@@ -453,7 +454,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         scan_id = uuid.uuid4().hex
 
         # get the container info ready
-        scanner_wrapper = k8s.scanner_instance.SkymapScannerK8sWrapper(
+        scanner_wrapper = SkymapScannerK8sWrapper(
             docker_tag=docker_tag,
             scan_id=scan_id,
             # server
@@ -854,7 +855,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             try:
                 pods_411["pod_status"] = k8s.utils.KubeAPITools.get_pod_status(
                     self.k8s_batch_api,
-                    k8s.scanner_instance.SkymapScannerK8sWrapper.get_job_name(scan_id),
+                    SkymapScannerK8sWrapper.get_job_name(scan_id),
                     ENV.K8S_NAMESPACE,
                 )
                 pods_411["pod_message"] = "retrieved"
@@ -898,7 +899,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         try:
             pod_container_logs = k8s.utils.KubeAPITools.get_container_logs(
                 self.k8s_batch_api,
-                k8s.scanner_instance.SkymapScannerK8sWrapper.get_job_name(scan_id),
+                SkymapScannerK8sWrapper.get_job_name(scan_id),
                 ENV.K8S_NAMESPACE,
             )
             pod_container_logs_message = "retrieved"

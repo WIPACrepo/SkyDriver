@@ -55,14 +55,14 @@ async def get_next_backlog_entry(
             LOGGER.info(
                 f"Backlog entry was already attempted {ENV.SCAN_BACKLOG_MAX_ATTEMPTS} times ({entry.scan_id=})"
             )
-            await scan_backlog.remove(entry)
+            await scan_backlog.archive_entry(entry)
             continue
 
         # check if scan was aborted (cancelled)
         manifest = await manifests.get(entry.scan_id, incl_del=True)
         if manifest.is_deleted:
             LOGGER.info(f"Backlog entry was aborted ({entry.scan_id=})")
-            await scan_backlog.remove(entry)
+            await scan_backlog.archive_entry(entry)
             continue
 
         # all good!
@@ -146,4 +146,4 @@ async def _run(
             continue
 
         # remove from backlog now that startup succeeded
-        await scan_backlog.remove(entry)
+        await scan_backlog.archive_entry(entry)

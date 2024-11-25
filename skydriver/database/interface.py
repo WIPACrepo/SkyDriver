@@ -343,7 +343,8 @@ class ScanBacklogClient:
                 # still be in flight by other processes)
                 "pending_timestamp": {
                     "$lt": time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
-                }
+                },
+                "archived": {"$ne": True},  # not started
             },
             {
                 "$set": {"pending_timestamp": time.time()},
@@ -366,11 +367,16 @@ class ScanBacklogClient:
             LOGGER.debug(f"backlog entry ready for revival ({entry.scan_id=})")
         return entry
 
-    async def remove(self, entry: schema.ScanBacklogEntry) -> schema.ScanBacklogEntry:
-        """Remove entry, `schema.ScanBacklogEntry`."""
-        LOGGER.debug("removing ScanBacklogEntry")
-        res = await self.collection.delete_one({"scan_id": entry.scan_id})
-        LOGGER.debug(f"delete_one result: {res}")
+    async def archive_entry(
+        self, entry: schema.ScanBacklogEntry
+    ) -> schema.ScanBacklogEntry:
+        """Archive the entry, `schema.ScanBacklogEntry`."""
+        LOGGER.debug("archiving ScanBacklogEntry")
+        res = await self.collection.find_one_and_update(
+            {"scan_id": entry.scan_id},
+            {"archived": True},
+        )
+        LOGGER.debug(f"archived result: {res}")
         return entry
 
     async def insert(self, entry: schema.ScanBacklogEntry) -> None:
@@ -399,7 +405,10 @@ class ScanBacklogClient:
         """Return whether the scan id is in the backlog."""
         LOGGER.debug(f"looking for {scan_id} in backlog")
         async for _ in self.collection.find(
-            {"scan_id": scan_id},
+            {
+                "scan_id": scan_id,
+                "archived": {"$ne": True},  # not started
+            },
             return_dclass=dict,
         ):
             return True
