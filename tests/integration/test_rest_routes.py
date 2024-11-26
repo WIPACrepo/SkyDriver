@@ -1,6 +1,5 @@
 """Integration tests for the REST server."""
 
-
 import asyncio
 import hashlib
 import json
@@ -15,9 +14,9 @@ from typing import Any, Callable
 import humanfriendly
 import pytest
 import requests
-import skydriver
-import skydriver.images  # noqa: F401  # export
 from rest_tools.client import RestClient
+
+import skydriver.images  # noqa: F401  # export
 
 LOGGER = logging.getLogger(__name__)
 
@@ -702,7 +701,7 @@ def get_tms_args(
         ],
     ],
 )
-async def test_00(
+async def test_000(
     clusters: list | dict,
     docker_tag_input: str,
     docker_tag_expected: str,
@@ -713,9 +712,6 @@ async def test_00(
     """Test normal scan creation and retrieval."""
     rc = server()
 
-    #
-    # LAUNCH SCAN
-    #
     manifest = await _launch_scan(
         rc,
         {
@@ -725,7 +721,25 @@ async def test_00(
         },
         get_tms_args(clusters, docker_tag_expected, known_clusters),
     )
+
+    await _after_scan_start_logic(
+        rc,
+        manifest,
+        clusters,
+        known_clusters,
+        test_wait_before_teardown,
+    )
+
+
+async def _after_scan_start_logic(
+    rc: RestClient,
+    manifest: dict,
+    clusters: list | dict,
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+):
     scan_id = manifest["scan_id"]
+
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -796,7 +810,53 @@ async def test_00(
 POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
-async def test_01__bad_data(
+async def test_010__rescan(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+) -> None:
+    rc = server()
+
+    clusters = {"foobar": 1, "a-schedd": 999, "cloud": 4568}
+
+    # OG SCAN
+    manifest_alpha = await _launch_scan(
+        rc,
+        {
+            **POST_SCAN_BODY,
+            "docker_tag": "3.4.0",
+            "cluster": clusters,
+        },
+        get_tms_args(clusters, "3.4.0", known_clusters),
+    )
+    await _after_scan_start_logic(
+        rc,
+        manifest_alpha,
+        clusters,
+        known_clusters,
+        test_wait_before_teardown,
+    )
+
+    # RESCAN
+    manifest_beta = await rc.request(
+        "POST",
+        f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
+        {"manifest_projection": ["*"]},
+    )
+    assert manifest_beta == manifest_alpha  # TODO
+    await _after_scan_start_logic(
+        rc,
+        manifest_beta,
+        clusters,
+        known_clusters,
+        test_wait_before_teardown,
+    )
+
+
+########################################################################################
+
+
+async def test_100__bad_data(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
