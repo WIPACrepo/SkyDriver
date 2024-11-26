@@ -21,7 +21,7 @@ durationpy==0.9
 google-auth==2.36.0
 googleapis-common-protos==1.56.1
 grpcio==1.68.0
-htcondor==24.1.1
+htcondor==24.2.1
 humanfriendly==10.0
 idna==3.10
 importlib_metadata==8.5.0
@@ -70,7 +70,7 @@ zipp==3.21.0
 cryptography==43.0.3
 └── cffi [required: >=1.12, installed: 1.17.1]
     └── pycparser [required: Any, installed: 2.22]
-pipdeptree==2.23.4
+pipdeptree==2.24.0
 ├── packaging [required: >=24.1, installed: 24.2]
 └── pip [required: >=24.2, installed: 24.3.1]
 setuptools==65.5.1
@@ -89,7 +89,7 @@ skydriver-clientmanager-ewms-sidecar
 │           │   └── six [required: >=1.5, installed: 1.16.0]
 │           └── urllib3 [required: >=1.25.4,<3,!=2.2.0, installed: 2.2.3]
 ├── dacite [required: Any, installed: 1.8.1]
-├── htcondor [required: Any, installed: 24.1.1]
+├── htcondor [required: Any, installed: 24.2.1]
 ├── humanfriendly [required: Any, installed: 10.0]
 ├── kubernetes [required: Any, installed: 31.0.0]
 │   ├── certifi [required: >=14.05.14, installed: 2024.8.30]
