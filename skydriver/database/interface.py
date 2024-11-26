@@ -401,10 +401,7 @@ class ScanBacklogClient:
 
         async for entry in self.collection.find(
             find_filter,
-            {
-                "_id": False,
-                "pickled_k8s_job": False,
-            },
+            {"_id": False},
             sort=[("timestamp", ASCENDING)],
             return_dclass=dict,
         ):
