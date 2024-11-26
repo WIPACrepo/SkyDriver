@@ -819,6 +819,7 @@ async def _get_backlog_entry(
         backlog = await rc.request("GET", "/scans/backlog", {"include_archived": True})
     else:
         backlog = await rc.request("GET", "/scans/backlog")
+    print(backlog)
     return next(b for b in backlog if b["scan_id"] == scan_id)
 
 
