@@ -815,10 +815,10 @@ async def _get_backlog_entry(
     scan_id: str,
     include_archived: bool = False,
 ) -> dict:
+    args = {"projection": "*"}
     if include_archived:
-        backlog = await rc.request("GET", "/scans/backlog", {"include_archived": True})
-    else:
-        backlog = await rc.request("GET", "/scans/backlog")
+        args.update({"include_archived": True})
+    backlog = await rc.request("GET", "/scans/backlog", args)
     print(backlog)
     return next(b for b in backlog if b["scan_id"] == scan_id)
 
