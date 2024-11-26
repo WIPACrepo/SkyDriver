@@ -815,7 +815,7 @@ async def _get_backlog_entry(
     scan_id: str,
     include_archived: bool = False,
 ) -> dict:
-    args = {"projection": "*"}
+    args: dict = {"projection": "*"}
     if include_archived:
         args.update({"include_archived": True})
     backlog = await rc.request("GET", "/scans/backlog", args)
