@@ -388,16 +388,19 @@ class ScanBacklogClient:
         LOGGER.debug(f"insert result: {res}")
         LOGGER.debug(f"Inserted backlog entry for {entry.scan_id=}")
 
-    async def get_all(self) -> AsyncIterator[dict]:
-        """Get all entries in backlog (excluding archived entries).
+    async def get_all(self, include_archived: bool = False) -> AsyncIterator[dict]:
+        """Get all entries in backlog (excluding archived entries, unless specified).
 
         Doesn't include all fields.
         """
         LOGGER.debug("getting all entries in backlog")
+
+        find_filter = {}
+        if not include_archived:  # this is most common
+            find_filter = {"archived": {"$ne": True}}
+
         async for entry in self.collection.find(
-            {
-                "archived": {"$ne": True},  # aka, only relevant entries
-            },
+            find_filter,
             {
                 "_id": False,
                 "pickled_k8s_job": False,
