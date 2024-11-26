@@ -374,7 +374,7 @@ class ScanBacklogClient:
         LOGGER.debug("archiving ScanBacklogEntry")
         res = await self.collection.find_one_and_update(
             {"scan_id": entry.scan_id},
-            {"archived": True},
+            {"$set": {"archived": True}},
             return_dclass=schema.ScanBacklogEntry,
         )
         LOGGER.debug(f"archived result: {res}")
