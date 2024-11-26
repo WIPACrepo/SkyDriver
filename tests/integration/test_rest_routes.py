@@ -863,7 +863,7 @@ async def test_010__rescan(
     }
     same_vals = [
         "event_i3live_json_dict__hash",
-        "ewms_task.env_vars",
+        "ewms_task",
         "priority",
         "scanner_server_args",
         "timestamp",
