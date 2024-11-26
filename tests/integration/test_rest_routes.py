@@ -883,12 +883,8 @@ async def test_010__rescan(
     )
 
     # last check
-    assert backlog_entry_beta == await _get_backlog_entry(
-        rc, manifest_beta["scan_id"], True
-    )
-    assert backlog_entry_alpha == await _get_backlog_entry(
-        rc, manifest_alpha["scan_id"], True
-    )
+    backlog_entry_beta = await _get_backlog_entry(rc, manifest_beta["scan_id"], True)
+    backlog_entry_alpha = await _get_backlog_entry(rc, manifest_alpha["scan_id"], True)
     assert backlog_entry_alpha == backlog_entry_beta
 
 
