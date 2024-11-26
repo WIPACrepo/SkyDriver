@@ -856,13 +856,10 @@ async def test_010__rescan(
         f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
         {"manifest_projection": ["*"]},
     )
-    assert manifest_beta == manifest_alpha  # TODO
-    # look at backlog
-    backlog_entry_alpha = await _get_backlog_entry(rc, manifest_alpha["scan_id"], True)
-    backlog_entry_beta = await _get_backlog_entry(rc, manifest_beta["scan_id"])
-    assert backlog_entry_beta["classifiers"] == {
-        **backlog_entry_alpha["classifiers"],
-        **{"rescan": True, "origin_scan_id": backlog_entry_alpha["scan_id"]},
+    # compare manifests
+    assert manifest_beta["classifiers"] == {
+        **manifest_alpha["classifiers"],
+        **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
     }
     same_vals = [
         "event_i3live_json_dict__hash",
@@ -872,7 +869,11 @@ async def test_010__rescan(
         "timestamp",
     ]
     for key in same_vals:
-        assert backlog_entry_beta[key] == backlog_entry_alpha[key]
+        assert manifest_beta[key] == manifest_alpha[key]
+    # compare backlog entries
+    backlog_entry_alpha = await _get_backlog_entry(rc, manifest_alpha["scan_id"], True)
+    backlog_entry_beta = await _get_backlog_entry(rc, manifest_beta["scan_id"])
+    assert backlog_entry_alpha == backlog_entry_beta
     # continue on...
     await _after_scan_start_logic(
         rc,
@@ -881,11 +882,6 @@ async def test_010__rescan(
         known_clusters,
         test_wait_before_teardown,
     )
-
-    # last check
-    backlog_entry_beta = await _get_backlog_entry(rc, manifest_beta["scan_id"], True)
-    backlog_entry_alpha = await _get_backlog_entry(rc, manifest_alpha["scan_id"], True)
-    assert backlog_entry_alpha == backlog_entry_beta
 
 
 ########################################################################################
