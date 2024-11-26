@@ -1,6 +1,7 @@
 """Handlers for the SkyDriver REST API server interface."""
 
 import asyncio
+import base64
 import dataclasses as dc
 import json
 import logging
@@ -209,11 +210,15 @@ class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # otherwise, it'd be difficult to tell if the arg works
             projection.add("archived")
 
-        # query db
+        # query db and transform as needed
         entries = [
             dict_projection(e, projection)
             async for e in self.scan_backlog.get_all(include_archived=include_archived)
         ]
+        # -> pickle obj is not serializable, so b64 it
+        for entry in entries:
+            if val := entry.pop("pickled_k8s_job", None):
+                entry["pickled_k8s_job_b64"] = base64.b64encode(val).decode("utf-8")
         self.write({"entries": entries})
 
     #
