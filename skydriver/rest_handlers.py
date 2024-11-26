@@ -5,7 +5,6 @@ import base64
 import dataclasses as dc
 import json
 import logging
-import pickle
 import uuid
 from typing import Any, Type, TypeVar
 
@@ -28,7 +27,6 @@ from .config import (
     is_testing,
 )
 from .database import schema
-from .database.mongodc import DocumentNotFoundException
 from .k8s.scan_backlog import designate_for_startup
 from .k8s.scanner_instance import SkymapScannerK8sWrapper
 
@@ -476,54 +474,120 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=set[str],
         )
 
-        # generate unique scan_id
-        scan_id = uuid.uuid4().hex
-
-        # get the container info ready
-        scanner_wrapper = SkymapScannerK8sWrapper(
+        user_scan_request_obj = dict(
             docker_tag=docker_tag,
-            scan_id=scan_id,
-            # server
             scanner_server_memory_bytes=scanner_server_memory_bytes,
             reco_algo=reco_algo,
             nsides=nsides,
-            is_real_event=real_or_simulated_event in REAL_CHOICES,
+            real_or_simulated_event=real_or_simulated_event,
             predictive_scanning_threshold=predictive_scanning_threshold,
-            # cluster starter
-            starter_exc=str(  # TODO - remove once tested in prod
-                classifiers.get("__unstable_starter_exc", "clientmanager")
-            ),
+            classifiers=classifiers,
             request_clusters=request_clusters,
             worker_memory_bytes=worker_memory_bytes,
             worker_disk_bytes=worker_disk_bytes,
             max_pixel_reco_time=max_pixel_reco_time,
             max_worker_runtime=max_worker_runtime,
             priority=priority,
-            # universal
             debug_mode=debug_mode,
-            # env
-            rest_address=self.request.full_url().rstrip(self.request.uri),
             skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
+            event_i3live_json_dict=event_i3live_json_dict,
+            rest_address=self.request.full_url().rstrip(self.request.uri),
         )
 
-        # put in db (do before k8s start so if k8s fail, we can debug using db's info)
-        manifest = await self.manifests.post(
-            event_i3live_json_dict,
-            scan_id,
-            scanner_wrapper.scanner_server_args,
-            scanner_wrapper.cluster_starter_args_list,
-            from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
-            classifiers,
-            priority,
-        )
-
-        await designate_for_startup(
-            scan_id,
-            scanner_wrapper.job_obj,
+        manifest = await _start_scan(
+            self.manifests,
             self.scan_backlog,
-            priority,
+            scan_request_obj,
+        )
+        self.write(
+            dict_projection(dc.asdict(manifest), manifest_projection),
         )
 
+
+async def _start_scan(
+    manifests: database.interface.ManifestClient,
+    scan_backlog: database.interface.ScanBacklogClient,
+    user_scan_request_obj: dict,
+) -> schema.Manifest:
+    # generate unique scan_id
+    scan_id = uuid.uuid4().hex
+
+    # get the container info ready
+    scanner_wrapper = SkymapScannerK8sWrapper(
+        docker_tag=docker_tag,
+        scan_id=scan_id,
+        # server
+        scanner_server_memory_bytes=scanner_server_memory_bytes,
+        reco_algo=reco_algo,
+        nsides=nsides,
+        is_real_event=real_or_simulated_event in REAL_CHOICES,
+        predictive_scanning_threshold=predictive_scanning_threshold,
+        # cluster starter
+        starter_exc=str(  # TODO - remove once tested in prod
+            classifiers.get("__unstable_starter_exc", "clientmanager")
+        ),
+        request_clusters=request_clusters,
+        worker_memory_bytes=worker_memory_bytes,
+        worker_disk_bytes=worker_disk_bytes,
+        max_pixel_reco_time=max_pixel_reco_time,
+        max_worker_runtime=max_worker_runtime,
+        priority=priority,
+        # universal
+        debug_mode=debug_mode,
+        # env
+        rest_address=rest_address,
+        skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
+    )
+
+    # put in db (do before k8s start so if k8s fail, we can debug using db's info)
+    manifest = await manifests.post(
+        event_i3live_json_dict,
+        scan_id,
+        scanner_wrapper.scanner_server_args,
+        scanner_wrapper.cluster_starter_args_list,
+        from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
+        classifiers,
+        priority,
+    )
+
+    await designate_for_startup(
+        scan_id,
+        scanner_wrapper.job_obj,
+        scan_backlog,
+        priority,
+    )
+
+    return manifest
+
+
+# -----------------------------------------------------------------------------
+
+
+class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles actions on copying a scan's manifest and starting that."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/actions/rescan$"
+
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    async def post(self, scan_id: str) -> None:
+        # response args
+        manifest_projection = self.get_argument(
+            "manifest_projection",
+            default=(
+                all_dc_fields(database.schema.Manifest)
+                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
+            ),
+            type=set[str],
+        )
+
+        # grab fields from source manifest
+        manifest = await self.manifests.get(scan_id, True)
+
+        manifest = await _start_scan(
+            self.manfifests,
+            self.scan_backlog,
+            **user_scan_request_obj,
+        )
         self.write(
             dict_projection(dc.asdict(manifest), manifest_projection),
         )
@@ -591,62 +655,6 @@ async def get_result_safely(
         result = None
 
     return result, manifest
-
-
-# -----------------------------------------------------------------------------
-
-
-class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
-    """Handles actions on copying a scan's manifest and starting that."""
-
-    ROUTE = r"/scan/(?P<scan_id>\w+)/actions/rescan$"
-
-    @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    async def post(self, scan_id: str) -> None:
-        # response args
-        manifest_projection = self.get_argument(
-            "manifest_projection",
-            default=(
-                all_dc_fields(database.schema.Manifest)
-                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-            ),
-            type=set[str],
-        )
-
-        # replicate original manifest
-        manifest = await self.manifests.get(scan_id, True)
-        manifest.scan_id = uuid.uuid4().hex  # make new id
-        manifest.classifiers.update({"rescan": True, "origin_scan_id": scan_id})
-        manifest = await self.manifests.put(manifest)
-
-        # grab old backlog entry
-        try:
-            scan_backlog_entry = await self.scan_backlog.collection.find_one(
-                {"scan_id": scan_id},
-                return_dclass=schema.ScanBacklogEntry,
-            )
-        except DocumentNotFoundException as e:
-            raise web.HTTPError(
-                404,
-                log_message=f"Scan was never placed in the backlog--cannot rescan: {scan_id}",
-            ) from e
-        # -> change fields as needed
-        #       kubernetes:     'name' must be unique
-        #       internal logic: 'name' must be deterministic (based on scan_id)
-        k8s_job = pickle.loads(scan_backlog_entry.pickled_k8s_job)
-        k8s_job.metadata.name = SkymapScannerK8sWrapper.get_job_name(manifest.scan_id)
-
-        # start
-        await designate_for_startup(
-            manifest.scan_id,
-            k8s_job,
-            self.scan_backlog,
-            manifest.priority,
-        )
-
-        self.write(
-            dict_projection(dc.asdict(manifest), manifest_projection),
-        )
 
 
 # -----------------------------------------------------------------------------
