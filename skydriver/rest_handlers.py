@@ -217,7 +217,7 @@ class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         ]
         # -> pickle obj is not serializable, so b64 it
         for entry in entries:
-            if val := entry.get("pickled_k8s_job", None):
+            if val := entry.get("pickled_k8s_job"):
                 entry["pickled_k8s_job"] = base64.b64encode(val).decode("utf-8")
         self.write({"entries": entries})
 
