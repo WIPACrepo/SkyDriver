@@ -810,6 +810,18 @@ async def _after_scan_start_logic(
 POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
+async def _get_backlog_entry(
+    rc: RestClient,
+    scan_id: str,
+    include_archived: bool = False,
+) -> dict:
+    if include_archived:
+        backlog = await rc.request("GET", "/scan/backlog", {"include_archived": True})
+    else:
+        backlog = await rc.request("GET", "/scan/backlog")
+    return next(b for b in backlog if b["scan_id"] == scan_id)
+
+
 async def test_010__rescan(
     server: Callable[[], RestClient],
     known_clusters: dict,
@@ -829,6 +841,7 @@ async def test_010__rescan(
         },
         get_tms_args(clusters, "3.4.0", known_clusters),
     )
+    backlog_entry_alpha = await _get_backlog_entry(rc, manifest_alpha["scan_id"])
     await _after_scan_start_logic(
         rc,
         manifest_alpha,
@@ -844,6 +857,8 @@ async def test_010__rescan(
         {"manifest_projection": ["*"]},
     )
     assert manifest_beta == manifest_alpha  # TODO
+    backlog_entry_beta = await _get_backlog_entry(rc, manifest_beta["scan_id"], True)
+    assert backlog_entry_beta == backlog_entry_alpha  # TODO
     await _after_scan_start_logic(
         rc,
         manifest_beta,
