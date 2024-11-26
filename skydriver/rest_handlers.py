@@ -27,6 +27,7 @@ from .config import (
     is_testing,
 )
 from .database import schema
+from .database.mongodc import DocumentNotFoundException
 from .k8s.scan_backlog import designate_for_startup
 from .k8s.scanner_instance import SkymapScannerK8sWrapper
 
@@ -594,10 +595,16 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await self.manifests.put(manifest)
 
         # grab old backlog entry
-        scan_backlog_entry = await self.scan_backlog.collection.find_one(
-            {"scan_id": scan_id},
-            return_dclass=schema.ScanBacklogEntry,
-        )
+        try:
+            scan_backlog_entry = await self.scan_backlog.collection.find_one(
+                {"scan_id": scan_id},
+                return_dclass=schema.ScanBacklogEntry,
+            )
+        except DocumentNotFoundException as e:
+            raise web.HTTPError(
+                404,
+                log_message=f"Scan was never placed in the backlog--cannot rescan: {scan_id}",
+            ) from e
         # -> change fields as needed
         #       kubernetes:     'name' must be unique
         #       internal logic: 'name' must be deterministic (based on scan_id)
