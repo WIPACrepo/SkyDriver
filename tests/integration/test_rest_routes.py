@@ -842,7 +842,6 @@ async def test_010__rescan(
         },
         get_tms_args(clusters, "3.4.0", known_clusters),
     )
-    backlog_entry_alpha = await _get_backlog_entry(rc, manifest_alpha["scan_id"])
     await _after_scan_start_logic(
         rc,
         manifest_alpha,
@@ -859,11 +858,21 @@ async def test_010__rescan(
     )
     assert manifest_beta == manifest_alpha  # TODO
     # look at backlog
+    backlog_entry_alpha = await _get_backlog_entry(rc, manifest_alpha["scan_id"], True)
     backlog_entry_beta = await _get_backlog_entry(rc, manifest_beta["scan_id"])
-    assert backlog_entry_alpha == await _get_backlog_entry(
-        rc, manifest_alpha["scan_id"], True
-    )
-    assert backlog_entry_beta == backlog_entry_alpha  # TODO
+    assert backlog_entry_beta["classifiers"] == {
+        **backlog_entry_alpha["classifiers"],
+        **{"rescan": True, "origin_scan_id": backlog_entry_alpha["scan_id"]},
+    }
+    same_vals = [
+        "event_i3live_json_dict__hash",
+        "ewms_task.env_vars",
+        "priority",
+        "scanner_server_args",
+        "timestamp",
+    ]
+    for key in same_vals:
+        assert backlog_entry_beta[key] == backlog_entry_alpha[key]
     # continue on...
     await _after_scan_start_logic(
         rc,
@@ -872,6 +881,15 @@ async def test_010__rescan(
         known_clusters,
         test_wait_before_teardown,
     )
+
+    # last check
+    assert backlog_entry_beta == await _get_backlog_entry(
+        rc, manifest_beta["scan_id"], True
+    )
+    assert backlog_entry_alpha == await _get_backlog_entry(
+        rc, manifest_alpha["scan_id"], True
+    )
+    assert backlog_entry_alpha == backlog_entry_beta
 
 
 ########################################################################################
