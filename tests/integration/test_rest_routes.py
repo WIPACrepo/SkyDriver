@@ -857,8 +857,13 @@ async def test_010__rescan(
         {"manifest_projection": ["*"]},
     )
     assert manifest_beta == manifest_alpha  # TODO
-    backlog_entry_beta = await _get_backlog_entry(rc, manifest_beta["scan_id"], True)
+    # look at backlog
+    backlog_entry_beta = await _get_backlog_entry(rc, manifest_beta["scan_id"])
+    assert backlog_entry_alpha == await _get_backlog_entry(
+        rc, manifest_alpha["scan_id"], True
+    )
     assert backlog_entry_beta == backlog_entry_alpha  # TODO
+    # continue on...
     await _after_scan_start_logic(
         rc,
         manifest_beta,
