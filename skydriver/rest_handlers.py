@@ -187,7 +187,7 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles looking at backlog."""
 
-    ROUTE = r"/backlog$"
+    ROUTE = r"/scans/backlog$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self) -> None:
