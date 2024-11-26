@@ -494,10 +494,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             rest_address=self.request.full_url().rstrip(self.request.uri),
         )
 
+        # TODO: store user_scan_request_obj in db -- can compress extremely, will not be accessed >1x in most cases
+        # the size of event obj is concerning but, idk?
+
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
-            scan_request_obj,
+            user_scan_request_obj,
         )
         self.write(
             dict_projection(dc.asdict(manifest), manifest_projection),
@@ -514,47 +517,55 @@ async def _start_scan(
 
     # get the container info ready
     scanner_wrapper = SkymapScannerK8sWrapper(
-        docker_tag=docker_tag,
+        docker_tag=user_scan_request_obj["docker_tag"],
         scan_id=scan_id,
         # server
-        scanner_server_memory_bytes=scanner_server_memory_bytes,
-        reco_algo=reco_algo,
-        nsides=nsides,
-        is_real_event=real_or_simulated_event in REAL_CHOICES,
-        predictive_scanning_threshold=predictive_scanning_threshold,
+        scanner_server_memory_bytes=user_scan_request_obj[
+            "scanner_server_memory_bytes"
+        ],
+        reco_algo=user_scan_request_obj["reco_algo"],
+        nsides=user_scan_request_obj["nsides"],
+        is_real_event=user_scan_request_obj["real_or_simulated_event"] in REAL_CHOICES,
+        predictive_scanning_threshold=user_scan_request_obj[
+            "predictive_scanning_threshold"
+        ],
         # cluster starter
         starter_exc=str(  # TODO - remove once tested in prod
-            classifiers.get("__unstable_starter_exc", "clientmanager")
+            user_scan_request_obj["classifiers"].get(
+                "__unstable_starter_exc", "clientmanager"
+            )
         ),
-        request_clusters=request_clusters,
-        worker_memory_bytes=worker_memory_bytes,
-        worker_disk_bytes=worker_disk_bytes,
-        max_pixel_reco_time=max_pixel_reco_time,
-        max_worker_runtime=max_worker_runtime,
-        priority=priority,
+        request_clusters=user_scan_request_obj["request_clusters"],
+        worker_memory_bytes=user_scan_request_obj["worker_memory_bytes"],
+        worker_disk_bytes=user_scan_request_obj["worker_disk_bytes"],
+        max_pixel_reco_time=user_scan_request_obj["max_pixel_reco_time"],
+        max_worker_runtime=user_scan_request_obj["max_worker_runtime"],
+        priority=user_scan_request_obj["priority"],
         # universal
-        debug_mode=debug_mode,
+        debug_mode=user_scan_request_obj["debug_mode"],
         # env
-        rest_address=rest_address,
-        skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
+        rest_address=user_scan_request_obj["rest_address"],
+        skyscan_mq_client_timeout_wait_for_first_message=user_scan_request_obj[
+            "skyscan_mq_client_timeout_wait_for_first_message"
+        ],
     )
 
     # put in db (do before k8s start so if k8s fail, we can debug using db's info)
     manifest = await manifests.post(
-        event_i3live_json_dict,
+        user_scan_request_obj["event_i3live_json_dict"],
         scan_id,
         scanner_wrapper.scanner_server_args,
         scanner_wrapper.cluster_starter_args_list,
         from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
-        classifiers,
-        priority,
+        user_scan_request_obj["classifiers"],
+        user_scan_request_obj["priority"],
     )
 
     await designate_for_startup(
         scan_id,
         scanner_wrapper.job_obj,
         scan_backlog,
-        priority,
+        user_scan_request_obj["priority"],
     )
 
     return manifest
