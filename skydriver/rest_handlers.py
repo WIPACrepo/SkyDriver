@@ -5,6 +5,7 @@ import base64
 import dataclasses as dc
 import json
 import logging
+import pickle
 import uuid
 from typing import Any, Type, TypeVar
 
@@ -507,7 +508,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # TODO: store scan_request_obj in db -- can compress extremely, will not be accessed >1x in most cases
         # the size of event obj is concerning but, idk?
         await self.scan_request_coll.insert_one(
-            {"scan_id": scan_id, "scan_request_obj": scan_request_obj},
+            {
+                "scan_id": scan_id,
+                "scan_request_obj_pkl": pickle.dumps(scan_request_obj),
+            },
         )
 
         # go!
@@ -634,7 +638,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             self.manifests,
             self.scan_backlog,
             new_scan_id,
-            doc["scan_request_obj"],
+            pickle.loads(doc["scan_request_obj_pkl"]),
         )
         self.write(
             dict_projection(dc.asdict(manifest), manifest_projection),
