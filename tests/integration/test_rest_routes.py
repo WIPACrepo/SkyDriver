@@ -828,7 +828,7 @@ def _assert_manifests_equal_with_normalization(
 ):
     """
     Asserts that specific keys in two manifests are equal after normalization.
-    Normalizes `ewms_task` to handle dynamically generated values.
+    Handles dynamically generated fields such as UUIDs and scan IDs.
 
     Args:
         manifest_beta (dict): The first manifest to compare.
@@ -849,37 +849,37 @@ def _assert_manifests_equal_with_normalization(
         """
         Normalizes the `ewms_task` dictionary by redacting specific dynamic sub-keys.
         """
-        if not ewms_task or not isinstance(ewms_task, dict):
-            return ewms_task
-
         normalized = ewms_task.copy()
 
-        # Redact dynamic `SKYSCAN_SKYDRIVER_SCAN_ID` in `env_vars.scanner_server`
-        if "env_vars" in normalized and "scanner_server" in normalized["env_vars"]:
-            for server_entry in normalized["env_vars"]["scanner_server"]:
-                if server_entry["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID":
-                    server_entry["value"] = "<redacted>"
+        # Normalize `env_vars.scanner_server`
+        for dicto in normalized["env_vars"]["scanner_server"]:
+            if dicto["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID":
+                dicto["value"] = "<redacted>"
+        # Normalize `env_vars.scanner_server`
+        for listo in normalized["env_vars"]["tms_starters"]:
+            for dicto in listo:
+                if dicto["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID":
+                    dicto["value"] = "<redacted>"
 
-        # Redact dynamic UUIDs in `tms_args`
-        if "tms_args" in normalized:
-            normalized["tms_args"] = [
-                re.sub(r"--uuid [a-f0-9\-]+", "--uuid <redacted>", arg)
-                for arg in normalized["tms_args"]
-            ]
+        # Normalize `tms_args`
+        normalized["tms_args"] = [
+            re.sub(r"--uuid [a-f0-9\-]+", "--uuid <redacted>", arg)
+            for arg in normalized["tms_args"]
+        ]
 
         return normalized
 
     for key in keys_to_compare:
         if key == "ewms_task":
-            normalized_beta = normalize_ewms_task(manifest_beta.get(key, {}))
-            normalized_alpha = normalize_ewms_task(manifest_alpha.get(key, {}))
+            normalized_beta = normalize_ewms_task(manifest_beta[key])
+            normalized_alpha = normalize_ewms_task(manifest_alpha[key])
             assert normalized_beta == normalized_alpha, (
                 f"Mismatch in key '{key}':\n"
                 f"Beta: {normalized_beta}\n"
                 f"Alpha: {normalized_alpha}"
             )
         else:
-            assert manifest_beta.get(key) == manifest_alpha.get(key), (
+            assert manifest_beta[key] == manifest_alpha[key], (
                 f"Mismatch in key '{key}':\n"
                 f"Beta: {manifest_beta.get(key)}\n"
                 f"Alpha: {manifest_alpha.get(key)}"
