@@ -12,7 +12,7 @@ import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
 from dacite.exceptions import DaciteError
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
 from tornado import web
 
@@ -119,6 +119,12 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
         self.manifests = database.interface.ManifestClient(mongo_client)
         self.results = database.interface.ResultClient(mongo_client)
         self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
+        self.user_scan_request_coll = (
+            AsyncIOMotorCollection(  # in contrast, this one is accessed directly
+                self._mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+                database.utils._USER_SCAN_REQUEST_COLL_NAME,
+            )
+        )
         self.k8s_batch_api = k8s_batch_api
 
 
@@ -474,6 +480,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=set[str],
         )
 
+        # generate unique scan_id
+        scan_id = uuid.uuid4().hex
+
         user_scan_request_obj = dict(
             docker_tag=docker_tag,
             scanner_server_memory_bytes=scanner_server_memory_bytes,
@@ -496,7 +505,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # TODO: store user_scan_request_obj in db -- can compress extremely, will not be accessed >1x in most cases
         # the size of event obj is concerning but, idk?
+        await self.user_scan_request_coll.insert_one(
+            {"scan_id": scan_id, "user_scan_request_obj": user_scan_request_obj},
+        )
 
+        # go!
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
@@ -510,10 +523,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 async def _start_scan(
     manifests: database.interface.ManifestClient,
     scan_backlog: database.interface.ScanBacklogClient,
+    scan_id: str,
     user_scan_request_obj: dict,
 ) -> schema.Manifest:
-    # generate unique scan_id
-    scan_id = uuid.uuid4().hex
 
     # get the container info ready
     scanner_wrapper = SkymapScannerK8sWrapper(
@@ -591,9 +603,17 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=set[str],
         )
 
-        # grab fields from source manifest
-        manifest = await self.manifests.get(scan_id, True)
+        # grab the original requester's 'user_scan_request_obj'
+        user_scan_request_obj = await self.user_scan_request_coll.find_one(
+            {"scan_id": scan_id}
+        )
+        if not user_scan_request_obj:
+            raise web.HTTPError(
+                404,
+                log_message=f"Could not find original request information to duplicate",
+            )
 
+        # go!
         manifest = await _start_scan(
             self.manfifests,
             self.scan_backlog,
