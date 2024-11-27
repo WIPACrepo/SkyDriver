@@ -122,7 +122,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
         self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
         self.scan_request_coll = (
             AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-                _mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+                mongo_client[database.interface._DB_NAME],  # type: ignore[index]
                 database.utils._SCAN_REQUEST_COLL_NAME,
             )
         )
