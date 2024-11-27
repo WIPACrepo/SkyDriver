@@ -1,7 +1,6 @@
 """Handlers for the SkyDriver REST API server interface."""
 
 import asyncio
-import base64
 import dataclasses as dc
 import json
 import logging
@@ -199,32 +198,8 @@ class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self) -> None:
         """Get all scan id(s) in the backlog."""
-        include_archived = self.get_argument(
-            "include_archived",
-            default=False,
-            type=bool,
-        )
-        projection = self.get_argument(
-            "projection",
-            default=(
-                all_dc_fields(database.schema.ScanBacklogEntry)
-                - {"pickled_k8s_job", "archived"}
-            ),
-            type=set[str],
-        )
-        if include_archived:
-            # otherwise, it'd be difficult to tell if the arg works
-            projection.add("archived")
+        entries = [e async for e in self.scan_backlog.get_all()]
 
-        # query db and transform as needed
-        entries = [
-            dict_projection(e, projection)
-            async for e in self.scan_backlog.get_all(include_archived=include_archived)
-        ]
-        # -> pickle obj is not serializable, so b64 it
-        for entry in entries:
-            if val := entry.get("pickled_k8s_job"):
-                entry["pickled_k8s_job"] = base64.b64encode(val).decode("utf-8")
         self.write({"entries": entries})
 
     #

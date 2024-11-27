@@ -343,8 +343,7 @@ class ScanBacklogClient:
                 # still be in flight by other processes)
                 "pending_timestamp": {
                     "$lt": time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
-                },
-                "archived": {"$ne": True},  # aka, only relevant entries
+                }
             },
             {
                 "$set": {"pending_timestamp": time.time()},
@@ -367,17 +366,11 @@ class ScanBacklogClient:
             LOGGER.debug(f"backlog entry ready for revival ({entry.scan_id=})")
         return entry
 
-    async def archive_entry(
-        self, entry: schema.ScanBacklogEntry
-    ) -> schema.ScanBacklogEntry:
-        """Archive the entry, `schema.ScanBacklogEntry`."""
-        LOGGER.debug("archiving ScanBacklogEntry")
-        res = await self.collection.find_one_and_update(
-            {"scan_id": entry.scan_id},
-            {"$set": {"archived": True}},
-            return_dclass=schema.ScanBacklogEntry,
-        )
-        LOGGER.debug(f"archived result: {res}")
+    async def remove(self, entry: schema.ScanBacklogEntry) -> schema.ScanBacklogEntry:
+        """Remove entry, `schema.ScanBacklogEntry`."""
+        LOGGER.debug("removing ScanBacklogEntry")
+        res = await self.collection.delete_one({"scan_id": entry.scan_id})
+        LOGGER.debug(f"delete_one result: {res}")
         return entry
 
     async def insert(self, entry: schema.ScanBacklogEntry) -> None:
@@ -388,33 +381,25 @@ class ScanBacklogClient:
         LOGGER.debug(f"insert result: {res}")
         LOGGER.debug(f"Inserted backlog entry for {entry.scan_id=}")
 
-    async def get_all(self, include_archived: bool = False) -> AsyncIterator[dict]:
-        """Get all entries in backlog (excluding archived entries, unless specified).
+    async def get_all(self) -> AsyncIterator[dict]:
+        """Get all entries in backlog.
 
         Doesn't include all fields.
         """
         LOGGER.debug("getting all entries in backlog")
-
-        find_filter = {}
-        if not include_archived:  # this is most common
-            find_filter = {"archived": {"$ne": True}}
-
         async for entry in self.collection.find(
-            find_filter,
-            {"_id": False},
+            {},
+            {"_id": False, "pickled_k8s_job": False},
             sort=[("timestamp", ASCENDING)],
             return_dclass=dict,
         ):
             yield entry
 
     async def is_in_backlog(self, scan_id: str) -> bool:
-        """Return whether the scan id is in the backlog (excluding archived entries)."""
+        """Return whether the scan id is in the backlog."""
         LOGGER.debug(f"looking for {scan_id} in backlog")
         async for _ in self.collection.find(
-            {
-                "scan_id": scan_id,
-                "archived": {"$ne": True},  # aka, only relevant entries
-            },
+            {"scan_id": scan_id},
             return_dclass=dict,
         ):
             return True

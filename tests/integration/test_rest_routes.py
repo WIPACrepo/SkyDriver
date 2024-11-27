@@ -811,19 +811,6 @@ async def _after_scan_start_logic(
 POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
-async def _get_backlog_entry(
-    rc: RestClient,
-    scan_id: str,
-    include_archived: bool = False,
-) -> dict:
-    args: dict = {"projection": "*"}
-    if include_archived:
-        args.update({"include_archived": True})
-    backlog = await rc.request("GET", "/scans/backlog", args)
-    print(backlog)
-    return next(b for b in backlog["entries"] if b["scan_id"] == scan_id)
-
-
 def _assert_manifests_equal_with_normalization(
     manifest_beta: dict, manifest_alpha: dict
 ):

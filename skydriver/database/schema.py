@@ -50,7 +50,6 @@ class ScanBacklogEntry(ScanIDDataclass):
     priority: int = 0
     pending_timestamp: float = 0.0
     next_attempt: int = 0
-    archived: bool = False  # aka, the entry is no longer relevant to the backlog
 
     def __repr__(self) -> str:
         dicto = dc.asdict(self)
