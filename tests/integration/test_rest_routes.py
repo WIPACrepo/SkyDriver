@@ -1,6 +1,7 @@
 """Integration tests for the REST server."""
 
 import asyncio
+import copy
 import hashlib
 import json
 import logging
@@ -848,7 +849,7 @@ def _assert_manifests_equal_with_normalization(
         """
         Normalizes the `ewms_task` dictionary by redacting specific dynamic sub-keys.
         """
-        normalized = ewms_task.copy()
+        normalized = copy.deepcopy(ewms_task)
 
         # Normalize `env_vars.scanner_server`
         for dicto in normalized["env_vars"]["scanner_server"]:
