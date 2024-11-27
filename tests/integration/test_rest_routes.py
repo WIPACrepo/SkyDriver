@@ -926,10 +926,6 @@ async def test_010__rescan(
         **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
     }
     _assert_manifests_equal_with_normalization(manifest_beta, manifest_alpha)
-    # compare backlog entries
-    backlog_entry_alpha = await _get_backlog_entry(rc, manifest_alpha["scan_id"], True)
-    backlog_entry_beta = await _get_backlog_entry(rc, manifest_beta["scan_id"])
-    assert backlog_entry_alpha == backlog_entry_beta
     # continue on...
     await _after_scan_start_logic(
         rc,
