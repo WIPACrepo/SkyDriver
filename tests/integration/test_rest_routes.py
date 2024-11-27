@@ -304,7 +304,7 @@ async def _do_patch(
                 else resp["ewms_task"]["clusters"]  # not checking
             ),
         ),
-        classifiers=CLASSIFIERS,
+        classifiers=resp["classifiers"],  # not checking
         last_updated=resp["last_updated"],  # see below
         priority=0,
         # TODO: check more fields in future (hint: ctrl+F this comment)
