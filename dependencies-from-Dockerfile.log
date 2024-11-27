@@ -13,7 +13,7 @@ certifi==2024.8.30
 cffi==1.17.1
 charset-normalizer==3.4.0
 coloredlogs==15.0.1
-cryptography==43.0.3
+cryptography==44.0.0
 dacite==1.8.1
 Deprecated==1.2.15
 dnspython==2.7.0
@@ -67,7 +67,7 @@ zipp==3.21.0
 ########################################################################
 #  pipdeptree
 ########################################################################
-cryptography==43.0.3
+cryptography==44.0.0
 └── cffi [required: >=1.12, installed: 1.17.1]
     └── pycparser [required: Any, installed: 2.22]
 pipdeptree==2.24.0
