@@ -626,7 +626,8 @@ async def _delete_scan(
             "include_deleted": True,
         },
     )
-    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
+    assert scan_id in [m["scan_id"] for m in resp["manifests"]]
+    # ^^^ not testing that this is unique b/c the event could've been re-ran (rescan)
     resp = await rc.request(
         "POST",
         "/scans/find",
@@ -639,7 +640,8 @@ async def _delete_scan(
             },
         },
     )
-    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
+    assert scan_id in [m["scan_id"] for m in resp["manifests"]]
+    # ^^^ not testing that this is unique b/c the event could've been re-ran (rescan)
 
 
 def get_tms_args(
