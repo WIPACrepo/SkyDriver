@@ -122,7 +122,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
         self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
         self.scan_request_coll = (
             AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-                self._mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+                _mongo_client[database.interface._DB_NAME],  # type: ignore[index]
                 database.utils._SCAN_REQUEST_COLL_NAME,
             )
         )
@@ -514,6 +514,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
+            scan_id,
             scan_request_obj,
         )
         self.write(
@@ -630,7 +631,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # go!
         manifest = await _start_scan(
-            self.manfifests,
+            self.manifests,
             self.scan_backlog,
             new_scan_id,
             doc["scan_request_obj"],
