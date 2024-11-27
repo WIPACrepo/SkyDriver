@@ -823,6 +823,61 @@ async def _get_backlog_entry(
     return next(b for b in backlog["entries"] if b["scan_id"] == scan_id)
 
 
+def _assert_manifests_equal_with_normalization(
+    manifest_beta: dict,
+    manifest_alpha: dict,
+):
+    """Asserts that specific keys in two manifests are equal after normalization."""
+    keys_to_compare = [
+        "event_i3live_json_dict__hash",
+        "ewms_task",
+        "priority",
+        "scanner_server_args",
+        "timestamp",
+    ]
+
+    def normalize_ewms_task(ewms_task: dict) -> dict:
+        """
+        Normalizes the `ewms_task` dictionary by redacting specific sub-keys.
+        """
+        if not ewms_task or not isinstance(ewms_task, dict):
+            return ewms_task
+
+        normalized = ewms_task.copy()
+
+        # Redact dynamic `SKYSCAN_SKYDRIVER_SCAN_ID` in `env_vars.scanner_server`
+        if "env_vars" in normalized and "scanner_server" in normalized["env_vars"]:
+            scanner_server = normalized["env_vars"]["scanner_server"]
+            for server_entry in scanner_server:
+                if server_entry["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID":
+                    server_entry["value"] = "<redacted>"
+
+        # Redact dynamic UUIDs in `tms_args`
+        if "tms_args" in normalized:
+            normalized["tms_args"] = [
+                arg.replace("--uuid ", "--uuid <redacted> ")
+                for arg in normalized["tms_args"]
+            ]
+
+        return normalized
+
+    for key in keys_to_compare:
+        if key == "ewms_task":
+            normalized_beta = normalize_ewms_task(manifest_beta.get(key, {}))
+            normalized_alpha = normalize_ewms_task(manifest_alpha.get(key, {}))
+            assert normalized_beta == normalized_alpha, (
+                f"Mismatch in key '{key}':\n"
+                f"Beta: {normalized_beta}\n"
+                f"Alpha: {normalized_alpha}"
+            )
+        else:
+            assert manifest_beta.get(key) == manifest_alpha.get(key), (
+                f"Mismatch in key '{key}':\n"
+                f"Beta: {manifest_beta.get(key)}\n"
+                f"Alpha: {manifest_alpha.get(key)}"
+            )
+
+
 async def test_010__rescan(
     server: Callable[[], RestClient],
     known_clusters: dict,
@@ -861,15 +916,7 @@ async def test_010__rescan(
         **manifest_alpha["classifiers"],
         **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
     }
-    same_vals = [
-        "event_i3live_json_dict__hash",
-        "ewms_task",
-        "priority",
-        "scanner_server_args",
-        "timestamp",
-    ]
-    for key in same_vals:
-        assert manifest_beta[key] == manifest_alpha[key]
+    _assert_manifests_equal_with_normalization(manifest_beta, manifest_alpha)
     # compare backlog entries
     backlog_entry_alpha = await _get_backlog_entry(rc, manifest_alpha["scan_id"], True)
     backlog_entry_beta = await _get_backlog_entry(rc, manifest_beta["scan_id"])
