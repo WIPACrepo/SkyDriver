@@ -824,10 +824,19 @@ async def _get_backlog_entry(
 
 
 def _assert_manifests_equal_with_normalization(
-    manifest_beta: dict,
-    manifest_alpha: dict,
+    manifest_beta: dict, manifest_alpha: dict
 ):
-    """Asserts that specific keys in two manifests are equal after normalization."""
+    """
+    Asserts that specific keys in two manifests are equal after normalization.
+    Normalizes `ewms_task` to handle dynamically generated values.
+
+    Args:
+        manifest_beta (dict): The first manifest to compare.
+        manifest_alpha (dict): The second manifest to compare.
+
+    Raises:
+        AssertionError: If any of the specified keys are not equal after normalization.
+    """
     keys_to_compare = [
         "event_i3live_json_dict__hash",
         "ewms_task",
@@ -838,7 +847,7 @@ def _assert_manifests_equal_with_normalization(
 
     def normalize_ewms_task(ewms_task: dict) -> dict:
         """
-        Normalizes the `ewms_task` dictionary by redacting specific sub-keys.
+        Normalizes the `ewms_task` dictionary by redacting specific dynamic sub-keys.
         """
         if not ewms_task or not isinstance(ewms_task, dict):
             return ewms_task
@@ -847,15 +856,14 @@ def _assert_manifests_equal_with_normalization(
 
         # Redact dynamic `SKYSCAN_SKYDRIVER_SCAN_ID` in `env_vars.scanner_server`
         if "env_vars" in normalized and "scanner_server" in normalized["env_vars"]:
-            scanner_server = normalized["env_vars"]["scanner_server"]
-            for server_entry in scanner_server:
+            for server_entry in normalized["env_vars"]["scanner_server"]:
                 if server_entry["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID":
                     server_entry["value"] = "<redacted>"
 
         # Redact dynamic UUIDs in `tms_args`
         if "tms_args" in normalized:
             normalized["tms_args"] = [
-                arg.replace("--uuid ", "--uuid <redacted> ")
+                re.sub(r"--uuid [a-f0-9\-]+", "--uuid <redacted>", arg)
                 for arg in normalized["tms_args"]
             ]
 
