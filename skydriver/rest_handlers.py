@@ -627,9 +627,10 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 404,
                 log_message="Could not find original scan-request information to start a rescan",
             )
+        scan_request_obj = pickle.loads(doc["scan_request_obj_pkl"])
 
         # add to 'classifiers' so the user has provenance info
-        doc["scan_request_obj"]["classifiers"].update(
+        scan_request_obj["classifiers"].update(
             {"rescan": True, "origin_scan_id": scan_id}
         )
 
@@ -638,7 +639,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             self.manifests,
             self.scan_backlog,
             new_scan_id,
-            pickle.loads(doc["scan_request_obj_pkl"]),
+            scan_request_obj,
         )
         self.write(
             dict_projection(dc.asdict(manifest), manifest_projection),
