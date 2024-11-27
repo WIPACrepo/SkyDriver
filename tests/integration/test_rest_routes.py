@@ -842,7 +842,6 @@ def _assert_manifests_equal_with_normalization(
         "ewms_task",
         "priority",
         "scanner_server_args",
-        "timestamp",
     ]
 
     def normalize_ewms_task(ewms_task: dict) -> dict:
@@ -884,6 +883,8 @@ def _assert_manifests_equal_with_normalization(
                 f"Beta: {manifest_beta.get(key)}\n"
                 f"Alpha: {manifest_alpha.get(key)}"
             )
+
+    assert manifest_beta["timestamp"] > manifest_alpha["timestamp"]
 
 
 async def test_010__rescan(
