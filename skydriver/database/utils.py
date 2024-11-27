@@ -9,7 +9,7 @@ _DB_NAME = "SkyDriver_DB"
 _MANIFEST_COLL_NAME = "Manifests"
 _RESULTS_COLL_NAME = "Results"
 _SCAN_BACKLOG_COLL_NAME = "ScanBacklog"
-_USER_SCAN_REQUEST_COLL_NAME = "UserScanRequests"
+_SCAN_REQUEST_COLL_NAME = "ScanRequests"
 
 
 async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
@@ -18,7 +18,7 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:  # type: ign
     Call on server startup.
     """
     # USER SCAN REQUESTS COLL
-    await motor_client[_DB_NAME][_USER_SCAN_REQUEST_COLL_NAME].create_index(  # type: ignore[index]
+    await motor_client[_DB_NAME][_SCAN_REQUEST_COLL_NAME].create_index(  # type: ignore[index]
         "scan_id",
         name="scan_id_index",
         unique=True,

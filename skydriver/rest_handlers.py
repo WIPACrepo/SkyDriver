@@ -13,6 +13,7 @@ import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+from pymongo import ReturnDocument
 from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
 from tornado import web
 
@@ -119,10 +120,10 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
         self.manifests = database.interface.ManifestClient(mongo_client)
         self.results = database.interface.ResultClient(mongo_client)
         self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
-        self.user_scan_request_coll = (
+        self.scan_request_coll = (
             AsyncIOMotorCollection(  # in contrast, this one is accessed directly
                 self._mongo_client[database.interface._DB_NAME],  # type: ignore[index]
-                database.utils._USER_SCAN_REQUEST_COLL_NAME,
+                database.utils._SCAN_REQUEST_COLL_NAME,
             )
         )
         self.k8s_batch_api = k8s_batch_api
@@ -483,7 +484,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # generate unique scan_id
         scan_id = uuid.uuid4().hex
 
-        user_scan_request_obj = dict(
+        scan_request_obj = dict(
             docker_tag=docker_tag,
             scanner_server_memory_bytes=scanner_server_memory_bytes,
             reco_algo=reco_algo,
@@ -503,17 +504,17 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             rest_address=self.request.full_url().rstrip(self.request.uri),
         )
 
-        # TODO: store user_scan_request_obj in db -- can compress extremely, will not be accessed >1x in most cases
+        # TODO: store scan_request_obj in db -- can compress extremely, will not be accessed >1x in most cases
         # the size of event obj is concerning but, idk?
-        await self.user_scan_request_coll.insert_one(
-            {"scan_id": scan_id, "user_scan_request_obj": user_scan_request_obj},
+        await self.scan_request_coll.insert_one(
+            {"scan_id": scan_id, "scan_request_obj": scan_request_obj},
         )
 
         # go!
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
-            user_scan_request_obj,
+            scan_request_obj,
         )
         self.write(
             dict_projection(dc.asdict(manifest), manifest_projection),
@@ -524,60 +525,56 @@ async def _start_scan(
     manifests: database.interface.ManifestClient,
     scan_backlog: database.interface.ScanBacklogClient,
     scan_id: str,
-    user_scan_request_obj: dict,
+    scan_request_obj: dict,
 ) -> schema.Manifest:
 
     # get the container info ready
     scanner_wrapper = SkymapScannerK8sWrapper(
-        docker_tag=user_scan_request_obj["docker_tag"],
+        docker_tag=scan_request_obj["docker_tag"],
         scan_id=scan_id,
         # server
-        scanner_server_memory_bytes=user_scan_request_obj[
-            "scanner_server_memory_bytes"
-        ],
-        reco_algo=user_scan_request_obj["reco_algo"],
-        nsides=user_scan_request_obj["nsides"],
-        is_real_event=user_scan_request_obj["real_or_simulated_event"] in REAL_CHOICES,
-        predictive_scanning_threshold=user_scan_request_obj[
-            "predictive_scanning_threshold"
-        ],
+        scanner_server_memory_bytes=scan_request_obj["scanner_server_memory_bytes"],
+        reco_algo=scan_request_obj["reco_algo"],
+        nsides=scan_request_obj["nsides"],
+        is_real_event=scan_request_obj["real_or_simulated_event"] in REAL_CHOICES,
+        predictive_scanning_threshold=scan_request_obj["predictive_scanning_threshold"],
         # cluster starter
         starter_exc=str(  # TODO - remove once tested in prod
-            user_scan_request_obj["classifiers"].get(
+            scan_request_obj["classifiers"].get(
                 "__unstable_starter_exc", "clientmanager"
             )
         ),
-        request_clusters=user_scan_request_obj["request_clusters"],
-        worker_memory_bytes=user_scan_request_obj["worker_memory_bytes"],
-        worker_disk_bytes=user_scan_request_obj["worker_disk_bytes"],
-        max_pixel_reco_time=user_scan_request_obj["max_pixel_reco_time"],
-        max_worker_runtime=user_scan_request_obj["max_worker_runtime"],
-        priority=user_scan_request_obj["priority"],
+        request_clusters=scan_request_obj["request_clusters"],
+        worker_memory_bytes=scan_request_obj["worker_memory_bytes"],
+        worker_disk_bytes=scan_request_obj["worker_disk_bytes"],
+        max_pixel_reco_time=scan_request_obj["max_pixel_reco_time"],
+        max_worker_runtime=scan_request_obj["max_worker_runtime"],
+        priority=scan_request_obj["priority"],
         # universal
-        debug_mode=user_scan_request_obj["debug_mode"],
+        debug_mode=scan_request_obj["debug_mode"],
         # env
-        rest_address=user_scan_request_obj["rest_address"],
-        skyscan_mq_client_timeout_wait_for_first_message=user_scan_request_obj[
+        rest_address=scan_request_obj["rest_address"],
+        skyscan_mq_client_timeout_wait_for_first_message=scan_request_obj[
             "skyscan_mq_client_timeout_wait_for_first_message"
         ],
     )
 
     # put in db (do before k8s start so if k8s fail, we can debug using db's info)
     manifest = await manifests.post(
-        user_scan_request_obj["event_i3live_json_dict"],
+        scan_request_obj["event_i3live_json_dict"],
         scan_id,
         scanner_wrapper.scanner_server_args,
         scanner_wrapper.cluster_starter_args_list,
         from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
-        user_scan_request_obj["classifiers"],
-        user_scan_request_obj["priority"],
+        scan_request_obj["classifiers"],
+        scan_request_obj["priority"],
     )
 
     await designate_for_startup(
         scan_id,
         scanner_wrapper.job_obj,
         scan_backlog,
-        user_scan_request_obj["priority"],
+        scan_request_obj["priority"],
     )
 
     return manifest
@@ -603,21 +600,40 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=set[str],
         )
 
-        # grab the original requester's 'user_scan_request_obj'
-        user_scan_request_obj = await self.user_scan_request_coll.find_one(
-            {"scan_id": scan_id}
+        # generate unique scan_id
+        new_scan_id = uuid.uuid4().hex
+
+        # grab the original requester's 'scan_request_obj'
+        doc = await self.scan_request_coll.find_one_and_update(
+            {"scan_id": scan_id},
+            {"$push": {"rescan_ids": new_scan_id}},
+            return_document=ReturnDocument.AFTER,
         )
-        if not user_scan_request_obj:
+        # -> backup plan: was this scan_id actually a rescan itself?
+        if not doc:
+            doc = await self.scan_request_coll.find_one_and_update(
+                {"rescan_ids": scan_id},  # one in a list
+                {"$push": {"rescan_ids": new_scan_id}},
+                return_document=ReturnDocument.AFTER,
+            )
+        # -> error: couldn't find it anywhere
+        if not doc:
             raise web.HTTPError(
                 404,
-                log_message=f"Could not find original request information to duplicate",
+                log_message="Could not find original scan-request information to start a rescan",
             )
+
+        # add to 'classifiers' so the user has provenance info
+        doc["scan_request_obj"]["classifiers"].update(
+            {"rescan": True, "origin_scan_id": scan_id}
+        )
 
         # go!
         manifest = await _start_scan(
             self.manfifests,
             self.scan_backlog,
-            **user_scan_request_obj,
+            new_scan_id,
+            doc["scan_request_obj"],
         )
         self.write(
             dict_projection(dc.asdict(manifest), manifest_projection),
