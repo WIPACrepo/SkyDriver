@@ -906,7 +906,6 @@ async def test_010__rescan(
     manifest_beta = await rc.request(
         "POST",
         f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
-        {"manifest_projection": ["*"]},
     )
     # compare manifests
     assert manifest_beta["classifiers"] == {
