@@ -6,8 +6,8 @@
 ########################################################################
 #  pip freeze
 ########################################################################
-boto3==1.35.70
-botocore==1.35.70
+boto3==1.35.75
+botocore==1.35.75
 cachetools==5.5.0
 certifi==2024.8.30
 cffi==1.17.1
@@ -20,7 +20,7 @@ dnspython==2.7.0
 durationpy==0.9
 google-auth==2.36.0
 googleapis-common-protos==1.56.1
-grpcio==1.68.0
+grpcio==1.68.1
 htcondor==24.2.1
 humanfriendly==10.0
 idna==3.10
@@ -38,11 +38,11 @@ opentelemetry-exporter-otlp-proto-http==1.28.2
 opentelemetry-proto==1.28.2
 opentelemetry-sdk==1.28.2
 opentelemetry-semantic-conventions==0.49b2
-protobuf==5.28.3
+protobuf==5.29.1
 pyasn1==0.6.1
 pyasn1_modules==0.4.1
 pycparser==2.22
-PyJWT==2.10.0
+PyJWT==2.10.1
 pymongo==4.6.1
 python-dateutil==2.9.0.post0
 PyYAML==6.0.2
@@ -52,7 +52,7 @@ requests-futures==1.0.2
 requests-oauthlib==2.0.0
 rsa==4.9
 s3transfer==0.10.4
-six==1.16.0
+six==1.17.0
 thrift==0.21.0
 tornado==6.4.2
 typeguard==4.4.1
@@ -75,18 +75,18 @@ pipdeptree==2.24.0
 └── pip [required: >=24.2, installed: 24.3.1]
 setuptools==65.5.1
 skydriver-clientmanager-ewms-sidecar
-├── boto3 [required: Any, installed: 1.35.70]
-│   ├── botocore [required: >=1.35.70,<1.36.0, installed: 1.35.70]
+├── boto3 [required: Any, installed: 1.35.75]
+│   ├── botocore [required: >=1.35.75,<1.36.0, installed: 1.35.75]
 │   │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   │   ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
-│   │   │   └── six [required: >=1.5, installed: 1.16.0]
+│   │   │   └── six [required: >=1.5, installed: 1.17.0]
 │   │   └── urllib3 [required: >=1.25.4,<3,!=2.2.0, installed: 2.2.3]
 │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   └── s3transfer [required: >=0.10.0,<0.11.0, installed: 0.10.4]
-│       └── botocore [required: >=1.33.2,<2.0a.0, installed: 1.35.70]
+│       └── botocore [required: >=1.33.2,<2.0a.0, installed: 1.35.75]
 │           ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │           ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
-│           │   └── six [required: >=1.5, installed: 1.16.0]
+│           │   └── six [required: >=1.5, installed: 1.17.0]
 │           └── urllib3 [required: >=1.25.4,<3,!=2.2.0, installed: 2.2.3]
 ├── dacite [required: Any, installed: 1.8.1]
 ├── htcondor [required: Any, installed: 24.2.1]
@@ -102,7 +102,7 @@ skydriver-clientmanager-ewms-sidecar
 │   │       └── pyasn1 [required: >=0.1.3, installed: 0.6.1]
 │   ├── oauthlib [required: >=3.2.2, installed: 3.2.2]
 │   ├── python-dateutil [required: >=2.5.3, installed: 2.9.0.post0]
-│   │   └── six [required: >=1.5, installed: 1.16.0]
+│   │   └── six [required: >=1.5, installed: 1.17.0]
 │   ├── PyYAML [required: >=5.4.1, installed: 6.0.2]
 │   ├── requests [required: Any, installed: 2.32.3]
 │   │   ├── certifi [required: >=2017.4.17, installed: 2024.8.30]
@@ -116,7 +116,7 @@ skydriver-clientmanager-ewms-sidecar
 │   │       ├── charset-normalizer [required: >=2,<4, installed: 3.4.0]
 │   │       ├── idna [required: >=2.5,<4, installed: 3.10]
 │   │       └── urllib3 [required: >=1.21.1,<3, installed: 2.2.3]
-│   ├── six [required: >=1.9.0, installed: 1.16.0]
+│   ├── six [required: >=1.9.0, installed: 1.17.0]
 │   ├── urllib3 [required: >=1.24.2, installed: 2.2.3]
 │   └── websocket-client [required: >=0.32.0,!=0.42.*,!=0.41.*,!=0.40.0, installed: 1.8.0]
 ├── motor [required: ==3.3.2, installed: 3.3.2]
@@ -141,7 +141,7 @@ skydriver-clientmanager-ewms-sidecar
 │   └── typing_extensions [required: Any, installed: 4.12.2]
 └── wipac-rest-tools [required: <1.6.0, installed: 1.5.3]
     ├── cachetools [required: Any, installed: 5.5.0]
-    ├── PyJWT [required: !=2.6.0, installed: 2.10.0]
+    ├── PyJWT [required: !=2.6.0, installed: 2.10.1]
     ├── qrcode [required: Any, installed: 8.0]
     ├── requests [required: Any, installed: 2.32.3]
     │   ├── certifi [required: >=2017.4.17, installed: 2024.8.30]
@@ -163,7 +163,7 @@ skydriver-clientmanager-ewms-sidecar
         │   ├── idna [required: >=2.5,<4, installed: 3.10]
         │   └── urllib3 [required: >=1.21.1,<3, installed: 2.2.3]
         └── typing_extensions [required: Any, installed: 4.12.2]
-wheel==0.45.0
+wheel==0.45.1
 wipac-telemetry==0.3.1
 ├── coloredlogs [required: Any, installed: 15.0.1]
 │   └── humanfriendly [required: >=9.1, installed: 10.0]
@@ -175,8 +175,8 @@ wipac-telemetry==0.3.1
 ├── opentelemetry-exporter-jaeger [required: Any, installed: 1.21.0]
 │   ├── opentelemetry-exporter-jaeger-proto-grpc [required: ==1.21.0, installed: 1.21.0]
 │   │   ├── googleapis-common-protos [required: ~=1.52,<1.60.0, installed: 1.56.1]
-│   │   │   └── protobuf [required: >=3.15.0, installed: 5.28.3]
-│   │   ├── grpcio [required: >=1.0.0,<2.0.0, installed: 1.68.0]
+│   │   │   └── protobuf [required: >=3.15.0, installed: 5.29.1]
+│   │   ├── grpcio [required: >=1.0.0,<2.0.0, installed: 1.68.1]
 │   │   ├── opentelemetry-api [required: ~=1.3, installed: 1.28.2]
 │   │   │   ├── Deprecated [required: >=1.2.6, installed: 1.2.15]
 │   │   │   │   └── wrapt [required: >=1.10,<2, installed: 1.17.0]
@@ -219,12 +219,12 @@ wipac-telemetry==0.3.1
 │       │   │           └── zipp [required: >=3.20, installed: 3.21.0]
 │       │   └── typing_extensions [required: >=3.7.4, installed: 4.12.2]
 │       └── thrift [required: >=0.10.0, installed: 0.21.0]
-│           └── six [required: >=1.7.2, installed: 1.16.0]
+│           └── six [required: >=1.7.2, installed: 1.17.0]
 ├── opentelemetry-exporter-otlp-proto-http [required: Any, installed: 1.28.2]
 │   ├── Deprecated [required: >=1.2.6, installed: 1.2.15]
 │   │   └── wrapt [required: >=1.10,<2, installed: 1.17.0]
 │   ├── googleapis-common-protos [required: ~=1.52, installed: 1.56.1]
-│   │   └── protobuf [required: >=3.15.0, installed: 5.28.3]
+│   │   └── protobuf [required: >=3.15.0, installed: 5.29.1]
 │   ├── opentelemetry-api [required: ~=1.15, installed: 1.28.2]
 │   │   ├── Deprecated [required: >=1.2.6, installed: 1.2.15]
 │   │   │   └── wrapt [required: >=1.10,<2, installed: 1.17.0]
@@ -232,9 +232,9 @@ wipac-telemetry==0.3.1
 │   │       └── zipp [required: >=3.20, installed: 3.21.0]
 │   ├── opentelemetry-exporter-otlp-proto-common [required: ==1.28.2, installed: 1.28.2]
 │   │   └── opentelemetry-proto [required: ==1.28.2, installed: 1.28.2]
-│   │       └── protobuf [required: >=5.0,<6.0, installed: 5.28.3]
+│   │       └── protobuf [required: >=5.0,<6.0, installed: 5.29.1]
 │   ├── opentelemetry-proto [required: ==1.28.2, installed: 1.28.2]
-│   │   └── protobuf [required: >=5.0,<6.0, installed: 5.28.3]
+│   │   └── protobuf [required: >=5.0,<6.0, installed: 5.29.1]
 │   ├── opentelemetry-sdk [required: ~=1.28.2, installed: 1.28.2]
 │   │   ├── opentelemetry-api [required: ==1.28.2, installed: 1.28.2]
 │   │   │   ├── Deprecated [required: >=1.2.6, installed: 1.2.15]
@@ -270,7 +270,7 @@ wipac-telemetry==0.3.1
 │   │       └── importlib_metadata [required: >=6.0,<=8.5.0, installed: 8.5.0]
 │   │           └── zipp [required: >=3.20, installed: 3.21.0]
 │   └── typing_extensions [required: >=3.7.4, installed: 4.12.2]
-├── protobuf [required: Any, installed: 5.28.3]
+├── protobuf [required: Any, installed: 5.29.1]
 ├── typing_extensions [required: Any, installed: 4.12.2]
 └── wipac-dev-tools [required: Any, installed: 1.13.0]
     ├── requests [required: Any, installed: 2.32.3]
