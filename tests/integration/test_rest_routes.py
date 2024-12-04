@@ -2,8 +2,6 @@
 
 import asyncio
 import copy
-import hashlib
-import json
 import logging
 import os
 import random
@@ -93,13 +91,7 @@ async def _launch_scan(
         scan_id=resp["scan_id"],
         is_deleted=False,
         timestamp=resp["timestamp"],  # see below
-        event_i3live_json_dict__hash=hashlib.md5(
-            json.dumps(
-                post_scan_body["event_i3live_json"],
-                sort_keys=True,
-                ensure_ascii=True,
-            ).encode("utf-8")
-        ).hexdigest(),
+        event_i3live_json_dict__hash=None,  # field has been deprecated, always 'None'
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # see below
         event_metadata=None,
         scan_metadata=None,
@@ -829,7 +821,7 @@ def _assert_manifests_equal_with_normalization(
         AssertionError: If any of the specified keys are not equal after normalization.
     """
     keys_to_compare = [
-        "event_i3live_json_dict__hash",
+        "event_i3live_json_dict",
         "ewms_task",
         "priority",
         "scanner_server_args",

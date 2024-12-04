@@ -2,8 +2,6 @@
 
 import dataclasses as dc
 import enum
-import hashlib
-import json
 from typing import Any, Iterator, Literal
 
 import wipac_dev_tools as wdt
@@ -259,8 +257,7 @@ class Manifest(ScanIDDataclass):
     # open to requestor
     classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)
 
-    # special fields -- see __post_init__
-    event_i3live_json_dict__hash: str = ""  # possibly overwritten
+    event_i3live_json_dict__hash: str | None = None  # **DEPRECATED**
 
     # found/created during first few seconds of scanning
     event_metadata: EventMetadata | None = None
@@ -272,16 +269,6 @@ class Manifest(ScanIDDataclass):
     last_updated: float = 0.0
 
     def __post_init__(self) -> None:
-        if self.event_i3live_json_dict:
-            # shorten b/c this can be a LARGE dict
-            self.event_i3live_json_dict__hash = hashlib.md5(
-                json.dumps(  # sort -> deterministic
-                    self.event_i3live_json_dict,
-                    sort_keys=True,
-                    ensure_ascii=True,
-                ).encode("utf-8")
-            ).hexdigest()
-
         self.scanner_server_args = obfuscate_cl_args(self.scanner_server_args)
 
     def get_state(self) -> ScanState:
