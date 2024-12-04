@@ -811,7 +811,6 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         projection = self.get_argument(
             "projection",
-            # TODO: use mongo syntax for projections - then ping skymist team
             default=(
                 all_dc_fields(database.schema.Manifest) | {"event_i3live_json_dict"}
             ),
@@ -832,7 +831,18 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                         "i3_event_id": manifest.event_i3live_json_dict,
                     }
                 )
-                resp["event_i3live_json_dict"] = i3event_doc["json_dict"]
+                if i3event_doc:
+                    resp["event_i3live_json_dict"] = i3event_doc["json_dict"]
+                else:  # this would mean the event was removed from the db
+                    error_msg = (
+                        f"No i3 event document found by id {resp['event_i3live_json_dict']}"
+                        f"--if other fields are wanted, re-request using 'projection'"
+                    )
+                    raise web.HTTPError(
+                        404,
+                        log_message=error_msg,
+                        reason=error_msg,
+                    )
 
         self.write(resp)
 
