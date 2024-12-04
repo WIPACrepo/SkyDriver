@@ -126,6 +126,12 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
                 database.utils._SCAN_REQUEST_COLL_NAME,
             )
         )
+        self.i3_event_coll = (
+            AsyncIOMotorCollection(  # in contrast, this one is accessed directly
+                mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+                database.utils._I3_EVENT_COLL_NAME,
+            )
+        )
         self.k8s_batch_api = k8s_batch_api
 
 
@@ -460,6 +466,16 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # generate unique scan_id
         scan_id = uuid.uuid4().hex
 
+        # Before doing anything else, persist in DB
+        # -> store the event in its own collection to reduce redundancy
+        i3_event_id = uuid.uuid4().hex
+        await self.i3_event_coll.insert_one(
+            {
+                "i3_event_id": i3_event_id,
+                "json_dict": event_i3live_json_dict,
+            }
+        )
+        # -> store scan_request_obj in db
         scan_request_obj = dict(
             docker_tag=docker_tag,
             scanner_server_memory_bytes=scanner_server_memory_bytes,
@@ -476,16 +492,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             priority=priority,
             debug_mode=debug_mode,
             skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
-            event_i3live_json_dict=event_i3live_json_dict,
+            i3_event_id=i3_event_id,  # foreign key to i3_event collection
             rest_address=self.request.full_url().rstrip(self.request.uri),
         )
-
-        # TODO: store scan_request_obj in db -- can compress extremely, will not be accessed >1x in most cases
-        # the size of event obj is concerning but, idk?
         await self.scan_request_coll.insert_one(
             {
                 "scan_id": scan_id,
                 "scan_request_obj_pkl": pickle.dumps(scan_request_obj),
+                # ^^^ can be well compressed, obj will only be decompressed for re-scans
             },
         )
 
@@ -541,7 +555,7 @@ async def _start_scan(
 
     # put in db (do before k8s start so if k8s fail, we can debug using db's info)
     manifest = await manifests.post(
-        scan_request_obj["event_i3live_json_dict"],
+        scan_request_obj["i3_event_id"],
         scan_id,
         scanner_wrapper.scanner_server_args,
         scanner_wrapper.cluster_starter_args_list,
@@ -795,19 +809,33 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             default=False,
             type=bool,
         )
-        # # response args
-        # manifest_projection = self.get_argument(
-        #     "manifest_projection",
-        #     default=all_dc_fields(database.schema.Manifest),
-        #     type=set[str],
-        # )
-
-        manifest = await self.manifests.get(scan_id, incl_del)
-
-        self.write(
-            # dict_projection(dc.asdict(manifest), manifest_projection),
-            dc.asdict(manifest)
+        # response args
+        projection = self.get_argument(
+            "projection",
+            # TODO: use mongo syntax for projections - then ping skymist team
+            default=(
+                all_dc_fields(database.schema.Manifest) | {"event_i3live_json_dict"}
+            ),
+            type=set[str],
         )
+
+        # get manifest from db
+        manifest = await self.manifests.get(scan_id, incl_del)
+        resp = dict_projection(dc.asdict(manifest), projection)
+
+        # Backward Compatibility:
+        #   Include the whole event dict in the response like the 'old' manifest.
+        #   This overrides the manifest's field which should be an id.
+        if "event_i3live_json_dict" in projection:
+            if isinstance(manifest.event_i3live_json_dict, str):
+                i3event_doc = await self.i3_event_coll.find_one(
+                    {
+                        "i3_event_id": manifest.event_i3live_json_dict,
+                    }
+                )
+                resp["event_i3live_json_dict"] = i3event_doc["json_dict"]
+
+        self.write(resp)
 
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:

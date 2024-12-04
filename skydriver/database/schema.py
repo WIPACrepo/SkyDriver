@@ -245,7 +245,7 @@ class Manifest(ScanIDDataclass):
     is_deleted: bool
 
     # grabbed by scanner central server
-    event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ hash?
+    event_i3live_json_dict: StrDict | str  # either whole dict, or id to i3_event coll
 
     ewms_task: EWMSTaskDirective
 
