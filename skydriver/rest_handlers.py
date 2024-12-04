@@ -45,10 +45,6 @@ MAX_CLASSIFIERS_LEN = 25
 
 WAIT_BEFORE_TEARDOWN = 60
 
-DEFAULT_EXCLUDED_MANIFEST_FIELDS = {
-    "event_i3live_json_dict",
-}
-
 
 # -----------------------------------------------------------------------------
 # REST requestor auth
@@ -170,10 +166,7 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
-            default=(
-                all_dc_fields(database.schema.Manifest)
-                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-            ),
+            default=all_dc_fields(database.schema.Manifest),
             type=set[str],
         )
 
@@ -455,10 +448,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
-            default=(
-                all_dc_fields(database.schema.Manifest)
-                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-            ),
+            default=all_dc_fields(database.schema.Manifest),
             type=set[str],
         )
 
@@ -586,10 +576,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
-            default=(
-                all_dc_fields(database.schema.Manifest)
-                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-            ),
+            default=all_dc_fields(database.schema.Manifest),
             type=set[str],
         )
 
@@ -718,10 +705,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         manifest_projection = self.get_argument(
             "manifest_projection",
-            default=(
-                all_dc_fields(database.schema.Manifest)
-                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-            ),
+            default=all_dc_fields(database.schema.Manifest),
             type=set[str],
         )
 
@@ -767,15 +751,10 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # # response args
         # manifest_projection = self.get_argument(
         #     "manifest_projection",
-        #     default=(
-        #         all_dc_fields(database.schema.Manifest)
-        #         - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-        #     ),
+        #     default=all_dc_fields(database.schema.Manifest),
         #     type=set[str],
         # )
-        manifest_projection = (
-            all_dc_fields(database.schema.Manifest) - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-        )
+        manifest_projection = all_dc_fields(database.schema.Manifest)
 
         result, manifest = await get_result_safely(
             self.manifests,
