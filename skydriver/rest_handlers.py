@@ -188,8 +188,7 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         self.write({"manifests": manifests})
 
     #
-    # NOTE - 'EventMappingHandler' needs to stay user-read-only b/c
-    #         it's indirectly updated by the launching of a new scan
+    # NOTE - handler needs to stay user-read-only
     #
 
 
@@ -920,6 +919,38 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
+class ScanI3EventHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles grabbing i3 events using scan ids."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/i3-event$"
+
+    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
+        """Get scan's i3 event."""
+        manifest = await self.manifests.get(scan_id, True)
+
+        # look up event in collection
+        if isinstance(manifest.event_i3live_json_dict, str):
+            doc = await self.i3_event_coll.find_one(
+                {"i3_event_id": manifest.event_i3live_json_dict}
+            )
+            i3_event = doc["json_dict"]
+        # unless, this is an old scan -- where the whole dict was stored w/ the manifest
+        else:
+            i3_event = manifest.event_i3live_json_dict
+
+        self.write({"i3_event": i3_event})
+
+    #
+    # NOTE - handler needs to stay user-read-only
+    #
+    # FUTURE - add delete?
+    #
+
+
+# -----------------------------------------------------------------------------
+
+
 class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles actions on persisted scan results."""
 
@@ -1035,7 +1066,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
 
 class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
-    """Handles relying logs for scans."""
+    """Handles relaying logs for scans."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/logs$"
 
