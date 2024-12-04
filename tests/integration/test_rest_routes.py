@@ -100,7 +100,7 @@ async def _launch_scan(
                 ensure_ascii=True,
             ).encode("utf-8")
         ).hexdigest(),
-        event_i3live_json_dict=post_scan_body["event_i3live_json"],
+        event_i3live_json_dict=resp["event_i3live_json_dict"],  # see below
         event_metadata=None,
         scan_metadata=None,
         progress=None,
@@ -117,6 +117,7 @@ async def _launch_scan(
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
     assert RE_UUID4HEX.fullmatch(resp["scan_id"])
+    assert RE_UUID4HEX.fullmatch(resp["event_i3live_json_dict"])  # it's an ID!
     assert launch_time < resp["timestamp"] < resp["last_updated"] < time.time()
 
     # check args (avoid whitespace headaches...)
