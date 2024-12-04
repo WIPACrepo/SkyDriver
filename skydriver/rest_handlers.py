@@ -835,7 +835,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                     resp["event_i3live_json_dict"] = i3event_doc["json_dict"]
                 else:  # this would mean the event was removed from the db
                     error_msg = (
-                        f"No i3 event document found by id {resp['event_i3live_json_dict']}"
+                        f"No i3 event document found with id '{resp['event_i3live_json_dict']}'"
                         f"--if other fields are wanted, re-request using 'projection'"
                     )
                     raise web.HTTPError(
@@ -944,7 +944,15 @@ class ScanI3EventHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             doc = await self.i3_event_coll.find_one(
                 {"i3_event_id": manifest.event_i3live_json_dict}
             )
-            i3_event = doc["json_dict"]
+            if doc:
+                i3_event = doc["json_dict"]
+            else:  # this would mean the event was removed from the db
+                error_msg = f"No i3 event document found with id '{manifest.event_i3live_json_dict}'"
+                raise web.HTTPError(
+                    404,
+                    log_message=error_msg,
+                    reason=error_msg,
+                )
         # unless, this is an old scan -- where the whole dict was stored w/ the manifest
         else:
             i3_event = manifest.event_i3live_json_dict
