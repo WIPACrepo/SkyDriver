@@ -185,12 +185,12 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         args = arghand.parse_args()
 
-        if "is_deleted" not in args.mongo_filter and not args.incl_del:
-            args.mongo_filter["is_deleted"] = False
+        if "is_deleted" not in args.filter and not args.incl_del:
+            args.filter["is_deleted"] = False
 
         manifests = [
             dict_projection(dc.asdict(m), args.manifest_projection)
-            async for m in self.manifests.find_all(args.mongo_filter)
+            async for m in self.manifests.find_all(args.filter)
         ]
 
         self.write({"manifests": manifests})
