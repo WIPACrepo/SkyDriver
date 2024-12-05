@@ -231,9 +231,6 @@ async def _launch_scan(
     # get scan_id
     assert resp["scan_id"]
 
-    # remove fields usually not returned
-    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert resp["ewms_task"].pop("env_vars")  # remove to match with other requests
     return resp  # type: ignore[no-any-return]
 
 
@@ -262,8 +259,6 @@ async def _do_patch(
     now = time.time()
 
     resp = await rc.request("PATCH", f"/scan/{scan_id}/manifest", body)
-    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert resp["ewms_task"].pop("env_vars")  # remove to match with other requests
     assert resp == dict(
         scan_id=scan_id,
         is_deleted=False,
@@ -307,8 +302,6 @@ async def _do_patch(
     manifest = resp  # keep around
     # query progress
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert resp["ewms_task"].pop("env_vars")  # remove to match with other requests
     assert resp == manifest
     return manifest  # type: ignore[no-any-return]
 
@@ -459,8 +452,6 @@ async def _send_result(
 
     # query progress
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert resp["ewms_task"].pop("env_vars")  # remove to match with other requests
     assert resp == last_known_manifest
 
     # query result
@@ -548,8 +539,6 @@ async def _delete_scan(
     resp = await rc.request(
         "GET", f"/scan/{scan_id}/manifest", {"include_deleted": True}
     )
-    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert resp["ewms_task"].pop("env_vars")  # remove to match with other requests
     assert resp == del_resp["manifest"]
 
     # RESULT: query w/ scan id (fails)
