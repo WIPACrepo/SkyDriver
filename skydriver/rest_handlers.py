@@ -800,28 +800,31 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await self.manifests.get(scan_id, incl_del)
         resp = dict_projection(dc.asdict(manifest), projection)
 
-        # Backward Compatibility:
+        # Backward Compatibility for Skymap Scanner:
         #   Include the whole event dict in the response like the 'old' manifest.
         #   This overrides the manifest's field which should be an id.
-        if "event_i3live_json_dict" in projection:
-            if isinstance(manifest.event_i3live_json_dict, str):
-                i3event_doc = await self.i3_event_coll.find_one(
-                    {
-                        "i3_event_id": manifest.event_i3live_json_dict,
-                    }
+        if (
+            self.auth_roles[0] == SKYMAP_SCANNER_ACCT
+            and "event_i3live_json_dict" in projection
+            and isinstance(manifest.event_i3live_json_dict, str)
+        ):
+            i3event_doc = await self.i3_event_coll.find_one(
+                {
+                    "i3_event_id": manifest.event_i3live_json_dict,
+                }
+            )
+            if i3event_doc:
+                resp["event_i3live_json_dict"] = i3event_doc["json_dict"]
+            else:  # this would mean the event was removed from the db
+                error_msg = (
+                    f"No i3 event document found with id '{resp['event_i3live_json_dict']}'"
+                    f"--if other fields are wanted, re-request using 'projection'"
                 )
-                if i3event_doc:
-                    resp["event_i3live_json_dict"] = i3event_doc["json_dict"]
-                else:  # this would mean the event was removed from the db
-                    error_msg = (
-                        f"No i3 event document found with id '{resp['event_i3live_json_dict']}'"
-                        f"--if other fields are wanted, re-request using 'projection'"
-                    )
-                    raise web.HTTPError(
-                        404,
-                        log_message=error_msg,
-                        reason=error_msg,
-                    )
+                raise web.HTTPError(
+                    404,
+                    log_message=error_msg,
+                    reason=error_msg,
+                )
 
         self.write(resp)
 
