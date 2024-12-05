@@ -380,7 +380,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "reco_algo",
             type=lambda x: argparse_tools.validate_arg(
                 x,
-                re.match(r"\S", x),  # no empty string / whitespace,
+                bool(re.match(r"\S", x)),  # no empty string / whitespace,
                 ValueError("cannot be empty string / whitespace"),
             ),
         )
