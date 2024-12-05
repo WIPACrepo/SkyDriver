@@ -471,7 +471,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         await self.i3_event_coll.insert_one(
             {
                 "i3_event_id": i3_event_id,
-                "json_dict": args.event_i3live_json_dict,
+                "json_dict": args.event_i3live_json,  # this was transformed into dict
             }
         )
         # -> store scan_request_obj in db
