@@ -88,7 +88,7 @@ def all_dc_fields(class_or_instance: Any) -> set[str]:
     return set(f.name for f in dc.fields(class_or_instance))
 
 
-def dict_projection(dicto: dict, projection: set[str]) -> dict:
+def dict_projection(dicto: dict, projection: set[str] | list[str]) -> dict:
     """Keep only the keys in the `projection`.
 
     If `projection` is empty or includes '*', return all fields.
@@ -180,11 +180,7 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         arghand.add_argument(
             "manifest_projection",
             default=all_dc_fields(database.schema.Manifest),
-            type=lambda x: argparse_tools.validate_arg(
-                set(x),
-                isinstance(list, x) and all(isinstance(str, m) for m in x),
-                ValueError("must be list (set) of strings"),
-            ),
+            type=str,
         )
         args = arghand.parse_args()
 
@@ -437,11 +433,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         arghand.add_argument(
             "manifest_projection",
             default=all_dc_fields(database.schema.Manifest),
-            type=lambda x: argparse_tools.validate_arg(
-                set(x),
-                isinstance(list, x) and all(isinstance(str, m) for m in x),
-                ValueError("must be list (set) of strings"),
-            ),
+            type=str,
         )
         args = arghand.parse_args()
 
@@ -591,11 +583,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         arghand.add_argument(
             "manifest_projection",
             default=all_dc_fields(database.schema.Manifest),
-            type=lambda x: argparse_tools.validate_arg(
-                set(x),
-                isinstance(list, x) and all(isinstance(str, m) for m in x),
-                ValueError("must be list (set) of strings"),
-            ),
+            type=str,
         )
         args = arghand.parse_args()
 
@@ -725,11 +713,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         arghand.add_argument(
             "manifest_projection",
             default=all_dc_fields(database.schema.Manifest),
-            type=lambda x: argparse_tools.validate_arg(
-                set(x),
-                isinstance(list, x) and all(isinstance(str, m) for m in x),
-                ValueError("must be list (set) of strings"),
-            ),
+            type=str,
         )
         args = arghand.parse_args()
 
@@ -813,11 +797,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         arghand.add_argument(
             "projection",
             default=all_dc_fields(database.schema.Manifest),
-            type=lambda x: argparse_tools.validate_arg(
-                set(x),
-                isinstance(list, x) and all(isinstance(str, m) for m in x),
-                ValueError("must be list (set) of strings"),
-            ),
+            type=str,
         )
         args = arghand.parse_args()
 
