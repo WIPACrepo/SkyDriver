@@ -447,7 +447,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # more arg validation
         if DebugMode.CLIENT_LOGS in args.debug_mode:
-            for cluster in args.request_clusters:
+            for cluster in args.cluster:
                 cname, cinfo = cluster.to_known_cluster()
                 if cluster.n_workers > cinfo.get(
                     "max_n_clients_during_debug_mode", float("inf")
@@ -483,7 +483,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             real_or_simulated_event=args.real_or_simulated_event,
             predictive_scanning_threshold=args.predictive_scanning_threshold,
             classifiers=args.classifiers,
-            request_clusters=args.request_clusters,
+            request_clusters=args.cluster,
             worker_memory_bytes=args.worker_memory,
             worker_disk_bytes=args.worker_disk_bytes,  # already in bytes
             max_pixel_reco_time=args.max_pixel_reco_time,
