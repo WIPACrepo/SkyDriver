@@ -166,7 +166,7 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self) -> None:
         """Get matching scan manifest(s) for the given search."""
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS)
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
         arghand.add_argument(
             "filter",
             type=_arg_dict_strict,
@@ -338,7 +338,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self) -> None:
         """Start a new scan."""
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS)
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
         # docker args
         arghand.add_argument(
             # any tag on docker hub (including 'latest') -- must also be on CVMFS (but not checked here)
@@ -586,7 +586,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self, scan_id: str) -> None:
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS)
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
         # response args
         arghand.add_argument(
             "manifest_projection",
@@ -715,7 +715,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan and/or mark manifest & result as "deleted"."""
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS)
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
         arghand.add_argument(
             "delete_completed_scan",
             default=False,
@@ -769,7 +769,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get manifest & result."""
-        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS)
+        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
         arghand.add_argument(
             "include_deleted",
             default=False,
@@ -803,7 +803,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
-        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS)
+        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
         arghand.add_argument(
             "include_deleted",
             default=False,
@@ -853,7 +853,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS)
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
 
         T = TypeVar("T")
 
@@ -985,7 +985,7 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted result."""
-        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS)
+        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
         arghand.add_argument(
             "include_deleted",
             default=False,
@@ -1005,7 +1005,7 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's result."""
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS)
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
         arghand.add_argument(
             "skyscan_result",
             type=_arg_dict_strict,
@@ -1050,7 +1050,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
-        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS)
+        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
         arghand.add_argument(
             "include_pod_statuses",
             type=bool,
