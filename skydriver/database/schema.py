@@ -234,6 +234,9 @@ class EWMSTaskDirective:
         # NOTE - self.env_vars done in EnvVars
 
 
+DEPRECATED_EVENT_I3LIVE_JSON_DICT = "use 'i3_event_id'"
+
+
 @typechecked
 @dc.dataclass
 class Manifest(ScanIDDataclass):
@@ -257,7 +260,7 @@ class Manifest(ScanIDDataclass):
     # i3 event -- grabbed by scanner central server
     i3_event_id: str = ""  # id to i3_event coll
     # -> deprecated fields -- see __post_init__ for backward compatibility  logic
-    event_i3live_json_dict: StrDict | None = None  # **DEPRECATED**
+    event_i3live_json_dict: StrDict | str = DEPRECATED_EVENT_I3LIVE_JSON_DICT
     event_i3live_json_dict__hash: str | None = None  # **DEPRECATED**
 
     # found/created during first few seconds of scanning
@@ -270,7 +273,10 @@ class Manifest(ScanIDDataclass):
     last_updated: float = 0.0
 
     def __post_init__(self) -> None:
-        if not self.i3_event_id and not self.event_i3live_json_dict:
+        if (
+            not self.i3_event_id
+            and self.event_i3live_json_dict == DEPRECATED_EVENT_I3LIVE_JSON_DICT
+        ):
             raise ValueError(
                 "Manifest must define 'i3_event_id' "
                 "(old manifests may define 'event_i3live_json_dict' instead)"

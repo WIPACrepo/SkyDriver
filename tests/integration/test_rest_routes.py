@@ -92,7 +92,7 @@ async def _launch_scan(
         is_deleted=False,
         timestamp=resp["timestamp"],  # see below
         event_i3live_json_dict__hash=None,  # field has been deprecated, always 'None'
-        event_i3live_json_dict=None,  # field has been deprecated, always 'None'
+        event_i3live_json_dict="use 'i3_event_id'",  # field has been deprecated
         i3_event_id=resp["i3_event_id"],  # see below
         event_metadata=None,
         scan_metadata=None,
