@@ -185,7 +185,7 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         args = arghand.parse_args()
 
-        if "is_deleted" not in args.filter and not args.incl_del:
+        if "is_deleted" not in args.filter and not args.include_deleted:
             args.filter["is_deleted"] = False
 
         manifests = [
