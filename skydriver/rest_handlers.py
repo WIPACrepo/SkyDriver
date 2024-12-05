@@ -484,7 +484,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             debug_mode=args.debug_mode,
             skyscan_mq_client_timeout_wait_for_first_message=(
                 args.skyscan_mq_client_timeout_wait_for_first_message
-                if args.skyscan_mq_client_timeout_wait_for_first_message != 1
+                if args.skyscan_mq_client_timeout_wait_for_first_message != -1
                 else None
             ),
             i3_event_id=i3_event_id,  # foreign key to i3_event collection
