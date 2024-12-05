@@ -242,9 +242,6 @@ class Manifest(ScanIDDataclass):
     timestamp: float
     is_deleted: bool
 
-    # grabbed by scanner central server
-    event_i3live_json_dict: StrDict | str  # either whole dict, or id to i3_event coll
-
     ewms_task: EWMSTaskDirective
 
     # args placed in k8s job obj
@@ -257,6 +254,10 @@ class Manifest(ScanIDDataclass):
     # open to requestor
     classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)
 
+    # i3 event -- grabbed by scanner central server
+    i3_event_id: str = ""  # id to i3_event coll
+    # -> deprecated fields -- see __post_init__ for backward compatibility  logic
+    event_i3live_json_dict: StrDict | None = None  # **DEPRECATED**
     event_i3live_json_dict__hash: str | None = None  # **DEPRECATED**
 
     # found/created during first few seconds of scanning
@@ -269,6 +270,11 @@ class Manifest(ScanIDDataclass):
     last_updated: float = 0.0
 
     def __post_init__(self) -> None:
+        if not self.i3_event_id and not self.event_i3live_json_dict:
+            raise ValueError(
+                "Manifest must define 'i3_event_id' "
+                "(old manifests may define 'event_i3live_json_dict' instead)"
+            )
         self.scanner_server_args = obfuscate_cl_args(self.scanner_server_args)
 
     def get_state(self) -> ScanState:

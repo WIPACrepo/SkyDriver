@@ -72,7 +72,7 @@ class ManifestClient:
             scan_id=scan_id,
             timestamp=time.time(),
             is_deleted=False,
-            event_i3live_json_dict=i3_event_id,
+            i3_event_id=i3_event_id,
             scanner_server_args=scanner_server_args,
             ewms_task=schema.EWMSTaskDirective(
                 tms_args=tms_args_list,

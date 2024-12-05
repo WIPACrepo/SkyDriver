@@ -790,15 +790,12 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         projection = self.get_argument(
             "projection",
-            default=(
-                all_dc_fields(database.schema.Manifest) | {"event_i3live_json_dict"}
-            ),
+            default=all_dc_fields(database.schema.Manifest),
             type=set[str],
         )
 
         # get manifest from db
         manifest = await self.manifests.get(scan_id, incl_del)
-        resp = dict_projection(dc.asdict(manifest), projection)
 
         # Backward Compatibility for Skymap Scanner:
         #   Include the whole event dict in the response like the 'old' manifest.
@@ -806,18 +803,15 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         if (
             self.auth_roles[0] == SKYMAP_SCANNER_ACCT  # type: ignore
             and "event_i3live_json_dict" in projection
-            and isinstance(manifest.event_i3live_json_dict, str)
+            and manifest.i3_event_id  # if no id, then event already in manifest
         ):
-            i3event_doc = await self.i3_event_coll.find_one(
-                {
-                    "i3_event_id": manifest.event_i3live_json_dict,
-                }
-            )
-            if i3event_doc:
-                resp["event_i3live_json_dict"] = i3event_doc["json_dict"]
+            if i3event_doc := await self.i3_event_coll.find_one(
+                {"i3_event_id": manifest.i3_event_id}
+            ):
+                manifest.event_i3live_json_dict = i3event_doc["json_dict"]
             else:  # this would mean the event was removed from the db
                 error_msg = (
-                    f"No i3 event document found with id '{resp['event_i3live_json_dict']}'"
+                    f"No i3 event document found with id '{manifest.i3_event_id}'"
                     f"--if other fields are wanted, re-request using 'projection'"
                 )
                 raise web.HTTPError(
@@ -826,6 +820,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                     reason=error_msg,
                 )
 
+        resp = dict_projection(dc.asdict(manifest), projection)
         self.write(resp)
 
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
@@ -922,14 +917,16 @@ class ScanI3EventHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await self.manifests.get(scan_id, True)
 
         # look up event in collection
-        if isinstance(manifest.event_i3live_json_dict, str):
+        if manifest.i3_event_id:
             doc = await self.i3_event_coll.find_one(
-                {"i3_event_id": manifest.event_i3live_json_dict}
+                {"i3_event_id": manifest.i3_event_id}
             )
             if doc:
                 i3_event = doc["json_dict"]
             else:  # this would mean the event was removed from the db
-                error_msg = f"No i3 event document found with id '{manifest.event_i3live_json_dict}'"
+                error_msg = (
+                    f"No i3 event document found with id '{manifest.i3_event_id}'"
+                )
                 raise web.HTTPError(
                     404,
                     log_message=error_msg,

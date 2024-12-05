@@ -92,7 +92,8 @@ async def _launch_scan(
         is_deleted=False,
         timestamp=resp["timestamp"],  # see below
         event_i3live_json_dict__hash=None,  # field has been deprecated, always 'None'
-        event_i3live_json_dict=resp["event_i3live_json_dict"],  # see below
+        event_i3live_json_dict=None,  # field has been deprecated, always 'None'
+        i3_event_id=resp["i3_event_id"],  # see below
         event_metadata=None,
         scan_metadata=None,
         progress=None,
@@ -109,7 +110,7 @@ async def _launch_scan(
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
     assert RE_UUID4HEX.fullmatch(resp["scan_id"])
-    assert RE_UUID4HEX.fullmatch(resp["event_i3live_json_dict"])  # it's an ID!
+    assert RE_UUID4HEX.fullmatch(resp["i3_event_id"])
     assert launch_time < resp["timestamp"] < resp["last_updated"] < time.time()
 
     # check args (avoid whitespace headaches...)
@@ -263,6 +264,7 @@ async def _do_patch(
         scan_id=scan_id,
         is_deleted=False,
         timestamp=resp["timestamp"],  # see below
+        i3_event_id=resp["i3_event_id"],  # not checking
         event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         event_i3live_json_dict__hash=resp[
             "event_i3live_json_dict__hash"
@@ -783,8 +785,6 @@ async def _after_scan_start_logic(
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert manifest["ewms_task"].pop("env_vars")  # remove to match with other requests
     assert manifest["ewms_task"]["complete"]  # workforce is done
 
     #
@@ -811,7 +811,7 @@ def _assert_manifests_equal_with_normalization(
         AssertionError: If any of the specified keys are not equal after normalization.
     """
     keys_to_compare = [
-        "event_i3live_json_dict",
+        "i3_event_id",
         "ewms_task",
         "priority",
         "scanner_server_args",
@@ -1127,8 +1127,6 @@ async def test_100__bad_data(
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert manifest["ewms_task"].pop("env_vars")  # remove to match with other requests
     assert manifest["ewms_task"]["complete"]  # workforce is done
 
     #
