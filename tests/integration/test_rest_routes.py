@@ -263,6 +263,7 @@ async def _do_patch(
         scan_id=scan_id,
         is_deleted=False,
         timestamp=resp["timestamp"],  # see below
+        event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         event_i3live_json_dict__hash=resp[
             "event_i3live_json_dict__hash"
         ],  # not checking
