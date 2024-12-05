@@ -804,7 +804,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         #   Include the whole event dict in the response like the 'old' manifest.
         #   This overrides the manifest's field which should be an id.
         if (
-            self.auth_roles[0] == SKYMAP_SCANNER_ACCT
+            self.auth_roles[0] == SKYMAP_SCANNER_ACCT  # type: ignore
             and "event_i3live_json_dict" in projection
             and isinstance(manifest.event_i3live_json_dict, str)
         ):
