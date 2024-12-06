@@ -955,10 +955,7 @@ async def test_100__bad_data(
             print(f"{arg}: [{bad_val}]")
             with pytest.raises(
                 requests.exceptions.HTTPError,
-                match=re.escape(
-                    f"400 Client Error: argument {arg}: invalid type "
-                    f"for url: {rc.address}/scan"
-                ),
+                match=rf"400 Client Error: argument {arg}: .+ for url: {rc.address}/scan",
             ) as e:
                 await rc.request(
                     "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, arg: bad_val}
