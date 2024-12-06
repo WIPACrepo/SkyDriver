@@ -935,7 +935,11 @@ async def test_100__bad_data(
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: `\w+`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
+        match=re.escape(
+            f"400 Client Error: the following arguments are required: "
+            f"docker_tag, cluster, reco_algo, event_i3live_json, nsides, "
+            f"real_or_simulated_event, max_pixel_reco_time for url: {rc.address}/scan"
+        ),
     ) as e:
         await rc.request("POST", "/scan", {})
     print(e.value)
