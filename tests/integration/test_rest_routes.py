@@ -938,7 +938,8 @@ async def test_100__bad_data(
         match=re.escape(
             f"400 Client Error: the following arguments are required: "
             f"docker_tag, cluster, reco_algo, event_i3live_json, nsides, "
-            f"real_or_simulated_event, max_pixel_reco_time for url: {rc.address}/scan"
+            f"real_or_simulated_event, max_pixel_reco_time "
+            f"for url: {rc.address}/scan"
         ),
     ) as e:
         await rc.request("POST", "/scan", {})
@@ -954,7 +955,7 @@ async def test_100__bad_data(
             print(f"{arg}: [{bad_val}]")
             with pytest.raises(
                 requests.exceptions.HTTPError,
-                match=rf"400 Client Error: `{arg}`: \(ValueError\) .+ for url: {rc.address}/scan",
+                match=rf"400 Client Error: argument {arg}: ValueError\('.+'\).* for url: {rc.address}/scan",
             ) as e:
                 await rc.request(
                     "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, arg: bad_val}
@@ -970,7 +971,12 @@ async def test_100__bad_data(
         print(f"[{bad_val}]")
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=rf"400 Client Error: `cluster`: \(ValueError\) .+ for url: {rc.address}/scan",
+            match=re.escape(
+                "400 Client Error: argument cluster: "
+                "must be a dict of cluster location and number of workers, Ex: {'sub-2': 1500, ...}"
+                " (to request a cluster location more than once, provide a list of 2-lists instead)"
+                f"for url: {rc.address}/scan"
+            ),
         ) as e:
             await rc.request(
                 "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "cluster": bad_val}
@@ -982,7 +988,12 @@ async def test_100__bad_data(
             print(arg)
             with pytest.raises(
                 requests.exceptions.HTTPError,
-                match=rf"400 Client Error: `{arg}`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
+                match=re.escape(
+                    f"400 Client Error: the following arguments are required: "
+                    f"docker_tag, cluster, reco_algo, event_i3live_json, nsides, "
+                    f"real_or_simulated_event, max_pixel_reco_time "
+                    f"for url: {rc.address}/scan"
+                ),
             ) as e:
                 # remove arg from body
                 await rc.request(
@@ -994,7 +1005,7 @@ async def test_100__bad_data(
     # # bad docker tag
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: `docker_tag`: \(ValueError\) .+ for url: {rc.address}/scan",
+        match=rf"400 Client Error: argument docker_tag: invalid type for url: {rc.address}/scan",
     ) as e:
         await rc.request(
             "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "docker_tag": "foo"}
@@ -1072,7 +1083,7 @@ async def test_100__bad_data(
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=rf"400 Client Error: `progress`: \(ValueError\) missing value for field .* for url: {rc.address}/scan/{scan_id}/manifest",
+            match=rf"400 Client Error: argument progress: missing value for field .* for url: {rc.address}/scan/{scan_id}/manifest",
         ) as e:
             await rc.request(
                 "PATCH", f"/scan/{scan_id}/manifest", {"progress": bad_val}
@@ -1100,7 +1111,9 @@ async def test_100__bad_data(
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"400 Client Error: `skyscan_result`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/{scan_id}/result"
+            f"400 Client Error: the following arguments are required: "
+            f"skyscan_result, is_final"
+            f"for url: {rc.address}/scan/{scan_id}/result"
         ),
     ) as e:
         await rc.request("PUT", f"/scan/{scan_id}/result", {})
@@ -1116,7 +1129,8 @@ async def test_100__bad_data(
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=re.escape(
-                f"400 Client Error: `skyscan_result`: (ValueError) type mismatch: 'dict' (value is '{type(bad_val)}') for url: {rc.address}/scan/{scan_id}/result"
+                f"400 Client Error: argument skyscan_result: arg must be a dict "
+                f"for url: {rc.address}/scan/{scan_id}/result"
             ),
         ) as e:
             await rc.request(

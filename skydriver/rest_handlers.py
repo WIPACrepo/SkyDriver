@@ -273,7 +273,7 @@ def _dict_or_list_to_request_clusters(
 ) -> list[database.schema.Cluster]:
     _error = argparse.ArgumentTypeError(
         "must be a dict of cluster location and number of workers, Ex: {'sub-2': 1500, ...}"
-        " (to request a cluster location more than once, provide a list of 2-lists instead),"
+        " (to request a cluster location more than once, provide a list of 2-lists instead)"
         # TODO: make n_workers optional when using "TMS smart starter"
     )
     if isinstance(val, dict):
