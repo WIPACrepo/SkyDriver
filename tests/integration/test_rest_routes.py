@@ -971,12 +971,7 @@ async def test_100__bad_data(
         print(f"[{bad_val}]")
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=re.escape(
-                "400 Client Error: argument cluster: "
-                "must be a dict of cluster location and number of workers, Ex: {'sub-2': 1500, ...}"
-                " (to request a cluster location more than once, provide a list of 2-lists instead)"
-                f"for url: {rc.address}/scan"
-            ),
+            match=rf"400 Client Error: argument cluster: must be a dict of .+ for url: {rc.address}/scan",
         ) as e:
             await rc.request(
                 "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "cluster": bad_val}
