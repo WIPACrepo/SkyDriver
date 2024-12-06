@@ -362,7 +362,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=lambda x: argparse_tools.validate_arg(
                 x,
                 not bool(x),  # False if given
-                ValueError("argument is deprecated, please use 'worker_memory'"),
+                argparse.ArgumentTypeError(
+                    "argument is deprecated--use 'worker_memory'"
+                ),
             ),
             default=None,
         )
@@ -381,7 +383,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=lambda x: argparse_tools.validate_arg(
                 x,
                 bool(re.match(r"\S", x)),  # no empty string / whitespace
-                ValueError("cannot be empty string / whitespace"),
+                argparse.ArgumentTypeError("cannot be empty string / whitespace"),
             ),
         )
         arghand.add_argument(
