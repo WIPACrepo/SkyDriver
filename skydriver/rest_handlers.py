@@ -1,5 +1,6 @@
 """Handlers for the SkyDriver REST API server interface."""
 
+import argparse
 import asyncio
 import dataclasses as dc
 import json
@@ -103,7 +104,7 @@ def dict_projection(dicto: dict, projection: set[str] | list[str]) -> dict:
 
 def _arg_dict_strict(val: Any) -> dict:
     if not isinstance(val, dict):
-        raise ValueError("arg must be a dict")
+        raise argparse.ArgumentTypeError("arg must be a dict")
     return val
 
 
@@ -224,7 +225,7 @@ class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-def cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
+def _cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
     """Grab the Cluster object known using `name`."""
     if cluster := KNOWN_CLUSTERS.get(name):
         if cluster["orchestrator"] == "condor":
@@ -239,14 +240,14 @@ def cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
                 location=database.schema.KubernetesLocation(**cluster["location"]),
                 n_workers=n_workers,
             )
-    raise TypeError(
+    raise argparse.ArgumentTypeError(
         f"requested unknown cluster: {name} (available:"
         f" {', '.join(KNOWN_CLUSTERS.keys())})"
     )
 
 
 def _json_to_dict(val: Any) -> dict:
-    _error = TypeError("must be JSON-string or JSON-friendly dict")
+    _error = argparse.ArgumentTypeError("must be JSON-string or JSON-friendly dict")
     # str -> json-dict
     if isinstance(val, str):
         try:
@@ -270,7 +271,7 @@ def _json_to_dict(val: Any) -> dict:
 def _dict_or_list_to_request_clusters(
     val: dict | list,
 ) -> list[database.schema.Cluster]:
-    _error = TypeError(
+    _error = argparse.ArgumentTypeError(
         "must be a dict of cluster location and number of workers, Ex: {'sub-2': 1500, ...}"
         " (to request a cluster location more than once, provide a list of 2-lists instead),"
         # TODO: make n_workers optional when using "TMS smart starter"
@@ -285,27 +286,29 @@ def _dict_or_list_to_request_clusters(
     if not all(isinstance(a, list | tuple) and len(a) == 2 for a in val):
         raise _error
     #
-    return [cluster_lookup(name, n_workers) for name, n_workers in val]
+    return [_cluster_lookup(name, n_workers) for name, n_workers in val]
 
 
 def _classifiers_validator(val: Any) -> dict[str, str | bool | float | int]:
     # type checks
     if not isinstance(val, dict):
-        raise TypeError("must be a dict")
+        raise argparse.ArgumentTypeError("must be a dict")
     if any(v for v in val.values() if not isinstance(v, str | bool | float | int)):
-        raise TypeError("entry must be 'str | bool | float | int'")
+        raise argparse.ArgumentTypeError("entry must be 'str | bool | float | int'")
 
     # size check
     if len(val) > MAX_CLASSIFIERS_LEN:
-        raise ValueError(f"must be at most {MAX_CLASSIFIERS_LEN} entries long")
+        raise argparse.ArgumentTypeError(
+            f"must be at most {MAX_CLASSIFIERS_LEN} entries long"
+        )
     for key, subval in val.items():
         if len(key) > MAX_CLASSIFIERS_LEN:
-            raise ValueError(
+            raise argparse.ArgumentTypeError(
                 f"key must be at most {MAX_CLASSIFIERS_LEN} characters long"
             )
         try:
             if len(subval) > MAX_CLASSIFIERS_LEN:
-                raise ValueError(
+                raise argparse.ArgumentTypeError(
                     f"str-field must be at most {MAX_CLASSIFIERS_LEN} characters long"
                 )
         except TypeError:
@@ -324,7 +327,7 @@ def _data_size_parse(val: Any) -> int:
     try:
         return humanfriendly.parse_size(str(val))  # type: ignore[no-any-return]
     except humanfriendly.InvalidSize:
-        raise ValueError("invalid data size")
+        raise argparse.ArgumentTypeError("invalid data size")
 
 
 class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
@@ -377,7 +380,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "reco_algo",
             type=lambda x: argparse_tools.validate_arg(
                 x,
-                bool(re.match(r"\S", x)),  # no empty string / whitespace,
+                bool(re.match(r"\S", x)),  # no empty string / whitespace
                 ValueError("cannot be empty string / whitespace"),
             ),
         )
@@ -844,7 +847,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             try:
                 return from_dict(data_class, val)
             except DaciteError as e:
-                raise ValueError(str(e))
+                raise argparse.ArgumentTypeError(str(e))
 
         arghand.add_argument(
             "progress",
