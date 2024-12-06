@@ -1105,7 +1105,7 @@ async def test_100__bad_data(
         requests.exceptions.HTTPError,
         match=re.escape(
             f"400 Client Error: the following arguments are required: "
-            f"skyscan_result, is_final"
+            f"skyscan_result, is_final "
             f"for url: {rc.address}/scan/{scan_id}/result"
         ),
     ) as e:
