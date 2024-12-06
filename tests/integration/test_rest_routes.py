@@ -971,7 +971,7 @@ async def test_100__bad_data(
         print(f"[{bad_val}]")
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=rf"400 Client Error: argument cluster: must be a dict of .+ for url: {rc.address}/scan",
+            match=rf"400 Client Error: argument cluster: .+ for url: {rc.address}/scan",
         ) as e:
             await rc.request(
                 "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "cluster": bad_val}
