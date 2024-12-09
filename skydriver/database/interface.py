@@ -103,7 +103,7 @@ class ManifestClient:
         return manifest
 
     @staticmethod
-    def _put_first_event_metadata(
+    def _put_once_event_metadata(
         in_db: schema.Manifest,
         upserting: dict,
         scan_id: str,
@@ -122,7 +122,7 @@ class ManifestClient:
             )
 
     @staticmethod
-    def _put_first_scan_metadata(
+    def _put_once_scan_metadata(
         in_db: schema.Manifest,
         upserting: dict,
         scan_id: str,
@@ -197,27 +197,30 @@ class ManifestClient:
             return await self.get(scan_id, incl_del=True)
 
         upserting: schema.StrDict = {}
-
-        # Store/validate: event_metadata & scan_metadata
-        # NOTE: in theory there's a race condition (get+upsert), but it's set-once-only, so it's OK
-        in_db = await self.get(scan_id, incl_del=True)
-        if event_metadata:
-            self._put_first_event_metadata(in_db, upserting, scan_id, event_metadata)
-        if scan_metadata:
-            self._put_first_scan_metadata(in_db, upserting, scan_id, scan_metadata)
-
-        # tms
-        if cluster or complete is not None:
-            self._put_ewms_task(in_db, upserting, cluster, complete)
-
-        # progress
         if progress:
             upserting["progress"] = progress
 
-        # validate
+        # Validate, then store
+        # NOTE: in theory there's a race condition (get+upsert)
+        in_db = await self.get(scan_id, incl_del=True)
+        if event_metadata:
+            self._put_once_event_metadata(in_db, upserting, scan_id, event_metadata)
+        if scan_metadata:
+            self._put_once_scan_metadata(in_db, upserting, scan_id, scan_metadata)
+        if cluster or complete is not None:
+            self._put_ewms_task(in_db, upserting, cluster, complete)
+
+        # Update db
         if not upserting:  # did we actually update anything?
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
             return in_db
+        else:
+            return await self._patch(upserting, scan_id)
+
+    async def _patch(self, upserting: dict, scan_id: str) -> schema.Manifest:
+        """Update the doc in the DB."""
+        if not upserting:
+            raise ValueError("upserting cannot be empty")
         try:
             upserting = mongodc.typecheck_as_dc_fields(upserting, schema.Manifest)
         except TypeError as e:
