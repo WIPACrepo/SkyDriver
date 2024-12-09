@@ -89,6 +89,21 @@ async def run(
         LOGGER.info("Restarted scan backlog runner.")
 
 
+async def _sleep(short_sleep: bool) -> None:
+    if short_sleep:
+        await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_SHORT_DELAY)
+    else:
+        await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
+
+
+def _logging_heartbeat(last_log_time: float) -> float:
+    if time.time() - last_log_time > ENV.SCAN_BACKLOG_RUNNER_DELAY:
+        LOGGER.info("scan backlog runner is still alive")
+        return time.time()
+    else:
+        return last_log_time
+
+
 async def _run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
@@ -98,19 +113,11 @@ async def _run(
     scan_backlog = database.interface.ScanBacklogClient(mongo_client)
 
     short_sleep = True  # don't wait for full delay after first starting up (helpful for testing new changes)
-
-    last_log_time = 0.0  # keep track of last time a log was made so we're not annoying
+    last_log_heartbeat = 0.0  # log every so often, not on every iteration
 
     while True:
-        if short_sleep:
-            await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_SHORT_DELAY)
-        else:
-            await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
-
-        # like a heartbeat for the logs
-        if time.time() - last_log_time > ENV.SCAN_BACKLOG_RUNNER_DELAY:
-            LOGGER.info("scan backlog runner is still alive")
-            last_log_time = time.time()
+        await _sleep(short_sleep)
+        last_log_heartbeat = _logging_heartbeat(last_log_heartbeat)
 
         # get next entry
         try:
