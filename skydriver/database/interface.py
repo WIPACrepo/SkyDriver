@@ -104,12 +104,14 @@ class ManifestClient:
 
     @staticmethod
     def _put_first_event_metadata(
-        event_metadata: schema.EventMetadata,
         in_db: schema.Manifest,
         upserting: dict,
         scan_id: str,
+        event_metadata: schema.EventMetadata,
     ) -> None:
-        if not in_db.event_metadata:
+        if not event_metadata:
+            raise ValueError("event_metadata cannot be falsy")
+        elif not in_db.event_metadata:
             upserting["event_metadata"] = event_metadata
         elif in_db.event_metadata != event_metadata:
             msg = "Cannot change an existing event_metadata"
@@ -121,12 +123,14 @@ class ManifestClient:
 
     @staticmethod
     def _put_first_scan_metadata(
-        scan_metadata: schema.StrDict,
         in_db: schema.Manifest,
         upserting: dict,
         scan_id: str,
+        scan_metadata: schema.StrDict,
     ) -> None:
-        if not in_db.scan_metadata:
+        if not scan_metadata:
+            raise ValueError("scan_metadata cannot be falsy")
+        elif not in_db.scan_metadata:
             upserting["scan_metadata"] = scan_metadata
         elif in_db.scan_metadata != scan_metadata:
             msg = "Cannot change an existing scan_metadata"
@@ -135,6 +139,40 @@ class ManifestClient:
                 log_message=msg + f" for {scan_id=}",
                 reason=msg,
             )
+
+    @staticmethod
+    def _put_ewms_task(
+        in_db: schema.Manifest,
+        upserting: dict,
+        cluster: schema.Cluster | None,
+        complete: bool | None,
+    ):
+        if not cluster and not complete:
+            raise ValueError("cluster and complete cannot both be falsy")
+
+        upserting["ewms_task"] = copy.deepcopy(in_db.ewms_task)
+        # cluster / clusters
+        # TODO - when TMS is up and running, it will handle cluster updating--remove then
+        # NOTE - there is a race condition inherent with list attributes, don't do this in TMS
+        if not cluster:
+            pass  # don't put in DB
+        else:
+            try:  # find by uuid -> replace
+                idx = next(
+                    i
+                    for i, c in enumerate(in_db.ewms_task.clusters)
+                    if cluster.uuid == c.uuid
+                )
+                upserting["ewms_task"].clusters = (
+                    in_db.ewms_task.clusters[:idx]
+                    + [cluster]
+                    + in_db.ewms_task.clusters[idx + 1 :]
+                )
+            except StopIteration:  # not found -> append
+                upserting["ewms_task"].clusters = in_db.ewms_task.clusters + [cluster]
+        # complete # workforce is done
+        if complete is not None:
+            upserting["ewms_task"].complete = complete  # workforce is done
 
     async def patch(
         self,
@@ -164,37 +202,13 @@ class ManifestClient:
         # NOTE: in theory there's a race condition (get+upsert), but it's set-once-only, so it's OK
         in_db = await self.get(scan_id, incl_del=True)
         if event_metadata:
-            self._put_first_event_metadata(event_metadata, in_db, upserting, scan_id)
+            self._put_first_event_metadata(in_db, upserting, scan_id, event_metadata)
         if scan_metadata:
-            self._put_first_scan_metadata(scan_metadata, in_db, upserting, scan_id)
+            self._put_first_scan_metadata(in_db, upserting, scan_id, scan_metadata)
 
         # tms
         if cluster or complete is not None:
-            upserting["ewms_task"] = copy.deepcopy(in_db.ewms_task)
-            # cluster / clusters
-            # TODO - when TMS is up and running, it will handle cluster updating--remove then
-            # NOTE - there is a race condition inherent with list attributes, don't do this in TMS
-            if not cluster:
-                pass  # don't put in DB
-            else:
-                try:  # find by uuid -> replace
-                    idx = next(
-                        i
-                        for i, c in enumerate(in_db.ewms_task.clusters)
-                        if cluster.uuid == c.uuid
-                    )
-                    upserting["ewms_task"].clusters = (
-                        in_db.ewms_task.clusters[:idx]
-                        + [cluster]
-                        + in_db.ewms_task.clusters[idx + 1 :]
-                    )
-                except StopIteration:  # not found -> append
-                    upserting["ewms_task"].clusters = in_db.ewms_task.clusters + [
-                        cluster
-                    ]
-            # complete # workforce is done
-            if complete is not None:
-                upserting["ewms_task"].complete = complete  # workforce is done
+            self._put_ewms_task(in_db, upserting, cluster, complete)
 
         # progress
         if progress:
