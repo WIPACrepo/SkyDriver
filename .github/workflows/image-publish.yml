@@ -17,7 +17,7 @@ env:
   DOCKER_IMAGE_NAME: ghcr.io/WIPACRepo/SkyDriver
 
 jobs:
-  build-and-publish:
+  docker:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Project
