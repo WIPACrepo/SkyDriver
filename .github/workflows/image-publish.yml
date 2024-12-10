@@ -1,4 +1,4 @@
-name: docker releases
+name: image publish
 
 on:
   push:
@@ -17,8 +17,7 @@ env:
   DOCKER_IMAGE_NAME: ghcr.io/WIPACRepo/SkyDriver
 
 jobs:
-  docker:
-    name: "Docker Image"
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Project
