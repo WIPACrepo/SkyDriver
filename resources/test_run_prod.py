@@ -17,7 +17,7 @@ from pprint import pprint
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
 
-def get_rest_client() -> RestClient:
+def get_rest_client(skydriver_url: str) -> RestClient:
     """Get REST client for talking to SkyDriver.
 
     This will present a QR code in the terminal for initial validation.
@@ -28,7 +28,7 @@ def get_rest_client() -> RestClient:
     # the QR code in the terminal.
 
     return SavedDeviceGrantAuth(
-        "https://skydriver.icecube.aq",
+        skydriver_url,
         token_url="https://keycloak.icecube.wisc.edu/auth/realms/IceCube",
         filename="device-refresh-token",
         client_id="skydriver-external",
@@ -106,6 +106,11 @@ def main() -> None:
         help="the event in realtime's JSON format",
     )
     parser.add_argument(
+        "--skydriver-url",
+        required=True,
+        help="the url to connect to a SkyDriver instance",
+    )
+    parser.add_argument(
         "--cluster",
         required=True,
         help="the cluster to use for running workers. Ex: sub-2",
@@ -136,7 +141,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rc = get_rest_client()
+    rc = get_rest_client(args.skydriver_url)
     scan_id = launch_a_scan(
         rc,
         args.event_file,
