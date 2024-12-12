@@ -1,6 +1,7 @@
 import itertools
 import json
 import os
+from pathlib import Path
 from typing import Iterator
 
 import requests
@@ -70,7 +71,7 @@ class GHATestFetcher:
         return self.expand_matrix(matrix_dict)
 
 
-def setup_tests() -> Iterator[tuple[str, str]]:
+def setup_tests() -> Iterator[tuple[Path, str]]:
     """Get all the files needed for running all the tests used in skymap_scanner CI.
 
     Yields all possible combinations of reco_algo and eventfiles from skymap_scanner tests.
@@ -104,4 +105,4 @@ def setup_tests() -> Iterator[tuple[str, str]]:
             print(f"Failed to download {file_name}: {e}")
 
     for test in test_combos:
-        yield os.path.join(download_dir, test[EVENTFILE_KEY]), test[RECO_ALGO_KEY]
+        yield Path(os.path.join(download_dir, test[EVENTFILE_KEY])), test[RECO_ALGO_KEY]

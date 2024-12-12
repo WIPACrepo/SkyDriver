@@ -8,7 +8,6 @@ unrealistic settings that have adverse effects. It also may be broken,
 or changed fundamentally without notice. You have been warned!
 """
 
-import argparse
 import asyncio
 import json
 from pathlib import Path
@@ -98,62 +97,10 @@ async def monitor(rc: RestClient, scan_id: str) -> None:
 def main() -> None:
     """Launch and monitor a scan for an event."""
 
-    parser = argparse.ArgumentParser(
-        description="Launch and monitor a scan for an event",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "--event-file",
-        required=True,
-        type=Path,
-        help="the event in realtime's JSON format",
-    )
-    parser.add_argument(
-        "--skydriver-url",
-        required=True,
-        help="the url to connect to a SkyDriver server",
-    )
-    parser.add_argument(
-        "--cluster",
-        required=True,
-        help="the cluster to use for running workers. Ex: sub-2",
-    )
-    parser.add_argument(
-        "--n-workers",
-        required=True,
-        type=int,
-        help="number of workers to request",
-    )
-    parser.add_argument(
-        "--max-pixel-reco-time",
-        required=True,
-        type=int,
-        help="how long a reco should take",
-    )
-    parser.add_argument(
-        "--reco-algo",
-        required=True,
-        choices=["dummy", "millipede_original", "millipede_wilks", "crash_dummy"],
-        help="reconstruction algorithm to run",
-    )
-    parser.add_argument(
-        "--scanner-server-memory",
-        required=False,
-        default="512M",
-        help="server memory required",
-    )
-    args = parser.parse_args()
-
     rc = get_rest_client(args.skydriver_url)
     scan_id = asyncio.run(
         launch_a_scan(
             rc,
-            args.event_file,
-            args.cluster,
-            args.n_workers,
-            args.max_pixel_reco_time,
-            args.reco_algo,
-            args.scanner_server_memory,
         )
     )
     asyncio.run(monitor(rc, scan_id))

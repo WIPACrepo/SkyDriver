@@ -1,128 +1,85 @@
+import argparse
 import asyncio
 import logging
-import os
-from asyncio.subprocess import PIPE
-from pathlib import Path
+
+from rest_tools.client import RestClient
 
 import test_getter
+import test_runner
 
 # Setup logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-# Constants
-SCRIPT_PATH = "test_runner.py"  # Path to your script
-LOG_DIR = "subproc_logs"
-os.makedirs(LOG_DIR, exist_ok=True)
-
-# Cluster and other shared settings for the script
-DEFAULT_CLUSTER = "sub-2"
-DEFAULT_WORKERS = 2
-DEFAULT_MAX_PIXEL_RECO_TIME = 300
-DEFAULT_MEMORY = "512M"
-SKYDRIVER_URL = "https://your-skydriver-url.example.com"  # Replace with actual URL
-
-
-# Async function to run a single test
-async def run_test(event_file, reco_algo, task_id):
-    stdout_log = Path(LOG_DIR) / f"task_{task_id}_stdout.log"
-    stderr_log = Path(LOG_DIR) / f"task_{task_id}_stderr.log"
-
-    cmd = [
-        "python",
-        SCRIPT_PATH,
-        "--event-file",
-        event_file,
-        "--skydriver-url",
-        SKYDRIVER_URL,
-        "--cluster",
-        DEFAULT_CLUSTER,
-        "--n-workers",
-        str(DEFAULT_WORKERS),
-        "--max-pixel-reco-time",
-        str(DEFAULT_MAX_PIXEL_RECO_TIME),
-        "--reco-algo",
-        reco_algo,
-        "--scanner-server-memory",
-        DEFAULT_MEMORY,
-    ]
-
-    logging.info(
-        f"Task {task_id}: Starting test for event {event_file} with reco_algo {reco_algo}"
-    )
-
-    # Open log files for writing
-    async with stdout_log.open("w") as out, stderr_log.open("w") as err:
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=PIPE,
-            stderr=PIPE,
-        )
-        while True:
-            line = await process.stdout.readline()
-            if not line:
-                break
-            out.write(line.decode())
-            out.flush()
-
-        stderr = await process.stderr.read()
-        err.write(stderr.decode())
-        err.flush()
-
-        returncode = await process.wait()
-
-        if returncode == 0:
-            logging.info(
-                f"Task {task_id}: Completed successfully (logs: {stdout_log}, {stderr_log})"
-            )
-            # Parse `scan_id` from stdout logs
-            with stdout_log.open("r") as log:
-                for line in log:
-                    if "scan_id" in line:
-                        return line.strip()
-        else:
-            logging.error(f"Task {task_id}: Failed (logs: {stdout_log}, {stderr_log})")
-            return None
-
 
 # Main coroutine to manage tasks using TaskGroup
-async def main():
+async def test_all(
+    rc: RestClient,
+    cluster: str,
+    n_workers: int,
+    max_pixel_reco_time: int,
+    scanner_server_memory: str,
+):
     test_combos = list(test_getter.setup_tests())
 
-    success_scan_ids = []
-    failed_tasks = []
+    for i, (event_file, reco_algo) in enumerate(test_combos):
+        print(f"Launching test #{i+1}...")
+        await test_runner.launch_a_scan(
+            rc,
+            event_file,
+            cluster,
+            n_workers,
+            max_pixel_reco_time,
+            reco_algo,
+            scanner_server_memory,
+        )
 
-    async with asyncio.TaskGroup() as tg:
-        task_map = {}
-        for task_id, (event_file, reco_algo) in enumerate(test_combos):
-            task_map[tg.create_task(run_test(event_file, reco_algo, task_id))] = (
-                event_file,
-                reco_algo,
-            )
 
-        # Await results collectively
-        for task, (event_file, reco_algo) in task_map.items():
-            if task.exception():
-                logging.error(
-                    f"Task for {event_file} and {reco_algo} raised an exception: {task.exception()}"
-                )
-                failed_tasks.append((event_file, reco_algo))
-            elif (result := task.result()) is not None:
-                success_scan_ids.append(result)
-            else:
-                failed_tasks.append((event_file, reco_algo))
+async def main():
+    parser = argparse.ArgumentParser(
+        description="Launch and monitor a scan for an event",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--skydriver-url",
+        required=True,
+        help="the url to connect to a SkyDriver server",
+    )
+    parser.add_argument(
+        "--cluster",
+        required=True,
+        help="the cluster to use for running workers. Ex: sub-2",
+    )
+    parser.add_argument(
+        "--n-workers",
+        required=True,
+        type=int,
+        help="number of workers to request",
+    )
+    parser.add_argument(
+        "--max-pixel-reco-time",
+        required=True,
+        type=int,
+        help="how long a reco should take",
+    )
+    parser.add_argument(
+        "--scanner-server-memory",
+        required=False,
+        default="512M",
+        help="server memory required",
+    )
+    args = parser.parse_args()
 
-    # Final Results
-    if success_scan_ids:
-        logging.info(f"Successfully completed scans with scan_ids: {success_scan_ids}")
-    else:
-        logging.error("All tasks failed. No successful scan IDs.")
+    rc = test_runner.get_rest_client(args.skydriver_url)
 
-    if failed_tasks:
-        logging.warning(f"Failed tasks: {failed_tasks}")
-    else:
-        logging.info("No failed tasks.")
+    await test_all(
+        rc,
+        args.cluster,
+        args.n_workers,
+        args.max_pixel_reco_time,
+        args.scanner_server_memory,
+    )
 
 
 # Run the asyncio event loop
