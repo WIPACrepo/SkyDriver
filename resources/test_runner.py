@@ -65,9 +65,13 @@ async def launch_a_scan(
     return resp["scan_id"]  # type: ignore[no-any-return]
 
 
-async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) -> None:
-    """Monitor the event scan until its done."""
+async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) -> dict:
+    """Monitor the event scan until its done.
+
+    Return the result.
+    """
     out = open(log_file, "w") if log_file else sys.stdout
+    result = {}
 
     done = False
     while True:
@@ -95,5 +99,5 @@ async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) ->
         print(scan_id, file=out)
         if done:
             print("scan is done!", file=out)
-            return
+            return result
         await asyncio.sleep(60)

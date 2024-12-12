@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import json
 import logging
 from pathlib import Path
 
@@ -14,15 +15,59 @@ logging.basicConfig(
 )
 
 
-async def _monitor_scan(rc: RestClient, scan_id: str, log_file: Path):
+def create_scan_tasks(
+    test_combos, rc, cluster, n_workers, max_pixel_reco_time, scanner_server_memory
+):
+    tasks = {}
+    for i, (event_file, reco_algo) in enumerate(test_combos):
+        logging.info(
+            f"Launching test #{i+1} with file {event_file} and algo {reco_algo}"
+        )
+        try:
+            scan_id = asyncio.run(
+                test_runner.launch_a_scan(
+                    rc,
+                    event_file,
+                    cluster,
+                    n_workers,
+                    max_pixel_reco_time,
+                    reco_algo,
+                    scanner_server_memory,
+                )
+            )
+            log_file = Path(f"./logs/{scan_id}.log")
+            tasks[scan_id] = (log_file, reco_algo)
+        except Exception as e:
+            logging.error(f"Failed to launch test #{i+1}: {e}")
+    return tasks
+
+
+def compare_results(scan_result, reco_algo):
+    expected_file = Path(f"tests/data/results_json/{reco_algo}/expected_result.json")
+    if not expected_file.exists():
+        logging.error(f"Expected result file not found: {expected_file}")
+        return
+
+    with expected_file.open("r") as expected:
+        expected_data = json.load(expected)
+
+    if scan_result == expected_data:
+        logging.info(f"Results for scan match expected output.")
+    else:
+        logging.error(f"Mismatch in results for scan:")
+        logging.error(f"Actual: {scan_result}")
+        logging.error(f"Expected: {expected_data}")
+
+
+async def monitor_task(rc, scan_id, log_file, reco_algo):
     try:
-        await test_runner.monitor(rc, scan_id, log_file)
+        scan_result = await test_runner.monitor(rc, scan_id, log_file)
         logging.info(f"Scan {scan_id} completed successfully.")
+        compare_results(scan_result, reco_algo)
     except Exception as e:
         logging.error(f"Error monitoring scan {scan_id}: {e}")
 
 
-# Main coroutine to manage tasks using TaskGroup
 async def test_all(
     rc: RestClient,
     cluster: str,
@@ -31,46 +76,37 @@ async def test_all(
     scanner_server_memory: str,
 ):
     test_combos = list(test_getter.setup_tests())
-    scan_monitors = {}
+    scan_tasks = create_scan_tasks(
+        test_combos,
+        rc,
+        cluster,
+        n_workers,
+        max_pixel_reco_time,
+        scanner_server_memory,
+    )
 
-    for i, (event_file, reco_algo) in enumerate(test_combos):
-        logging.info(
-            f"Launching test #{i+1} with file {event_file} and algo {reco_algo}"
-        )
-        try:
-            scan_id = await test_runner.launch_a_scan(
-                rc,
-                event_file,
-                cluster,
-                n_workers,
-                max_pixel_reco_time,
-                reco_algo,
-                scanner_server_memory,
+    tasks = []
+    for scan_id, (log_file, reco_algo) in scan_tasks.items():
+        tasks.append(
+            asyncio.create_task(
+                monitor_task(
+                    rc,
+                    scan_id,
+                    log_file,
+                    reco_algo,
+                )
             )
-        except Exception as e:
-            logging.error(f"Failed to launch test #{i+1}: {e}")
-
-        log_file = Path(f"./logs/{scan_id}.log")
-        scan_monitors[scan_id] = asyncio.create_task(
-            _monitor_scan(rc, scan_id, log_file)
         )
 
-    while scan_monitors:
-        # Wait for the first task to complete
-        done, _ = await asyncio.wait(
-            scan_monitors.values(), return_when=asyncio.FIRST_COMPLETED
-        )
-
+    while tasks:
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         for task in done:
-            scan_id = next(key for key, value in scan_monitors.items() if value == task)
+            tasks.remove(task)
             try:
                 await task
-                logging.info(f"Task for scan {scan_id} finished.")
+                logging.info("A task completed.")
             except Exception as e:
-                logging.error(f"Task for scan {scan_id} failed: {e}")
-
-            # Remove the completed task from the dictionary
-            del scan_monitors[scan_id]
+                logging.error(f"A task failed: {e}")
 
     logging.info("All tasks completed.")
 
