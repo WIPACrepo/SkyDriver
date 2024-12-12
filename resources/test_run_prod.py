@@ -22,6 +22,8 @@ def get_rest_client(skydriver_url: str) -> RestClient:
 
     This will present a QR code in the terminal for initial validation.
     """
+    if "://" not in skydriver_url:
+        skydriver_url = "https://" + skydriver_url
 
     # NOTE: If your script will not be interactive (like a cron job),
     # then you need to first run your script manually to validate using
@@ -73,7 +75,7 @@ def monitor(rc: RestClient, scan_id: str) -> None:
             pprint(result)
             done = result["is_final"]
         except Exception as e:  # 404 (scanner not yet online)
-            print(e)
+            print(f"ok: {e}")
 
         # get progress
         try:
@@ -83,11 +85,12 @@ def monitor(rc: RestClient, scan_id: str) -> None:
         except (
             Exception
         ) as e:  # 404 (scanner not yet online) or KeyError (no progress yet)
-            print(e)
+            print(f"ok: {e}")
 
         # wait
         print(scan_id)
         if done:
+            print("scan is done!")
             return
         time.sleep(60)
 
@@ -108,7 +111,7 @@ def main() -> None:
     parser.add_argument(
         "--skydriver-url",
         required=True,
-        help="the url to connect to a SkyDriver instance",
+        help="the url to connect to a SkyDriver server",
     )
     parser.add_argument(
         "--cluster",
@@ -129,8 +132,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--reco-algo",
-        required=False,
-        default="millipede_wilks",
+        required=True,
+        choices=["dummy", "millipede_original", "millipede_wilks", "crash_dummy"],
         help="reconstruction algorithm to run",
     )
     parser.add_argument(
