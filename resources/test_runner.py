@@ -10,6 +10,7 @@ or changed fundamentally without notice. You have been warned!
 
 import asyncio
 import json
+import sys
 from pathlib import Path
 from pprint import pprint
 
@@ -64,47 +65,35 @@ async def launch_a_scan(
     return resp["scan_id"]  # type: ignore[no-any-return]
 
 
-async def monitor(rc: RestClient, scan_id: str) -> None:
+async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) -> None:
     """Monitor the event scan until its done."""
+    out = open(log_file, "w") if log_file else sys.stdout
+
     done = False
     while True:
         # get result
         try:
             result = await rc.request("GET", f"/scan/{scan_id}/result")
-            pprint(result)
+            pprint(result, stream=out)
             done = result["is_final"]
         except Exception as e:  # 404 (scanner not yet online)
-            print(f"ok: {e}")
+            print(f"ok: {e}", file=out)
 
         # get progress
         try:
             progress = await rc.request("GET", f"/scan/{scan_id}/manifest")["progress"]
-            print(json.dumps(progress["processing_stats"].pop("rate"), indent=4))
-            print(json.dumps(progress, indent=4))
-        except (
-            Exception
-        ) as e:  # 404 (scanner not yet online) or KeyError (no progress yet)
-            print(f"ok: {e}")
+            print(
+                json.dumps(progress["processing_stats"].pop("rate"), indent=4),
+                file=out,
+            )
+            print(json.dumps(progress, indent=4), file=out)
+        except Exception as e:
+            # 404 (scanner not yet online) or KeyError (no progress yet)
+            print(f"ok: {e}", file=out)
 
         # wait
-        print(scan_id)
+        print(scan_id, file=out)
         if done:
-            print("scan is done!")
+            print("scan is done!", file=out)
             return
         await asyncio.sleep(60)
-
-
-def main() -> None:
-    """Launch and monitor a scan for an event."""
-
-    rc = get_rest_client(args.skydriver_url)
-    scan_id = asyncio.run(
-        launch_a_scan(
-            rc,
-        )
-    )
-    asyncio.run(monitor(rc, scan_id))
-
-
-if __name__ == "__main__":
-    main()

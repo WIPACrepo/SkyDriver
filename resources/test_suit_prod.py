@@ -22,18 +22,26 @@ async def test_all(
     scanner_server_memory: str,
 ):
     test_combos = list(test_getter.setup_tests())
+    scan_ids = []
 
     for i, (event_file, reco_algo) in enumerate(test_combos):
         print(f"Launching test #{i+1}...")
-        await test_runner.launch_a_scan(
-            rc,
-            event_file,
-            cluster,
-            n_workers,
-            max_pixel_reco_time,
-            reco_algo,
-            scanner_server_memory,
+        scan_ids.append(
+            await test_runner.launch_a_scan(
+                rc,
+                event_file,
+                cluster,
+                n_workers,
+                max_pixel_reco_time,
+                reco_algo,
+                scanner_server_memory,
+            )
         )
+
+    for scan_id in scan_ids:
+        # TODO: parallelize this
+        log_file = f"./logs/{scan_id}"
+        await test_runner.monitor(rc, scan_id, log_file)
 
 
 async def main():
