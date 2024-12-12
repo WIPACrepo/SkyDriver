@@ -2,8 +2,10 @@ import argparse
 import asyncio
 import json
 import logging
+import subprocess
 from pathlib import Path
 
+import requests
 from rest_tools.client import RestClient
 
 import test_getter
@@ -14,10 +16,82 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
+GH_BASE_URL = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/results_json"
+COMPARE_SCRIPT_URL = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/compare_scan_results.py"
+
+
+def download_file(url: str, destination: Path):
+    response = requests.get(url)
+    response.raise_for_status()
+    with open(destination, "wb") as f:
+        f.write(response.content)
+
+
+def fetch_expected_result(reco_algo: str) -> Path:
+    destination = Path(f"./expected_results/{reco_algo}.json")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    url = f"{GH_BASE_URL}/{reco_algo}/expected_result.json"
+    download_file(url, destination)
+    return destination
+
+
+def fetch_compare_script() -> Path:
+    destination = Path("./compare_scan_results.py")
+    download_file(COMPARE_SCRIPT_URL, destination)
+    return destination
+
+
+def compare_results(scan_result: dict, reco_algo: str):
+    expected_file = fetch_expected_result(reco_algo)
+    compare_script = fetch_compare_script()
+
+    try:
+        result = subprocess.run(
+            [
+                "python",
+                str(compare_script),
+                "--actual",
+                json.dumps(scan_result),
+                "--expected",
+                str(expected_file),
+                "--assert",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode == 0:
+            logging.info(f"Results for scan match expected output.")
+        else:
+            logging.error(f"Mismatch in results:")
+            logging.error(result.stderr)
+
+    except Exception as e:
+        logging.error(f"Error running comparison: {e}")
+
+
+async def wait_then_check_results(
+    rc: RestClient,
+    scan_id: str,
+    log_file: Path,
+    reco_algo: str,
+):
+    try:
+        scan_result = await test_runner.monitor(rc, scan_id, log_file)
+        logging.info(f"Scan {scan_id} completed successfully.")
+        compare_results(scan_result, reco_algo)
+    except Exception as e:
+        logging.error(f"Error monitoring scan {scan_id}: {e}")
+
 
 def create_scan_tasks(
-    test_combos, rc, cluster, n_workers, max_pixel_reco_time, scanner_server_memory
-):
+    test_combos: list[tuple[Path, str]],
+    rc: RestClient,
+    cluster: str,
+    n_workers: int,
+    max_pixel_reco_time: int,
+    scanner_server_memory: str,
+) -> dict[str, tuple[Path, str]]:
     tasks = {}
     for i, (event_file, reco_algo) in enumerate(test_combos):
         logging.info(
@@ -42,32 +116,6 @@ def create_scan_tasks(
     return tasks
 
 
-def compare_results(scan_result, reco_algo):
-    expected_file = Path(f"tests/data/results_json/{reco_algo}/expected_result.json")
-    if not expected_file.exists():
-        logging.error(f"Expected result file not found: {expected_file}")
-        return
-
-    with expected_file.open("r") as expected:
-        expected_data = json.load(expected)
-
-    if scan_result == expected_data:
-        logging.info(f"Results for scan match expected output.")
-    else:
-        logging.error(f"Mismatch in results for scan:")
-        logging.error(f"Actual: {scan_result}")
-        logging.error(f"Expected: {expected_data}")
-
-
-async def monitor_task(rc, scan_id, log_file, reco_algo):
-    try:
-        scan_result = await test_runner.monitor(rc, scan_id, log_file)
-        logging.info(f"Scan {scan_id} completed successfully.")
-        compare_results(scan_result, reco_algo)
-    except Exception as e:
-        logging.error(f"Error monitoring scan {scan_id}: {e}")
-
-
 async def test_all(
     rc: RestClient,
     cluster: str,
@@ -89,7 +137,7 @@ async def test_all(
     for scan_id, (log_file, reco_algo) in scan_tasks.items():
         tasks.append(
             asyncio.create_task(
-                monitor_task(
+                wait_then_check_results(
                     rc,
                     scan_id,
                     log_file,
