@@ -1,5 +1,6 @@
 import itertools
 import json
+import os
 
 import requests
 import yaml
@@ -8,10 +9,11 @@ RECO_ALGO_KEY = "reco_algo"
 EVENTFILE_KEY = "eventfile"
 
 
-def fetch_file(url):
+def fetch_file(url, mode="text"):
+    """Fetch a file from a URL."""
     response = requests.get(url)
     response.raise_for_status()
-    return response.text
+    return response.text if mode == "text" else response.content
 
 
 class GHATestFetcher:
@@ -73,10 +75,27 @@ test_combos = GHATestFetcher().process()
 # Output the expanded matrix in JSON format
 print(json.dumps(test_combos, indent=4))
 
-# download all the events in local dir
-# TODO
-event_dir_url = "https://raw.githubusercontent.com/icecube/skymap_scanner/refs/heads/main/tests/data/realtime_events/"
+# Download all the events into a local directory
+event_dir_url = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/realtime_events/"
+download_dir = "realtime_events"
+os.makedirs(download_dir, exist_ok=True)
+
 for test in test_combos:
-    # fetch file, checking if already downloaded
-    file_url = f"{event_dir_url}/{test[EVENTFILE_KEY]}"
-    pass
+    file_name = test[EVENTFILE_KEY]
+    file_path = os.path.join(download_dir, file_name)
+    file_url = f"{event_dir_url}{file_name}"
+
+    # Check if the file is already downloaded
+    if os.path.exists(file_path):
+        print(f"File already exists: {file_name}")
+        continue
+
+    # Fetch and save the file
+    print(f"Downloading: {file_name} from {file_url}")
+    try:
+        file_content = fetch_file(file_url, mode="binary")
+        with open(file_path, "wb") as f:
+            f.write(file_content)
+        print(f"Downloaded: {file_name}")
+    except requests.RequestException as e:
+        print(f"Failed to download {file_name}: {e}")
