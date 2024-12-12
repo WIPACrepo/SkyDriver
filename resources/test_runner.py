@@ -9,8 +9,8 @@ or changed fundamentally without notice. You have been warned!
 """
 
 import argparse
+import asyncio
 import json
-import time
 from pathlib import Path
 from pprint import pprint
 
@@ -38,7 +38,7 @@ def get_rest_client(skydriver_url: str) -> RestClient:
     )
 
 
-def launch_a_scan(
+async def launch_a_scan(
     rc: RestClient,
     event_file: Path,
     cluster: str,
@@ -59,19 +59,19 @@ def launch_a_scan(
         "max_pixel_reco_time": max_pixel_reco_time,
         "scanner_server_memory": scanner_server_memory,
     }
-    resp = rc.request_seq("POST", "/scan", body)
+    resp = await rc.request("POST", "/scan", body)
 
     print(resp["scan_id"])
     return resp["scan_id"]  # type: ignore[no-any-return]
 
 
-def monitor(rc: RestClient, scan_id: str) -> None:
+async def monitor(rc: RestClient, scan_id: str) -> None:
     """Monitor the event scan until its done."""
     done = False
     while True:
         # get result
         try:
-            result = rc.request_seq("GET", f"/scan/{scan_id}/result")
+            result = await rc.request("GET", f"/scan/{scan_id}/result")
             pprint(result)
             done = result["is_final"]
         except Exception as e:  # 404 (scanner not yet online)
@@ -79,7 +79,7 @@ def monitor(rc: RestClient, scan_id: str) -> None:
 
         # get progress
         try:
-            progress = rc.request_seq("GET", f"/scan/{scan_id}/manifest")["progress"]
+            progress = await rc.request("GET", f"/scan/{scan_id}/manifest")["progress"]
             print(json.dumps(progress["processing_stats"].pop("rate"), indent=4))
             print(json.dumps(progress, indent=4))
         except (
@@ -92,7 +92,7 @@ def monitor(rc: RestClient, scan_id: str) -> None:
         if done:
             print("scan is done!")
             return
-        time.sleep(60)
+        await asyncio.sleep(60)
 
 
 def main() -> None:
@@ -145,16 +145,18 @@ def main() -> None:
     args = parser.parse_args()
 
     rc = get_rest_client(args.skydriver_url)
-    scan_id = launch_a_scan(
-        rc,
-        args.event_file,
-        args.cluster,
-        args.n_workers,
-        args.max_pixel_reco_time,
-        args.reco_algo,
-        args.scanner_server_memory,
+    scan_id = asyncio.run(
+        launch_a_scan(
+            rc,
+            args.event_file,
+            args.cluster,
+            args.n_workers,
+            args.max_pixel_reco_time,
+            args.reco_algo,
+            args.scanner_server_memory,
+        )
     )
-    monitor(rc, scan_id)
+    asyncio.run(monitor(rc, scan_id))
 
 
 if __name__ == "__main__":

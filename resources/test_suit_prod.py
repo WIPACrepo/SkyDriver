@@ -1,101 +1,85 @@
-import itertools
-import json
+import logging
 import os
+import subprocess
+from pathlib import Path
 
-import requests
-import yaml
+import test_getter
 
-RECO_ALGO_KEY = "reco_algo"
-EVENTFILE_KEY = "eventfile"
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
+# Constants
+SCRIPT_PATH = "test_runner.py"  # Path to your script
+LOG_DIR = "subproc_logs"
+os.makedirs(LOG_DIR, exist_ok=True)
 
-def fetch_file(url, mode="text"):
-    """Fetch a file from a URL."""
-    response = requests.get(url)
-    response.raise_for_status()
-    return response.text if mode == "text" else response.content
+# Cluster and other shared settings for the script
+DEFAULT_CLUSTER = "sub-2"
+DEFAULT_WORKERS = 2
+DEFAULT_MAX_PIXEL_RECO_TIME = 300
+DEFAULT_MEMORY = "512M"
+SKYDRIVER_URL = "https://your-skydriver-url.example.com"  # Replace with actual URL
 
+# Track subprocess results
+success_scan_ids = []
+failed_combos = []
 
-class GHATestFetcher:
-    # Constants
-    GHA_FILE_URL = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/.github/workflows/tests.yml"
-    TEST_RUN_REALISTIC_JOB = "test-run-realistic"
-    STRATEGY_KEY = "strategy"
-    MATRIX_KEY = "matrix"
-    EXCLUDE_KEY = "exclude"
+# Run subprocesses for each test combination
+processes = []
+for i, (event_file, reco_algo) in enumerate(test_getter.setup_tests()):
+    stdout_log = Path(LOG_DIR) / f"subproc_{i}_stdout.log"
+    stderr_log = Path(LOG_DIR) / f"subproc_{i}_stderr.log"
 
-    def read_gha_matrix(self):
-        yaml_content = fetch_file(self.GHA_FILE_URL)
-        gha_data = yaml.safe_load(yaml_content)
+    cmd = [
+        "python",
+        SCRIPT_PATH,
+        "--event-file",
+        event_file,
+        "--skydriver-url",
+        SKYDRIVER_URL,
+        "--cluster",
+        DEFAULT_CLUSTER,
+        "--n-workers",
+        str(DEFAULT_WORKERS),
+        "--max-pixel-reco-time",
+        str(DEFAULT_MAX_PIXEL_RECO_TIME),
+        "--reco-algo",
+        reco_algo,
+        "--scanner-server-memory",
+        DEFAULT_MEMORY,
+    ]
 
-        # Extract the matrix values for "test-run-realistic"
-        test_run_realistic = gha_data.get("jobs", {}).get(
-            self.TEST_RUN_REALISTIC_JOB, {}
+    logging.info(f"Launching subprocess {i} for {test}")
+    with open(stdout_log, "w") as out, open(stderr_log, "w") as err:
+        proc = subprocess.Popen(cmd, stdout=out, stderr=err)
+        processes.append((proc, test, stdout_log, stderr_log))
+
+# Monitor subprocesses
+for proc, test, stdout_log, stderr_log in processes:
+    proc.wait()  # Wait for the subprocess to finish
+    if proc.returncode == 0:
+        logging.info(
+            f"Subprocess succeeded for {test} (logs: {stdout_log}, {stderr_log})"
         )
-        matrix = test_run_realistic.get(self.STRATEGY_KEY, {}).get(self.MATRIX_KEY, {})
-
-        reco_algo = matrix.get(RECO_ALGO_KEY, [])
-        eventfile = matrix.get(EVENTFILE_KEY, [])
-        exclude = matrix.get(self.EXCLUDE_KEY, [])
-
-        return {
-            RECO_ALGO_KEY: reco_algo,
-            EVENTFILE_KEY: eventfile,
-            self.EXCLUDE_KEY: exclude,
-        }
-
-    def expand_matrix(self, matrix):
-        combinations = list(
-            itertools.product(matrix[RECO_ALGO_KEY], matrix[EVENTFILE_KEY])
+        with open(stdout_log, "r") as log:
+            for line in log:
+                if "scan_id" in line:  # Parse scan_id from logs
+                    success_scan_ids.append(line.strip())
+    else:
+        logging.error(
+            f"Subprocess failed for {test} (logs: {stdout_log}, {stderr_log})"
         )
-        excluded = {
-            (item[RECO_ALGO_KEY], item[EVENTFILE_KEY])
-            for item in matrix[self.EXCLUDE_KEY]
-        }
+        failed_combos.append(test)
 
-        expanded_matrix = [
-            {
-                RECO_ALGO_KEY: reco,
-                EVENTFILE_KEY: event,
-            }
-            for reco, event in combinations
-            if (reco, event) not in excluded
-        ]
+# Final results
+if success_scan_ids:
+    logging.info(f"Successfully completed scans with scan_ids: {success_scan_ids}")
+else:
+    logging.error("All subprocesses failed. No successful scan IDs.")
 
-        return expanded_matrix
-
-    def process(self):
-        matrix_dict = self.read_gha_matrix()
-        return self.expand_matrix(matrix_dict)
-
-
-# Instantiate and process the matrix
-test_combos = GHATestFetcher().process()
-
-# Output the expanded matrix in JSON format
-print(json.dumps(test_combos, indent=4))
-
-# Download all the events into a local directory
-event_dir_url = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/realtime_events/"
-download_dir = "realtime_events"
-os.makedirs(download_dir, exist_ok=True)
-
-for test in test_combos:
-    file_name = test[EVENTFILE_KEY]
-    file_path = os.path.join(download_dir, file_name)
-    file_url = f"{event_dir_url}{file_name}"
-
-    # Check if the file is already downloaded
-    if os.path.exists(file_path):
-        print(f"File already exists: {file_name}")
-        continue
-
-    # Fetch and save the file
-    print(f"Downloading: {file_name} from {file_url}")
-    try:
-        file_content = fetch_file(file_url, mode="binary")
-        with open(file_path, "wb") as f:
-            f.write(file_content)
-        print(f"Downloaded: {file_name}")
-    except requests.RequestException as e:
-        print(f"Failed to download {file_name}: {e}")
+if failed_combos:
+    logging.warning(f"Failed combinations: {failed_combos}")
+else:
+    logging.info("No failed subprocesses.")
