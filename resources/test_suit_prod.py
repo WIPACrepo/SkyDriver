@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import json
 import logging
 import subprocess
 from pathlib import Path
@@ -16,34 +15,35 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-GH_BASE_URL = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/results_json"
-COMPARE_SCRIPT_URL = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/compare_scan_results.py"
+GH_URL_RESULTS = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/results_json"
+GH_URL_COMPARE_SCRIPT = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/compare_scan_results.py"
 
 
 def download_file(url: str, destination: Path):
-    response = requests.get(url)
-    response.raise_for_status()
+    resp = requests.get(url)
+    resp.raise_for_status()
     with open(destination, "wb") as f:
-        f.write(response.content)
+        f.write(resp.content)
 
 
-def fetch_expected_result(reco_algo: str) -> Path:
-    destination = Path(f"./expected_results/{reco_algo}.json")
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    url = f"{GH_BASE_URL}/{reco_algo}/expected_result.json"
-    download_file(url, destination)
-    return destination
+def fetch_expected_result(event_file: Path, reco_algo: str) -> Path:
+    dest = Path(f"./expected_results/{reco_algo}.{event_file.name}.json")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    url = f"{GH_URL_RESULTS}/{reco_algo}/..."  # TODO: get right file
+    download_file(url, dest)
+    return dest
 
 
 def fetch_compare_script() -> Path:
     destination = Path("./compare_scan_results.py")
-    download_file(COMPARE_SCRIPT_URL, destination)
+    download_file(GH_URL_COMPARE_SCRIPT, destination)
     return destination
 
 
-def compare_results(scan_result: dict, reco_algo: str):
-    expected_file = fetch_expected_result(reco_algo)
+def compare_results(scan_result: dict, event_file: Path, reco_algo: str):
+    expected_file = fetch_expected_result(event_file, reco_algo)
     compare_script = fetch_compare_script()
+    scan_result_file = Path()  # TODO: write scan_result to file
 
     try:
         result = subprocess.run(
@@ -51,7 +51,7 @@ def compare_results(scan_result: dict, reco_algo: str):
                 "python",
                 str(compare_script),
                 "--actual",
-                json.dumps(scan_result),
+                scan_result_file,
                 "--expected",
                 str(expected_file),
                 "--assert",
@@ -74,12 +74,13 @@ async def wait_then_check_results(
     rc: RestClient,
     scan_id: str,
     log_file: Path,
+    event_file: Path,
     reco_algo: str,
 ):
     try:
         scan_result = await test_runner.monitor(rc, scan_id, log_file)
         logging.info(f"Scan {scan_id} completed successfully.")
-        compare_results(scan_result, reco_algo)
+        compare_results(scan_result, event_file, reco_algo)
     except Exception as e:
         logging.error(f"Error monitoring scan {scan_id}: {e}")
 
@@ -91,7 +92,7 @@ def create_scan_tasks(
     n_workers: int,
     max_pixel_reco_time: int,
     scanner_server_memory: str,
-) -> dict[str, tuple[Path, str]]:
+) -> dict[str, tuple[Path, Path, str]]:
     tasks = {}
     for i, (event_file, reco_algo) in enumerate(test_combos):
         logging.info(
@@ -110,7 +111,7 @@ def create_scan_tasks(
                 )
             )
             log_file = Path(f"./logs/{scan_id}.log")
-            tasks[scan_id] = (log_file, reco_algo)
+            tasks[scan_id] = (log_file, event_file, reco_algo)
         except Exception as e:
             logging.error(f"Failed to launch test #{i+1}: {e}")
     return tasks
@@ -134,13 +135,14 @@ async def test_all(
     )
 
     tasks = []
-    for scan_id, (log_file, reco_algo) in scan_tasks.items():
+    for scan_id, (log_file, event_file, reco_algo) in scan_tasks.items():
         tasks.append(
             asyncio.create_task(
                 wait_then_check_results(
                     rc,
                     scan_id,
                     log_file,
+                    event_file,
                     reco_algo,
                 )
             )
