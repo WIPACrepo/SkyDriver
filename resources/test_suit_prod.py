@@ -34,7 +34,7 @@ class ResultChecker:
             / f"{test.reco_algo}-{test.event_file.name}.json"
         )
         scan_result_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(scan_result_file, "wb") as f:
+        with open(scan_result_file, "w") as f:
             json.dump(scan_result, f)
 
         result = subprocess.run(
