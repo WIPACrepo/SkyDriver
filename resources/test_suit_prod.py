@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import json
 import logging
 import subprocess
 from pathlib import Path
@@ -26,34 +27,30 @@ def download_file(url: str, destination: Path):
         f.write(resp.content)
 
 
-def fetch_expected_result(event_file: Path, reco_algo: str) -> Path:
-    dest = Path(f"./expected_results/{reco_algo}.{event_file.name}.json")
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    url = f"{GH_URL_RESULTS}/{reco_algo}/..."  # TODO: get right file
-    download_file(url, dest)
-    return dest
+class ResultChecker:
+    """Class to check/compare/assert scan results."""
 
+    def __init__(self):
+        self.compare_script = Path("./compare_scan_results.py")
+        download_file(GH_URL_COMPARE_SCRIPT, self.compare_script)
 
-def fetch_compare_script() -> Path:
-    destination = Path("./compare_scan_results.py")
-    download_file(GH_URL_COMPARE_SCRIPT, destination)
-    return destination
+    def compare_results(self, scan_result: dict, test: test_getter.TestParamSet):
+        """Compare scan result against expected result."""
+        scan_result_file = (
+            Path("./actual_results") / f"{test.reco_algo}-{test.event_file.name}.json"
+        )
+        scan_result_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(scan_result_file, "wb") as f:
+            json.dump(scan_result, f)
 
-
-def compare_results(scan_result: dict, event_file: Path, reco_algo: str):
-    expected_file = fetch_expected_result(event_file, reco_algo)
-    compare_script = fetch_compare_script()
-    scan_result_file = Path()  # TODO: write scan_result to file
-
-    try:
         result = subprocess.run(
             [
                 "python",
-                str(compare_script),
+                str(self.compare_script),
                 "--actual",
                 scan_result_file,
                 "--expected",
-                str(expected_file),
+                str(test.result_file),
                 "--assert",
             ],
             capture_output=True,
@@ -65,56 +62,53 @@ def compare_results(scan_result: dict, event_file: Path, reco_algo: str):
         else:
             logging.error(f"Mismatch in results:")
             logging.error(result.stderr)
-
-    except Exception as e:
-        logging.error(f"Error running comparison: {e}")
+            raise ValueError(f"Mismatch in results: {test}")
 
 
 async def wait_then_check_results(
     rc: RestClient,
-    scan_id: str,
-    log_file: Path,
-    event_file: Path,
-    reco_algo: str,
+    test: test_getter.TestParamSet,
+    checker: ResultChecker,
 ):
     try:
-        scan_result = await test_runner.monitor(rc, scan_id, log_file)
-        logging.info(f"Scan {scan_id} completed successfully.")
-        compare_results(scan_result, event_file, reco_algo)
+        scan_result = await test_runner.monitor(rc, test.scan_id, test.log_file)
+        logging.info(f"Scan {test.scan_id} completed successfully.")
     except Exception as e:
-        logging.error(f"Error monitoring scan {scan_id}: {e}")
+        logging.error(f"Error monitoring scan {test.scan_id}: {e}")
+        raise
+
+    checker.compare_results(scan_result, test)
 
 
-def create_scan_tasks(
-    test_combos: list[tuple[Path, str]],
+def launch_scans(
+    test_combos: list[test_getter.TestParamSet],
     rc: RestClient,
     cluster: str,
     n_workers: int,
     max_pixel_reco_time: int,
     scanner_server_memory: str,
-) -> dict[str, tuple[Path, Path, str]]:
-    tasks = {}
-    for i, (event_file, reco_algo) in enumerate(test_combos):
+) -> list[test_getter.TestParamSet]:
+    for i, test in enumerate(test_combos):
         logging.info(
-            f"Launching test #{i+1} with file {event_file} and algo {reco_algo}"
+            f"Launching test #{i+1} with file {test.event_file} and algo {test.reco_algo}"
         )
         try:
             scan_id = asyncio.run(
                 test_runner.launch_a_scan(
                     rc,
-                    event_file,
+                    test.event_file,
                     cluster,
                     n_workers,
                     max_pixel_reco_time,
-                    reco_algo,
+                    test.reco_algo,
                     scanner_server_memory,
                 )
             )
-            log_file = Path(f"./logs/{scan_id}.log")
-            tasks[scan_id] = (log_file, event_file, reco_algo)
+            test.scan_id = scan_id
+            test.log_file = Path(f"./logs/{scan_id}.log")
         except Exception as e:
             logging.error(f"Failed to launch test #{i+1}: {e}")
-    return tasks
+    return test_combos
 
 
 async def test_all(
@@ -125,7 +119,7 @@ async def test_all(
     scanner_server_memory: str,
 ):
     test_combos = list(test_getter.setup_tests())
-    scan_tasks = create_scan_tasks(
+    test_combos = launch_scans(
         test_combos,
         rc,
         cluster,
@@ -133,18 +127,13 @@ async def test_all(
         max_pixel_reco_time,
         scanner_server_memory,
     )
+    checker = ResultChecker()
 
     tasks = []
-    for scan_id, (log_file, event_file, reco_algo) in scan_tasks.items():
+    for test in test_combos:
         tasks.append(
             asyncio.create_task(
-                wait_then_check_results(
-                    rc,
-                    scan_id,
-                    log_file,
-                    event_file,
-                    reco_algo,
-                )
+                wait_then_check_results(rc, test, checker),
             )
         )
 
@@ -154,11 +143,11 @@ async def test_all(
             tasks.remove(task)
             try:
                 await task
-                logging.info("A task completed.")
+                logging.info("A test completed.")
             except Exception as e:
-                logging.error(f"A task failed: {e}")
+                logging.error(f"A test failed: {e}")
 
-    logging.info("All tasks completed.")
+    logging.info("All tests completed.")
 
 
 async def main():

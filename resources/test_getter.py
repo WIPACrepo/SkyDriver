@@ -1,3 +1,4 @@
+import dataclasses
 import itertools
 import json
 import os
@@ -7,15 +8,48 @@ from typing import Iterator
 import requests
 import yaml
 
+EVENT_RESULT_MAP = {
+    # these correspond to the files in https://github.com/icecube/skymap_scanner/tree/main/tests/data/results_json
+    "hese_event_01.json": "run00127907.evt000020178442.HESE_1.json",
+    "run00136662-evt000035405932-BRONZE.pkl": "run00136662.evt000035405932.neutrino_1.json",
+    "run00136766-evt000007637140-GOLD.pkl": "run00136766.evt000007637140.neutrino_1.json",
+    "138632_31747601.json": "run00138632.evt000031747601.neutrino_1.json",
+}
+
+
+@dataclasses.dataclass
+class TestParamSet:
+    """The set of parameters for a specific test."""
+
+    event_file: Path
+    reco_algo: str
+    result_file: Path
+
+    log_file: Path = None
+    scan_id: str = None
+
+
 RECO_ALGO_KEY = "reco_algo"
 EVENTFILE_KEY = "eventfile"
 
 
 def fetch_file(url, mode="text"):
     """Fetch a file from a URL."""
+    print(f"Downloading from {url}")
     response = requests.get(url)
     response.raise_for_status()
     return response.text if mode == "text" else response.content
+
+
+def download_file(url: str, dest: Path):
+    if not os.path.exists(dest):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        file_content = fetch_file(url, mode="binary")
+        with open(dest, "wb") as f:
+            f.write(file_content)
+        print(f"Downloaded: {dest}")
+    else:
+        print(f"Already downloaded: {dest}")
 
 
 class GHATestFetcher:
@@ -71,7 +105,7 @@ class GHATestFetcher:
         return self.expand_matrix(matrix_dict)
 
 
-def setup_tests() -> Iterator[tuple[Path, str]]:
+def setup_tests() -> Iterator[TestParamSet]:
     """Get all the files needed for running all the tests used in skymap_scanner CI.
 
     Yields all possible combinations of reco_algo and eventfiles from skymap_scanner tests.
@@ -81,28 +115,30 @@ def setup_tests() -> Iterator[tuple[Path, str]]:
 
     # Download all the events into a local directory
     event_dir_url = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/realtime_events/"
-    download_dir = "realtime_events"
-    os.makedirs(download_dir, exist_ok=True)
+    events_dir = Path("./realtime_events")
+    events_dir.mkdir(exist_ok=True)
+    # Download all the expected-results into a local directory
+    result_dir_url = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/results_json/"
+    results_dir = Path("./expected_results")
+    results_dir.mkdir(exist_ok=True)
 
     for test in test_combos:
-        file_name = test[EVENTFILE_KEY]
-        file_path = os.path.join(download_dir, file_name)
-        file_url = f"{event_dir_url}{file_name}"
+        event_fname = test[EVENTFILE_KEY]
 
-        # Check if the file is already downloaded
-        if os.path.exists(file_path):
-            print(f"File already exists: {file_name}")
-            continue
+        event_file = events_dir / event_fname
+        download_file(
+            f"{event_dir_url}{event_fname}",
+            event_file,
+        )
 
-        # Fetch and save the file
-        print(f"Downloading: {file_name} from {file_url}")
-        try:
-            file_content = fetch_file(file_url, mode="binary")
-            with open(file_path, "wb") as f:
-                f.write(file_content)
-            print(f"Downloaded: {file_name}")
-        except requests.RequestException as e:
-            print(f"Failed to download {file_name}: {e}")
+        result_file = results_dir / test[RECO_ALGO_KEY] / EVENT_RESULT_MAP[event_fname]
+        download_file(
+            f"{result_dir_url}{test[RECO_ALGO_KEY]}/{EVENT_RESULT_MAP[event_fname]}",
+            result_file,
+        )
 
-    for test in test_combos:
-        yield Path(os.path.join(download_dir, test[EVENTFILE_KEY])), test[RECO_ALGO_KEY]
+        yield TestParamSet(
+            event_file=event_file,
+            reco_algo=test[RECO_ALGO_KEY],
+            result_file=result_file,
+        )
