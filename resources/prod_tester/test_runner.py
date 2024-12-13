@@ -72,15 +72,17 @@ async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) ->
     Return the result.
     """
     out = open(log_file, "w") if log_file else sys.stdout
-    result = {}
+    result_resp = {}
 
     done = False
     while True:
         # get result
         try:
-            result = await rc.request("GET", f"/scan/{scan_id}/result")
-            print(pformat(result), file=out, flush=True)  # pprint doesn't have flush
-            done = result["is_final"]
+            result_resp = await rc.request("GET", f"/scan/{scan_id}/result")
+            print(
+                pformat(result_resp), file=out, flush=True
+            )  # pprint doesn't have flush
+            done = result_resp["is_final"]
         except Exception as e:  # 404 (scanner not yet online)
             print(f"ok: {repr(e)}", file=out, flush=True)
 
@@ -102,5 +104,5 @@ async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) ->
         print(scan_id, file=out, flush=True)
         if done:
             print("scan is done!", file=out, flush=True)
-            return result
+            return result_resp["skyscan_result"]
         await asyncio.sleep(60)
