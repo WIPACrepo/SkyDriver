@@ -2,10 +2,10 @@ import argparse
 import asyncio
 import json
 import logging
+import shutil
 import subprocess
 from pathlib import Path
 
-import requests
 from rest_tools.client import RestClient
 
 import test_getter
@@ -20,24 +20,18 @@ GH_URL_RESULTS = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/
 GH_URL_COMPARE_SCRIPT = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/compare_scan_results.py"
 
 
-def download_file(url: str, destination: Path):
-    resp = requests.get(url)
-    resp.raise_for_status()
-    with open(destination, "wb") as f:
-        f.write(resp.content)
-
-
 class ResultChecker:
     """Class to check/compare/assert scan results."""
 
     def __init__(self):
-        self.compare_script = Path("./compare_scan_results.py")
-        download_file(GH_URL_COMPARE_SCRIPT, self.compare_script)
+        self.compare_script_fpath = Path("./test-suit-sandbox/compare_scan_results.py")
+        test_getter.download_file(GH_URL_COMPARE_SCRIPT, self.compare_script_fpath)
 
     def compare_results(self, scan_result: dict, test: test_getter.TestParamSet):
         """Compare scan result against expected result."""
         scan_result_file = (
-            Path("./actual_results") / f"{test.reco_algo}-{test.event_file.name}.json"
+            Path("./test-suit-sandbox/actual_results")
+            / f"{test.reco_algo}-{test.event_file.name}.json"
         )
         scan_result_file.parent.mkdir(parents=True, exist_ok=True)
         with open(scan_result_file, "wb") as f:
@@ -46,11 +40,13 @@ class ResultChecker:
         result = subprocess.run(
             [
                 "python",
-                str(self.compare_script),
+                str(self.compare_script_fpath),
                 "--actual",
-                scan_result_file,
+                str(scan_result_file),
                 "--expected",
                 str(test.result_file),
+                "--diff-out-dir",
+                str(scan_result_file.parent),
                 "--assert",
             ],
             capture_output=True,
@@ -70,6 +66,11 @@ async def wait_then_check_results(
     test: test_getter.TestParamSet,
     checker: ResultChecker,
 ):
+    # monitor
+    logging.info(
+        f"Monitoring scan; see logs in {test.log_file}: {test.reco_algo} + {test.event_file}"
+    )
+    test.log_file.parent.mkdir(parents=True, exist_ok=True)
     try:
         scan_result = await test_runner.monitor(rc, test.scan_id, test.log_file)
         logging.info(f"Scan {test.scan_id} completed successfully.")
@@ -77,38 +78,41 @@ async def wait_then_check_results(
         logging.error(f"Error monitoring scan {test.scan_id}: {e}")
         raise
 
+    # check
+    logging.info(
+        f"Comparing scan result to expected values: {test.reco_algo} + {test.event_file}"
+    )
     checker.compare_results(scan_result, test)
 
 
-def launch_scans(
-    test_combos: list[test_getter.TestParamSet],
+async def launch_scans(
+    tests: list[test_getter.TestParamSet],
     rc: RestClient,
     cluster: str,
     n_workers: int,
     max_pixel_reco_time: int,
     scanner_server_memory: str,
 ) -> list[test_getter.TestParamSet]:
-    for i, test in enumerate(test_combos):
+    for i, test in enumerate(tests):
         logging.info(
-            f"Launching test #{i+1} with file {test.event_file} and algo {test.reco_algo}"
+            f"Launching test {i+1}/{len(tests)}: {test.reco_algo} + {test.event_file}"
         )
         try:
-            scan_id = asyncio.run(
-                test_runner.launch_a_scan(
-                    rc,
-                    test.event_file,
-                    cluster,
-                    n_workers,
-                    max_pixel_reco_time,
-                    test.reco_algo,
-                    scanner_server_memory,
-                )
+            scan_id = await test_runner.launch_a_scan(
+                rc,
+                test.event_file,
+                cluster,
+                n_workers,
+                max_pixel_reco_time,
+                test.reco_algo,
+                scanner_server_memory,
             )
             test.scan_id = scan_id
-            test.log_file = Path(f"./logs/{scan_id}.log")
+            test.log_file = Path(f"./test-suit-sandbox/logs/{scan_id}.log")
         except Exception as e:
             logging.error(f"Failed to launch test #{i+1}: {e}")
-    return test_combos
+            raise
+    return tests
 
 
 async def test_all(
@@ -118,9 +122,9 @@ async def test_all(
     max_pixel_reco_time: int,
     scanner_server_memory: str,
 ):
-    test_combos = list(test_getter.setup_tests())
-    test_combos = launch_scans(
-        test_combos,
+    tests = list(test_getter.setup_tests())
+    tests = await launch_scans(
+        tests,
         rc,
         cluster,
         n_workers,
@@ -129,8 +133,9 @@ async def test_all(
     )
     checker = ResultChecker()
 
+    logging.info("Starting scan watchers...")
     tasks = []
-    for test in test_combos:
+    for test in tests:
         tasks.append(
             asyncio.create_task(
                 wait_then_check_results(rc, test, checker),
@@ -145,7 +150,7 @@ async def test_all(
                 await task
                 logging.info("A test completed.")
             except Exception as e:
-                logging.error(f"A test failed: {e}")
+                logging.error(f"A test failed: {repr(e)}")
 
     logging.info("All tests completed.")
 
@@ -184,6 +189,11 @@ async def main():
         help="server memory required",
     )
     args = parser.parse_args()
+
+    rootdir = Path("./test-suit-sandbox")
+    if rootdir.exists():
+        shutil.rmtree(rootdir)
+    rootdir.mkdir(exist_ok=True)
 
     rc = test_runner.get_rest_client(args.skydriver_url)
 

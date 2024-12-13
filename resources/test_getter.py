@@ -2,6 +2,7 @@ import dataclasses
 import itertools
 import json
 import os
+import pickle
 from pathlib import Path
 from typing import Iterator
 
@@ -35,7 +36,7 @@ EVENTFILE_KEY = "eventfile"
 
 def fetch_file(url, mode="text"):
     """Fetch a file from a URL."""
-    print(f"Downloading from {url}")
+    print(f"downloading from {url}...")
     response = requests.get(url)
     response.raise_for_status()
     return response.text if mode == "text" else response.content
@@ -47,9 +48,6 @@ def download_file(url: str, dest: Path):
         file_content = fetch_file(url, mode="binary")
         with open(dest, "wb") as f:
             f.write(file_content)
-        print(f"Downloaded: {dest}")
-    else:
-        print(f"Already downloaded: {dest}")
 
 
 class GHATestFetcher:
@@ -60,7 +58,7 @@ class GHATestFetcher:
     MATRIX_KEY = "matrix"
     EXCLUDE_KEY = "exclude"
 
-    def read_gha_matrix(self):
+    def _read_gha_matrix(self):
         yaml_content = fetch_file(self.GHA_FILE_URL)
         gha_data = yaml.safe_load(yaml_content)
 
@@ -80,7 +78,7 @@ class GHATestFetcher:
             self.EXCLUDE_KEY: exclude,
         }
 
-    def expand_matrix(self, matrix):
+    def _expand_matrix(self, matrix) -> dict:
         combinations = list(
             itertools.product(matrix[RECO_ALGO_KEY], matrix[EVENTFILE_KEY])
         )
@@ -100,9 +98,9 @@ class GHATestFetcher:
 
         return expanded_matrix
 
-    def process(self):
-        matrix_dict = self.read_gha_matrix()
-        return self.expand_matrix(matrix_dict)
+    def get_runtime_matrix(self) -> dict:
+        matrix_dict = self._read_gha_matrix()
+        return self._expand_matrix(matrix_dict)
 
 
 def setup_tests() -> Iterator[TestParamSet]:
@@ -110,35 +108,42 @@ def setup_tests() -> Iterator[TestParamSet]:
 
     Yields all possible combinations of reco_algo and eventfiles from skymap_scanner tests.
     """
-    test_combos = GHATestFetcher().process()
-    print(json.dumps(test_combos, indent=4))
+    matrix = GHATestFetcher().get_runtime_matrix()
+    print(json.dumps(matrix, indent=4))
 
     # Download all the events into a local directory
     event_dir_url = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/realtime_events/"
-    events_dir = Path("./realtime_events")
+    events_dir = Path("./test-suit-sandbox/realtime_events")
     events_dir.mkdir(exist_ok=True)
     # Download all the expected-results into a local directory
     result_dir_url = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/results_json/"
-    results_dir = Path("./expected_results")
+    results_dir = Path("./test-suit-sandbox/expected_results")
     results_dir.mkdir(exist_ok=True)
 
-    for test in test_combos:
-        event_fname = test[EVENTFILE_KEY]
+    for m in matrix:
+        event_fname = m[EVENTFILE_KEY]
 
         event_file = events_dir / event_fname
         download_file(
             f"{event_dir_url}{event_fname}",
             event_file,
         )
+        if event_file.suffix == ".pkl":
+            with open(event_file, "rb") as f:
+                contents = pickle.load(f)
+            event_file.unlink()  # rm
+            event_file = event_file.with_suffix(".json")  # use a different fname
+            with open(event_file, "w") as f:
+                json.dump(contents, f, indent=4)
 
-        result_file = results_dir / test[RECO_ALGO_KEY] / EVENT_RESULT_MAP[event_fname]
+        result_file = results_dir / m[RECO_ALGO_KEY] / EVENT_RESULT_MAP[event_fname]
         download_file(
-            f"{result_dir_url}{test[RECO_ALGO_KEY]}/{EVENT_RESULT_MAP[event_fname]}",
+            f"{result_dir_url}{m[RECO_ALGO_KEY]}/{EVENT_RESULT_MAP[event_fname]}",
             result_file,
         )
 
         yield TestParamSet(
             event_file=event_file,
-            reco_algo=test[RECO_ALGO_KEY],
+            reco_algo=m[RECO_ALGO_KEY],
             result_file=result_file,
         )

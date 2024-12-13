@@ -12,7 +12,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from pprint import pprint
+from pprint import pformat
 
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
@@ -51,13 +51,14 @@ async def launch_a_scan(
     body = {
         "reco_algo": reco_algo,
         "event_i3live_json": event_file.open().read().strip(),
-        "nsides": {8: 0, 64: 12, 512: 24},
+        "nsides": {1: 0},  # {8: 0, 64: 12, 512: 24},
         "real_or_simulated_event": "simulated",
-        "predictive_scanning_threshold": 0.3,
+        "predictive_scanning_threshold": 1,  # 0.3,
         "cluster": {cluster: n_workers},
         "docker_tag": "latest",
         "max_pixel_reco_time": max_pixel_reco_time,
         "scanner_server_memory": scanner_server_memory,
+        "priority": 99,
     }
     resp = await rc.request("POST", "/scan", body)
 
@@ -78,26 +79,28 @@ async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) ->
         # get result
         try:
             result = await rc.request("GET", f"/scan/{scan_id}/result")
-            pprint(result, stream=out)
+            print(pformat(result), file=out, flush=True)  # pprint doesn't have flush
             done = result["is_final"]
         except Exception as e:  # 404 (scanner not yet online)
-            print(f"ok: {e}", file=out)
+            print(f"ok: {repr(e)}", file=out, flush=True)
 
         # get progress
         try:
-            progress = await rc.request("GET", f"/scan/{scan_id}/manifest")["progress"]
+            resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
+            progress = resp["progress"]
             print(
                 json.dumps(progress["processing_stats"].pop("rate"), indent=4),
                 file=out,
+                flush=True,
             )
-            print(json.dumps(progress, indent=4), file=out)
+            print(json.dumps(progress, indent=4), file=out, flush=True)
         except Exception as e:
             # 404 (scanner not yet online) or KeyError (no progress yet)
-            print(f"ok: {e}", file=out)
+            print(f"ok: {repr(e)}", file=out, flush=True)
 
-        # wait
-        print(scan_id, file=out)
+        # done? else, wait
+        print(scan_id, file=out, flush=True)
         if done:
-            print("scan is done!", file=out)
+            print("scan is done!", file=out, flush=True)
             return result
         await asyncio.sleep(60)
