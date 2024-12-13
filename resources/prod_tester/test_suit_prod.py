@@ -142,6 +142,7 @@ async def test_all(
             )
         )
 
+    n_failed = 0
     while tasks:
         done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         for task in done:
@@ -150,9 +151,13 @@ async def test_all(
                 await task
                 logging.info("A test completed.")
             except Exception as e:
+                n_failed += 1
                 logging.error(f"A test failed: {repr(e)}")
 
-    logging.info("All tests completed.")
+    if n_failed:
+        raise RuntimeError(f"{n_failed}/{len(tests)} tests failed.")
+    else:
+        logging.info("All tests passed!")
 
 
 async def main():
