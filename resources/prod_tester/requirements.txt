@@ -1,0 +1,5 @@
+icecube-skyreader
+pyyaml
+requests
+wipac-dev-tools
+wipac-rest-tools
