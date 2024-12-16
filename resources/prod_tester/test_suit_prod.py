@@ -133,15 +133,10 @@ async def launch_scans(
 def display_test_status(tests: list[test_getter.TestParamSet]):
     """Display test statuses in a clean table format."""
     table = texttable.Texttable()
-    table.set_deco(
-        texttable.Texttable.HEADER
-        | texttable.Texttable.VLINES
-        | texttable.Texttable.HLINES
-    )
 
     # Define column alignment and widths
     table.set_cols_align(["r", "l", "l", "r", "l"])
-    table.set_cols_width([2, 30, 20, 8, 10])
+    table.set_cols_width([2, 25, 20, 8, 10])
 
     # Add the header row
     table.add_row(["#", "Event File", "Reco Algo", "Scan ID", "Status"])
