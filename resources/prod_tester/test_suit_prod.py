@@ -108,7 +108,6 @@ async def launch_scans(
                 scanner_server_memory,
             )
             test.scan_id = scan_id
-            test.log_file = Path(f"./test-suit-sandbox/logs/{scan_id}.log")
         except Exception as e:
             logging.error(f"Failed to launch test #{i+1}: {e}")
             raise

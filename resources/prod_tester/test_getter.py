@@ -26,8 +26,14 @@ class TestParamSet:
     reco_algo: str
     result_file: Path
 
-    log_file: Path | None = None
     scan_id: str = ""
+
+    @property
+    def log_file(self) -> Path:
+        """Based on the scan id.S"""
+        if not self.scan_id:
+            raise ValueError("scan_id not set")
+        return Path(f"./test-suit-sandbox/logs/{self.scan_id}.log")
 
 
 RECO_ALGO_KEY = "reco_algo"
