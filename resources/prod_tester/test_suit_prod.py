@@ -129,6 +129,25 @@ async def launch_scans(
     return tests
 
 
+def display_test_status(tests: list[test_getter.TestParamSet]):
+    """Display test statuses in a clean table format."""
+    header_bar = "=" * 62
+    separator_bar = "-" * 62
+
+    print("\n" + header_bar)
+    print(
+        f"{'#':<2} | {'Event File':<20} | {'Reco Algo':<10} | {'Scan ID':<8} | {'Status':<10}"
+    )
+    print(separator_bar)
+    for idx, test in enumerate(tests, start=1):
+        status = test.test_status.name
+        scan_id = test.scan_id[:8] if test.scan_id else "N/A"
+        print(
+            f"{idx:<2} | {test.event_file.name:<20} | {test.reco_algo:<10} | {scan_id:<8} | {status:<10}"
+        )
+    print(header_bar)
+
+
 async def test_all(
     rc: RestClient,
     cluster: str,
