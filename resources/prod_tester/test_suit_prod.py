@@ -6,6 +6,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import texttable
 from rest_tools.client import RestClient
 
 import test_getter
@@ -131,21 +132,27 @@ async def launch_scans(
 
 def display_test_status(tests: list[test_getter.TestParamSet]):
     """Display test statuses in a clean table format."""
-    header_bar = "=" * 62
-    separator_bar = "-" * 62
-
-    print("\n" + header_bar)
-    print(
-        f"{'#':<2} | {'Event File':<20} | {'Reco Algo':<10} | {'Scan ID':<8} | {'Status':<10}"
+    table = texttable.Texttable()
+    table.set_deco(
+        texttable.Texttable.HEADER
+        | texttable.Texttable.VLINES
+        | texttable.Texttable.HLINES
     )
-    print(separator_bar)
-    for idx, test in enumerate(tests, start=1):
-        status = test.test_status.name
+
+    # Define column alignment and widths
+    table.set_cols_align(["r", "l", "l", "r", "l"])
+    table.set_cols_width([2, 30, 20, 8, 10])
+
+    # Add the header row
+    table.add_row(["#", "Event File", "Reco Algo", "Scan ID", "Status"])
+
+    # Add rows for each test
+    for i, test in enumerate(tests, start=1):
         scan_id = test.scan_id[:8] if test.scan_id else "N/A"
-        print(
-            f"{idx:<2} | {test.event_file.name:<20} | {test.reco_algo:<10} | {scan_id:<8} | {status:<10}"
-        )
-    print(header_bar)
+        status = test.test_status.name
+        table.add_row([i, test.event_file.name, test.reco_algo, scan_id, status])
+
+    print(table.draw())
 
 
 async def test_all(

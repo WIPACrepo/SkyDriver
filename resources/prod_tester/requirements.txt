@@ -1,5 +1,6 @@
 icecube-skyreader
 pyyaml
 requests
+texttable
 wipac-dev-tools
 wipac-rest-tools
