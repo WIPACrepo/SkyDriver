@@ -54,9 +54,9 @@ class ResultChecker:
         )
 
         if result.returncode == 0:
-            logging.info(f"Results for scan match expected output.")
+            logging.info("Results for scan match expected output.")
         else:
-            logging.error(f"Mismatch in results:")
+            logging.error("Mismatch in results:")
             logging.error(result.stderr)
             raise ValueError(f"Mismatch in results: {test}")
 
