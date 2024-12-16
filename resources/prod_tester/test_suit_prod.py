@@ -133,9 +133,9 @@ async def test_all(
     checker = ResultChecker()
 
     logging.info("Starting scan watchers...")
-    tasks = []
+    tasks = set()
     for test in tests:
-        tasks.append(
+        tasks.add(
             asyncio.create_task(
                 wait_then_check_results(rc, test, checker),
             )
