@@ -1,4 +1,5 @@
 import dataclasses
+import enum
 import itertools
 import json
 import os
@@ -18,6 +19,15 @@ EVENT_RESULT_MAP = {
 }
 
 
+class TestStatus(enum.Enum):
+    """The status of test."""
+
+    UNKNOWN = enum.auto()
+    RUNNING = enum.auto()
+    PASSED = enum.auto()
+    FAILED = enum.auto()
+
+
 @dataclasses.dataclass
 class TestParamSet:
     """The set of parameters for a specific test."""
@@ -27,6 +37,8 @@ class TestParamSet:
     result_file: Path
 
     scan_id: str = ""
+
+    test_status: TestStatus = TestStatus.UNKNOWN
 
     @property
     def log_file(self) -> Path:

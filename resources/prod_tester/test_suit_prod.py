@@ -61,28 +61,42 @@ class ResultChecker:
             raise ValueError(f"Mismatch in results: {test}")
 
 
+class TestException(Exception):
+    """Raised for any testing error."""
+
+    def __init__(self, message: str, test: test_getter.TestParamSet):
+        super().__init__(message)
+        self.test = test
+
+
 async def wait_then_check_results(
     rc: RestClient,
     test: test_getter.TestParamSet,
     checker: ResultChecker,
-):
-    # monitor
-    logging.info(
-        f"Monitoring scan; see logs in {test.log_file}: {test.reco_algo} + {test.event_file}"
-    )
-    test.log_file.parent.mkdir(parents=True, exist_ok=True)
+) -> test_getter.TestParamSet:
+    """Wait until the scan is done, then check its result."""
     try:
-        scan_result = await test_runner.monitor(rc, test.scan_id, test.log_file)
-        logging.info(f"Scan {test.scan_id} completed successfully.")
-    except Exception as e:
-        logging.error(f"Error monitoring scan {test.scan_id}: {e}")
-        raise
+        # monitor
+        logging.info(
+            f"Monitoring scan; see logs in {test.log_file}: {test.reco_algo} + {test.event_file}"
+        )
+        test.log_file.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            scan_result = await test_runner.monitor(rc, test.scan_id, test.log_file)
+            logging.info(f"Scan {test.scan_id} completed successfully.")
+        except Exception as e:
+            logging.error(f"Error monitoring scan {test.scan_id}: {e}")
+            raise
 
-    # check
-    logging.info(
-        f"Comparing scan result to expected values: {test.reco_algo} + {test.event_file}"
-    )
-    checker.compare_results(scan_result, test)
+        # check
+        logging.info(
+            f"Comparing scan result to expected values: {test.reco_algo} + {test.event_file}"
+        )
+        checker.compare_results(scan_result, test)
+    except Exception as e:
+        raise TestException(repr(e), test) from e
+    else:
+        return test
 
 
 async def launch_scans(
@@ -97,6 +111,7 @@ async def launch_scans(
         logging.info(
             f"Launching test {i+1}/{len(tests)}: {test.reco_algo} + {test.event_file}"
         )
+        test.test_status = test_getter.TestStatus.RUNNING
         try:
             scan_id = await test_runner.launch_a_scan(
                 rc,
@@ -132,6 +147,7 @@ async def test_all(
     )
     checker = ResultChecker()
 
+    # start test-waiters
     logging.info("Starting scan watchers...")
     tasks = set()
     for test in tests:
@@ -141,18 +157,22 @@ async def test_all(
             )
         )
 
+    # wait on all tests
     n_failed = 0
     while tasks:
         done, tasks = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         for task in done:
             try:
-                await task
-                logging.info("A test completed successfully!")
-            except Exception as e:
+                test = await task
+                test.test_status = test_getter.TestStatus.PASSED
+                logging.info(f"A test completed successfully! {test}")
+            except TestException as e:
                 n_failed += 1
+                test = e.test
+                test.test_status = test_getter.TestStatus.FAILED
                 logging.error(f"A test failed: {repr(e)}")
             logging.info(
-                f"Done: {len(tests)-len(tasks)}/{len(tests)} ({n_failed} failed)"
+                f"So far: {len(tests)-len(tasks)}/{len(tests)} ({n_failed} failed)"
             )
 
     if n_failed:
