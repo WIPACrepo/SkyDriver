@@ -164,6 +164,8 @@ async def test_all(
         max_pixel_reco_time,
         scanner_server_memory,
     )
+    display_test_status(tests)
+
     checker = ResultChecker()
 
     # start test-waiters
@@ -175,6 +177,7 @@ async def test_all(
                 wait_then_check_results(rc, test, checker),
             )
         )
+    display_test_status(tests)
 
     # wait on all tests
     n_failed = 0
@@ -190,9 +193,7 @@ async def test_all(
                 test = e.test
                 test.test_status = test_getter.TestStatus.FAILED
                 logging.error(f"A test failed: {repr(e)}")
-            logging.info(
-                f"So far: {len(tests)-len(tasks)}/{len(tests)} ({n_failed} failed)"
-            )
+            display_test_status(tests)
 
     if n_failed:
         raise RuntimeError(f"{n_failed}/{len(tests)} tests failed.")
