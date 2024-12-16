@@ -26,8 +26,8 @@ class TestParamSet:
     reco_algo: str
     result_file: Path
 
-    log_file: Path = None
-    scan_id: str = None
+    log_file: Path | None = None
+    scan_id: str = ""
 
 
 RECO_ALGO_KEY = "reco_algo"
@@ -78,7 +78,7 @@ class GHATestFetcher:
             self.EXCLUDE_KEY: exclude,
         }
 
-    def _expand_matrix(self, matrix) -> dict:
+    def _expand_matrix(self, matrix) -> list[dict]:
         combinations = list(
             itertools.product(matrix[RECO_ALGO_KEY], matrix[EVENTFILE_KEY])
         )
@@ -98,7 +98,7 @@ class GHATestFetcher:
 
         return expanded_matrix
 
-    def get_runtime_matrix(self) -> dict:
+    def get_runtime_matrix(self) -> list[dict]:
         matrix_dict = self._read_gha_matrix()
         return self._expand_matrix(matrix_dict)
 
