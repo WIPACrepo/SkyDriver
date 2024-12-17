@@ -14,13 +14,8 @@ import yaml
 
 import config
 
-EVENT_RESULT_MAP = {
-    # these correspond to the files in https://github.com/icecube/skymap_scanner/tree/main/tests/data/results_json
-    "hese_event_01.json": "run00127907.evt000020178442.HESE_1.json",
-    "run00136662-evt000035405932-BRONZE.pkl": "run00136662.evt000035405932.neutrino_1.json",
-    "run00136766-evt000007637140-GOLD.pkl": "run00136766.evt000007637140.neutrino_1.json",
-    "138632_31747601.json": "run00138632.evt000031747601.neutrino_1.json",
-}
+RECO_ALGO_KEY = "reco_algo"
+EVENTFILE_KEY = "eventfile"
 
 
 class TestStatus(enum.Enum):
@@ -52,10 +47,6 @@ class TestParamSet:
         return config.SANDBOX_DIR / f"logs/{self.scan_id}.log"
 
 
-RECO_ALGO_KEY = "reco_algo"
-EVENTFILE_KEY = "eventfile"
-
-
 def fetch_file(url, mode="text"):
     """Fetch a file from a URL."""
     print(f"downloading from {url}...")
@@ -65,6 +56,7 @@ def fetch_file(url, mode="text"):
 
 
 def download_file(url: str, dest: Path):
+    """Download a file from a URL."""
     if not os.path.exists(dest):
         dest.parent.mkdir(parents=True, exist_ok=True)
         file_content = fetch_file(url, mode="binary")
@@ -73,6 +65,8 @@ def download_file(url: str, dest: Path):
 
 
 class GHATestFetcher:
+    """Class for fetching the tests from parsing the skymap scanner github actions CI."""
+
     # Constants
     TEST_RUN_REALISTIC_JOB = "test-run-realistic"
     STRATEGY_KEY = "strategy"
@@ -80,6 +74,7 @@ class GHATestFetcher:
     EXCLUDE_KEY = "exclude"
 
     def _read_gha_matrix(self):
+        """Parse the 'matrix' defined in the github actions CI job."""
         yaml_content = fetch_file(config.GHA_FILE_URL)
         gha_data = yaml.safe_load(yaml_content)
 
@@ -100,6 +95,7 @@ class GHATestFetcher:
         }
 
     def _expand_matrix(self, matrix) -> list[dict]:
+        """Permute the matrix parameters, obeying the 'exclude' field."""
         combinations = list(
             itertools.product(matrix[RECO_ALGO_KEY], matrix[EVENTFILE_KEY])
         )
@@ -120,6 +116,7 @@ class GHATestFetcher:
         return expanded_matrix
 
     def get_runtime_matrix(self) -> list[dict]:
+        """Get the 'matrix' defined in the github actions CI job."""
         matrix_dict = self._read_gha_matrix()
         return self._expand_matrix(matrix_dict)
 
@@ -132,37 +129,44 @@ def setup_tests() -> Iterator[TestParamSet]:
     matrix = GHATestFetcher().get_runtime_matrix()
     print(json.dumps(matrix, indent=4))
 
-    # Download all the events into a local directory
+    # put all the events into a local directory
     events_dir = config.SANDBOX_DIR / "realtime_events"
     events_dir.mkdir(exist_ok=True)
-    # Download all the expected-results into a local directory
+    # put all the expected-results into a local directory
     results_dir = config.SANDBOX_DIR / "expected_results"
     results_dir.mkdir(exist_ok=True)
 
+    # prep each test
     for m in matrix:
         event_fname = m[EVENTFILE_KEY]
+        test = TestParamSet(
+            event_file=events_dir / event_fname,
+            reco_algo=m[RECO_ALGO_KEY],
+            result_file=(
+                results_dir / m[RECO_ALGO_KEY] / config.EVENT_RESULT_MAP[event_fname]
+            ),
+        )
 
-        event_file = events_dir / event_fname
+        # get event file
         download_file(
             f"{config.EVENT_DIR_URL}{event_fname}",
-            event_file,
+            test.event_file,
         )
-        if event_file.suffix == ".pkl":
-            with open(event_file, "rb") as f:
+        # -> transform pkl file into json file -- skydriver only takes json
+        if test.event_file.suffix == ".pkl":
+            with open(test.event_file, "rb") as f:
                 contents = pickle.load(f)
-            event_file.unlink()  # rm
-            event_file = event_file.with_suffix(".json")  # use a different fname
-            with open(event_file, "w") as f:
+            test.event_file.unlink()  # rm
+            test.event_file = test.event_file.with_suffix(
+                ".json"
+            )  # use a different fname
+            with open(test.event_file, "w") as f:
                 json.dump(contents, f, indent=4)
 
-        result_file = results_dir / m[RECO_ALGO_KEY] / EVENT_RESULT_MAP[event_fname]
+        # get the expected-result file
         download_file(
-            f"{config.RESULT_DIR_URL}{m[RECO_ALGO_KEY]}/{EVENT_RESULT_MAP[event_fname]}",
-            result_file,
+            f"{config.RESULT_DIR_URL}{m[RECO_ALGO_KEY]}/{config.EVENT_RESULT_MAP[event_fname]}",
+            test.result_file,
         )
 
-        yield TestParamSet(
-            event_file=event_file,
-            reco_algo=m[RECO_ALGO_KEY],
-            result_file=result_file,
-        )
+        yield test
