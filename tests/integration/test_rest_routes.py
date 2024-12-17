@@ -153,7 +153,7 @@ async def _launch_scan(
         "SKYSCAN_SKYDRIVER_SCAN_ID",
         "SKYSCAN_EWMS_PILOT_LOG",
         "SKYSCAN_MQ_CLIENT_LOG",
-        *post_scan_body["scanner_server_env"].keys(),  # type: ignore=[attr-defined]
+        *post_scan_body["scanner_server_env"].keys(),  # type: ignore[attr-defined]
     }
     assert (
         set(  # these have `value_from`s
