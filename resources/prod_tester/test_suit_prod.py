@@ -6,7 +6,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import texttable
+import texttable  # type: ignore
 from rest_tools.client import RestClient
 
 import test_getter
