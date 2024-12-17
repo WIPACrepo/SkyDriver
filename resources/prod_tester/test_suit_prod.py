@@ -4,11 +4,11 @@ import json
 import logging
 import shutil
 import subprocess
-from pathlib import Path
 
 import texttable  # type: ignore
 from rest_tools.client import RestClient
 
+import config
 import test_getter
 import test_runner
 
@@ -25,18 +25,22 @@ class ResultChecker:
     """Class to check/compare/assert scan results."""
 
     def __init__(self):
-        self.compare_script_fpath = Path("./test-suit-sandbox/compare_scan_results.py")
+        self.compare_script_fpath = config.SANDBOX_DIR / "compare_scan_results.py"
         test_getter.download_file(GH_URL_COMPARE_SCRIPT, self.compare_script_fpath)
 
     def compare_results(self, scan_result: dict, test: test_getter.TestParamSet):
         """Compare scan result against expected result."""
         scan_result_file = (
-            Path("./test-suit-sandbox/actual_results")
+            config.SANDBOX_DIR
+            / "actual_results"
             / f"{test.reco_algo}-{test.event_file.name}.json"
         )
         scan_result_file.parent.mkdir(parents=True, exist_ok=True)
         with open(scan_result_file, "w") as f:
             json.dump(scan_result, f)
+
+        diffs_dir = config.SANDBOX_DIR / "result_diffs"
+        diffs_dir.mkdir(parents=True, exist_ok=True)
 
         result = subprocess.run(
             [
@@ -47,7 +51,7 @@ class ResultChecker:
                 "--expected",
                 str(test.result_file),
                 "--diff-out-dir",
-                str(scan_result_file.parent),
+                str(diffs_dir),
                 "--assert",
             ],
             capture_output=True,
@@ -242,10 +246,9 @@ async def main():
     )
     args = parser.parse_args()
 
-    rootdir = Path("./test-suit-sandbox")
-    if rootdir.exists():
-        shutil.rmtree(rootdir)
-    rootdir.mkdir(exist_ok=True)
+    if config.SANDBOX_DIR.exists():
+        shutil.rmtree(config.SANDBOX_DIR)
+    config.SANDBOX_DIR.mkdir(exist_ok=True)
 
     rc = test_runner.get_rest_client(args.skydriver_url)
 

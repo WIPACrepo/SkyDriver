@@ -1,3 +1,5 @@
+"""Tools for getting/prepping tests."""
+
 import dataclasses
 import enum
 import itertools
@@ -9,6 +11,8 @@ from typing import Iterator
 
 import requests
 import yaml
+
+import config
 
 EVENT_RESULT_MAP = {
     # these correspond to the files in https://github.com/icecube/skymap_scanner/tree/main/tests/data/results_json
@@ -45,7 +49,7 @@ class TestParamSet:
         """Based on the scan id.S"""
         if not self.scan_id:
             raise ValueError("scan_id not set")
-        return Path(f"./test-suit-sandbox/logs/{self.scan_id}.log")
+        return config.SANDBOX_DIR / f"logs/{self.scan_id}.log"
 
 
 RECO_ALGO_KEY = "reco_algo"
@@ -131,11 +135,11 @@ def setup_tests() -> Iterator[TestParamSet]:
 
     # Download all the events into a local directory
     event_dir_url = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/realtime_events/"
-    events_dir = Path("./test-suit-sandbox/realtime_events")
+    events_dir = config.SANDBOX_DIR / "realtime_events"
     events_dir.mkdir(exist_ok=True)
     # Download all the expected-results into a local directory
     result_dir_url = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/results_json/"
-    results_dir = Path("./test-suit-sandbox/expected_results")
+    results_dir = config.SANDBOX_DIR / "expected_results"
     results_dir.mkdir(exist_ok=True)
 
     for m in matrix:
