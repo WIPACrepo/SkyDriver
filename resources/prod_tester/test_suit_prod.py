@@ -132,6 +132,10 @@ async def launch_scans(
 
 def display_test_status(tests: list[test_getter.TestParamSet]):
     """Display test statuses in a clean table format."""
+    sorted_tests = sorted(
+        enumerate(tests, start=1),
+        key=lambda x: (x[1].test_status.name, x[0]),
+    )
     table = texttable.Texttable()
 
     # Define column alignment and widths
@@ -142,7 +146,7 @@ def display_test_status(tests: list[test_getter.TestParamSet]):
     table.add_row(["#", "Event File", "Reco Algo", "Scan ID", "Status"])
 
     # Add rows for each test
-    for i, test in enumerate(tests, start=1):
+    for i, test in sorted_tests:
         scan_id = test.scan_id[:8] if test.scan_id else "N/A"
         status = test.test_status.name
         table.add_row([i, test.event_file.name, test.reco_algo, scan_id, status])
