@@ -153,6 +153,7 @@ async def _launch_scan(
         "SKYSCAN_SKYDRIVER_SCAN_ID",
         "SKYSCAN_EWMS_PILOT_LOG",
         "SKYSCAN_MQ_CLIENT_LOG",
+        *POST_SCAN_BODY["scanner_server_env"].keys(),
     }
     assert (
         set(  # these have `value_from`s
