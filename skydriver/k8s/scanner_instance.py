@@ -1,7 +1,6 @@
 """Tools for creating K8s job objects for interacting with Skymap Scanner
 instances."""
 
-
 import logging
 import uuid
 from pathlib import Path
@@ -10,17 +9,17 @@ from typing import Any
 import kubernetes.client  # type: ignore[import-untyped]
 from rest_tools.client import ClientCredentialsAuth
 
+from .utils import KubeAPITools
 from .. import images
 from ..config import (
     CLUSTER_STOPPER_K8S_JOB_N_RETRIES,
     CLUSTER_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
+    DebugMode,
     ENV,
     K8S_CONTAINER_MEMORY_CLUSTER_STARTER_BYTES,
     K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES,
-    DebugMode,
 )
 from ..database import schema
-from .utils import KubeAPITools
 
 LOGGER = logging.getLogger(__name__)
 
@@ -85,6 +84,7 @@ class SkymapScannerK8sWrapper:
         # env
         rest_address: str,
         skyscan_mq_client_timeout_wait_for_first_message: int | None,
+        scanner_server_env_from_user: dict,
     ):
         LOGGER.info(f"making k8s job for {scan_id=}")
         self.scan_id = scan_id
@@ -107,6 +107,7 @@ class SkymapScannerK8sWrapper:
                 rest_address=rest_address,
                 scan_id=scan_id,
                 skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
+                scanner_server_env_from_user=scanner_server_env_from_user,
             ),
             self.scanner_server_args.split(),
             cpu=1,
@@ -266,6 +267,7 @@ class SkymapScannerK8sWrapper:
         rest_address: str,
         scan_id: str,
         skyscan_mq_client_timeout_wait_for_first_message: int | None,
+        scanner_server_env_from_user: dict,
     ) -> list[kubernetes.client.V1EnvVar]:
         """Get the environment variables provided to the skyscan server.
 
@@ -334,6 +336,14 @@ class SkymapScannerK8sWrapper:
             [
                 kubernetes.client.V1EnvVar(name=k, value=str(v))
                 for k, v in tokens.items()
+            ]
+        )
+
+        # 5. Add user's env
+        env.extend(
+            [
+                kubernetes.client.V1EnvVar(name=k, value=str(v))
+                for k, v in scanner_server_env_from_user.items()
             ]
         )
 

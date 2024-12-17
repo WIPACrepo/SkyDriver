@@ -1,6 +1,5 @@
 """Handlers for the SkyDriver REST API server interface."""
 
-
 import asyncio
 import dataclasses as dc
 import json
@@ -21,10 +20,10 @@ from .config import (
     DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
     DEFAULT_WORKER_DISK_BYTES,
     DEFAULT_WORKER_MEMORY_BYTES,
+    DebugMode,
     ENV,
     KNOWN_CLUSTERS,
     SCAN_MIN_PRIORITY_TO_START_NOW,
-    DebugMode,
     is_testing,
 )
 
@@ -395,11 +394,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=int,
             default=4 * 60 * 60,
         )
-        skyscan_mq_client_timeout_wait_for_first_message: int | None = self.get_argument(
-            # TODO - remove when TMS is handling workforce-scaling
-            "skyscan_mq_client_timeout_wait_for_first_message",
-            type=int,
-            default=-1,  # elephant in Cairo
+        skyscan_mq_client_timeout_wait_for_first_message: int | None = (
+            self.get_argument(
+                # TODO - remove when TMS is handling workforce-scaling
+                "skyscan_mq_client_timeout_wait_for_first_message",
+                type=int,
+                default=-1,  # elephant in Cairo
+            )
         )
         if skyscan_mq_client_timeout_wait_for_first_message == -1:
             skyscan_mq_client_timeout_wait_for_first_message = None
@@ -434,6 +435,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "priority",
             type=int,
             default=0,
+        )
+        scanner_server_env_from_user = self.get_argument(
+            "scanner_server_env",
+            type=_classifiers_validator,  # piggy-back this validator
+            default={},
         )
 
         # response args
@@ -474,6 +480,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             # env
             rest_address=self.request.full_url().rstrip(self.request.uri),
             skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
+            scanner_server_env_from_user=scanner_server_env_from_user,
         )
 
         # put in db (do before k8s start so if k8s fail, we can debug using db's info)

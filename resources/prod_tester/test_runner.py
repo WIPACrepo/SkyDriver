@@ -59,6 +59,9 @@ async def launch_a_scan(
         "max_pixel_reco_time": max_pixel_reco_time,
         "scanner_server_memory": scanner_server_memory,
         "priority": 99,
+        "scanner_server_env": {
+            "SKYSCAN_MINI_TEST": True,
+        },
     }
     resp = await rc.request("POST", "/scan", body)
 
