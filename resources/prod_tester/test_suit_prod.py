@@ -17,16 +17,15 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-GH_URL_RESULTS = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/results_json"
-GH_URL_COMPARE_SCRIPT = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/compare_scan_results.py"
-
 
 class ResultChecker:
     """Class to check/compare/assert scan results."""
 
     def __init__(self):
         self.compare_script_fpath = config.SANDBOX_DIR / "compare_scan_results.py"
-        test_getter.download_file(GH_URL_COMPARE_SCRIPT, self.compare_script_fpath)
+        test_getter.download_file(
+            config.GH_URL_COMPARE_SCRIPT, self.compare_script_fpath
+        )
 
     def compare_results(self, scan_result: dict, test: test_getter.TestParamSet):
         """Compare scan result against expected result."""

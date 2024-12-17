@@ -74,14 +74,13 @@ def download_file(url: str, dest: Path):
 
 class GHATestFetcher:
     # Constants
-    GHA_FILE_URL = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/.github/workflows/tests.yml"
     TEST_RUN_REALISTIC_JOB = "test-run-realistic"
     STRATEGY_KEY = "strategy"
     MATRIX_KEY = "matrix"
     EXCLUDE_KEY = "exclude"
 
     def _read_gha_matrix(self):
-        yaml_content = fetch_file(self.GHA_FILE_URL)
+        yaml_content = fetch_file(config.GHA_FILE_URL)
         gha_data = yaml.safe_load(yaml_content)
 
         # Extract the matrix values for "test-run-realistic"
@@ -134,11 +133,9 @@ def setup_tests() -> Iterator[TestParamSet]:
     print(json.dumps(matrix, indent=4))
 
     # Download all the events into a local directory
-    event_dir_url = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/realtime_events/"
     events_dir = config.SANDBOX_DIR / "realtime_events"
     events_dir.mkdir(exist_ok=True)
     # Download all the expected-results into a local directory
-    result_dir_url = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/tests/data/results_json/"
     results_dir = config.SANDBOX_DIR / "expected_results"
     results_dir.mkdir(exist_ok=True)
 
@@ -147,7 +144,7 @@ def setup_tests() -> Iterator[TestParamSet]:
 
         event_file = events_dir / event_fname
         download_file(
-            f"{event_dir_url}{event_fname}",
+            f"{config.EVENT_DIR_URL}{event_fname}",
             event_file,
         )
         if event_file.suffix == ".pkl":
@@ -160,7 +157,7 @@ def setup_tests() -> Iterator[TestParamSet]:
 
         result_file = results_dir / m[RECO_ALGO_KEY] / EVENT_RESULT_MAP[event_fname]
         download_file(
-            f"{result_dir_url}{m[RECO_ALGO_KEY]}/{EVENT_RESULT_MAP[event_fname]}",
+            f"{config.RESULT_DIR_URL}{m[RECO_ALGO_KEY]}/{EVENT_RESULT_MAP[event_fname]}",
             result_file,
         )
 
