@@ -111,8 +111,6 @@ async def launch_scans(
     rc: RestClient,
     cluster: str,
     n_workers: int,
-    max_pixel_reco_time: int,
-    scanner_server_memory: str,
 ) -> list[test_getter.TestParamSet]:
     for i, test in enumerate(tests):
         logging.info(
@@ -125,9 +123,7 @@ async def launch_scans(
                 test.event_file,
                 cluster,
                 n_workers,
-                max_pixel_reco_time,
                 test.reco_algo,
-                scanner_server_memory,
             )
             test.scan_id = scan_id
         except Exception as e:
@@ -164,8 +160,6 @@ async def test_all(
     rc: RestClient,
     cluster: str,
     n_workers: int,
-    max_pixel_reco_time: int,
-    scanner_server_memory: str,
 ):
     tests = list(test_getter.setup_tests())
     tests = await launch_scans(
@@ -173,8 +167,6 @@ async def test_all(
         rc,
         cluster,
         n_workers,
-        max_pixel_reco_time,
-        scanner_server_memory,
     )
     display_test_status(tests)
 
@@ -234,18 +226,6 @@ async def main():
         type=int,
         help="number of workers to request",
     )
-    parser.add_argument(
-        "--max-pixel-reco-time",
-        required=True,
-        type=int,
-        help="how long a reco should take",
-    )
-    parser.add_argument(
-        "--scanner-server-memory",
-        required=False,
-        default="512M",
-        help="server memory required",
-    )
     args = parser.parse_args()
 
     if config.SANDBOX_DIR.exists():
@@ -268,8 +248,6 @@ async def main():
         rc,
         args.cluster,
         args.n_workers,
-        args.max_pixel_reco_time,
-        args.scanner_server_memory,
     )
 
 

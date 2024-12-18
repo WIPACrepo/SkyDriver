@@ -45,9 +45,7 @@ async def launch_a_scan(
     event_file: Path,
     cluster: str,
     n_workers: int,
-    max_pixel_reco_time: int,
     reco_algo: str,
-    scanner_server_memory: str,
 ) -> str:
     """Request to SkyDriver to scan an event."""
     body = {
@@ -58,8 +56,8 @@ async def launch_a_scan(
         "predictive_scanning_threshold": 1,  # 0.3,
         "cluster": {cluster: n_workers},
         "docker_tag": "latest",
-        "max_pixel_reco_time": max_pixel_reco_time,
-        "scanner_server_memory": scanner_server_memory,
+        "max_pixel_reco_time": 30 * 60,  # seconds
+        "scanner_server_memory": "1G",
         "priority": 99,
         "scanner_server_env": {
             "SKYSCAN_MINI_TEST": True,
