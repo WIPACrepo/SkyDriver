@@ -99,9 +99,12 @@ def _logging_heartbeat(last_log_time: float) -> float:
 
 
 class IntervalTimer:
-    """Keep track of durations.
+    """A utility class to track time intervals.
 
-    TODO: move this to dev-tools--copied from TMS
+    This class allows tracking of elapsed time between actions and provides
+    mechanisms to wait until a specified time interval has passed.
+
+    TODO: Move this to dev-tools (copied from TMS).
     """
 
     def __init__(self, seconds: float, logger: logging.Logger) -> None:
@@ -110,25 +113,38 @@ class IntervalTimer:
         self.logger = logger
 
     def fastforward(self):
-        """."""
+        """Reset the timer so that the next call to `has_interval_elapsed` will return True.
+
+        This effectively skips the current interval and forces the timer to indicate
+        that the interval has elapsed on the next check.
+        """
         self._last_time = float("-inf")
 
     async def wait_until_interval(self) -> None:
-        """Wait until it has been x seconds, 1s at a time."""
+        """Wait asynchronously until the specified interval has elapsed.
+
+        This method checks the elapsed time every second, allowing cooperative
+        multitasking during the wait.
+        """
         self.logger.debug(
-            f"waiting until {self.seconds}s has elapsed since last iteration..."
+            f"Waiting until {self.seconds}s has elapsed since the last iteration..."
         )
-        while not self.has_interval_elapsed(self.logger):
+        while not self.has_interval_elapsed():
             await asyncio.sleep(1)
 
     def has_interval_elapsed(self) -> bool:
-        """Has it been at least `self.seconds` since last time?"""
+        """Check if the specified time interval has elapsed since the last expiration.
+
+        If the interval has elapsed, the internal timer is reset to the current time.
+        """
         diff = time.time() - self._last_time
-        yes = diff >= self.seconds
-        if yes:
+        if diff >= self.seconds:
             self._last_time = time.time()
-            self.logger.debug(f"has been at least {self.seconds}s (actually {diff}s)")
-        return yes
+            self.logger.debug(
+                f"At least {self.seconds}s have elapsed (actually {diff}s)."
+            )
+            return True
+        return False
 
 
 async def _run(
