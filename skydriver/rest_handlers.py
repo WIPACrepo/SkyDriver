@@ -432,7 +432,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         arghand.add_argument(
             "priority",
-            type=lambda x: max(int(x), 0),
+            type=int,
             default=0,
         )
         arghand.add_argument(
