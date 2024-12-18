@@ -10,6 +10,7 @@ or changed fundamentally without notice. You have been warned!
 
 import asyncio
 import json
+import logging
 import sys
 from pathlib import Path
 from pprint import pformat
@@ -22,6 +23,7 @@ def get_rest_client(skydriver_url: str) -> RestClient:
 
     This will present a QR code in the terminal for initial validation.
     """
+    logging.info("connecting to skydriver...")
     if "://" not in skydriver_url:
         skydriver_url = "https://" + skydriver_url
 
@@ -34,7 +36,7 @@ def get_rest_client(skydriver_url: str) -> RestClient:
         token_url="https://keycloak.icecube.wisc.edu/auth/realms/IceCube",
         filename="device-refresh-token",
         client_id="skydriver-external",
-        retries=0,
+        retries=10,
     )
 
 
@@ -52,7 +54,7 @@ async def launch_a_scan(
         "reco_algo": reco_algo,
         "event_i3live_json": event_file.open().read().strip(),
         "nsides": {1: 0},  # {8: 0, 64: 12, 512: 24},
-        "real_or_simulated_event": "simulated",
+        "real_or_simulated_event": "real",
         "predictive_scanning_threshold": 1,  # 0.3,
         "cluster": {cluster: n_workers},
         "docker_tag": "latest",
@@ -65,7 +67,7 @@ async def launch_a_scan(
     }
     resp = await rc.request("POST", "/scan", body)
 
-    print(resp["scan_id"])
+    print(resp["scan_id"], flush=True)
     return resp["scan_id"]  # type: ignore[no-any-return]
 
 
@@ -77,6 +79,10 @@ async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) ->
     out = open(log_file, "w") if log_file else sys.stdout
     result_resp = {}
 
+    resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    print(json.dumps(resp, indent=4), file=out, flush=True)
+
+    # loop w/ sleep
     done = False
     while True:
         # get result

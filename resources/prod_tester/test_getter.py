@@ -4,6 +4,7 @@ import dataclasses
 import enum
 import itertools
 import json
+import logging
 import os
 import pickle
 from pathlib import Path
@@ -126,6 +127,8 @@ def setup_tests() -> Iterator[TestParamSet]:
 
     Yields all possible combinations of reco_algo and eventfiles from skymap_scanner tests.
     """
+    logging.info("setting up tests...")
+
     matrix = GHATestFetcher().get_runtime_matrix()
     print(json.dumps(matrix, indent=4))
 

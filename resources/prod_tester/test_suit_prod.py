@@ -2,8 +2,11 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import shutil
 import subprocess
+import tarfile
+from datetime import datetime
 
 import texttable  # type: ignore
 from rest_tools.client import RestClient
@@ -246,6 +249,16 @@ async def main():
     args = parser.parse_args()
 
     if config.SANDBOX_DIR.exists():
+        logging.info(
+            f"taring the existing '{config.SANDBOX_DIR}', then overwriting the directory"
+        )
+        # tar it
+        with tarfile.open(
+            f"{config.SANDBOX_DIR}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.tar",
+            "w",
+        ) as tar:
+            tar.add(config.SANDBOX_DIR, arcname=os.path.basename(config.SANDBOX_DIR))
+        # then rm -rf the dir
         shutil.rmtree(config.SANDBOX_DIR)
     config.SANDBOX_DIR.mkdir(exist_ok=True)
 
