@@ -27,8 +27,8 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:  # type: ign
 
     # I3 EVENTS COLL
     await motor_client[_DB_NAME][_I3_EVENT_COLL_NAME].create_index(  # type: ignore[index]
-        "scan_id",
-        name="scan_id_index",
+        "i3_event_id",
+        name="i3_event_id_index",
         unique=True,
     )
 
