@@ -51,7 +51,7 @@ class TestParamSet:
 def fetch_file(url, mode="text"):
     """Fetch a file from a URL."""
     print(f"downloading from {url}...")
-    response = requests.get(url)
+    response = requests.get(url, timeout=10)
     response.raise_for_status()
     return response.text if mode == "text" else response.content
 
