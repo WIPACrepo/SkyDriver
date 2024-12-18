@@ -17,7 +17,7 @@ from .utils import (
     _RESULTS_COLL_NAME,
     _SCAN_BACKLOG_COLL_NAME,
 )
-from ..config import ENV
+from ..config import ENV, SCAN_MIN_PRIORITY_TO_START_ASAP
 
 LOGGER = logging.getLogger(__name__)
 
@@ -357,7 +357,10 @@ class ScanBacklogClient:
             motor_client[_DB_NAME], _SCAN_BACKLOG_COLL_NAME  # type: ignore[index]
         )
 
-    async def fetch_next_as_pending(self) -> schema.ScanBacklogEntry:
+    async def fetch_next_as_pending(
+        self,
+        include_low_priority_scans: bool,
+    ) -> schema.ScanBacklogEntry:
         """Fetch the next ready entry and mark as pending.
 
         This for when the container is restarted (process is killed).
@@ -365,17 +368,22 @@ class ScanBacklogClient:
         # LOGGER.debug("fetching & marking top backlog entry as a pending...")
         # ^^^ don't log too often
 
-        # atomically find & update
+        mongo_filter = {
+            # get entries that have never been pending (0.0) and/or
+            # entries that have been pending for too long (parent
+            # process may have died) -- younger pending entries may
+            # still be in flight by other processes)
+            "pending_timestamp": {
+                "$lt": time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
+            }
+        }
+        if not include_low_priority_scans:
+            # iow: only include high priority scans
+            mongo_filter.update({"priority": {"$gte": SCAN_MIN_PRIORITY_TO_START_ASAP}})
+
+        # atomically find & update; raises DocumentNotFoundException if no match
         entry = await self.collection.find_one_and_update(
-            {
-                # get entries that have never been pending (0.0) and/or
-                # entries that have been pending for too long (parent
-                # process may have died) -- younger pending entries may
-                # still be in flight by other processes)
-                "pending_timestamp": {
-                    "$lt": time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
-                }
-            },
+            mongo_filter,
             {
                 "$set": {"pending_timestamp": time.time()},
                 "$inc": {"next_attempt": 1},

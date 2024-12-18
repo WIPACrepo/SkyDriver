@@ -44,11 +44,12 @@ async def designate_for_startup(
 async def get_next_backlog_entry(
     scan_backlog: database.interface.ScanBacklogClient,
     manifests: database.interface.ManifestClient,
+    include_low_priority_scans: bool,
 ) -> database.schema.ScanBacklogEntry:
     """Get the next entry & remove any that have been cancelled."""
     while True:
         # get next up -- raises DocumentNotFoundException if none
-        entry = await scan_backlog.fetch_next_as_pending()
+        entry = await scan_backlog.fetch_next_as_pending(include_low_priority_scans)
         LOGGER.info(f"Got backlog entry ({entry.scan_id=})")
 
         if entry.next_attempt > ENV.SCAN_BACKLOG_MAX_ATTEMPTS:
@@ -89,19 +90,45 @@ async def run(
         LOGGER.info("Restarted scan backlog runner.")
 
 
-async def _sleep(short_sleep: bool) -> None:
-    if short_sleep:
-        await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_SHORT_DELAY)
-    else:
-        await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
-
-
 def _logging_heartbeat(last_log_time: float) -> float:
     if time.time() - last_log_time > ENV.SCAN_BACKLOG_RUNNER_DELAY:
         LOGGER.info("scan backlog runner is still alive")
         return time.time()
     else:
         return last_log_time
+
+
+class IntervalTimer:
+    """Keep track of durations.
+
+    TODO: move this to dev-tools--copied from TMS
+    """
+
+    def __init__(self, seconds: float, logger: logging.Logger) -> None:
+        self.seconds = seconds
+        self._last_time = time.time()
+        self.logger = logger
+
+    def fastforward(self):
+        """."""
+        self._last_time = float("-inf")
+
+    async def wait_until_interval(self) -> None:
+        """Wait until it has been x seconds, 1s at a time."""
+        self.logger.debug(
+            f"waiting until {self.seconds}s has elapsed since last iteration..."
+        )
+        while not self.has_interval_elapsed(self.logger):
+            await asyncio.sleep(1)
+
+    def has_interval_elapsed(self) -> bool:
+        """Has it been at least `self.seconds` since last time?"""
+        diff = time.time() - self._last_time
+        yes = diff >= self.seconds
+        if yes:
+            self._last_time = time.time()
+            self.logger.debug(f"has been at least {self.seconds}s (actually {diff}s)")
+        return yes
 
 
 async def _run(
@@ -112,21 +139,23 @@ async def _run(
     manifests = database.interface.ManifestClient(mongo_client)
     scan_backlog = database.interface.ScanBacklogClient(mongo_client)
 
-    short_sleep = True  # don't wait for full delay after first starting up (helpful for testing new changes)
     last_log_heartbeat = 0.0  # log every so often, not on every iteration
+    long_interval_timer = IntervalTimer(ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
 
     while True:
-        await _sleep(short_sleep)
+        await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_SHORT_DELAY)
         last_log_heartbeat = _logging_heartbeat(last_log_heartbeat)
 
         # get next entry
         try:
-            entry = await get_next_backlog_entry(scan_backlog, manifests)
-            short_sleep = False
+            entry = await get_next_backlog_entry(
+                scan_backlog,
+                manifests,
+                # include low priority scans only when enough time has passed
+                include_low_priority_scans=long_interval_timer.has_interval_elapsed(),
+            )
         except database.mongodc.DocumentNotFoundException:
-            if not short_sleep:  # don't log too often
-                LOGGER.debug("no backlog entry found")
-            short_sleep = True
+            long_interval_timer.fastforward()
             continue  # empty queue
 
         # get k8s job object
@@ -134,7 +163,7 @@ async def _run(
             job_obj = pickle.loads(entry.pickled_k8s_job)
         except Exception as e:
             LOGGER.exception(e)
-            short_sleep = True  # don't wait long b/c nothing was started
+            long_interval_timer.fastforward()  # nothing was started, so don't wait long
             continue
 
         LOGGER.info(
@@ -149,7 +178,7 @@ async def _run(
         except kubernetes.client.exceptions.ApiException as e:
             # job (entry) will be revived & restarted in future iteration
             LOGGER.exception(e)
-            short_sleep = True  # don't wait long b/c nothing was started
+            long_interval_timer.fastforward()  # nothing was started, so don't wait long
             continue
 
         # remove from backlog now that startup succeeded
