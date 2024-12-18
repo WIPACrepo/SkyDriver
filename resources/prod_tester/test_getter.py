@@ -56,13 +56,16 @@ def fetch_file(url, mode="text"):
     return response.text if mode == "text" else response.content
 
 
-def download_file(url: str, dest: Path):
+def download_file(url: str, dest: Path, alias_dest: Path = None):
     """Download a file from a URL."""
-    if not os.path.exists(dest):
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        file_content = fetch_file(url, mode="binary")
-        with open(dest, "wb") as f:
-            f.write(file_content)
+    if os.path.exists(dest):
+        return
+    if alias_dest and os.path.exists(alias_dest):
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    file_content = fetch_file(url, mode="binary")
+    with open(dest, "wb") as f:
+        f.write(file_content)
 
 
 class GHATestFetcher:
@@ -154,6 +157,7 @@ def setup_tests() -> Iterator[TestParamSet]:
         download_file(
             f"{config.EVENT_DIR_URL}{event_fname}",
             test.event_file,
+            alias_dest=test.event_file.with_suffix(".json"),  # see below
         )
         # -> transform pkl file into json file -- skydriver only takes json
         if test.event_file.suffix == ".pkl":
