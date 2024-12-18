@@ -1,6 +1,5 @@
 """Integration tests for the REST server."""
 
-
 import asyncio
 import hashlib
 import json
@@ -15,9 +14,9 @@ from typing import Any, Callable
 import humanfriendly
 import pytest
 import requests
-import skydriver
-import skydriver.images  # noqa: F401  # export
 from rest_tools.client import RestClient
+
+import skydriver.images  # noqa: F401  # export
 
 LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +53,7 @@ POST_SCAN_BODY = {
     "classifiers": CLASSIFIERS,
     "max_pixel_reco_time": 60,
     "debug_mode": "client-logs",
+    "scanner_server_env": {"MY_ENV_VAR": True},
 }
 REQUIRED_FIELDS = [
     "reco_algo",
@@ -153,6 +153,7 @@ async def _launch_scan(
         "SKYSCAN_SKYDRIVER_SCAN_ID",
         "SKYSCAN_EWMS_PILOT_LOG",
         "SKYSCAN_MQ_CLIENT_LOG",
+        *post_scan_body["scanner_server_env"].keys(),  # type: ignore[attr-defined]
     }
     assert (
         set(  # these have `value_from`s
