@@ -142,3 +142,4 @@ gke-cluster-config.yaml
 
 .idea/
 
+test-suit-sandbox*
