@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v1.1.0 (2024-12-18)
+
+### Other
+
+* <bot> update dependencies*.log files(s) ([`7092368`](https://github.com/WIPACrepo/SkyDriver/commit/7092368e123782f31ad03f62313434c2a4ac85c7))
+* Add CI for Publishing `dev` Image ([#123](https://github.com/WIPACrepo/SkyDriver/issues/123)) ([`92c56a0`](https://github.com/WIPACrepo/SkyDriver/commit/92c56a05e4b35706dd181abbf0eb9e2ea914d4c3))
+
 ## v1.0.7 (2024-10-21)
 
 ### Other
