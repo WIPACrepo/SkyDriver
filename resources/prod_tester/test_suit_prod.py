@@ -238,8 +238,19 @@ async def main():
             "w",
         ) as tar:
             tar.add(config.SANDBOX_DIR, arcname=os.path.basename(config.SANDBOX_DIR))
-        # then rm -rf the dir
-        shutil.rmtree(config.SANDBOX_DIR)
+        # then rm -rf the dir (saving the downloaded files)
+        for entry in config.SANDBOX_DIR.iterdir():
+            if entry.name in {
+                "expected_results",  # dir
+                "realtime_events",  # dir
+                "compare_scan_results.py",  # file
+                "tests.yml",  # file
+            }:
+                continue
+            if entry.is_dir():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
     config.SANDBOX_DIR.mkdir(exist_ok=True)
 
     rc = test_runner.get_rest_client(args.skydriver_url)
