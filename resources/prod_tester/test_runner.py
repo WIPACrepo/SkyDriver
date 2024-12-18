@@ -23,9 +23,9 @@ def get_rest_client(skydriver_url: str) -> RestClient:
 
     This will present a QR code in the terminal for initial validation.
     """
-    logging.info("connecting to skydriver...")
     if "://" not in skydriver_url:
         skydriver_url = "https://" + skydriver_url
+    logging.info(f"connecting to {skydriver_url}...")
 
     # NOTE: If your script will not be interactive (like a cron job),
     # then you need to first run your script manually to validate using
