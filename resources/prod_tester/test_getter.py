@@ -48,24 +48,19 @@ class TestParamSet:
         return config.SANDBOX_DIR / f"logs/{self.scan_id}.log"
 
 
-def fetch_file(url, mode="text"):
-    """Fetch a file from a URL."""
+def download_file(url: str, dest: Path, alias_dest: Path = None) -> Path:
+    """Download a file from a URL."""
+    if os.path.exists(dest):
+        return dest
+    if alias_dest and os.path.exists(alias_dest):
+        return dest
+    dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"downloading from {url}...")
     response = requests.get(url, timeout=10)
     response.raise_for_status()
-    return response.text if mode == "text" else response.content
-
-
-def download_file(url: str, dest: Path, alias_dest: Path = None):
-    """Download a file from a URL."""
-    if os.path.exists(dest):
-        return
-    if alias_dest and os.path.exists(alias_dest):
-        return
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    file_content = fetch_file(url, mode="binary")
     with open(dest, "wb") as f:
-        f.write(file_content)
+        f.write(response.content)
+    return dest
 
 
 class GHATestFetcher:
@@ -79,8 +74,10 @@ class GHATestFetcher:
 
     def _read_gha_matrix(self):
         """Parse the 'matrix' defined in the github actions CI job."""
-        yaml_content = fetch_file(config.GHA_FILE_URL)
-        gha_data = yaml.safe_load(yaml_content)
+        with open(
+            download_file(config.GHA_FILE_URL, config.SANDBOX_DIR / "tests.yml")
+        ) as f:
+            gha_data = yaml.safe_load(f)
 
         # Extract the matrix values for "test-run-realistic"
         test_run_realistic = gha_data.get("jobs", {}).get(

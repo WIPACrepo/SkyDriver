@@ -244,6 +244,7 @@ async def main():
                 "expected_results",  # dir
                 "realtime_events",  # dir
                 "compare_scan_results.py",  # file
+                "tests.yml",  # file
             }:
                 continue
             if entry.is_dir():
