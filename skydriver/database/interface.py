@@ -17,7 +17,7 @@ from .utils import (
     _RESULTS_COLL_NAME,
     _SCAN_BACKLOG_COLL_NAME,
 )
-from ..config import ENV
+from ..config import ENV, SCAN_MIN_PRIORITY_TO_START_ASAP
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class ManifestClient:
 
     async def post(
         self,
-        event_i3live_json_dict: schema.StrDict,
+        i3_event_id: str,
         scan_id: str,
         scanner_server_args: str,
         tms_args_list: list[str],
@@ -72,7 +72,7 @@ class ManifestClient:
             scan_id=scan_id,
             timestamp=time.time(),
             is_deleted=False,
-            event_i3live_json_dict=event_i3live_json_dict,
+            i3_event_id=i3_event_id,
             scanner_server_args=scanner_server_args,
             ewms_task=schema.EWMSTaskDirective(
                 tms_args=tms_args_list,
@@ -82,7 +82,10 @@ class ManifestClient:
             priority=priority,
         )
 
-        # db
+        return await self.put(manifest)
+
+    async def put(self, manifest: schema.Manifest) -> schema.Manifest:
+        """Put into db."""
         try:
             manifest = await self.collection.find_one_and_update(
                 {"scan_id": manifest.scan_id},
@@ -94,10 +97,82 @@ class ManifestClient:
         except mongodc.DocumentNotFoundException as e:
             raise web.HTTPError(
                 500,
-                log_message=f"Failed to post {self.collection.name} document ({scan_id})",
+                log_message=f"Failed to post {self.collection.name} document ({manifest.scan_id})",
             ) from e
 
         return manifest
+
+    @staticmethod
+    def _put_once_event_metadata(
+        in_db: schema.Manifest,
+        upserting: dict,
+        scan_id: str,
+        event_metadata: schema.EventMetadata,
+    ) -> None:
+        if not event_metadata:
+            raise ValueError("event_metadata cannot be falsy")
+        elif not in_db.event_metadata:
+            upserting["event_metadata"] = event_metadata
+        elif in_db.event_metadata != event_metadata:
+            msg = "Cannot change an existing event_metadata"
+            raise web.HTTPError(
+                400,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+
+    @staticmethod
+    def _put_once_scan_metadata(
+        in_db: schema.Manifest,
+        upserting: dict,
+        scan_id: str,
+        scan_metadata: schema.StrDict,
+    ) -> None:
+        if not scan_metadata:
+            raise ValueError("scan_metadata cannot be falsy")
+        elif not in_db.scan_metadata:
+            upserting["scan_metadata"] = scan_metadata
+        elif in_db.scan_metadata != scan_metadata:
+            msg = "Cannot change an existing scan_metadata"
+            raise web.HTTPError(
+                400,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+
+    @staticmethod
+    def _put_ewms_task(
+        in_db: schema.Manifest,
+        upserting: dict,
+        cluster: schema.Cluster | None,
+        complete: bool | None,
+    ):
+        if not cluster and not complete:
+            raise ValueError("cluster and complete cannot both be falsy")
+
+        upserting["ewms_task"] = copy.deepcopy(in_db.ewms_task)
+        # cluster / clusters
+        # TODO - when TMS is up and running, it will handle cluster updating--remove then
+        # NOTE - there is a race condition inherent with list attributes, don't do this in TMS
+        if not cluster:
+            pass  # don't put in DB
+        else:
+            try:  # find by uuid -> replace
+                idx = next(
+                    i
+                    for i, c in enumerate(in_db.ewms_task.clusters)
+                    if cluster.uuid == c.uuid
+                )
+                upserting["ewms_task"].clusters = (
+                    in_db.ewms_task.clusters[:idx]
+                    + [cluster]
+                    + in_db.ewms_task.clusters[idx + 1 :]
+                )
+            except StopIteration:  # not found -> append
+                upserting["ewms_task"].clusters = in_db.ewms_task.clusters + [cluster]
+        # complete # workforce is done
+        if complete is not None:
+            upserting["ewms_task"].complete = complete  # workforce is done
 
     async def patch(
         self,
@@ -122,71 +197,30 @@ class ManifestClient:
             return await self.get(scan_id, incl_del=True)
 
         upserting: schema.StrDict = {}
-
-        # Store/validate: event_metadata & scan_metadata
-        # NOTE: in theory there's a race condition (get+upsert), but it's set-once-only, so it's OK
-        in_db = await self.get(scan_id, incl_del=True)
-        # event_metadata
-        if not event_metadata:
-            pass  # don't put in DB
-        elif not in_db.event_metadata:
-            upserting["event_metadata"] = event_metadata
-        elif in_db.event_metadata != event_metadata:
-            msg = "Cannot change an existing event_metadata"
-            raise web.HTTPError(
-                400,
-                log_message=msg + f" for {scan_id=}",
-                reason=msg,
-            )
-        # scan_metadata
-        if not scan_metadata:
-            pass  # don't put in DB
-        elif not in_db.scan_metadata:
-            upserting["scan_metadata"] = scan_metadata
-        elif in_db.scan_metadata != scan_metadata:
-            msg = "Cannot change an existing scan_metadata"
-            raise web.HTTPError(
-                400,
-                log_message=msg + f" for {scan_id=}",
-                reason=msg,
-            )
-
-        # tms
-        if cluster or complete is not None:
-            upserting["ewms_task"] = copy.deepcopy(in_db.ewms_task)
-            # cluster / clusters
-            # TODO - when TMS is up and running, it will handle cluster updating--remove then
-            # NOTE - there is a race condition inherent with list attributes, don't do this in TMS
-            if not cluster:
-                pass  # don't put in DB
-            else:
-                try:  # find by uuid -> replace
-                    idx = next(
-                        i
-                        for i, c in enumerate(in_db.ewms_task.clusters)
-                        if cluster.uuid == c.uuid
-                    )
-                    upserting["ewms_task"].clusters = (
-                        in_db.ewms_task.clusters[:idx]
-                        + [cluster]
-                        + in_db.ewms_task.clusters[idx + 1 :]
-                    )
-                except StopIteration:  # not found -> append
-                    upserting["ewms_task"].clusters = in_db.ewms_task.clusters + [
-                        cluster
-                    ]
-            # complete # workforce is done
-            if complete is not None:
-                upserting["ewms_task"].complete = complete  # workforce is done
-
-        # progress
         if progress:
             upserting["progress"] = progress
 
-        # validate
+        # Validate, then store
+        # NOTE: in theory there's a race condition (get+upsert)
+        in_db = await self.get(scan_id, incl_del=True)
+        if event_metadata:
+            self._put_once_event_metadata(in_db, upserting, scan_id, event_metadata)
+        if scan_metadata:
+            self._put_once_scan_metadata(in_db, upserting, scan_id, scan_metadata)
+        if cluster or complete is not None:
+            self._put_ewms_task(in_db, upserting, cluster, complete)
+
+        # Update db
         if not upserting:  # did we actually update anything?
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
             return in_db
+        else:
+            return await self._patch(upserting, scan_id)
+
+    async def _patch(self, upserting: dict, scan_id: str) -> schema.Manifest:
+        """Update the doc in the DB."""
+        if not upserting:
+            raise ValueError("upserting cannot be empty")
         try:
             upserting = mongodc.typecheck_as_dc_fields(upserting, schema.Manifest)
         except TypeError as e:
@@ -323,7 +357,10 @@ class ScanBacklogClient:
             motor_client[_DB_NAME], _SCAN_BACKLOG_COLL_NAME  # type: ignore[index]
         )
 
-    async def fetch_next_as_pending(self) -> schema.ScanBacklogEntry:
+    async def fetch_next_as_pending(
+        self,
+        include_low_priority_scans: bool,
+    ) -> schema.ScanBacklogEntry:
         """Fetch the next ready entry and mark as pending.
 
         This for when the container is restarted (process is killed).
@@ -331,17 +368,22 @@ class ScanBacklogClient:
         # LOGGER.debug("fetching & marking top backlog entry as a pending...")
         # ^^^ don't log too often
 
-        # atomically find & update
+        mongo_filter = {
+            # get entries that have never been pending (0.0) and/or
+            # entries that have been pending for too long (parent
+            # process may have died) -- younger pending entries may
+            # still be in flight by other processes)
+            "pending_timestamp": {
+                "$lt": time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
+            }
+        }
+        if not include_low_priority_scans:
+            # iow: only include high priority scans
+            mongo_filter.update({"priority": {"$gte": SCAN_MIN_PRIORITY_TO_START_ASAP}})
+
+        # atomically find & update; raises DocumentNotFoundException if no match
         entry = await self.collection.find_one_and_update(
-            {
-                # get entries that have never been pending (0.0) and/or
-                # entries that have been pending for too long (parent
-                # process may have died) -- younger pending entries may
-                # still be in flight by other processes)
-                "pending_timestamp": {
-                    "$lt": time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
-                }
-            },
+            mongo_filter,
             {
                 "$set": {"pending_timestamp": time.time()},
                 "$inc": {"next_attempt": 1},

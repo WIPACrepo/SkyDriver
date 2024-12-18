@@ -48,21 +48,17 @@ class TestParamSet:
         return config.SANDBOX_DIR / f"logs/{self.scan_id}.log"
 
 
-def fetch_file(url, mode="text"):
-    """Fetch a file from a URL."""
-    print(f"downloading from {url}...")
-    response = requests.get(url)
-    response.raise_for_status()
-    return response.text if mode == "text" else response.content
-
-
-def download_file(url: str, dest: Path):
+def download_file(url: str, dest: Path) -> Path:
     """Download a file from a URL."""
-    if not os.path.exists(dest):
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        file_content = fetch_file(url, mode="binary")
-        with open(dest, "wb") as f:
-            f.write(file_content)
+    if os.path.exists(dest):
+        return dest
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    print(f"downloading from {url}...")
+    response = requests.get(url, timeout=10)
+    response.raise_for_status()
+    with open(dest, "wb") as f:
+        f.write(response.content)
+    return dest
 
 
 class GHATestFetcher:
@@ -76,8 +72,10 @@ class GHATestFetcher:
 
     def _read_gha_matrix(self):
         """Parse the 'matrix' defined in the github actions CI job."""
-        yaml_content = fetch_file(config.GHA_FILE_URL)
-        gha_data = yaml.safe_load(yaml_content)
+        with open(
+            download_file(config.GHA_FILE_URL, config.SANDBOX_DIR / "tests.yml")
+        ) as f:
+            gha_data = yaml.safe_load(f)
 
         # Extract the matrix values for "test-run-realistic"
         test_run_realistic = gha_data.get("jobs", {}).get(
@@ -142,34 +140,32 @@ def setup_tests() -> Iterator[TestParamSet]:
     # prep each test
     for m in matrix:
         event_fname = m[EVENTFILE_KEY]
-        test = TestParamSet(
-            event_file=events_dir / event_fname,
-            reco_algo=m[RECO_ALGO_KEY],
-            result_file=(
-                results_dir / m[RECO_ALGO_KEY] / config.EVENT_RESULT_MAP[event_fname]
-            ),
+        event_file = events_dir / event_fname
+        result_file = (
+            results_dir / m[RECO_ALGO_KEY] / config.EVENT_RESULT_MAP[event_fname]
         )
 
-        # get event file
-        download_file(
-            f"{config.EVENT_DIR_URL}{event_fname}",
-            test.event_file,
-        )
-        # -> transform pkl file into json file -- skydriver only takes json
-        if test.event_file.suffix == ".pkl":
-            with open(test.event_file, "rb") as f:
-                contents = pickle.load(f)
-            test.event_file.unlink()  # rm
-            test.event_file = test.event_file.with_suffix(
-                ".json"
-            )  # use a different fname
-            with open(test.event_file, "w") as f:
-                json.dump(contents, f, indent=4)
+        # get event file -- all event files will be saved as .json
+        as_json = event_file.with_suffix(".json")
+        if not as_json.exists():
+            download_file(f"{config.EVENT_DIR_URL}{event_fname}", event_file)
+            # -> transform pkl file into json file -- skydriver only takes json
+            if event_file.suffix == ".pkl":
+                with open(event_file, "rb") as f:
+                    contents = pickle.load(f)
+                event_file.unlink()  # rm
+                with open(as_json, "w") as f:
+                    json.dump(contents, f, indent=4)
+        event_file = as_json  # use the .json filepath
 
         # get the expected-result file
         download_file(
             f"{config.RESULT_DIR_URL}{m[RECO_ALGO_KEY]}/{config.EVENT_RESULT_MAP[event_fname]}",
-            test.result_file,
+            result_file,
         )
 
-        yield test
+        yield TestParamSet(
+            event_file=event_file,
+            reco_algo=m[RECO_ALGO_KEY],
+            result_file=result_file,
+        )
