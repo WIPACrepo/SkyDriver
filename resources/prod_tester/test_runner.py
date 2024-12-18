@@ -58,7 +58,7 @@ async def launch_a_scan(
         "docker_tag": "latest",
         "max_pixel_reco_time": 30 * 60,  # seconds
         "scanner_server_memory": "1G",
-        "priority": 99,
+        "priority": 100,
         "scanner_server_env": {
             "SKYSCAN_MINI_TEST": True,
         },
