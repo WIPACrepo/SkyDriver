@@ -435,6 +435,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=int,
             default=0,
         )
+        arghand.add_argument(
+            "scanner_server_env",
+            type=_classifiers_validator,  # piggy-back this validator
+            default={},
+        )
         # response args
         arghand.add_argument(
             "manifest_projection",
@@ -495,6 +500,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             ),
             i3_event_id=i3_event_id,  # foreign key to i3_event collection
             rest_address=self.request.full_url().rstrip(self.request.uri),
+            scanner_server_env_from_user=args.scanner_server_env,
         )
         await self.scan_request_coll.insert_one(
             {
@@ -551,6 +557,7 @@ async def _start_scan(
         skyscan_mq_client_timeout_wait_for_first_message=scan_request_obj[
             "skyscan_mq_client_timeout_wait_for_first_message"
         ],
+        scanner_server_env_from_user=scan_request_obj["scanner_server_env_from_user"],
     )
 
     # put in db (do before k8s start so if k8s fail, we can debug using db's info)
