@@ -1,6 +1,5 @@
 """Integration tests for backlog runner."""
 
-
 # pylint: disable=redefined-outer-name
 
 import asyncio
@@ -9,9 +8,10 @@ from typing import Any, Callable
 from unittest import mock
 from unittest.mock import Mock
 
+from rest_tools.client import RestClient
+
 import skydriver
 import skydriver.images  # noqa: F401  # export
-from rest_tools.client import RestClient
 
 skydriver.config.config_logging()
 
@@ -96,6 +96,10 @@ async def test_10(
         # delete
         if i in [1, 3]:
             print_it(await rc.request("DELETE", f"/scan/{resp['scan_id']}"))
+
+    # NOTE: KubeAPITools.start_job() should be called:
+    #   1x for each scan POST and 1x for each DELETE,
+    #   *unless* the scan is deleted before the backlog starts it (then, just 1x)
 
     # inspect
     print_it(await rc.request("GET", "/scans/backlog"))

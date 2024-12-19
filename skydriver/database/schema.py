@@ -2,8 +2,6 @@
 
 import dataclasses as dc
 import enum
-import hashlib
-import json
 from typing import Any, Iterator, Literal
 
 import wipac_dev_tools as wdt
@@ -135,7 +133,7 @@ class KubernetesLocation:
 
 @typechecked
 @dc.dataclass
-class Cluster:
+class ManualCluster:
     """Stores information for a worker cluster."""
 
     orchestrator: Literal["condor", "k8s"]
@@ -221,12 +219,13 @@ def obfuscate_cl_args(args: str) -> str:
 
 @typechecked
 @dc.dataclass
-class EWMSTaskDirective:
-    """Encapsulates the directive of a unique EWMS task entity."""
+class ManualStarterInfo:
+    """Encapsulates what info is/was used for starting the scanner, within SkyDriver."""
 
     tms_args: list[str]  # TODO - move to TMS
     env_vars: EnvVars  # TODO - move to TMS
-    clusters: list[Cluster] = dc.field(default_factory=list)
+
+    clusters: list[ManualCluster] = dc.field(default_factory=list)
 
     # signifies k8s workers and condor cluster(s) AKA workforce is done
     complete: bool = False  # TODO - move to TMS
@@ -238,27 +237,47 @@ class EWMSTaskDirective:
 
 @typechecked
 @dc.dataclass
+class EWMSRequestInfo:
+    """Some of the info sent to EWMS in the workflow request."""
+
+    cluster_locations: list[str]  # TODO: does this need to be dict with n_workers?
+    n_workers: int
+
+    workflow_id: str = ""  # set once the request has been sent to EWMS
+
+    # TODO: add more fields that are needed for EWMS but not already in manifest
+    #       OR the backlogger could also pull info from 'scan_request_obj'
+    # NOTE: besides 'workflow_id', this object is immutable
+
+
+DEPRECATED_EVENT_I3LIVE_JSON_DICT = "use 'i3_event_id'"
+
+
+@typechecked
+@dc.dataclass
 class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
 
     timestamp: float
     is_deleted: bool
 
-    # grabbed by scanner central server
-    event_i3live_json_dict: StrDict  # TODO: delete after time & replace w/ hash?
-
-    ewms_task: EWMSTaskDirective
+    ewms_task: ManualStarterInfo | EWMSRequestInfo  # yes, this was a poor naming choice
 
     # args placed in k8s job obj
     scanner_server_args: str
 
-    priority: int = 0  # same as https://htcondor.readthedocs.io/en/latest/users-manual/priorities-and-preemption.html#job-priority
+    priority: int = (
+        0  # same as https://htcondor.readthedocs.io/en/latest/users-manual/priorities-and-preemption.html#job-priority
+    )
 
     # open to requestor
     classifiers: dict[str, str | bool | float | int] = dc.field(default_factory=dict)
 
-    # special fields -- see __post_init__
-    event_i3live_json_dict__hash: str = ""  # possibly overwritten
+    # i3 event -- grabbed by scanner central server
+    i3_event_id: str = ""  # id to i3_event coll
+    # -> deprecated fields -- see __post_init__ for backward compatibility  logic
+    event_i3live_json_dict: StrDict | str = DEPRECATED_EVENT_I3LIVE_JSON_DICT
+    event_i3live_json_dict__hash: str | None = None  # **DEPRECATED**
 
     # found/created during first few seconds of scanning
     event_metadata: EventMetadata | None = None
@@ -270,16 +289,14 @@ class Manifest(ScanIDDataclass):
     last_updated: float = 0.0
 
     def __post_init__(self) -> None:
-        if self.event_i3live_json_dict:
-            # shorten b/c this can be a LARGE dict
-            self.event_i3live_json_dict__hash = hashlib.md5(
-                json.dumps(  # sort -> deterministic
-                    self.event_i3live_json_dict,
-                    sort_keys=True,
-                    ensure_ascii=True,
-                ).encode("utf-8")
-            ).hexdigest()
-
+        if (
+            not self.i3_event_id
+            and self.event_i3live_json_dict == DEPRECATED_EVENT_I3LIVE_JSON_DICT
+        ):
+            raise ValueError(
+                "Manifest must define 'i3_event_id' "
+                "(old manifests may define 'event_i3live_json_dict' instead)"
+            )
         self.scanner_server_args = obfuscate_cl_args(self.scanner_server_args)
 
     def get_state(self) -> ScanState:

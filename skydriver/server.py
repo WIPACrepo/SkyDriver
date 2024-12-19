@@ -1,11 +1,11 @@
 """Root python script for SkyDriver REST API server interface."""
 
-
 import logging
 from typing import Any
 
 import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient
+from rest_tools.client import RestClient
 from rest_tools.server import RestHandlerSetup, RestServer
 
 from . import rest_handlers
@@ -17,6 +17,7 @@ LOGGER = logging.getLogger(__name__)
 async def make(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
+    ewms_rc: RestClient,
 ) -> RestServer:
     """Make a SkyDriver REST service (does not start up automatically)."""
     debug = is_testing()
@@ -33,6 +34,7 @@ async def make(
     # Setup clients/apis
     args["mongo_client"] = mongo_client
     args["k8s_batch_api"] = k8s_batch_api
+    args["ewms_rc"] = ewms_rc
 
     # Configure REST Routes
     rs = RestServer(debug=debug)
@@ -43,8 +45,10 @@ async def make(
         rest_handlers.MainHandler,
         rest_handlers.ScanHandler,
         rest_handlers.ScanManifestHandler,
+        rest_handlers.ScanI3EventHandler,
         rest_handlers.ScanResultHandler,
         rest_handlers.ScanLauncherHandler,
+        rest_handlers.ScanRescanHandler,
         rest_handlers.ScanStatusHandler,
         rest_handlers.ScanLogsHandler,
     ]:
