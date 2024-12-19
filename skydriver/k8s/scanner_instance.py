@@ -25,7 +25,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def get_cluster_auth_v1envvars(
-    cluster: schema.Cluster,
+    cluster: schema.ManualCluster,
 ) -> list[kubernetes.client.V1EnvVar]:
     """Get the `V1EnvVar`s for workers' auth."""
     LOGGER.debug(f"getting auth secret env vars for {cluster=}")
@@ -75,7 +75,7 @@ class SkymapScannerK8sWrapper:
         starter_exc: str,  # TODO - remove once tested in prod
         worker_memory_bytes: int,
         worker_disk_bytes: int,
-        request_clusters: list[schema.Cluster],
+        request_clusters: list[schema.ManualCluster],
         max_pixel_reco_time: int,
         max_worker_runtime: int,
         priority: int,
@@ -193,7 +193,7 @@ class SkymapScannerK8sWrapper:
         docker_tag: str,
         worker_memory_bytes: int,
         worker_disk_bytes: int,
-        request_cluster: schema.Cluster,
+        request_cluster: schema.ManualCluster,
         debug_mode: list[DebugMode],
         max_worker_runtime: int,
         priority: int,
@@ -353,7 +353,7 @@ class SkymapScannerK8sWrapper:
     def make_cluster_starter_v1envvars(
         rest_address: str,
         scan_id: str,
-        cluster: schema.Cluster,
+        cluster: schema.ManualCluster,
         max_pixel_reco_time: int,
         debug_mode: list[DebugMode],
     ) -> list[kubernetes.client.V1EnvVar]:
@@ -445,7 +445,7 @@ class SkymapScannerWorkerStopperK8sWrapper:
         self,
         k8s_batch_api: kubernetes.client.BatchV1Api,
         scan_id: str,
-        clusters: list[schema.Cluster],
+        clusters: list[schema.ManualCluster],
     ):
         self.k8s_batch_api = k8s_batch_api
         self.scan_id = scan_id

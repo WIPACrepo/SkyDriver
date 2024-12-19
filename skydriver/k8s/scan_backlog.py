@@ -12,7 +12,7 @@ from rest_tools.client import RestClient
 from tornado import web
 
 from .utils import KubeAPITools
-from .. import database
+from .. import database, ewms
 from ..config import ENV
 
 LOGGER = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ async def get_next_backlog_entry(
     scan_backlog: database.interface.ScanBacklogClient,
     manifests: database.interface.ManifestClient,
     include_low_priority_scans: bool,
-) -> database.schema.ScanBacklogEntry:
+) -> tuple[database.schema.ScanBacklogEntry, database.schema.Manifest]:
     """Get the next entry & remove any that have been cancelled."""
     while True:
         # get next up -- raises DocumentNotFoundException if none
@@ -68,7 +68,7 @@ async def get_next_backlog_entry(
             continue
 
         # all good!
-        return entry  # ready to start job
+        return entry, manifest  # ready to start job
 
 
 async def run(
@@ -155,8 +155,8 @@ async def _run(
     ewms_rc: RestClient,
 ) -> None:
     """The (actual) main loop."""
-    manifests = database.interface.ManifestClient(mongo_client)
-    scan_backlog = database.interface.ScanBacklogClient(mongo_client)
+    manifest_client = database.interface.ManifestClient(mongo_client)
+    backlog_client = database.interface.ScanBacklogClient(mongo_client)
 
     last_log_heartbeat = 0.0  # log every so often, not on every iteration
     long_interval_timer = IntervalTimer(ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
@@ -167,9 +167,9 @@ async def _run(
 
         # get next entry
         try:
-            entry = await get_next_backlog_entry(
-                scan_backlog,
-                manifests,
+            entry, manifest = await get_next_backlog_entry(
+                backlog_client,
+                manifest_client,
                 # include low priority scans only when enough time has passed
                 include_low_priority_scans=long_interval_timer.has_interval_elapsed(),
             )
@@ -177,8 +177,21 @@ async def _run(
             long_interval_timer.fastforward()
             continue  # empty queue
 
-        # TODO: Request to SkyDriver
-        resp = await ewms_rc.request("POST", "/v0/workflows", {})
+        # request a workflow on EWMS
+        if isinstance(manifest.ewms_task, database.schema.EWMSRequestInfo):
+            try:
+                workflow_id = await ewms.request_workflow_on_ewms(
+                    ewms_rc, manifest.ewms_task
+                )
+            except Exception as e:
+                LOGGER.exception(e)
+                long_interval_timer.fastforward()  # nothing was started, so don't wait long
+                continue
+            await manifest_client.collection.find_one_and_update(
+                {"scan_id": manifest.scan_id},
+                {"$set": {"ewms_task.workflow_id": workflow_id}},
+            )
+
         # TODO: Start K8s Job
 
         # get k8s job object
@@ -194,15 +207,15 @@ async def _run(
         )
         # NOTE: the job_obj is enormous, so don't log it
 
-        # start job
+        # start k8s job
         try:
             resp = KubeAPITools.start_job(k8s_batch_api, job_obj)
             LOGGER.info(resp)
         except kubernetes.client.exceptions.ApiException as e:
-            # job (entry) will be revived & restarted in future iteration
+            # k8s job (backlog entry) will be revived & restarted in future iteration
             LOGGER.exception(e)
             long_interval_timer.fastforward()  # nothing was started, so don't wait long
             continue
 
         # remove from backlog now that startup succeeded
-        await scan_backlog.remove(entry)
+        await backlog_client.remove(entry)

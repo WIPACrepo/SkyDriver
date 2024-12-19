@@ -228,17 +228,17 @@ class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-def _cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
-    """Grab the Cluster object known using `name`."""
+def _cluster_lookup(name: str, n_workers: int) -> database.schema.ManualCluster:
+    """Grab the ManualCluster object known using `name`."""
     if cluster := KNOWN_CLUSTERS.get(name):
         if cluster["orchestrator"] == "condor":
-            return database.schema.Cluster(
+            return database.schema.ManualCluster(
                 orchestrator=cluster["orchestrator"],
                 location=database.schema.HTCondorLocation(**cluster["location"]),
                 n_workers=n_workers,
             )
         elif cluster["orchestrator"] == "k8s":
-            return database.schema.Cluster(
+            return database.schema.ManualCluster(
                 orchestrator=cluster["orchestrator"],
                 location=database.schema.KubernetesLocation(**cluster["location"]),
                 n_workers=n_workers,
@@ -273,7 +273,7 @@ def _json_to_dict(val: Any) -> dict:
 
 def _dict_or_list_to_request_clusters(
     val: dict | list,
-) -> list[database.schema.Cluster]:
+) -> list[database.schema.ManualCluster]:
     _error = argparse.ArgumentTypeError(
         "must be a dict of cluster location and number of workers, Ex: {'sub-2': 1500, ...}"
         " (to request a cluster location more than once, provide a list of 2-lists instead)"
@@ -461,7 +461,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                     raise web.HTTPError(
                         400,
                         log_message=(
-                            f"Too many workers: Cluster '{cname}' can only have "
+                            f"Too many workers: ManualCluster '{cname}' can only have "
                             f"{cinfo.get('max_n_clients_during_debug_mode')} "
                             f"workers when 'debug_mode' "
                             f"includes '{DebugMode.CLIENT_LOGS.value}'"
@@ -878,7 +878,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         arghand.add_argument(
             "cluster",
-            type=lambda x: from_dict_wrapper_or_none(database.schema.Cluster, x),
+            type=lambda x: from_dict_wrapper_or_none(database.schema.ManualCluster, x),
             default=None,
         )
         args = arghand.parse_args()

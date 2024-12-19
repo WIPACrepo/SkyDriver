@@ -133,7 +133,7 @@ class KubernetesLocation:
 
 @typechecked
 @dc.dataclass
-class Cluster:
+class ManualCluster:
     """Stores information for a worker cluster."""
 
     orchestrator: Literal["condor", "k8s"]
@@ -219,12 +219,13 @@ def obfuscate_cl_args(args: str) -> str:
 
 @typechecked
 @dc.dataclass
-class EWMSTaskDirective:
-    """Encapsulates the directive of a unique EWMS task entity."""
+class ManualStarterInfo:
+    """Encapsulates what info is/was used for starting the scanner, within SkyDriver."""
 
     tms_args: list[str]  # TODO - move to TMS
     env_vars: EnvVars  # TODO - move to TMS
-    clusters: list[Cluster] = dc.field(default_factory=list)
+
+    clusters: list[ManualCluster] = dc.field(default_factory=list)
 
     # signifies k8s workers and condor cluster(s) AKA workforce is done
     complete: bool = False  # TODO - move to TMS
@@ -232,6 +233,20 @@ class EWMSTaskDirective:
     def __post_init__(self) -> None:
         self.tms_args = [obfuscate_cl_args(a) for a in self.tms_args]
         # NOTE - self.env_vars done in EnvVars
+
+
+@typechecked
+@dc.dataclass
+class EWMSRequestInfo:
+    """Some of the info sent to EWMS in the workflow request."""
+
+    cluster_locations: list[str]  # TODO: does this need to be dict with n_workers?
+    n_workers: int
+
+    workflow_id: str = ""  # set once the request has been sent to EWMS
+
+    # TODO: add more fields that are needed for EWMS but not already in manifest
+    # NOTE: besides 'workflow_id', this object is immutable
 
 
 DEPRECATED_EVENT_I3LIVE_JSON_DICT = "use 'i3_event_id'"
@@ -245,7 +260,7 @@ class Manifest(ScanIDDataclass):
     timestamp: float
     is_deleted: bool
 
-    ewms_task: EWMSTaskDirective
+    ewms_task: ManualStarterInfo | EWMSRequestInfo  # yes, this was a poor naming choice
 
     # args placed in k8s job obj
     scanner_server_args: str

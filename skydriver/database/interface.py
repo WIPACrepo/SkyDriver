@@ -74,7 +74,7 @@ class ManifestClient:
             is_deleted=False,
             i3_event_id=i3_event_id,
             scanner_server_args=scanner_server_args,
-            ewms_task=schema.EWMSTaskDirective(
+            ewms_task=schema.ManualStarterInfo(
                 tms_args=tms_args_list,
                 env_vars=env_vars,
             ),
@@ -144,7 +144,7 @@ class ManifestClient:
     def _put_ewms_task(
         in_db: schema.Manifest,
         upserting: dict,
-        cluster: schema.Cluster | None,
+        cluster: schema.ManualCluster | None,
         complete: bool | None,
     ):
         if not cluster and not complete:
@@ -180,7 +180,7 @@ class ManifestClient:
         progress: schema.Progress | None = None,
         event_metadata: schema.EventMetadata | None = None,
         scan_metadata: schema.StrDict | None = None,
-        cluster: schema.Cluster | None = None,
+        cluster: schema.ManualCluster | None = None,
         complete: bool | None = None,  # workforce is done
     ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
