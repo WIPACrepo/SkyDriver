@@ -8,6 +8,7 @@ import time
 import bson
 import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient
+from rest_tools.client import RestClient
 from tornado import web
 
 from .utils import KubeAPITools
@@ -73,6 +74,7 @@ async def get_next_backlog_entry(
 async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
+    ewms_rc: RestClient,
 ) -> None:
     """Error-handling around the scan backlog runner loop."""
     LOGGER.info("Started scan backlog runner.")
@@ -80,7 +82,7 @@ async def run(
     while True:
         # let's go!
         try:
-            await _run(mongo_client, k8s_batch_api)
+            await _run(mongo_client, k8s_batch_api, ewms_rc)
         except Exception as e:
             LOGGER.exception(e)
 
@@ -150,6 +152,7 @@ class IntervalTimer:
 async def _run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
+    ewms_rc: RestClient,
 ) -> None:
     """The (actual) main loop."""
     manifests = database.interface.ManifestClient(mongo_client)
@@ -173,6 +176,10 @@ async def _run(
         except database.mongodc.DocumentNotFoundException:
             long_interval_timer.fastforward()
             continue  # empty queue
+
+        # TODO: Request to SkyDriver
+        resp = await ewms_rc.request("POST", "/v0/workflows", {})
+        # TODO: Start K8s Job
 
         # get k8s job object
         try:

@@ -73,7 +73,7 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:  # type: ign
 
 async def drop_collections(motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
     """Drop the "regular" collections -- most useful for testing."""
-    if not ENV.CI_TEST:
+    if not ENV.CI:
         raise RuntimeError("Cannot drop collections if not in testing mode")
     await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].drop()  # type: ignore[index]
     await motor_client[_DB_NAME][_RESULTS_COLL_NAME].drop()  # type: ignore[index]

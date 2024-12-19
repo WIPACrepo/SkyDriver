@@ -16,6 +16,7 @@ from dacite import from_dict
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from pymongo import ReturnDocument
+from rest_tools.client import RestClient
 from rest_tools.server import (
     ArgumentHandler,
     ArgumentSource,
@@ -119,6 +120,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
         self,
         mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
         k8s_batch_api: kubernetes.client.BatchV1Api,
+        ewms_rc: RestClient,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -141,6 +143,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
             )
         )
         self.k8s_batch_api = k8s_batch_api
+        self.ewms_rc = ewms_rc
 
 
 # ----------------------------------------------------------------------------

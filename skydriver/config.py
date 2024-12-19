@@ -40,7 +40,13 @@ class DebugMode(enum.Enum):
 class EnvConfig:
     """Environment variables."""
 
-    # pylint:disable=invalid-name
+    # EWMS connections
+    EWMS_ADDRESS: str
+    EWMS_TOKEN_URL: str = ""  # needed in prod
+    EWMS_CLIENT_ID: str = ""  # ''
+    EWMS_CLIENT_SECRET: str = ""  # ''
+
+    # misc
     AUTH_AUDIENCE: str = "skydriver"
     AUTH_OPENID_URL: str = ""
     MONGODB_AUTH_PASS: str = ""  # empty means no authentication required
@@ -49,7 +55,8 @@ class EnvConfig:
     MONGODB_PORT: int = 27017
     REST_HOST: str = "localhost"
     REST_PORT: int = 8080
-    CI_TEST: bool = False
+
+    CI: bool = False  # github actions sets this to 'true'
     LOG_LEVEL: str = "DEBUG"
     LOG_LEVEL_THIRD_PARTY: str = "WARNING"
 
@@ -176,7 +183,7 @@ def is_testing() -> bool:
 
     Note: this needs to run on import.
     """
-    return ENV.CI_TEST
+    return ENV.CI
 
 
 def config_logging() -> None:

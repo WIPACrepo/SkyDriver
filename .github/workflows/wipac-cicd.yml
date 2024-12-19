@@ -3,7 +3,6 @@ name: wipac ci/cd
 on: [ push ]
 
 env:
-  CI_TEST: 'yes'
   THIS_IMAGE_WITH_TAG: 'ghcr.io/wipacrepo/skydriver:latest'
   EWMS_PILOT_TASK_TIMEOUT: 999
   SCAN_BACKLOG_RUNNER_SHORT_DELAY: 1
