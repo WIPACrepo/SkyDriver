@@ -161,8 +161,8 @@
 ### Other
 
 * <bot> update dependencies*.log files(s) ([`8625ece`](https://github.com/WIPACrepo/SkyDriver/commit/8625ece5f5765321c8a65711c34b4f7532355f9e))
-* ManualCluster-Watching: include `HoldReason` - 2 ([`96975ed`](https://github.com/WIPACrepo/SkyDriver/commit/96975ede756ae8a06ec09926ee0c0e0c998e31a4))
-* ManualCluster-Watching: include `HoldReason` ([`dd447e1`](https://github.com/WIPACrepo/SkyDriver/commit/dd447e1ccc9c685d79d01929a47cc321bba6fd3e))
+* Cluster-Watching: include `HoldReason` - 2 ([`96975ed`](https://github.com/WIPACrepo/SkyDriver/commit/96975ede756ae8a06ec09926ee0c0e0c998e31a4))
+* Cluster-Watching: include `HoldReason` ([`dd447e1`](https://github.com/WIPACrepo/SkyDriver/commit/dd447e1ccc9c685d79d01929a47cc321bba6fd3e))
 
 ## v0.7.6 (2023-11-20)
 
@@ -176,7 +176,7 @@
 
 ### Other
 
-* ManualCluster-Watching: only update skydriver if needed - 2 ([`fcdd669`](https://github.com/WIPACrepo/SkyDriver/commit/fcdd669bd22ee79d323a759bf9282cf6983d727d))
+* Cluster-Watching: only update skydriver if needed - 2 ([`fcdd669`](https://github.com/WIPACrepo/SkyDriver/commit/fcdd669bd22ee79d323a759bf9282cf6983d727d))
 
 ## v0.7.4 (2023-11-20)
 
@@ -188,19 +188,19 @@
 
 ### Other
 
-* ManualCluster-Watching: only update skydriver if needed ([`72654cc`](https://github.com/WIPACrepo/SkyDriver/commit/72654cc051e8234d6114f25eb2fc6c6cfe0482c4))
+* Cluster-Watching: only update skydriver if needed ([`72654cc`](https://github.com/WIPACrepo/SkyDriver/commit/72654cc051e8234d6114f25eb2fc6c6cfe0482c4))
 
 ## v0.7.2 (2023-11-20)
 
 ### Other
 
-* ManualCluster-Watching: CL arg fix ([`4d44629`](https://github.com/WIPACrepo/SkyDriver/commit/4d4462913612a1b7de420c75a9075e112a788a6c))
+* Cluster-Watching: CL arg fix ([`4d44629`](https://github.com/WIPACrepo/SkyDriver/commit/4d4462913612a1b7de420c75a9075e112a788a6c))
 
 ## v0.7.1 (2023-11-20)
 
 ### Other
 
-* ManualCluster-Watching: add `WATCHER_MAX_RUNTIME` ([`9e7171f`](https://github.com/WIPACrepo/SkyDriver/commit/9e7171fac83e35bf6ded50b9c81af8c46f57ad65))
+* Cluster-Watching: add `WATCHER_MAX_RUNTIME` ([`9e7171f`](https://github.com/WIPACrepo/SkyDriver/commit/9e7171fac83e35bf6ded50b9c81af8c46f57ad65))
 
 ## v0.7.0 (2023-11-20)
 
@@ -209,7 +209,7 @@
 ### Other
 
 * <bot> update dependencies*.log files(s) ([`2980045`](https://github.com/WIPACrepo/SkyDriver/commit/2980045aa51199a44f2812633fdfdfdef0165367))
-* ManualCluster-Watching: stop watching once we consistently get no response ([`5a50bfd`](https://github.com/WIPACrepo/SkyDriver/commit/5a50bfd03eeac3d4de0e544f82fa76ba94cbede8))
+* Cluster-Watching: stop watching once we consistently get no response ([`5a50bfd`](https://github.com/WIPACrepo/SkyDriver/commit/5a50bfd03eeac3d4de0e544f82fa76ba94cbede8))
 
 ## v0.6.19 (2023-11-16)
 
@@ -219,15 +219,15 @@
 * Use `WIPACrepo/wipac-dev-py-setup-action@v2.9` ([`950ec18`](https://github.com/WIPACrepo/SkyDriver/commit/950ec186fc32b4983b1ae3fe130af57383bad78a))
 * Mypy - 2 ([`6238014`](https://github.com/WIPACrepo/SkyDriver/commit/623801411ac5354ef9d084f25f9b42d4f62be980))
 * Mypy ([`0d05891`](https://github.com/WIPACrepo/SkyDriver/commit/0d058914a034911d1ebb8162b0cf84211b5b0eda))
-* ManualCluster-Watching: updates for new ewms-pilot chirp attrs ([`48e3693`](https://github.com/WIPACrepo/SkyDriver/commit/48e3693f061cda4341373bcaa44043fd1b9add1d))
+* Cluster-Watching: updates for new ewms-pilot chirp attrs ([`48e3693`](https://github.com/WIPACrepo/SkyDriver/commit/48e3693f061cda4341373bcaa44043fd1b9add1d))
 
 ## v0.6.18 (2023-11-09)
 
 ### Other
 
 * <bot> update dependencies*.log files(s) ([`8dcb032`](https://github.com/WIPACrepo/SkyDriver/commit/8dcb03270e7028878319d3eaec454eea8e99445f))
-* ManualCluster-Watching: use projection ([`d19cd67`](https://github.com/WIPACrepo/SkyDriver/commit/d19cd67e509a49535e5eac082686f7786d9b54ed))
-* ManualCluster-Watching: only query newly updated jobs ([`bd0d5c4`](https://github.com/WIPACrepo/SkyDriver/commit/bd0d5c445eae090e60c53b67853d17ab18da35a7))
+* Cluster-Watching: use projection ([`d19cd67`](https://github.com/WIPACrepo/SkyDriver/commit/d19cd67e509a49535e5eac082686f7786d9b54ed))
+* Cluster-Watching: only query newly updated jobs ([`bd0d5c4`](https://github.com/WIPACrepo/SkyDriver/commit/bd0d5c445eae090e60c53b67853d17ab18da35a7))
 
 ## v0.6.17 (2023-11-09)
 
@@ -236,13 +236,13 @@
 * <bot> update dependencies*.log files(s) ([`dbf120c`](https://github.com/WIPACrepo/SkyDriver/commit/dbf120c20fc3756dd8e44c6d429cbdb7d3141fad))
 * Mypy Fix ([`2ba43a8`](https://github.com/WIPACrepo/SkyDriver/commit/2ba43a813101b6c7c1ccd83dc772bd311009908e))
 * Condor: Set `+OriginalTime` (4 hours) ([`95de516`](https://github.com/WIPACrepo/SkyDriver/commit/95de5169aa86ada9ff51dd3009e074ec27b6d7c5))
-* ManualCluster-Watching: ignore already-completed jobs ([`0b47442`](https://github.com/WIPACrepo/SkyDriver/commit/0b47442673875359bb4787cabb23106b9277c50f))
+* Cluster-Watching: ignore already-completed jobs ([`0b47442`](https://github.com/WIPACrepo/SkyDriver/commit/0b47442673875359bb4787cabb23106b9277c50f))
 
 ## v0.6.16 (2023-11-08)
 
 ### Other
 
-* ManualCluster-Watching: record source - 2 ([`ed75709`](https://github.com/WIPACrepo/SkyDriver/commit/ed7570938d3416750d1f8049c1a6f2303f06cf57))
+* Cluster-Watching: record source - 2 ([`ed75709`](https://github.com/WIPACrepo/SkyDriver/commit/ed7570938d3416750d1f8049c1a6f2303f06cf57))
 
 ## v0.6.15 (2023-11-08)
 
@@ -254,23 +254,23 @@
 
 ### Other
 
-* ManualCluster-Watching: use `htcondor.classad.unquote()` - 2 ([`e0b812e`](https://github.com/WIPACrepo/SkyDriver/commit/e0b812e6bbe083b899b2cb6df4e274ab83dd98f2))
+* Cluster-Watching: use `htcondor.classad.unquote()` - 2 ([`e0b812e`](https://github.com/WIPACrepo/SkyDriver/commit/e0b812e6bbe083b899b2cb6df4e274ab83dd98f2))
 
 ## v0.6.13 (2023-11-08)
 
 ### Other
 
 * <bot> update dependencies*.log files(s) ([`a608f55`](https://github.com/WIPACrepo/SkyDriver/commit/a608f551d5efa5dd6ed00a64b188d25df7d952b4))
-* ManualCluster-Watching: filter completed jobs post-hoc ([`707247c`](https://github.com/WIPACrepo/SkyDriver/commit/707247c2b3919cb0f59f58448a2ba7748ee09a84))
-* ManualCluster-Watching: record source ([`cfdbcc9`](https://github.com/WIPACrepo/SkyDriver/commit/cfdbcc9ea45d4952b0e7533b765696ac778a253f))
-* ManualCluster-Watching: use `htcondor.classad.unquote()` ([`a595dde`](https://github.com/WIPACrepo/SkyDriver/commit/a595dde7362cc2e4ac752ed33d1c4f57890af1ac))
+* Cluster-Watching: filter completed jobs post-hoc ([`707247c`](https://github.com/WIPACrepo/SkyDriver/commit/707247c2b3919cb0f59f58448a2ba7748ee09a84))
+* Cluster-Watching: record source ([`cfdbcc9`](https://github.com/WIPACrepo/SkyDriver/commit/cfdbcc9ea45d4952b0e7533b765696ac778a253f))
+* Cluster-Watching: use `htcondor.classad.unquote()` ([`a595dde`](https://github.com/WIPACrepo/SkyDriver/commit/a595dde7362cc2e4ac752ed33d1c4f57890af1ac))
 
 ## v0.6.12 (2023-11-07)
 
 ### Other
 
-* ManualCluster-Watching: limit querying further - 2 ([`751cca8`](https://github.com/WIPACrepo/SkyDriver/commit/751cca836e421a7a351d4e64ba1237d6dfc99139))
-* ManualCluster-Watching: limit querying further ([`a96eba4`](https://github.com/WIPACrepo/SkyDriver/commit/a96eba4a5dcd475afce42ac1d3ffbcc30388b4e4))
+* Cluster-Watching: limit querying further - 2 ([`751cca8`](https://github.com/WIPACrepo/SkyDriver/commit/751cca836e421a7a351d4e64ba1237d6dfc99139))
+* Cluster-Watching: limit querying further ([`a96eba4`](https://github.com/WIPACrepo/SkyDriver/commit/a96eba4a5dcd475afce42ac1d3ffbcc30388b4e4))
 
 ## v0.6.11 (2023-11-07)
 
@@ -278,61 +278,61 @@
 
 * <bot> update dependencies*.log files(s) ([`b9e4192`](https://github.com/WIPACrepo/SkyDriver/commit/b9e4192c72aa2c5740a35eb6a4721212f5416267))
 * Mypy ([`08202e5`](https://github.com/WIPACrepo/SkyDriver/commit/08202e51a5068872ebf5c15f014fc21e06fcc811))
-* ManualCluster-Watching: limit querying ([`b912ecb`](https://github.com/WIPACrepo/SkyDriver/commit/b912ecb158883a603627bb605467082b99e47da6))
-* ManualCluster-Watching: handle condor types ([`a7238dd`](https://github.com/WIPACrepo/SkyDriver/commit/a7238dde60ab2f329b24decbd162e22b6fd31e6c))
+* Cluster-Watching: limit querying ([`b912ecb`](https://github.com/WIPACrepo/SkyDriver/commit/b912ecb158883a603627bb605467082b99e47da6))
+* Cluster-Watching: handle condor types ([`a7238dd`](https://github.com/WIPACrepo/SkyDriver/commit/a7238dde60ab2f329b24decbd162e22b6fd31e6c))
 
 ## v0.6.10 (2023-11-06)
 
 ### Other
 
 * <bot> update dependencies*.log files(s) ([`8b45eca`](https://github.com/WIPACrepo/SkyDriver/commit/8b45ecaac7f7d79857a3e14fe7f434b36300d97a))
-* ManualCluster-Watching: store chirps ([`26fe1e2`](https://github.com/WIPACrepo/SkyDriver/commit/26fe1e2d10ba3ff3796154f1024b09424614f66a))
+* Cluster-Watching: store chirps ([`26fe1e2`](https://github.com/WIPACrepo/SkyDriver/commit/26fe1e2d10ba3ff3796154f1024b09424614f66a))
 
 ## v0.6.9 (2023-10-31)
 
 ### Other
 
 * <bot> update dependencies*.log files(s) ([`7185334`](https://github.com/WIPACrepo/SkyDriver/commit/718533494d99042a9aa193110f29df661e31324c))
-* ManualCluster-Watching: add basic status aggregation and timely exit ([`934c671`](https://github.com/WIPACrepo/SkyDriver/commit/934c671e1fb4e00fb66ad07b1e51e253f3dea129))
+* Cluster-Watching: add basic status aggregation and timely exit ([`934c671`](https://github.com/WIPACrepo/SkyDriver/commit/934c671e1fb4e00fb66ad07b1e51e253f3dea129))
 
 ## v0.6.8 (2023-10-31)
 
 ### Other
 
-* ManualCluster-Watching Fix 5 ([`b83de7d`](https://github.com/WIPACrepo/SkyDriver/commit/b83de7d0da21468d6e17da311da99701a1e41c37))
+* Cluster-Watching Fix 5 ([`b83de7d`](https://github.com/WIPACrepo/SkyDriver/commit/b83de7d0da21468d6e17da311da99701a1e41c37))
 
 ## v0.6.7 (2023-10-31)
 
 ### Other
 
 * <bot> update dependencies*.log files(s) ([`774aab8`](https://github.com/WIPACrepo/SkyDriver/commit/774aab81e9f528d2e999b6497185246a790c2cae))
-* ManualCluster-Watching Fix 4 ([`db1a960`](https://github.com/WIPACrepo/SkyDriver/commit/db1a96087917dcfe5719651b200ada1b78f85cf2))
+* Cluster-Watching Fix 4 ([`db1a960`](https://github.com/WIPACrepo/SkyDriver/commit/db1a96087917dcfe5719651b200ada1b78f85cf2))
 
 ## v0.6.6 (2023-10-30)
 
 ### Other
 
 * <bot> update dependencies*.log files(s) ([`0dda5cc`](https://github.com/WIPACrepo/SkyDriver/commit/0dda5ccec403ef915f1b8f6cde8de80686dbc805))
-* ManualCluster-Watching Fix 3 ([`2f513f7`](https://github.com/WIPACrepo/SkyDriver/commit/2f513f712b12de36ff7a3c0afeef21beeecaa072))
+* Cluster-Watching Fix 3 ([`2f513f7`](https://github.com/WIPACrepo/SkyDriver/commit/2f513f712b12de36ff7a3c0afeef21beeecaa072))
 
 ## v0.6.5 (2023-10-30)
 
 ### Other
 
 * Misc Test Fix ([`a794d28`](https://github.com/WIPACrepo/SkyDriver/commit/a794d282c5c817d76993ad95016573b4d1da6adf))
-* ManualCluster-Watching Fix 2 ([`ce6f2a5`](https://github.com/WIPACrepo/SkyDriver/commit/ce6f2a565476f2705d07b2827cd2ab40bcf9df1e))
+* Cluster-Watching Fix 2 ([`ce6f2a5`](https://github.com/WIPACrepo/SkyDriver/commit/ce6f2a565476f2705d07b2827cd2ab40bcf9df1e))
 
 ## v0.6.4 (2023-10-30)
 
 ### Other
 
-* ManualCluster-Watching Fix 1 ([`7265da7`](https://github.com/WIPACrepo/SkyDriver/commit/7265da73108996c4c7dcc8b94f7e9111431f0fb5))
+* Cluster-Watching Fix 1 ([`7265da7`](https://github.com/WIPACrepo/SkyDriver/commit/7265da73108996c4c7dcc8b94f7e9111431f0fb5))
 
 ## v0.6.3 (2023-10-30)
 
 ### Other
 
-* Add ManualCluster-watching to Starter ([#88](https://github.com/WIPACrepo/SkyDriver/issues/88)) ([`46f6502`](https://github.com/WIPACrepo/SkyDriver/commit/46f6502f143bd39af9698934b5085486811f88c3))
+* Add Cluster-watching to Starter ([#88](https://github.com/WIPACrepo/SkyDriver/issues/88)) ([`46f6502`](https://github.com/WIPACrepo/SkyDriver/commit/46f6502f143bd39af9698934b5085486811f88c3))
 
 ## v0.6.2 (2023-10-25)
 
@@ -625,7 +625,7 @@
 
 ### Other
 
-* Add GKE ManualCluster: `gke-2306` ([`7279ca3`](https://github.com/WIPACrepo/SkyDriver/commit/7279ca3db600a6c5c6aaef74d3892752902e4de2))
+* Add GKE Cluster: `gke-2306` ([`7279ca3`](https://github.com/WIPACrepo/SkyDriver/commit/7279ca3db600a6c5c6aaef74d3892752902e4de2))
 * Update Auth Handling Pt-6 ([`287dc6c`](https://github.com/WIPACrepo/SkyDriver/commit/287dc6cfc87d92ac0369d62677dde304b488c06b))
 
 ## v0.3.24 (2023-06-26)
