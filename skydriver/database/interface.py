@@ -54,36 +54,6 @@ class ManifestClient:
             ) from e
         return manifest
 
-    async def post(
-        self,
-        i3_event_id: str,
-        scan_id: str,
-        scanner_server_args: str,
-        tms_args_list: list[str],
-        env_vars: schema.EnvVars,
-        classifiers: dict[str, str | bool | float | int],
-        priority: int,
-    ) -> schema.Manifest:
-        """Create `schema.Manifest` doc."""
-        LOGGER.debug("creating new manifest")
-
-        # validate
-        manifest = schema.Manifest(
-            scan_id=scan_id,
-            timestamp=time.time(),
-            is_deleted=False,
-            i3_event_id=i3_event_id,
-            scanner_server_args=scanner_server_args,
-            ewms_task=schema.ManualStarterInfo(
-                tms_args=tms_args_list,
-                env_vars=env_vars,
-            ),
-            classifiers=classifiers,
-            priority=priority,
-        )
-
-        return await self.put(manifest)
-
     async def put(self, manifest: schema.Manifest) -> schema.Manifest:
         """Put into db."""
         try:

@@ -7,6 +7,7 @@ import json
 import logging
 import pickle
 import re
+import time
 import uuid
 from typing import Any, Type, TypeVar
 
@@ -564,15 +565,21 @@ async def _start_scan(
     )
 
     # put in db (do before k8s start so if k8s fail, we can debug using db's info)
-    manifest = await manifests.post(
-        scan_request_obj["i3_event_id"],
-        scan_id,
-        scanner_wrapper.scanner_server_args,
-        scanner_wrapper.cluster_starter_args_list,
-        from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
-        scan_request_obj["classifiers"],
-        scan_request_obj["priority"],
+    LOGGER.debug("creating new manifest")
+    manifest = schema.Manifest(
+        scan_id=scan_id,
+        timestamp=time.time(),
+        is_deleted=False,
+        i3_event_id=scan_request_obj["i3_event_id"],
+        scanner_server_args=scanner_wrapper.scanner_server_args,
+        ewms_task=schema.ManualStarterInfo(
+            tms_args=scanner_wrapper.cluster_starter_args_list,
+            env_vars=from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
+        ),
+        classifiers=scan_request_obj["classifiers"],
+        priority=scan_request_obj["priority"],
     )
+    await manifests.put(manifest)
 
     await designate_for_startup(
         scan_id,
