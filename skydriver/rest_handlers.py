@@ -543,7 +543,9 @@ async def _start_scan(
         is_real_event=scan_request_obj["real_or_simulated_event"] in REAL_CHOICES,
         predictive_scanning_threshold=scan_request_obj["predictive_scanning_threshold"],
         # cluster starter
-        starter_exc=str(  # TODO - remove once tested in prod
+        # TODO: this arg could be good to control whether to use ewms or manual
+        #       but not determined using 'classifiers'. May need to keep the attr bc pkl
+        starter_exc=str(
             scan_request_obj["classifiers"].get(
                 "__unstable_starter_exc", "clientmanager"
             )
@@ -572,6 +574,7 @@ async def _start_scan(
         is_deleted=False,
         i3_event_id=scan_request_obj["i3_event_id"],
         scanner_server_args=scanner_wrapper.scanner_server_args,
+        # TODO: detect whether 'schema.EWMSRequestInfo' should be used (see 'starter_exc') above
         ewms_task=schema.ManualStarterInfo(
             tms_args=scanner_wrapper.cluster_starter_args_list,
             env_vars=from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),

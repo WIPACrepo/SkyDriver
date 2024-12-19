@@ -7,21 +7,23 @@ from . import database
 
 async def request_workflow_on_ewms(
     ewms_rc: RestClient,
-    ewms_request_info: database.schema.EWMSRequestInfo,
+    manifest: database.schema.Manifest,
 ) -> str:
     """Request a workflow in EWMS."""
+    if not isinstance(manifest.ewms_task, database.schema.EWMSRequestInfo):
+        raise TypeError("Manifest is not designated for EWMS")
     body = {
         "public_queue_aliases": ["to-client-queue", "from-client-queue"],
         "tasks": [
             {
-                "cluster_locations": ewms_request_info.cluster_locations,
+                "cluster_locations": manifest.ewms_task.cluster_locations,
                 "input_queue_aliases": ["to-client-queue"],
                 "output_queue_aliases": ["from-client-queue"],
                 "task_image": "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:$SKYSCAN_TAG",
                 "task_args": "python -m skymap_scanner.client --infile {{INFILE}} --outfile {{OUTFILE}} --client-startup-json {{DATA_HUB}}/startup.json",
                 "init_image": "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:$SKYSCAN_TAG",
                 "init_args": "bash -c \"curl --fail-with-body --max-time 60 -o {{DATA_HUB}}/startup.json '$S3_OBJECT_URL'\" ",
-                "n_workers": ewms_request_info.n_workers,
+                "n_workers": manifest.ewms_task.n_workers,
                 "pilot_config": {
                     "tag": "${PILOT_TAG:-'latest'}",
                     "environment": {
@@ -39,7 +41,7 @@ async def request_workflow_on_ewms(
                     "do_transfer_worker_stdouterr": True,
                     "max_worker_runtime": 2 * 60 * 60,
                     "n_cores": 1,
-                    "priority": 99,
+                    "priority": manifest.priority,
                     "worker_disk": "512M",
                     "worker_memory": "8G",
                     "condor_requirements": "HAS_CVMFS_icecube_opensciencegrid_org && has_avx && has_avx2",

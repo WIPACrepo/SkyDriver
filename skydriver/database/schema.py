@@ -246,6 +246,7 @@ class EWMSRequestInfo:
     workflow_id: str = ""  # set once the request has been sent to EWMS
 
     # TODO: add more fields that are needed for EWMS but not already in manifest
+    #       OR the backlogger could also pull info from 'scan_request_obj'
     # NOTE: besides 'workflow_id', this object is immutable
 
 

@@ -180,9 +180,7 @@ async def _run(
         # request a workflow on EWMS
         if isinstance(manifest.ewms_task, database.schema.EWMSRequestInfo):
             try:
-                workflow_id = await ewms.request_workflow_on_ewms(
-                    ewms_rc, manifest.ewms_task
-                )
+                workflow_id = await ewms.request_workflow_on_ewms(ewms_rc, manifest)
             except Exception as e:
                 LOGGER.exception(e)
                 long_interval_timer.fastforward()  # nothing was started, so don't wait long
