@@ -62,6 +62,10 @@ async def launch_a_scan(
         "scanner_server_env": {
             "SKYSCAN_MINI_TEST": True,
         },
+        "classifiers": {
+            "_TEST": True,
+            "_TEST_FILE": event_file.name,
+        },
     }
     resp = await rc.request("POST", "/scan", body)
 
