@@ -40,6 +40,8 @@ class TestParamSet:
 
     test_status: TestStatus = TestStatus.UNKNOWN
 
+    rescan_origin_id: str = ""  # set if the test suit is rescanning previous test-scans
+
     @property
     def log_file(self) -> Path:
         """Based on the scan id.S"""

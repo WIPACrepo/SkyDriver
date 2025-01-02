@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import dataclasses
 import json
 import logging
 import os
@@ -8,6 +9,7 @@ import subprocess
 import tarfile
 from datetime import datetime
 
+import dacite
 import texttable  # type: ignore
 from rest_tools.client import RestClient
 
@@ -118,14 +120,25 @@ async def launch_scans(
         )
         test.test_status = test_getter.TestStatus.RUNNING
         try:
-            scan_id = await test_runner.launch_a_scan(
-                rc,
-                test.event_file,
-                cluster,
-                n_workers,
-                test.reco_algo,
-            )
-            test.scan_id = scan_id
+            # rescan?
+            if test.rescan_origin_id:
+                manifest = await test_runner.rescan_a_scan(
+                    rc,
+                    test.rescan_origin_id,
+                )
+                assert test.scan_id != test.rescan_origin_id
+                assert test.reco_algo == manifest["reco_algo"]
+                test.scan_id = manifest["scan_id"]
+            # or normal scan?
+            else:
+                manifest = await test_runner.launch_a_scan(
+                    rc,
+                    test.event_file,
+                    cluster,
+                    n_workers,
+                    test.reco_algo,
+                )
+                test.scan_id = manifest["scan_id"]
         except Exception as e:
             logging.error(f"Failed to launch test #{i+1}: {e}")
             raise
@@ -160,19 +173,36 @@ async def test_all(
     rc: RestClient,
     cluster: str,
     n_workers: int,
-):
+    rescans: list[test_getter.TestParamSet] | None,
+) -> None:
+    """Do all the tests."""
+    # setup
     tests = list(test_getter.setup_tests())
-    tests = await launch_scans(
+    if rescans:
+        # match rescans to tests, so to send the rescan id to skydriver
+        logging.info("matching tests to rescan-tests")
+        logging.info(json.dumps(rescans, indent=2))
+        for t in tests:
+            for r in rescans:
+                if (t.reco_algo, t.event_file.name) == (r.reco_algo, r.event_file.name):
+                    t.rescan_origin_id = r.scan_id
+                    break
+            if not t.rescan_origin_id:
+                raise RuntimeError(f"could not match test to rescan-test: {t}")
+
+    # launch!
+    tests = await launch_scans(  # adds scan ids to 'tests'
         tests,
         rc,
         cluster,
         n_workers,
     )
+    with open(config.SANDBOX_MAP_FPATH, "w") as f:  # dump to file
+        json.dump([dataclasses.asdict(t) for t in tests], f, indent=4)
     display_test_status(tests)
 
-    checker = ResultChecker()
-
     # start test-waiters
+    checker = ResultChecker()
     logging.info("Starting scan watchers...")
     tasks = set()
     for test in tests:
@@ -199,6 +229,7 @@ async def test_all(
                 logging.error(f"A test failed: {repr(e)}")
             display_test_status(tests)
 
+    # how'd it all go?
     if n_failed:
         raise RuntimeError(f"{n_failed}/{len(tests)} tests failed.")
     else:
@@ -226,8 +257,24 @@ async def main():
         type=int,
         help="number of workers to request",
     )
+    parser.add_argument(
+        "--rescan",
+        default=False,
+        action="store_true",
+        help="submit rescans for all test-scans in existing (previously ran) sandbox",
+    )
     args = parser.parse_args()
 
+    if args.rescan:
+        # grab json map
+        with open(config.SANDBOX_MAP_FPATH) as f:
+            rescans = [
+                dacite.from_dict(test_getter.TestParamSet, x) for x in json.load(f)
+            ]
+    else:
+        rescans = None
+
+    # tar existing sandbox
     if config.SANDBOX_DIR.exists():
         logging.info(
             f"taring the existing '{config.SANDBOX_DIR}', then overwriting the directory"
@@ -259,6 +306,7 @@ async def main():
         rc,
         args.cluster,
         args.n_workers,
+        rescans,
     )
 
 

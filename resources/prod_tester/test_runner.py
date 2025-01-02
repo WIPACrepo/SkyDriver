@@ -40,6 +40,14 @@ def get_rest_client(skydriver_url: str) -> RestClient:
     )
 
 
+async def rescan_a_scan(rc: RestClient, rescan_origin_id: str) -> dict:
+    """Request to SkyDriver to rescan."""
+    manifest = await rc.request("POST", f"/scan/{rescan_origin_id}/actions/rescan")
+
+    print(manifest["scan_id"], flush=True)
+    return manifest  # type: ignore[no-any-return]
+
+
 async def launch_a_scan(
     rc: RestClient,
     event_file: Path,
@@ -64,13 +72,12 @@ async def launch_a_scan(
         },
         "classifiers": {
             "_TEST": True,
-            "_TEST_FILE": event_file.name,
         },
     }
-    resp = await rc.request("POST", "/scan", body)
+    manifest = await rc.request("POST", "/scan", body)
 
-    print(resp["scan_id"], flush=True)
-    return resp["scan_id"]  # type: ignore[no-any-return]
+    print(manifest["scan_id"], flush=True)
+    return manifest  # type: ignore[no-any-return]
 
 
 async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) -> dict:
