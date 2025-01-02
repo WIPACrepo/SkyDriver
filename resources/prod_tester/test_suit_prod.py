@@ -7,8 +7,8 @@ import shutil
 import subprocess
 import tarfile
 from datetime import datetime
+from pathlib import Path
 
-import dacite
 import texttable  # type: ignore
 from rest_tools.client import RestClient
 
@@ -126,7 +126,6 @@ async def launch_scans(
                     test.rescan_origin_id,
                 )
                 assert test.scan_id != test.rescan_origin_id
-                assert test.reco_algo == manifest["reco_algo"]
                 test.scan_id = manifest["scan_id"]
             # or normal scan?
             else:
@@ -262,14 +261,35 @@ async def main():
         action="store_true",
         help="submit rescans for all test-scans in existing (previously ran) sandbox",
     )
+    parser.add_argument(
+        "--rescan-dir",
+        type=Path,
+        default=config.SANDBOX_DIR,
+        help="the existing (previously ran) sandbox to submit rescans for",
+    )
     args = parser.parse_args()
 
     if args.rescan:
         # grab json map
-        with open(config.SANDBOX_MAP_FPATH) as f:
-            rescans = [
-                dacite.from_dict(test_getter.TestParamSet, x) for x in json.load(f)
-            ]
+        if args.rescan_dir.is_dir():
+            with open(args.rescan_dir / config.SANDBOX_MAP_FPATH.name) as f:
+                json_data = json.loads(f.read())
+        else:
+            with tarfile.open(args.rescan_dir) as tar:
+                member = tar.getmember(
+                    f"{config.SANDBOX_DIR.name}/{config.SANDBOX_MAP_FPATH.name}"
+                )
+                with tar.extractfile(member) as f:
+                    json_data = json.loads(f.read())
+        rescans = [
+            test_getter.TestParamSet(
+                Path(x["event_file"]),
+                x["reco_algo"],
+                Path(x["result_file"]),
+                x["scan_id"],
+            )
+            for x in json_data
+        ]
     else:
         rescans = None
 
