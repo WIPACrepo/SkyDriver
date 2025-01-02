@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import dataclasses
 import json
 import logging
 import os
@@ -181,7 +180,7 @@ async def test_all(
     if rescans:
         # match rescans to tests, so to send the rescan id to skydriver
         logging.info("matching tests to rescan-tests")
-        logging.info(json.dumps(rescans, indent=2))
+        logging.info(json.dumps([r.to_json() for r in rescans], indent=4))
         for t in tests:
             for r in rescans:
                 if (t.reco_algo, t.event_file.name) == (r.reco_algo, r.event_file.name):
@@ -198,7 +197,7 @@ async def test_all(
         n_workers,
     )
     with open(config.SANDBOX_MAP_FPATH, "w") as f:  # dump to file
-        json.dump([dataclasses.asdict(t) for t in tests], f, indent=4)
+        json.dump([t.to_json() for t in tests], f, indent=4)
     display_test_status(tests)
 
     # start test-waiters

@@ -49,6 +49,16 @@ class TestParamSet:
             raise ValueError("scan_id not set")
         return config.SANDBOX_DIR / f"logs/{self.scan_id}.log"
 
+    def to_json(self) -> dict:
+        """To a json-friendly dict."""
+        return dict(
+            event_file=str(self.event_file),
+            reco_algo=self.reco_algo,
+            result_file=str(self.result_file),
+            scan_id=self.scan_id,
+            rescan_origin_id=self.rescan_origin_id,
+        )
+
 
 def download_file(url: str, dest: Path) -> Path:
     """Download a file from a URL."""
