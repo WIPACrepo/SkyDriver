@@ -125,8 +125,8 @@ async def launch_scans(
                     rc,
                     test.rescan_origin_id,
                 )
-                assert test.scan_id != test.rescan_origin_id
                 test.scan_id = manifest["scan_id"]
+                assert test.scan_id != test.rescan_origin_id
             # or normal scan?
             else:
                 manifest = await test_runner.launch_a_scan(
