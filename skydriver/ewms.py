@@ -22,7 +22,9 @@ async def request_workflow_on_ewms(
         "public_queue_aliases": ["to-client-queue", "from-client-queue"],
         "tasks": [
             {
-                "cluster_locations": scan_request_obj["request_clusters"],
+                "cluster_locations": [
+                    cname for cname, _ in scan_request_obj["request_clusters"]
+                ],
                 "input_queue_aliases": ["to-client-queue"],
                 "output_queue_aliases": ["from-client-queue"],
                 "task_image": image,
@@ -39,7 +41,8 @@ async def request_workflow_on_ewms(
                     f"'{s3_obj_url}'"  # single-quote the url
                     '"'  # unquote for bash -c "..."
                 ),
-                "n_workers": manifest.ewms_task.n_workers,
+                "n_workers": scan_request_obj["request_clusters"][0][1],
+                # TODO: ^^^ pass on varying # of workers per cluster
                 "pilot_config": {
                     "tag": "latest",
                     "environment": {
