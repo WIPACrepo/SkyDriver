@@ -42,9 +42,15 @@ class EnvConfig:
 
     # EWMS connections
     EWMS_ADDRESS: str
-    EWMS_TOKEN_URL: str = ""  # needed in prod
-    EWMS_CLIENT_ID: str = ""  # ''
-    EWMS_CLIENT_SECRET: str = ""  # ''
+    EWMS_TOKEN_URL: str
+    EWMS_CLIENT_ID: str
+    EWMS_CLIENT_SECRET: str
+
+    # s3
+    S3_URL: str
+    S3_ACCESS_KEY_ID: str
+    S3_SECRET_KEY: str
+    S3_BUCKET: str
 
     # misc
     AUTH_AUDIENCE: str = "skydriver"

@@ -12,6 +12,7 @@ async def request_workflow_on_ewms(
     """Request a workflow in EWMS."""
     if not isinstance(manifest.ewms_task, database.schema.EWMSRequestInfo):
         raise TypeError("Manifest is not designated for EWMS")
+
     body = {
         "public_queue_aliases": ["to-client-queue", "from-client-queue"],
         "tasks": [
@@ -25,7 +26,7 @@ async def request_workflow_on_ewms(
                 "init_args": "bash -c \"curl --fail-with-body --max-time 60 -o {{DATA_HUB}}/startup.json '$S3_OBJECT_URL'\" ",
                 "n_workers": manifest.ewms_task.n_workers,
                 "pilot_config": {
-                    "tag": "${PILOT_TAG:-'latest'}",
+                    "tag": "latest",
                     "environment": {
                         "EWMS_PILOT_INIT_TIMEOUT": 1 * 60,
                         "EWMS_PILOT_TASK_TIMEOUT": 1 * 60 * 60,
@@ -49,6 +50,6 @@ async def request_workflow_on_ewms(
             }
         ],
     }
-    """Request a new workflow on EWMS."""
+
     resp = await ewms_rc.request("POST", "/v0/workflows", body)
     return resp["workflow"]["workflow_id"]

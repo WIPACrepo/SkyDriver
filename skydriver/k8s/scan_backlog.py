@@ -5,6 +5,7 @@ import logging
 import pickle
 import time
 
+import boto3
 import bson
 import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -149,6 +150,28 @@ class IntervalTimer:
         return False
 
 
+def generate_s3_url(scan_id: str) -> str:
+    """Generate a pre-signed S3 url for putting shared files."""
+    s3_client = boto3.client(
+        "s3",
+        "us-east-1",
+        endpoint_url=ENV.S3_URL,
+        aws_access_key_id=ENV.S3_ACCESS_KEY_ID,
+        aws_secret_access_key=ENV.S3_SECRET_KEY,
+    )
+
+    # get GET url
+    get_url = s3_client.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": ENV.S3_BUCKET,
+            "Key": f"{scan_id}-s3-object",
+        },
+        ExpiresIn=24 * 60 * 60,  # seconds
+    )
+    return get_url
+
+
 async def _run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
@@ -175,7 +198,9 @@ async def _run(
             )
         except database.mongodc.DocumentNotFoundException:
             long_interval_timer.fastforward()
-            continue  # empty queue
+            continue  # empty queue-
+
+        # generate pre-signed S3 url
 
         # request a workflow on EWMS
         if isinstance(manifest.ewms_task, database.schema.EWMSRequestInfo):
