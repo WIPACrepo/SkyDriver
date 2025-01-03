@@ -40,12 +40,24 @@ class TestParamSet:
 
     test_status: TestStatus = TestStatus.UNKNOWN
 
+    rescan_origin_id: str = ""  # set if the test suit is rescanning previous test-scans
+
     @property
     def log_file(self) -> Path:
         """Based on the scan id.S"""
         if not self.scan_id:
             raise ValueError("scan_id not set")
         return config.SANDBOX_DIR / f"logs/{self.scan_id}.log"
+
+    def to_json(self) -> dict:
+        """To a json-friendly dict."""
+        return dict(
+            event_file=str(self.event_file),
+            reco_algo=self.reco_algo,
+            result_file=str(self.result_file),
+            scan_id=self.scan_id,
+            rescan_origin_id=self.rescan_origin_id,
+        )
 
 
 def download_file(url: str, dest: Path) -> Path:

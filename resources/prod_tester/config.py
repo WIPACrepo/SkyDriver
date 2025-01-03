@@ -3,6 +3,7 @@
 from pathlib import Path
 
 SANDBOX_DIR = Path("./test-suit-sandbox")
+SANDBOX_MAP_FPATH = SANDBOX_DIR / "map.json"
 
 GHA_FILE_URL = "https://raw.githubusercontent.com/icecube/skymap_scanner/main/.github/workflows/tests.yml"
 

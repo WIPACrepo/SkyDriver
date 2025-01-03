@@ -5,9 +5,7 @@ import asyncio
 import dataclasses as dc
 import json
 import logging
-import pickle
 import re
-import time
 import uuid
 from typing import Any, Type, TypeVar
 
@@ -15,12 +13,8 @@ import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
 from dacite.exceptions import DaciteError
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
-from pymongo import ReturnDocument
-from rest_tools.client import RestClient
+from motor.motor_asyncio import AsyncIOMotorClient
 from rest_tools.server import (
-    ArgumentHandler,
-    ArgumentSource,
     RestHandler,
     token_attribute_role_mapping_auth,
 )
@@ -37,8 +31,6 @@ from .config import (
     KNOWN_CLUSTERS,
     is_testing,
 )
-from .database import schema
-from .k8s.scan_backlog import designate_for_startup
 from .k8s.scanner_instance import SkymapScannerK8sWrapper
 
 LOGGER = logging.getLogger(__name__)
@@ -483,6 +475,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         # -> store scan_request_obj in db
         scan_request_obj = dict(
+            scan_id=scan_id,
+            rescan_ids=[],
+            #
             docker_tag=args.docker_tag,
             scanner_server_memory_bytes=args.scanner_server_memory,  # already in bytes
             reco_algo=args.reco_algo,
@@ -490,13 +485,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             real_or_simulated_event=args.real_or_simulated_event,
             predictive_scanning_threshold=args.predictive_scanning_threshold,
             classifiers=args.classifiers,
-            request_clusters=args.cluster,
+            request_clusters=[dataclasses.asdict(c) for c in args.cluster],
             worker_memory_bytes=args.worker_memory,
             worker_disk_bytes=args.worker_disk,  # already in bytes
             max_pixel_reco_time=args.max_pixel_reco_time,
             max_worker_runtime=args.max_worker_runtime,
             priority=args.priority,
-            debug_mode=args.debug_mode,
+            debug_mode=[d.value for d in args.debug_mode],
             skyscan_mq_client_timeout_wait_for_first_message=(
                 args.skyscan_mq_client_timeout_wait_for_first_message
                 if args.skyscan_mq_client_timeout_wait_for_first_message != -1
@@ -506,19 +501,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             rest_address=self.request.full_url().rstrip(self.request.uri),
             scanner_server_env_from_user=args.scanner_server_env,
         )
-        await self.scan_request_coll.insert_one(
-            {
-                "scan_id": scan_id,
-                "scan_request_obj_pkl": pickle.dumps(scan_request_obj),
-                # ^^^ can be well compressed, obj will only be decompressed for re-scans
-            },
-        )
+        await self.scan_request_coll.insert_one(scan_request_obj)
 
         # go!
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
-            scan_id,
             scan_request_obj,
         )
         self.write(
@@ -529,9 +517,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 async def _start_scan(
     manifests: database.interface.ManifestClient,
     scan_backlog: database.interface.ScanBacklogClient,
-    scan_id: str,
     scan_request_obj: dict,
+    new_scan_id: str = "",  # don't use scan_request_obj.scan_id--this could be a rescan
 ) -> schema.Manifest:
+    scan_id = new_scan_id or scan_request_obj["scan_id"]
+
     # get the container info ready
     scanner_wrapper = SkymapScannerK8sWrapper(
         docker_tag=scan_request_obj["docker_tag"],
@@ -543,21 +533,22 @@ async def _start_scan(
         is_real_event=scan_request_obj["real_or_simulated_event"] in REAL_CHOICES,
         predictive_scanning_threshold=scan_request_obj["predictive_scanning_threshold"],
         # cluster starter
-        # TODO: this arg could be good to control whether to use ewms or manual
-        #       but not determined using 'classifiers'. May need to keep the attr bc pkl
-        starter_exc=str(
+        starter_exc=str(  # TODO - remove once tested in prod
             scan_request_obj["classifiers"].get(
                 "__unstable_starter_exc", "clientmanager"
             )
         ),
-        request_clusters=scan_request_obj["request_clusters"],
+        request_clusters=[
+            dacite.from_dict(database.schema.Cluster, c)
+            for c in scan_request_obj["request_clusters"]
+        ],
         worker_memory_bytes=scan_request_obj["worker_memory_bytes"],
         worker_disk_bytes=scan_request_obj["worker_disk_bytes"],
         max_pixel_reco_time=scan_request_obj["max_pixel_reco_time"],
         max_worker_runtime=scan_request_obj["max_worker_runtime"],
         priority=scan_request_obj["priority"],
         # universal
-        debug_mode=scan_request_obj["debug_mode"],
+        debug_mode=_debug_mode(scan_request_obj["debug_mode"]),
         # env
         rest_address=scan_request_obj["rest_address"],
         skyscan_mq_client_timeout_wait_for_first_message=scan_request_obj[
