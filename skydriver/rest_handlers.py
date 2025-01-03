@@ -274,25 +274,34 @@ def _json_to_dict(val: Any) -> dict:
     raise _error
 
 
-def _dict_or_list_to_request_clusters(
+def _validate_request_clusters(
     val: dict | list,
-) -> list[database.schema.ManualCluster]:
+) -> list[tuple[str, int]]:
     _error = argparse.ArgumentTypeError(
         "must be a dict of cluster location and number of workers, Ex: {'sub-2': 1500, ...}"
         " (to request a cluster location more than once, provide a list of 2-lists instead)"
-        # TODO: make n_workers optional when using "TMS smart starter"
+        # TODO: make n_workers optional when using "EWMS smart starter"
     )
     if isinstance(val, dict):
-        val = list(val.items())  # {'a': 1, 'b': 2} -> [('a', 1), ('b', 2)}
-    if not val:
+        # {'a': 1, 'b': 2} -> [('a', 1), ('b', 2)}
+        list_tups: list[tuple[str, int]] = list(val.items())
+    else:
+        list_tups = val
+    del val
+
+    # validate
+    if not list_tups:
         raise _error
-    if not isinstance(val, list):
+    if not isinstance(list_tups, list):
         raise _error
     # check all entries are 2-lists (or tuple)
-    if not all(isinstance(a, list | tuple) and len(a) == 2 for a in val):
+    if not all(isinstance(a, list | tuple) and len(a) == 2 for a in list_tups):
         raise _error
-    #
-    return [_cluster_lookup(name, n_workers) for name, n_workers in val]
+    # check that all locations are known (this validates sooner than ewms, if using ewms)
+    for name, n_workers in list_tups:
+        _cluster_lookup(name, n_workers)
+
+    return list_tups
 
 
 def _classifiers_validator(val: Any) -> dict[str, str | bool | float | int]:
@@ -381,7 +390,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         arghand.add_argument(
             "cluster",
-            type=_dict_or_list_to_request_clusters,
+            type=_validate_request_clusters,
         )
         # scanner args
         arghand.add_argument(
@@ -456,16 +465,17 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # more arg validation
         if DebugMode.CLIENT_LOGS in args.debug_mode:
-            for cluster in args.cluster:
-                cname, cinfo = cluster.to_known_cluster()
-                if cluster.n_workers > cinfo.get(
-                    "max_n_clients_during_debug_mode", float("inf")
+            for cname, cworkers in args.cluster:
+                if cworkers > (
+                    val := KNOWN_CLUSTERS[cname].get(
+                        "max_n_clients_during_debug_mode", float("inf")
+                    )
                 ):
                     raise web.HTTPError(
                         400,
                         log_message=(
-                            f"Too many workers: ManualCluster '{cname}' can only have "
-                            f"{cinfo.get('max_n_clients_during_debug_mode')} "
+                            f"Too many workers: Cluster '{cname}' can only have "
+                            f"{val} "
                             f"workers when 'debug_mode' "
                             f"includes '{DebugMode.CLIENT_LOGS.value}'"
                         ),
@@ -495,7 +505,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             real_or_simulated_event=args.real_or_simulated_event,
             predictive_scanning_threshold=args.predictive_scanning_threshold,
             classifiers=args.classifiers,
-            request_clusters=[dataclasses.asdict(c) for c in args.cluster],
+            request_clusters=args.cluster,  # a list
             worker_memory_bytes=args.worker_memory,
             worker_disk_bytes=args.worker_disk,  # already in bytes
             max_pixel_reco_time=args.max_pixel_reco_time,
@@ -549,8 +559,8 @@ async def _start_scan(
             )
         ),
         request_clusters=[
-            dacite.from_dict(database.schema.Cluster, c)
-            for c in scan_request_obj["request_clusters"]
+            _cluster_lookup(name, n_workers)  # values were pre-validated on user input
+            for name, n_workers in scan_request_obj["request_clusters"]
         ],
         worker_memory_bytes=scan_request_obj["worker_memory_bytes"],
         worker_disk_bytes=scan_request_obj["worker_disk_bytes"],
@@ -937,6 +947,48 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 break
 
         self.write(dc.asdict(manifest))  # don't use a projection
+
+
+# -----------------------------------------------------------------------------
+
+
+class ScanI3EventHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles grabbing i3 events using scan ids."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/i3-event$"
+
+    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
+        """Get scan's i3 event."""
+        manifest = await self.manifests.get(scan_id, True)
+
+        # look up event in collection
+        if manifest.i3_event_id:
+            doc = await self.i3_event_coll.find_one(
+                {"i3_event_id": manifest.i3_event_id}
+            )
+            if doc:
+                i3_event = doc["json_dict"]
+            else:  # this would mean the event was removed from the db
+                error_msg = (
+                    f"No i3 event document found with id '{manifest.i3_event_id}'"
+                )
+                raise web.HTTPError(
+                    404,
+                    log_message=error_msg,
+                    reason=error_msg,
+                )
+        # unless, this is an old scan -- where the whole dict was stored w/ the manifest
+        else:
+            i3_event = manifest.event_i3live_json_dict
+
+        self.write({"i3_event": i3_event})
+
+    #
+    # NOTE - handler needs to stay user-read-only
+    #
+    # FUTURE - add delete?
+    #
 
 
 # -----------------------------------------------------------------------------

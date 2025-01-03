@@ -6,13 +6,12 @@
 ########################################################################
 #  pip freeze
 ########################################################################
-boto3==1.35.83
-botocore==1.35.83
+boto3==1.35.92
+botocore==1.35.92
 cachetools==5.5.0
 certifi==2024.12.14
 cffi==1.17.1
-charset-normalizer==3.4.0
-coloredlogs==15.0.1
+charset-normalizer==3.4.1
 cryptography==44.0.0
 dacite==1.8.1
 dnspython==2.7.0
@@ -45,10 +44,7 @@ typing_extensions==4.12.2
 urllib3==2.3.0
 websocket-client==1.8.0
 wipac-dev-tools==1.13.0
-wipac-rest-tools==1.5.3
-wipac-telemetry==0.3.1
-wrapt==1.17.0
-zipp==3.21.0
+wipac-rest-tools==1.8.5
 ########################################################################
 #  pipdeptree
 ########################################################################
@@ -60,15 +56,15 @@ pipdeptree==2.24.0
 └── pip [required: >=24.2, installed: 24.3.1]
 setuptools==65.5.1
 skydriver-clientmanager-ewms-sidecar
-├── boto3 [required: Any, installed: 1.35.83]
-│   ├── botocore [required: >=1.35.83,<1.36.0, installed: 1.35.83]
+├── boto3 [required: Any, installed: 1.35.92]
+│   ├── botocore [required: >=1.35.92,<1.36.0, installed: 1.35.92]
 │   │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   │   ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │   │   │   └── six [required: >=1.5, installed: 1.17.0]
 │   │   └── urllib3 [required: >=1.25.4,<3,!=2.2.0, installed: 2.3.0]
 │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   └── s3transfer [required: >=0.10.0,<0.11.0, installed: 0.10.4]
-│       └── botocore [required: >=1.33.2,<2.0a.0, installed: 1.35.83]
+│       └── botocore [required: >=1.33.2,<2.0a.0, installed: 1.35.92]
 │           ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │           ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │           │   └── six [required: >=1.5, installed: 1.17.0]
@@ -124,7 +120,7 @@ skydriver-clientmanager-ewms-sidecar
 │   │   ├── idna [required: >=2.5,<4, installed: 3.10]
 │   │   └── urllib3 [required: >=1.21.1,<3, installed: 2.3.0]
 │   └── typing_extensions [required: Any, installed: 4.12.2]
-└── wipac-rest-tools [required: <1.6.0, installed: 1.5.3]
+└── wipac-rest-tools [required: Any, installed: 1.8.5]
     ├── cachetools [required: Any, installed: 5.5.0]
     ├── PyJWT [required: !=2.6.0, installed: 2.10.1]
     ├── qrcode [required: Any, installed: 8.0]
