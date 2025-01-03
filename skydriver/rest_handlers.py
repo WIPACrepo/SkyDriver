@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import dataclasses
 import dataclasses as dc
 import json
 import logging
@@ -9,6 +10,7 @@ import re
 import uuid
 from typing import Any, Type, TypeVar
 
+import dacite
 import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
@@ -488,13 +490,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             real_or_simulated_event=args.real_or_simulated_event,
             predictive_scanning_threshold=args.predictive_scanning_threshold,
             classifiers=args.classifiers,
-            request_clusters=args.cluster,
+            request_clusters=[dataclasses.asdict(c) for c in args.cluster],
             worker_memory_bytes=args.worker_memory,
             worker_disk_bytes=args.worker_disk,  # already in bytes
             max_pixel_reco_time=args.max_pixel_reco_time,
             max_worker_runtime=args.max_worker_runtime,
             priority=args.priority,
-            debug_mode=args.debug_mode,
+            debug_mode=[d.value() for d in args.debug_mode],
             skyscan_mq_client_timeout_wait_for_first_message=(
                 args.skyscan_mq_client_timeout_wait_for_first_message
                 if args.skyscan_mq_client_timeout_wait_for_first_message != -1
@@ -541,14 +543,17 @@ async def _start_scan(
                 "__unstable_starter_exc", "clientmanager"
             )
         ),
-        request_clusters=scan_request_obj["request_clusters"],
+        request_clusters=[
+            dacite.from_dict(database.schema.Cluster, c)
+            for c in scan_request_obj["request_clusters"]
+        ],
         worker_memory_bytes=scan_request_obj["worker_memory_bytes"],
         worker_disk_bytes=scan_request_obj["worker_disk_bytes"],
         max_pixel_reco_time=scan_request_obj["max_pixel_reco_time"],
         max_worker_runtime=scan_request_obj["max_worker_runtime"],
         priority=scan_request_obj["priority"],
         # universal
-        debug_mode=scan_request_obj["debug_mode"],
+        debug_mode=_debug_mode(scan_request_obj["debug_mode"]),
         # env
         rest_address=scan_request_obj["rest_address"],
         skyscan_mq_client_timeout_wait_for_first_message=scan_request_obj[
