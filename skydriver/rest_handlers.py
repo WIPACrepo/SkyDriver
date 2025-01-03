@@ -496,7 +496,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             max_pixel_reco_time=args.max_pixel_reco_time,
             max_worker_runtime=args.max_worker_runtime,
             priority=args.priority,
-            debug_mode=[d.value() for d in args.debug_mode],
+            debug_mode=[d.value for d in args.debug_mode],
             skyscan_mq_client_timeout_wait_for_first_message=(
                 args.skyscan_mq_client_timeout_wait_for_first_message
                 if args.skyscan_mq_client_timeout_wait_for_first_message != -1
