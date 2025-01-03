@@ -458,16 +458,17 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # more arg validation
         if DebugMode.CLIENT_LOGS in args.debug_mode:
-            for cluster in args.cluster:
-                cname, cinfo = cluster.to_known_cluster()
-                if cluster.n_workers > cinfo.get(
-                    "max_n_clients_during_debug_mode", float("inf")
+            for cname, cworkers in args.cluster:
+                if cworkers > (
+                    val := KNOWN_CLUSTERS[cname].get(
+                        "max_n_clients_during_debug_mode", float("inf")
+                    )
                 ):
                     raise web.HTTPError(
                         400,
                         log_message=(
                             f"Too many workers: Cluster '{cname}' can only have "
-                            f"{cinfo.get('max_n_clients_during_debug_mode')} "
+                            f"{val} "
                             f"workers when 'debug_mode' "
                             f"includes '{DebugMode.CLIENT_LOGS.value}'"
                         ),
