@@ -655,8 +655,8 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
-            new_scan_id,
             scan_request_obj,
+            new_scan_id=new_scan_id,
         )
         self.write(
             dict_projection(dc.asdict(manifest), args.manifest_projection),
