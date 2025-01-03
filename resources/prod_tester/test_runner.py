@@ -54,7 +54,7 @@ async def launch_a_scan(
     cluster: str,
     n_workers: int,
     reco_algo: str,
-) -> str:
+) -> dict:
     """Request to SkyDriver to scan an event."""
     body = {
         "reco_algo": reco_algo,
