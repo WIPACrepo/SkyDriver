@@ -8,7 +8,7 @@ import time
 import boto3
 import bson
 import kubernetes.client  # type: ignore[import-untyped]
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from rest_tools.client import RestClient
 from tornado import web
 
@@ -46,8 +46,9 @@ async def designate_for_startup(
 async def get_next_backlog_entry(
     scan_backlog: database.interface.ScanBacklogClient,
     manifests: database.interface.ManifestClient,
+    scan_request_client: AsyncIOMotorCollection,
     include_low_priority_scans: bool,
-) -> tuple[database.schema.ScanBacklogEntry, database.schema.Manifest]:
+) -> tuple[database.schema.ScanBacklogEntry, database.schema.Manifest, dict]:
     """Get the next entry & remove any that have been cancelled."""
     while True:
         # get next up -- raises DocumentNotFoundException if none
@@ -68,8 +69,13 @@ async def get_next_backlog_entry(
             await scan_backlog.remove(entry)
             continue
 
+        # grab the scan request object--it has other info
+        scan_request_obj = await scan_request_client.find_one(
+            {"scan_id": manifest.scan_id}
+        )
+
         # all good!
-        return entry, manifest  # ready to start job
+        return entry, manifest, scan_request_obj  # ready to start job
 
 
 async def run(
@@ -180,6 +186,12 @@ async def _run(
     """The (actual) main loop."""
     manifest_client = database.interface.ManifestClient(mongo_client)
     backlog_client = database.interface.ScanBacklogClient(mongo_client)
+    scan_request_client = (
+        AsyncIOMotorCollection(  # in contrast, this one is accessed directly
+            mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+            database.utils._SCAN_REQUEST_COLL_NAME,
+        )
+    )
 
     last_log_heartbeat = 0.0  # log every so often, not on every iteration
     long_interval_timer = IntervalTimer(ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
@@ -190,9 +202,10 @@ async def _run(
 
         # get next entry
         try:
-            entry, manifest = await get_next_backlog_entry(
+            entry, manifest, scan_request_obj = await get_next_backlog_entry(
                 backlog_client,
                 manifest_client,
+                scan_request_client,
                 # include low priority scans only when enough time has passed
                 include_low_priority_scans=long_interval_timer.has_interval_elapsed(),
             )
@@ -201,11 +214,17 @@ async def _run(
             continue  # empty queue-
 
         # generate pre-signed S3 url
+        s3_obj_url = generate_s3_url(manifest.scan_id)
 
         # request a workflow on EWMS
         if isinstance(manifest.ewms_task, database.schema.EWMSRequestInfo):
             try:
-                workflow_id = await ewms.request_workflow_on_ewms(ewms_rc, manifest)
+                workflow_id = await ewms.request_workflow_on_ewms(
+                    ewms_rc,
+                    manifest,
+                    s3_obj_url,
+                    scan_request_obj,
+                )
             except Exception as e:
                 LOGGER.exception(e)
                 long_interval_timer.fastforward()  # nothing was started, so don't wait long

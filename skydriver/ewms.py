@@ -2,16 +2,21 @@
 
 from rest_tools.client import RestClient
 
-from . import database
+from . import database, images
 
 
 async def request_workflow_on_ewms(
     ewms_rc: RestClient,
     manifest: database.schema.Manifest,
+    s3_obj_url: str,
+    scan_request_obj: dict,
 ) -> str:
     """Request a workflow in EWMS."""
     if not isinstance(manifest.ewms_task, database.schema.EWMSRequestInfo):
         raise TypeError("Manifest is not designated for EWMS")
+
+    image = images.get_skyscan_docker_image(scan_request_obj["docker_tag"])
+    # TODO: grab other values from scan request object; eventually, cut down k8s wrapper class
 
     body = {
         "public_queue_aliases": ["to-client-queue", "from-client-queue"],
@@ -20,10 +25,20 @@ async def request_workflow_on_ewms(
                 "cluster_locations": manifest.ewms_task.cluster_locations,
                 "input_queue_aliases": ["to-client-queue"],
                 "output_queue_aliases": ["from-client-queue"],
-                "task_image": "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:$SKYSCAN_TAG",
-                "task_args": "python -m skymap_scanner.client --infile {{INFILE}} --outfile {{OUTFILE}} --client-startup-json {{DATA_HUB}}/startup.json",
-                "init_image": "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:$SKYSCAN_TAG",
-                "init_args": "bash -c \"curl --fail-with-body --max-time 60 -o {{DATA_HUB}}/startup.json '$S3_OBJECT_URL'\" ",
+                "task_image": image,
+                "task_args": (
+                    "python -m skymap_scanner.client "
+                    "--infile {{INFILE}} --outfile {{OUTFILE}} "
+                    "--client-startup-json {{DATA_HUB}}/startup.json"
+                ),
+                "init_image": image,  # piggyback this image since it's already present
+                "init_args": (
+                    "bash -c "
+                    '"'  # quote for bash -c "..."
+                    "curl --fail-with-body --max-time 60 -o {{DATA_HUB}}/startup.json "
+                    f"'{s3_obj_url}'"  # single-quote the url
+                    '"'  # unquote for bash -c "..."
+                ),
                 "n_workers": manifest.ewms_task.n_workers,
                 "pilot_config": {
                     "tag": "latest",
