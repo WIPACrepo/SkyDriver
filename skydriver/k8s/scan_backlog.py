@@ -214,7 +214,7 @@ async def _run(
             continue  # empty queue-
 
         # request a workflow on EWMS?
-        if not isinstance(manifest.ewms_task, database.schema.ManualStarterInfo):
+        if not isinstance(manifest.ewms_task, database.schema.InHouseStarterInfo):
             try:
                 s3_obj_url = generate_s3_url(manifest.scan_id)
                 workflow_id = await ewms.request_workflow_on_ewms(

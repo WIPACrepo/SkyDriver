@@ -229,17 +229,17 @@ class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-def _cluster_lookup(name: str, n_workers: int) -> database.schema.ManualCluster:
+def _cluster_lookup(name: str, n_workers: int) -> database.schema.InHouseClusterInfo:
     """Grab the ManualCluster object known using `name`."""
     if cluster := KNOWN_CLUSTERS.get(name):
         if cluster["orchestrator"] == "condor":
-            return database.schema.ManualCluster(
+            return database.schema.InHouseClusterInfo(
                 orchestrator=cluster["orchestrator"],
                 location=database.schema.HTCondorLocation(**cluster["location"]),
                 n_workers=n_workers,
             )
         elif cluster["orchestrator"] == "k8s":
-            return database.schema.ManualCluster(
+            return database.schema.InHouseClusterInfo(
                 orchestrator=cluster["orchestrator"],
                 location=database.schema.KubernetesLocation(**cluster["location"]),
                 n_workers=n_workers,
@@ -497,12 +497,17 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             rescan_ids=[],
             #
             docker_tag=args.docker_tag,
+            #
+            # skyscan server config
             scanner_server_memory_bytes=args.scanner_server_memory,  # already in bytes
             reco_algo=args.reco_algo,
             nsides=args.nsides,
             real_or_simulated_event=args.real_or_simulated_event,
             predictive_scanning_threshold=args.predictive_scanning_threshold,
+            #
             classifiers=args.classifiers,
+            #
+            # cluster (condor) config
             request_clusters=args.cluster,  # a list
             worker_memory_bytes=args.worker_memory,
             worker_disk_bytes=args.worker_disk,  # already in bytes
@@ -510,6 +515,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             max_worker_runtime=args.max_worker_runtime,
             priority=args.priority,
             debug_mode=[d.value for d in args.debug_mode],
+            #
+            # misc
             skyscan_mq_client_timeout_wait_for_first_message=(
                 args.skyscan_mq_client_timeout_wait_for_first_message
                 if args.skyscan_mq_client_timeout_wait_for_first_message != -1
@@ -584,7 +591,7 @@ async def _start_scan(
         i3_event_id=scan_request_obj["i3_event_id"],
         scanner_server_args=scanner_wrapper.scanner_server_args,
         # TODO: switch over to ewms design
-        ewms_task=schema.ManualStarterInfo(
+        ewms_task=schema.InHouseStarterInfo(
             tms_args=scanner_wrapper.cluster_starter_args_list,
             env_vars=from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
         ),
@@ -897,7 +904,9 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         arghand.add_argument(
             "cluster",
-            type=lambda x: from_dict_wrapper_or_none(database.schema.ManualCluster, x),
+            type=lambda x: from_dict_wrapper_or_none(
+                database.schema.InHouseClusterInfo, x
+            ),
             default=None,
         )
         args = arghand.parse_args()

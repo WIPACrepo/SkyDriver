@@ -114,7 +114,7 @@ class ManifestClient:
     def _put_ewms_task(
         in_db: schema.Manifest,
         upserting: dict,
-        cluster: schema.ManualCluster | None,
+        cluster: schema.InHouseClusterInfo | None,
         complete: bool | None,
     ):
         if not cluster and not complete:
@@ -150,7 +150,7 @@ class ManifestClient:
         progress: schema.Progress | None = None,
         event_metadata: schema.EventMetadata | None = None,
         scan_metadata: schema.StrDict | None = None,
-        cluster: schema.ManualCluster | None = None,
+        cluster: schema.InHouseClusterInfo | None = None,
         complete: bool | None = None,  # workforce is done
     ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""

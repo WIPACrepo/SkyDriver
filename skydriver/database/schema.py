@@ -133,7 +133,7 @@ class KubernetesLocation:
 
 @typechecked
 @dc.dataclass
-class ManualCluster:
+class InHouseClusterInfo:
     """Stores information for a worker cluster."""
 
     orchestrator: Literal["condor", "k8s"]
@@ -219,16 +219,16 @@ def obfuscate_cl_args(args: str) -> str:
 
 @typechecked
 @dc.dataclass
-class ManualStarterInfo:
+class InHouseStarterInfo:
     """Encapsulates what info is/was used for starting the scanner, within SkyDriver."""
 
-    tms_args: list[str]  # TODO - move to TMS
-    env_vars: EnvVars  # TODO - move to TMS
+    tms_args: list[str]
+    env_vars: EnvVars
 
-    clusters: list[ManualCluster] = dc.field(default_factory=list)
+    clusters: list[InHouseClusterInfo] = dc.field(default_factory=list)
 
     # signifies k8s workers and condor cluster(s) AKA workforce is done
-    complete: bool = False  # TODO - move to TMS
+    complete: bool = False
 
     def __post_init__(self) -> None:
         self.tms_args = [obfuscate_cl_args(a) for a in self.tms_args]
@@ -246,7 +246,7 @@ class Manifest(ScanIDDataclass):
     timestamp: float
     is_deleted: bool
 
-    ewms_task: ManualStarterInfo | str  # yes, this was a poor naming choice
+    ewms_task: InHouseStarterInfo | str  # yes, this was a poor naming choice
     # ^^^ str -> EWMS workflow id (i.e. this id points to info in the EWMS db)
 
     # args placed in k8s job obj
