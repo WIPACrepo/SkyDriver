@@ -2,7 +2,6 @@
 
 import argparse
 import asyncio
-import dataclasses
 import dataclasses as dc
 import json
 import logging
@@ -10,7 +9,6 @@ import re
 import uuid
 from typing import Any, Type, TypeVar
 
-import dacite
 import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
@@ -269,25 +267,34 @@ def _json_to_dict(val: Any) -> dict:
     raise _error
 
 
-def _dict_or_list_to_request_clusters(
+def _validate_request_clusters(
     val: dict | list,
-) -> list[database.schema.Cluster]:
+) -> list[tuple[str, int]]:
     _error = argparse.ArgumentTypeError(
         "must be a dict of cluster location and number of workers, Ex: {'sub-2': 1500, ...}"
         " (to request a cluster location more than once, provide a list of 2-lists instead)"
-        # TODO: make n_workers optional when using "TMS smart starter"
+        # TODO: make n_workers optional when using "EWMS smart starter"
     )
     if isinstance(val, dict):
-        val = list(val.items())  # {'a': 1, 'b': 2} -> [('a', 1), ('b', 2)}
-    if not val:
+        # {'a': 1, 'b': 2} -> [('a', 1), ('b', 2)}
+        list_tups: list[tuple[str, int]] = list(val.items())
+    else:
+        list_tups = val
+    del val
+
+    # validate
+    if not list_tups:
         raise _error
-    if not isinstance(val, list):
+    if not isinstance(list_tups, list):
         raise _error
     # check all entries are 2-lists (or tuple)
-    if not all(isinstance(a, list | tuple) and len(a) == 2 for a in val):
+    if not all(isinstance(a, list | tuple) and len(a) == 2 for a in list_tups):
         raise _error
-    #
-    return [_cluster_lookup(name, n_workers) for name, n_workers in val]
+    # check that all locations are known (this validates sooner than ewms, if using ewms)
+    for name, n_workers in list_tups:
+        _cluster_lookup(name, n_workers)
+
+    return list_tups
 
 
 def _classifiers_validator(val: Any) -> dict[str, str | bool | float | int]:
@@ -376,7 +383,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         arghand.add_argument(
             "cluster",
-            type=_dict_or_list_to_request_clusters,
+            type=_validate_request_clusters,
         )
         # scanner args
         arghand.add_argument(
@@ -490,7 +497,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             real_or_simulated_event=args.real_or_simulated_event,
             predictive_scanning_threshold=args.predictive_scanning_threshold,
             classifiers=args.classifiers,
-            request_clusters=[dataclasses.asdict(c) for c in args.cluster],
+            request_clusters=args.cluster,  # a list
             worker_memory_bytes=args.worker_memory,
             worker_disk_bytes=args.worker_disk,  # already in bytes
             max_pixel_reco_time=args.max_pixel_reco_time,
@@ -544,8 +551,8 @@ async def _start_scan(
             )
         ),
         request_clusters=[
-            dacite.from_dict(database.schema.Cluster, c)
-            for c in scan_request_obj["request_clusters"]
+            _cluster_lookup(name, n_workers)  # values were pre-validated on user input
+            for name, n_workers in scan_request_obj["request_clusters"]
         ],
         worker_memory_bytes=scan_request_obj["worker_memory_bytes"],
         worker_disk_bytes=scan_request_obj["worker_disk_bytes"],
