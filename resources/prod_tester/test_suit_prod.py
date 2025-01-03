@@ -167,6 +167,21 @@ def display_test_status(tests: list[test_getter.TestParamSet]):
     print(table.draw())
 
 
+def _match_rescans_to_tests(
+    rescans: list[test_getter.TestParamSet], tests: list[test_getter.TestParamSet]
+) -> None:
+    """Match rescans to tests, in order to send the rescan id to skydriver."""
+    logging.info("matching tests to rescan-tests")
+    logging.info(json.dumps([r.to_json() for r in rescans], indent=4))
+    for t in tests:
+        for r in rescans:
+            if (t.reco_algo, t.event_file.name) == (r.reco_algo, r.event_file.name):
+                t.rescan_origin_id = r.scan_id
+                break
+        if not t.rescan_origin_id:
+            raise RuntimeError(f"could not match test to rescan-test: {t}")
+
+
 async def test_all(
     rc: RestClient,
     cluster: str,
@@ -177,16 +192,7 @@ async def test_all(
     # setup
     tests = list(test_getter.setup_tests())
     if rescans:
-        # match rescans to tests, so to send the rescan id to skydriver
-        logging.info("matching tests to rescan-tests")
-        logging.info(json.dumps([r.to_json() for r in rescans], indent=4))
-        for t in tests:
-            for r in rescans:
-                if (t.reco_algo, t.event_file.name) == (r.reco_algo, r.event_file.name):
-                    t.rescan_origin_id = r.scan_id
-                    break
-            if not t.rescan_origin_id:
-                raise RuntimeError(f"could not match test to rescan-test: {t}")
+        _match_rescans_to_tests(rescans, tests)
 
     # launch!
     tests = await launch_scans(  # adds scan ids to 'tests'
