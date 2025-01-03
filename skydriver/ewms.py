@@ -12,7 +12,7 @@ async def request_workflow_on_ewms(
     scan_request_obj: dict,
 ) -> str:
     """Request a workflow in EWMS."""
-    if not isinstance(manifest.ewms_task, database.schema.EWMSRequestInfo):
+    if not isinstance(manifest.ewms_task, str):
         raise TypeError("Manifest is not designated for EWMS")
 
     image = images.get_skyscan_docker_image(scan_request_obj["docker_tag"])
@@ -22,7 +22,7 @@ async def request_workflow_on_ewms(
         "public_queue_aliases": ["to-client-queue", "from-client-queue"],
         "tasks": [
             {
-                "cluster_locations": manifest.ewms_task.cluster_locations,
+                "cluster_locations": scan_request_obj["request_clusters"],
                 "input_queue_aliases": ["to-client-queue"],
                 "output_queue_aliases": ["from-client-queue"],
                 "task_image": image,

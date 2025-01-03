@@ -235,21 +235,6 @@ class ManualStarterInfo:
         # NOTE - self.env_vars done in EnvVars
 
 
-@typechecked
-@dc.dataclass
-class EWMSRequestInfo:
-    """Some of the info sent to EWMS in the workflow request."""
-
-    cluster_locations: list[str]  # TODO: does this need to be dict with n_workers?
-    n_workers: int
-
-    workflow_id: str = ""  # set once the request has been sent to EWMS
-
-    # TODO: add more fields that are needed for EWMS but not already in manifest
-    #       OR the backlogger could also pull info from 'scan_request_obj'
-    # NOTE: besides 'workflow_id', this object is immutable
-
-
 DEPRECATED_EVENT_I3LIVE_JSON_DICT = "use 'i3_event_id'"
 
 
@@ -261,7 +246,8 @@ class Manifest(ScanIDDataclass):
     timestamp: float
     is_deleted: bool
 
-    ewms_task: ManualStarterInfo | EWMSRequestInfo  # yes, this was a poor naming choice
+    ewms_task: ManualStarterInfo | str  # yes, this was a poor naming choice
+    # ^^^ str -> EWMS workflow id (i.e. this id points to info in the EWMS db)
 
     # args placed in k8s job obj
     scanner_server_args: str

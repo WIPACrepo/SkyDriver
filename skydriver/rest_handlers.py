@@ -2,19 +2,27 @@
 
 import argparse
 import asyncio
+import dataclasses
 import dataclasses as dc
 import json
 import logging
+import pickle
 import re
+import time
 import uuid
 from typing import Any, Type, TypeVar
 
+import dacite
 import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
 from dacite.exceptions import DaciteError
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+from pymongo import ReturnDocument
+from rest_tools.client import RestClient
 from rest_tools.server import (
+    ArgumentHandler,
+    ArgumentSource,
     RestHandler,
     token_attribute_role_mapping_auth,
 )
@@ -31,6 +39,8 @@ from .config import (
     KNOWN_CLUSTERS,
     is_testing,
 )
+from .database import schema
+from .k8s.scan_backlog import designate_for_startup
 from .k8s.scanner_instance import SkymapScannerK8sWrapper
 
 LOGGER = logging.getLogger(__name__)
@@ -565,7 +575,7 @@ async def _start_scan(
         is_deleted=False,
         i3_event_id=scan_request_obj["i3_event_id"],
         scanner_server_args=scanner_wrapper.scanner_server_args,
-        # TODO: detect whether 'schema.EWMSRequestInfo' should be used (see 'starter_exc') above
+        # TODO: switch over to ewms design
         ewms_task=schema.ManualStarterInfo(
             tms_args=scanner_wrapper.cluster_starter_args_list,
             env_vars=from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),

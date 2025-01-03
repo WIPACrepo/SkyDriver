@@ -11,8 +11,6 @@ import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from rest_tools.client import RestClient
 from tornado import web
-from motor.motor_asyncio import AsyncIOMotorClient
-from tornado import web
 
 from .utils import KubeAPITools
 from .. import database, ewms
@@ -215,12 +213,10 @@ async def _run(
             long_interval_timer.fastforward()
             continue  # empty queue-
 
-        # generate pre-signed S3 url
-        s3_obj_url = generate_s3_url(manifest.scan_id)
-
-        # request a workflow on EWMS
-        if isinstance(manifest.ewms_task, database.schema.EWMSRequestInfo):
+        # request a workflow on EWMS?
+        if not isinstance(manifest.ewms_task, database.schema.ManualStarterInfo):
             try:
+                s3_obj_url = generate_s3_url(manifest.scan_id)
                 workflow_id = await ewms.request_workflow_on_ewms(
                     ewms_rc,
                     manifest,
@@ -233,7 +229,7 @@ async def _run(
                 continue
             await manifest_client.collection.find_one_and_update(
                 {"scan_id": manifest.scan_id},
-                {"$set": {"ewms_task.workflow_id": workflow_id}},
+                {"$set": {"ewms_task": workflow_id}},
             )
 
         # TODO: Start K8s Job
@@ -251,7 +247,7 @@ async def _run(
         )
         # NOTE: the job_obj is enormous, so don't log it
 
-        # start k8s job
+        # start k8s job -- this could be any k8s job (pre- or post-ewms switchover)
         try:
             resp = KubeAPITools.start_job(k8s_batch_api, job_obj)
             LOGGER.info(resp)
