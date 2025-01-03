@@ -5,7 +5,6 @@ import asyncio
 import dataclasses as dc
 import json
 import logging
-import pickle
 import re
 import uuid
 from typing import Any, Type, TypeVar
@@ -479,6 +478,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         )
         # -> store scan_request_obj in db
         scan_request_obj = dict(
+            scan_id=scan_id,
+            rescan_ids=[],
+            #
             docker_tag=args.docker_tag,
             scanner_server_memory_bytes=args.scanner_server_memory,  # already in bytes
             reco_algo=args.reco_algo,
@@ -502,19 +504,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             rest_address=self.request.full_url().rstrip(self.request.uri),
             scanner_server_env_from_user=args.scanner_server_env,
         )
-        await self.scan_request_coll.insert_one(
-            {
-                "scan_id": scan_id,
-                "scan_request_obj_pkl": pickle.dumps(scan_request_obj),
-                # ^^^ can be well compressed, obj will only be decompressed for re-scans
-            },
-        )
+        await self.scan_request_coll.insert_one(scan_request_obj)
 
         # go!
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
-            scan_id,
             scan_request_obj,
         )
         self.write(
@@ -525,9 +520,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 async def _start_scan(
     manifests: database.interface.ManifestClient,
     scan_backlog: database.interface.ScanBacklogClient,
-    scan_id: str,
     scan_request_obj: dict,
+    new_scan_id: str = "",  # don't use scan_request_obj.scan_id--this could be a rescan
 ) -> schema.Manifest:
+    scan_id = new_scan_id or scan_request_obj["scan_id"]
+
     # get the container info ready
     scanner_wrapper = SkymapScannerK8sWrapper(
         docker_tag=scan_request_obj["docker_tag"],
@@ -604,27 +601,27 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         new_scan_id = uuid.uuid4().hex
 
         # grab the original requester's 'scan_request_obj'
-        doc = await self.scan_request_coll.find_one_and_update(
+        scan_request_obj = await self.scan_request_coll.find_one_and_update(
             {"scan_id": scan_id},
             {"$push": {"rescan_ids": new_scan_id}},
             return_document=ReturnDocument.AFTER,
         )
         # -> backup plan: was this scan_id actually a rescan itself?
-        if not doc:
-            doc = await self.scan_request_coll.find_one_and_update(
+        if not scan_request_obj:
+            scan_request_obj = await self.scan_request_coll.find_one_and_update(
                 {"rescan_ids": scan_id},  # one in a list
                 {"$push": {"rescan_ids": new_scan_id}},
                 return_document=ReturnDocument.AFTER,
             )
         # -> error: couldn't find it anywhere
-        if not doc:
+        if not scan_request_obj:
             raise web.HTTPError(
                 404,
                 log_message="Could not find original scan-request information to start a rescan",
             )
-        scan_request_obj = pickle.loads(doc["scan_request_obj_pkl"])
 
         # add to 'classifiers' so the user has provenance info
+        # NOTE: the scan request in the database will NOT be updated, only new objects
         scan_request_obj["classifiers"].update(
             {"rescan": True, "origin_scan_id": scan_id}
         )
@@ -633,8 +630,8 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
-            new_scan_id,
             scan_request_obj,
+            new_scan_id=new_scan_id,
         )
         self.write(
             dict_projection(dc.asdict(manifest), args.manifest_projection),
