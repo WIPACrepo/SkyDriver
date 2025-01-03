@@ -2,7 +2,6 @@
 
 import argparse
 import asyncio
-import dataclasses
 import dataclasses as dc
 import json
 import logging
@@ -12,7 +11,6 @@ import time
 import uuid
 from typing import Any, Type, TypeVar
 
-import dacite
 import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
@@ -947,48 +945,6 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 break
 
         self.write(dc.asdict(manifest))  # don't use a projection
-
-
-# -----------------------------------------------------------------------------
-
-
-class ScanI3EventHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
-    """Handles grabbing i3 events using scan ids."""
-
-    ROUTE = r"/scan/(?P<scan_id>\w+)/i3-event$"
-
-    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
-    async def get(self, scan_id: str) -> None:
-        """Get scan's i3 event."""
-        manifest = await self.manifests.get(scan_id, True)
-
-        # look up event in collection
-        if manifest.i3_event_id:
-            doc = await self.i3_event_coll.find_one(
-                {"i3_event_id": manifest.i3_event_id}
-            )
-            if doc:
-                i3_event = doc["json_dict"]
-            else:  # this would mean the event was removed from the db
-                error_msg = (
-                    f"No i3 event document found with id '{manifest.i3_event_id}'"
-                )
-                raise web.HTTPError(
-                    404,
-                    log_message=error_msg,
-                    reason=error_msg,
-                )
-        # unless, this is an old scan -- where the whole dict was stored w/ the manifest
-        else:
-            i3_event = manifest.event_i3live_json_dict
-
-        self.write({"i3_event": i3_event})
-
-    #
-    # NOTE - handler needs to stay user-read-only
-    #
-    # FUTURE - add delete?
-    #
 
 
 # -----------------------------------------------------------------------------
