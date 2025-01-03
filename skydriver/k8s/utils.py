@@ -1,6 +1,5 @@
 """An interface to the Kubernetes cluster."""
 
-
 import json
 import logging
 from pathlib import Path
@@ -100,6 +99,7 @@ class KubeAPITools:
             ttl_seconds_after_finished=ttl_seconds_after_finished,
             template=template.template,
             backoff_limit=n_retries,
+            active_deadline_seconds=ENV.K8S_ACTIVE_DEADLINE_SECONDS,
         )
         return body
 

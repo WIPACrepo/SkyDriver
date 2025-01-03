@@ -65,7 +65,8 @@ class EnvConfig:
     K8S_SECRET_NAME: str = ""
     K8S_SKYSCAN_JOBS_SERVICE_ACCOUNT: str = ""
     K8S_APPLICATION_NAME: str = ""
-    K8S_TTL_SECONDS_AFTER_FINISHED: int = 600
+    K8S_TTL_SECONDS_AFTER_FINISHED: int = 10 * 60
+    K8S_ACTIVE_DEADLINE_SECONDS: int = 24 * 60 * 60
 
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""
