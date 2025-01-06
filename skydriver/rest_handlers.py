@@ -674,7 +674,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-async def stop_scanner_instance(
+async def stop_skyscan_workers(
     manifests: database.interface.ManifestClient,
     scan_id: str,
     ewms_rc: RestClient,
@@ -769,7 +769,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # mark as deleted -> also stops backlog from starting
         manifest = await self.manifests.mark_as_deleted(scan_id)
         # abort
-        await stop_scanner_instance(self.manifests, scan_id, self.ewms_rc)
+        await stop_skyscan_workers(self.manifests, scan_id, self.ewms_rc)
 
         try:
             result_dict = dc.asdict(await self.results.get(scan_id))
@@ -1013,7 +1013,7 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             await asyncio.sleep(
                 WAIT_BEFORE_TEARDOWN
             )  # regular time.sleep() sleeps the entire server
-            await stop_scanner_instance(self.manifests, scan_id, self.k8s_batch_api)
+            await stop_skyscan_workers(self.manifests, scan_id, self.k8s_batch_api)
 
 
 # -----------------------------------------------------------------------------
