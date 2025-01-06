@@ -2,12 +2,10 @@
 
 import dataclasses as dc
 import enum
-from typing import Any, Iterator, Literal
+from typing import Any
 
 import wipac_dev_tools as wdt
 from typeguard import typechecked
-
-from .. import config
 
 StrDict = dict[str, Any]
 
@@ -113,90 +111,6 @@ class EventMetadata:
     is_real_event: bool  # as opposed to simulation
 
 
-@typechecked
-@dc.dataclass
-class HTCondorLocation:
-    """Stores location metadata for a HTCondor cluster."""
-
-    collector: str
-    schedd: str
-
-
-@typechecked
-@dc.dataclass
-class KubernetesLocation:
-    """Stores location metadata for a Kubernetes cluster."""
-
-    host: str
-    namespace: str
-
-
-@typechecked
-@dc.dataclass
-class InHouseClusterInfo:
-    """Stores information for a worker cluster."""
-
-    orchestrator: Literal["condor", "k8s"]
-    location: HTCondorLocation | KubernetesLocation
-    n_workers: int
-
-    uuid: str = ""  # "" is a non-started cluster -- universally unique
-    cluster_id: str = ""  # "" is a non-started cluster -- quasi-unique to location
-
-    starter_info: StrDict = dc.field(default_factory=dict)
-
-    statuses: dict[str, dict[str, int]] = dc.field(default_factory=dict)
-    top_task_errors: dict[str, int] = dc.field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        match self.orchestrator:
-            case "condor":
-                if not isinstance(self.location, HTCondorLocation):
-                    raise TypeError(
-                        "condor orchestrator must use condor sub-fields for 'location'"
-                    )
-            case "k8s":
-                if not isinstance(self.location, KubernetesLocation):
-                    raise TypeError(
-                        "k8s orchestrator must use k8s sub-fields for 'location'"
-                    )
-            case other:
-                raise ValueError(f"Unknown cluster orchestrator: {other}")
-
-    def to_known_cluster(self) -> tuple[str, StrDict]:
-        """Map to a config.KNOWN_CLUSTERS entry."""
-        return next(
-            (k, v)
-            for k, v in config.KNOWN_CLUSTERS.items()
-            if v["location"] == dc.asdict(self.location)
-        )
-
-
-@typechecked
-@dc.dataclass
-class EnvVars:
-    """Encapsulates env var object originating from K8s objects."""
-
-    scanner_server: list[StrDict]
-    tms_starters: list[list[StrDict]]
-
-    def __post_init__(self) -> None:
-        #
-        # obfuscate tokens & such (sensitive values)
-        #
-        def obfuscate(env_list: list[StrDict]) -> Iterator[StrDict]:
-            for env_entry in env_list:
-                if env_entry["value"]:
-                    safe_val = wdt.data_safety_tools.obfuscate_value_if_sensitive(
-                        env_entry["name"], env_entry["value"]
-                    )
-                    env_entry["value"] = safe_val
-                yield env_entry
-
-        self.scanner_server = list(obfuscate(self.scanner_server))
-        self.tms_starters = [list(obfuscate(s)) for s in self.tms_starters]
-
-
 def obfuscate_cl_args(args: str) -> str:
     # first, check if any sensitive strings (searches using substrings)
     if not wdt.data_safety_tools.is_name_sensitive(args):
@@ -217,24 +131,6 @@ def obfuscate_cl_args(args: str) -> str:
     return " ".join(out_args)
 
 
-@typechecked
-@dc.dataclass
-class InHouseStarterInfo:
-    """Encapsulates what info is/was used for starting the scanner, within SkyDriver."""
-
-    tms_args: list[str]
-    env_vars: EnvVars
-
-    clusters: list[InHouseClusterInfo] = dc.field(default_factory=list)
-
-    # signifies k8s workers and condor cluster(s) AKA workforce is done
-    complete: bool = False
-
-    def __post_init__(self) -> None:
-        self.tms_args = [obfuscate_cl_args(a) for a in self.tms_args]
-        # NOTE - self.env_vars done in EnvVars
-
-
 DEPRECATED_EVENT_I3LIVE_JSON_DICT = "use 'i3_event_id'"
 
 
@@ -246,8 +142,9 @@ class Manifest(ScanIDDataclass):
     timestamp: float
     is_deleted: bool
 
-    ewms_task: InHouseStarterInfo | str  # yes, this was a poor naming choice
-    # ^^^ str -> EWMS workflow id (i.e. this id points to info in the EWMS db)
+    ewms_task: dict | str
+    # ^^^ str  -> EWMS workflow id (i.e. this id points to info in the EWMS db)
+    # ^^^ dict -> *DEPRECATED* was used in skydriver 1.x to use local k8s starter/stopper
 
     # args placed in k8s job obj
     scanner_server_args: str
