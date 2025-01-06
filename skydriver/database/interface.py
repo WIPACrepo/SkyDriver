@@ -1,6 +1,5 @@
 """Database interface for persisted scan data."""
 
-import copy
 import dataclasses as dc
 import logging
 import time
@@ -110,47 +109,12 @@ class ManifestClient:
                 reason=msg,
             )
 
-    @staticmethod
-    def _put_ewms_task(
-        in_db: schema.Manifest,
-        upserting: dict,
-        cluster: schema.InHouseClusterInfo | None,
-        complete: bool | None,
-    ):
-        if not cluster and not complete:
-            raise ValueError("cluster and complete cannot both be falsy")
-
-        upserting["ewms_task"] = copy.deepcopy(in_db.ewms_task)
-        # cluster / clusters
-        # TODO - when TMS is up and running, it will handle cluster updating--remove then
-        # NOTE - there is a race condition inherent with list attributes, don't do this in TMS
-        if not cluster:
-            pass  # don't put in DB
-        else:
-            try:  # find by uuid -> replace
-                idx = next(
-                    i
-                    for i, c in enumerate(in_db.ewms_task.clusters)
-                    if cluster.uuid == c.uuid
-                )
-                upserting["ewms_task"].clusters = (
-                    in_db.ewms_task.clusters[:idx]
-                    + [cluster]
-                    + in_db.ewms_task.clusters[idx + 1 :]
-                )
-            except StopIteration:  # not found -> append
-                upserting["ewms_task"].clusters = in_db.ewms_task.clusters + [cluster]
-        # complete # workforce is done
-        if complete is not None:
-            upserting["ewms_task"].complete = complete  # workforce is done
-
     async def patch(
         self,
         scan_id: str,
         progress: schema.Progress | None = None,
         event_metadata: schema.EventMetadata | None = None,
         scan_metadata: schema.StrDict | None = None,
-        cluster: schema.InHouseClusterInfo | None = None,
         complete: bool | None = None,  # workforce is done
     ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
@@ -160,7 +124,6 @@ class ManifestClient:
             progress
             or event_metadata
             or scan_metadata
-            or cluster
             or complete is not None  # True/False is ok # workforce is done
         ):
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
@@ -169,6 +132,8 @@ class ManifestClient:
         upserting: schema.StrDict = {}
         if progress:
             upserting["progress"] = progress
+        if complete is not None:
+            upserting["complete"] = complete
 
         # Validate, then store
         # NOTE: in theory there's a race condition (get+upsert)
@@ -177,8 +142,6 @@ class ManifestClient:
             self._put_once_event_metadata(in_db, upserting, scan_id, event_metadata)
         if scan_metadata:
             self._put_once_scan_metadata(in_db, upserting, scan_id, scan_metadata)
-        if cluster or complete is not None:
-            self._put_ewms_task(in_db, upserting, cluster, complete)
 
         # Update db
         if not upserting:  # did we actually update anything?

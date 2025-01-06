@@ -4,7 +4,6 @@ instances."""
 import logging
 import uuid
 from pathlib import Path
-from typing import Any
 
 import kubernetes.client  # type: ignore[import-untyped]
 from rest_tools.client import ClientCredentialsAuth
@@ -12,12 +11,9 @@ from rest_tools.client import ClientCredentialsAuth
 from .utils import KubeAPITools
 from .. import images
 from ..config import (
-    CLUSTER_STOPPER_K8S_JOB_N_RETRIES,
-    CLUSTER_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
     DebugMode,
     ENV,
     K8S_CONTAINER_MEMORY_CLUSTER_STARTER_BYTES,
-    K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES,
 )
 from ..database import schema
 
@@ -436,87 +432,3 @@ class SkymapScannerK8sWrapper:
         )
 
         return env
-
-
-class SkymapScannerWorkerStopperK8sWrapper:
-    """Wraps K8s logic to stop workers of a Skymap Scanner instance."""
-
-    def __init__(
-        self,
-        k8s_batch_api: kubernetes.client.BatchV1Api,
-        scan_id: str,
-        clusters: list[schema.InHouseClusterInfo],
-    ):
-        self.k8s_batch_api = k8s_batch_api
-        self.scan_id = scan_id
-
-        # make a container per cluster
-        containers = []
-        for i, cluster in enumerate(clusters):
-            args = f"python -m clientmanager --uuid {cluster.uuid}"
-            match cluster.orchestrator:
-                case "condor":
-                    args += (
-                        f" condor "  # type: ignore[union-attr]
-                        f" --collector {cluster.location.collector} "
-                        f" --schedd {cluster.location.schedd} "
-                    )
-                case "k8s":
-                    args += (
-                        f" k8s "  # type: ignore[union-attr]
-                        f" --host {cluster.location.host} "
-                        f" --namespace {cluster.location.namespace} "
-                    )
-                case other:
-                    raise ValueError(f"Unknown cluster orchestrator: {other}")
-            args += f" stop --cluster-id {cluster.cluster_id} "
-
-            containers.append(
-                KubeAPITools.create_container(
-                    f"cluster-stopper-{i}-{scan_id}",
-                    ENV.THIS_IMAGE_WITH_TAG,
-                    cpu=0.125,
-                    env=get_cluster_auth_v1envvars(cluster),
-                    args=args.split(),
-                    memory=K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES,
-                )
-            )
-
-        if not containers:
-            self.worker_stopper_job_obj = None
-        else:
-            self.worker_stopper_job_obj = KubeAPITools.kube_create_job_object(
-                f"cluster-stopper-{scan_id}",
-                containers,
-                ENV.K8S_NAMESPACE,
-                CLUSTER_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
-                n_retries=CLUSTER_STOPPER_K8S_JOB_N_RETRIES,
-            )
-
-    def go(self) -> Any:
-        """Stop all workers of a Skymap Scanner instance."""
-
-        # NOTE - we don't want to stop the first k8s job because its containers will stop themselves.
-        #        plus, 'K8S_TTL_SECONDS_AFTER_FINISHED' will allow logs & pod status to be retrieved for some time
-        #
-        # stop first k8s job (server & cluster starters) -- may not be instantaneous
-        # LOGGER.info(
-        #     f"requesting removal of Skymap Scanner Job (server & cluster starters) -- {self.scan_id=}..."
-        # )
-        # resp = self.k8s_batch_api.delete_namespaced_job(
-        #     name=SkymapScannerK8sWrapper.get_job_name(self.scan_id),
-        #     namespace=ENV.K8S_NAMESPACE,
-        #     body=kubernetes.client.V1DeleteOptions(
-        #         propagation_policy="Foreground", grace_period_seconds=5
-        #     ),
-        # )
-        # LOGGER.info(
-        #     f"removed Skymap Scanner Job {self.scan_id=} -- with response {resp.status} "
-        # )
-
-        # stop workers
-        if self.worker_stopper_job_obj:
-            LOGGER.info(f"starting k8s CLUSTER-STOPPER job for {self.scan_id=}")
-            KubeAPITools.start_job(self.k8s_batch_api, self.worker_stopper_job_obj)
-        else:
-            LOGGER.info(f"no workers to stop for {self.scan_id=}")

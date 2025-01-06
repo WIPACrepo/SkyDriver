@@ -171,6 +171,8 @@ class Manifest(ScanIDDataclass):
 
     last_updated: float = 0.0
 
+    complete: bool = False
+
     def __post_init__(self) -> None:
         if (
             not self.i3_event_id
@@ -181,6 +183,10 @@ class Manifest(ScanIDDataclass):
                 "(old manifests may define 'event_i3live_json_dict' instead)"
             )
         self.scanner_server_args = obfuscate_cl_args(self.scanner_server_args)
+
+        # Backward compatibility: 1.x had 'complete' in a nested field
+        if isinstance(self.ewms_task, dict):
+            self.complete = self.ewms_task.get("complete", False)
 
     def get_state(self) -> ScanState:
         """Determine the state of the scan by parsing attributes."""

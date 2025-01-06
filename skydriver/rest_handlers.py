@@ -38,6 +38,7 @@ from .config import (
     is_testing,
 )
 from .database import schema
+from .ewms import request_stop_on_ewms
 from .k8s.scan_backlog import designate_for_startup
 from .k8s.scanner_instance import SkymapScannerK8sWrapper
 
@@ -676,26 +677,20 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 async def stop_scanner_instance(
     manifests: database.interface.ManifestClient,
     scan_id: str,
-    k8s_batch_api: kubernetes.client.BatchV1Api,
+    ewms_rc: RestClient,
 ) -> database.schema.Manifest:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     manifest = await manifests.get(scan_id, True)
-    if manifest.ewms_task.complete:  # workforce is done
+    if manifest.complete:  # workforce is done
         return manifest
 
-    stopper_wrapper = k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper(
-        k8s_batch_api,
-        scan_id,
-        manifest.ewms_task.clusters,
-    )
-
-    try:
-        stopper_wrapper.go()
-    except kubernetes.client.exceptions.ApiException as e:
-        LOGGER.exception(e)
+    # request to ewms
+    if manifest.ewms_task and isinstance(manifest.ewms_task, str):
+        await request_stop_on_ewms(ewms_rc, manifest.ewms_task)
+    else:
         raise web.HTTPError(
             400,
-            log_message="Failed to stop Scanner instance",
+            log_message="Could not stop scanner workers since this is a non-EWMS scan.",
         )
 
     return await manifests.patch(scan_id, complete=True)  # workforce is done
@@ -774,7 +769,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # mark as deleted -> also stops backlog from starting
         manifest = await self.manifests.mark_as_deleted(scan_id)
         # abort
-        await stop_scanner_instance(self.manifests, scan_id, self.k8s_batch_api)
+        await stop_scanner_instance(self.manifests, scan_id, self.ewms_rc)
 
         try:
             result_dict = dc.asdict(await self.results.get(scan_id))
@@ -902,13 +897,6 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=dict,
             default={},
         )
-        arghand.add_argument(
-            "cluster",
-            type=lambda x: from_dict_wrapper_or_none(
-                database.schema.InHouseClusterInfo, x
-            ),
-            default=None,
-        )
         args = arghand.parse_args()
 
         manifest = await self.manifests.patch(
@@ -916,42 +904,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             args.progress,
             args.event_metadata,
             args.scan_metadata,
-            args.cluster,
         )
-
-        # NOTE - the following will be moved to TMS, then improved
-        # check cluster statuses & stop scan if workers are all failing
-        for db_cluster in manifest.ewms_task.clusters:
-            # Job-Status -> "Held:*"  &  Pilot-Status -> ANY
-            # -- sum the total counts of all job-statuses prefixed with "Held:"
-            n_held = sum(
-                sum(  # pilot-status counts
-                    cts for cts in db_cluster.statuses[job_status].values()
-                )
-                for job_status in db_cluster.statuses.keys()
-                if job_status.startswith("Held:")
-            )
-
-            # Job-Status -> ANY  &  Pilot-Status -> "FatalError"
-            n_fatal_error = sum(
-                db_cluster.statuses[job_status].get("FatalError", 0)  # int
-                for job_status in db_cluster.statuses.keys()
-            )
-
-            # overlap
-            n_held_and_fatal_error = sum(
-                db_cluster.statuses[job_status].get("FatalError", 0)  # int
-                for job_status in db_cluster.statuses.keys()
-                if job_status.startswith("Held:")
-            )
-
-            if n_held + n_fatal_error - n_held_and_fatal_error >= db_cluster.n_workers:
-                manifest = await stop_scanner_instance(
-                    self.manifests,
-                    scan_id,
-                    self.k8s_batch_api,
-                )
-                break
 
         self.write(dc.asdict(manifest))  # don't use a projection
 
