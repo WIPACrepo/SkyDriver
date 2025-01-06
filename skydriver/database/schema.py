@@ -171,7 +171,7 @@ class Manifest(ScanIDDataclass):
 
     last_updated: float = 0.0
 
-    complete: bool = False
+    ewms_finished: bool = False  # a cache so we don't have to call to ewms each time
 
     def __post_init__(self) -> None:
         if (
@@ -186,7 +186,7 @@ class Manifest(ScanIDDataclass):
 
         # Backward compatibility: 1.x had 'complete' in a nested field
         if isinstance(self.ewms_task, dict):
-            self.complete = self.ewms_task.get("complete", False)
+            self.ewms_finished = self.ewms_task.get("complete", False)
 
     def get_state(self) -> ScanState:
         """Determine the state of the scan by parsing attributes."""

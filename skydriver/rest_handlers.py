@@ -681,7 +681,7 @@ async def stop_skyscan_workers(
 ) -> database.schema.Manifest:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     manifest = await manifests.get(scan_id, True)
-    if manifest.complete:  # workforce is done
+    if manifest.ewms_finished:  # workforce is done
         return manifest
 
     # request to ewms
@@ -693,7 +693,7 @@ async def stop_skyscan_workers(
             log_message="Could not stop scanner workers since this is a non-EWMS scan.",
         )
 
-    return await manifests.patch(scan_id, complete=True)  # workforce is done
+    return await manifests.patch(scan_id, ewms_finished=True)  # workforce is done
 
 
 # -----------------------------------------------------------------------------
