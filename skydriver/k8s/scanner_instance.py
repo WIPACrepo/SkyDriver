@@ -66,6 +66,8 @@ class SkymapScannerK8sWrapper:
         nsides: dict[int, int],
         is_real_event: bool,
         predictive_scanning_threshold: float,
+        # s3 uploader
+        s3_obj_url: str,
         # universal
         debug_mode: list[DebugMode],
         # env
@@ -108,7 +110,7 @@ class SkymapScannerK8sWrapper:
             f"s3-uploader-{scan_id}",
             images.get_skyscan_docker_image(docker_tag),
             [],
-            "".split(),
+            "python s3_uploader.py".split(),  # TODO: write an impromptu script and put in job
             cpu=0.25,
             volumes={common_space_volume_path.name: common_space_volume_path},
             memory=humanfriendly.parse_size("0.25 G"),

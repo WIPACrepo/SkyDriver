@@ -8,7 +8,6 @@ from . import database, images
 async def request_workflow_on_ewms(
     ewms_rc: RestClient,
     manifest: database.schema.Manifest,
-    s3_obj_url: str,
     scan_request_obj: dict,
 ) -> str:
     """Request a workflow in EWMS."""
@@ -37,7 +36,7 @@ async def request_workflow_on_ewms(
                     "bash -c "
                     '"'  # quote for bash -c "..."
                     "curl --fail-with-body --max-time 60 -o {{DATA_HUB}}/startup.json "
-                    f"'{s3_obj_url}'"  # single-quote the url
+                    f"'{manifest.s3_obj_url}'"  # single-quote the url
                     '"'  # unquote for bash -c "..."
                 ),
                 "n_workers": scan_request_obj["request_clusters"][0][1],
