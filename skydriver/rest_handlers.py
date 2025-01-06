@@ -558,21 +558,6 @@ async def _start_scan(
         nsides=scan_request_obj["nsides"],
         is_real_event=scan_request_obj["real_or_simulated_event"] in REAL_CHOICES,
         predictive_scanning_threshold=scan_request_obj["predictive_scanning_threshold"],
-        # cluster starter
-        starter_exc=str(  # TODO - remove once tested in prod
-            scan_request_obj["classifiers"].get(
-                "__unstable_starter_exc", "clientmanager"
-            )
-        ),
-        request_clusters=[
-            _cluster_lookup(name, n_workers)  # values were pre-validated on user input
-            for name, n_workers in scan_request_obj["request_clusters"]
-        ],
-        worker_memory_bytes=scan_request_obj["worker_memory_bytes"],
-        worker_disk_bytes=scan_request_obj["worker_disk_bytes"],
-        max_pixel_reco_time=scan_request_obj["max_pixel_reco_time"],
-        max_worker_runtime=scan_request_obj["max_worker_runtime"],
-        priority=scan_request_obj["priority"],
         # universal
         debug_mode=_debug_mode(scan_request_obj["debug_mode"]),
         # env
@@ -591,11 +576,7 @@ async def _start_scan(
         is_deleted=False,
         i3_event_id=scan_request_obj["i3_event_id"],
         scanner_server_args=scanner_wrapper.scanner_server_args,
-        # TODO: switch over to ewms design
-        ewms_task=schema.InHouseStarterInfo(
-            tms_args=scanner_wrapper.cluster_starter_args_list,
-            env_vars=from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
-        ),
+        ewms_task="",  # set once the workflow request has been sent to EWMS (see backlogger)
         classifiers=scan_request_obj["classifiers"],
         priority=scan_request_obj["priority"],
     )

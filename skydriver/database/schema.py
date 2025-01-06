@@ -142,8 +142,8 @@ class Manifest(ScanIDDataclass):
     timestamp: float
     is_deleted: bool
 
-    ewms_task: dict | str
-    # ^^^ str  -> EWMS workflow id (i.e. this id points to info in the EWMS db)
+    ewms_task: dict | str  # `""` -> workflow request has not (yet) been sent to EWMS
+    # ^^^ str  -> EWMS workflow id (i.e. this id points to info in EWMS)
     # ^^^ dict -> *DEPRECATED* was used in skydriver 1.x to use local k8s starter/stopper
 
     # args placed in k8s job obj
