@@ -592,7 +592,6 @@ async def _start_scan(
         priority=scan_request_obj["priority"],
     )
     await manifests.put(manifest)
-
     await skyscan_k8s_job_coll.insert_one(
         {
             "scan_id": scan_id,
@@ -600,6 +599,7 @@ async def _start_scan(
         }
     )
 
+    # place on backlog
     await designate_for_startup(
         scan_id,
         scan_backlog,
