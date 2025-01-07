@@ -50,8 +50,10 @@ class EnvConfig:
 
     # s3
     S3_URL: str
-    S3_ACCESS_KEY_ID: str
-    S3_SECRET_KEY: str
+    S3_ACCESS_KEY_ID: str  # the actual value
+    S3_ACCESS_KEY_ID__K8S_SECRET_KEY: str  # the key used in the k8s secrets.yml
+    S3_SECRET_KEY: str  # the actual value
+    S3_SECRET_KEY__K8S_SECRET_KEY: str  # the key used in the k8s secrets.yml
     S3_BUCKET: str
 
     # misc
