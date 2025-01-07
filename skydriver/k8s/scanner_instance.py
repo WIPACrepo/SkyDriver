@@ -58,7 +58,7 @@ class SkyScanK8sJobFactory:
             is_real_event=is_real_event,
             predictive_scanning_threshold=predictive_scanning_threshold,
         )
-        scanner_server_envvars = SkyScanK8sJobFactory.make_skyscan_server_v1envvars(
+        scanner_server_envvars = SkyScanK8sJobFactory.make_skyscan_server_envvars(
             rest_address=rest_address,
             scan_id=scan_id,
             skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
@@ -84,12 +84,25 @@ class SkyScanK8sJobFactory:
         s3_obj_url: str,
         scanner_server_memory_bytes: int,
         scanner_server_args: str,
-        scanner_server_envvars: list[tuple[str, str]],
+        scanner_server_envvars: sdict,
     ) -> sdict:
         """Create the K8s job manifest.
 
         NOTE: Let's keep definitions as straightforward as possible.
         """
+
+        # first, convert obj-based attrs to yaml-syntax
+        # -> inline, compact formatting, no indenting needed
+        scanner_env_yaml = yaml.safe_dump(
+            [{"name": k, "value": v} for k, v in scanner_server_envvars.items()],
+            default_flow_style=True,
+        )
+        scanner_args_yaml = yaml.safe_dump(
+            scanner_server_args.split(),
+            default_flow_style=True,
+        )
+
+        # now, assemble
         job_yaml = textwrap.dedent(  # fixes """-indentation
             f"""
             apiVersion: batch/v1
@@ -116,8 +129,8 @@ class SkyScanK8sJobFactory:
                     - name: skyscan-server-{scan_id}
                       image: {images.get_skyscan_docker_image(docker_tag)}
                       command: []
-                      args: {scanner_server_args.split()}
-                      env:
+                      args: {scanner_args_yaml}
+                      env: {scanner_env_yaml}
                       resources:
                         limits:
                           memory: "{scanner_server_memory_bytes}"
@@ -198,24 +211,17 @@ class SkyScanK8sJobFactory:
         return token
 
     @staticmethod
-    def make_skyscan_server_v1envvars(
+    def make_skyscan_server_envvars(
         rest_address: str,
         scan_id: str,
         skyscan_mq_client_timeout_wait_for_first_message: int | None,
         scanner_server_env_from_user: dict,
-    ) -> list[tuple[str, str]]:
-        """Get the environment variables provided to the skyscan server.
-
-        Also, get the secrets' keys & their values.
-        """
+    ) -> sdict:
+        """Get the environment variables provided to the skyscan server."""
         LOGGER.debug(f"making scanner server env vars for {scan_id=}")
-        env = []
+        env = {}
 
-        # 1. start w/ secrets
-        # NOTE: the values come from an existing secret in the current namespace
-        # *none*
-
-        # 2. add required env vars
+        # 1. add required env vars
         required = {
             # broker/mq vars
             "SKYSCAN_BROKER_ADDRESS": ENV.SKYSCAN_BROKER_ADDRESS,
@@ -223,9 +229,9 @@ class SkyScanK8sJobFactory:
             "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
             "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
         }
-        env.extend([(k, str(v)) for k, v in required.items()])
+        env.update(required)
 
-        # 3. add extra env vars, then filter out if 'None'
+        # 2. add extra env vars, then filter out if 'None'
         prefiltered = {
             "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
             "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
@@ -241,9 +247,9 @@ class SkyScanK8sJobFactory:
             #
             "SKYSCAN_MQ_CLIENT_TIMEOUT_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
         }
-        env.extend([(k, str(v)) for k, v in prefiltered.items() if v is not None])
+        env.update({k: str(v) for k, v in prefiltered.items() if v is not None})
 
-        # 4. generate & add auth tokens
+        # 3. generate & add auth tokens
         tokens = {
             "SKYSCAN_BROKER_AUTH": SkyScanK8sJobFactory._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
@@ -256,9 +262,9 @@ class SkyScanK8sJobFactory:
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
             ),
         }
-        env.extend([(k, str(v)) for k, v in tokens.items()])
+        env.update(tokens)
 
-        # 5. Add user's env
-        env.extend([(k, str(v)) for k, v in scanner_server_env_from_user.items()])
+        # 4. Add user's env
+        env.update(scanner_server_env_from_user)
 
         return env
