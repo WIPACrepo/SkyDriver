@@ -5,7 +5,6 @@ import logging
 import pickle
 import time
 
-import bson
 import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from rest_tools.client import RestClient
@@ -20,7 +19,6 @@ LOGGER = logging.getLogger(__name__)
 
 async def designate_for_startup(
     scan_id: str,
-    job_obj: kubernetes.client.V1Job,
     scan_backlog: database.interface.ScanBacklogClient,
     priority: int,
 ) -> None:
@@ -30,7 +28,6 @@ async def designate_for_startup(
         entry = database.schema.ScanBacklogEntry(
             scan_id=scan_id,
             timestamp=time.time(),
-            pickled_k8s_job=bson.Binary(pickle.dumps(job_obj)),
             priority=priority,
         )
         await scan_backlog.insert(entry)

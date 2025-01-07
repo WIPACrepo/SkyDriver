@@ -40,7 +40,7 @@ from .config import (
 from .database import schema
 from .ewms import request_stop_on_ewms
 from .k8s.scan_backlog import designate_for_startup
-from .k8s.scanner_instance import SkymapScannerK8sWrapper
+from .k8s.scanner_instance import SkyScanK8sJobFactory
 
 LOGGER = logging.getLogger(__name__)
 
@@ -142,6 +142,12 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
             AsyncIOMotorCollection(  # in contrast, this one is accessed directly
                 mongo_client[database.interface._DB_NAME],  # type: ignore[index]
                 database.utils._I3_EVENT_COLL_NAME,
+            )
+        )
+        self.skyscan_k8s_job_coll = (
+            AsyncIOMotorCollection(  # in contrast, this one is accessed directly
+                mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+                database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
             )
         )
         self.k8s_batch_api = k8s_batch_api
@@ -533,6 +539,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
+            self.skyscan_k8s_job_coll,
             scan_request_obj,
         )
         self.write(
@@ -543,6 +550,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 async def _start_scan(
     manifests: database.interface.ManifestClient,
     scan_backlog: database.interface.ScanBacklogClient,
+    skyscan_k8s_job_coll: AsyncIOMotorCollection,
     scan_request_obj: dict,
     new_scan_id: str = "",  # don't use scan_request_obj.scan_id--this could be a rescan
 ) -> schema.Manifest:
@@ -550,7 +558,7 @@ async def _start_scan(
     s3_obj_url = s3.generate_s3_url(scan_id)
 
     # get the container info ready
-    scanner_wrapper = SkymapScannerK8sWrapper(
+    skyscan_k8s_job_dict, scanner_server_args = SkyScanK8sJobFactory.make(
         docker_tag=scan_request_obj["docker_tag"],
         scan_id=scan_id,
         # server
@@ -578,16 +586,22 @@ async def _start_scan(
         timestamp=time.time(),
         is_deleted=False,
         i3_event_id=scan_request_obj["i3_event_id"],
-        scanner_server_args=scanner_wrapper.scanner_server_args,
+        scanner_server_args=scanner_server_args,
         ewms_task="",  # set once the workflow request has been sent to EWMS (see backlogger)
         classifiers=scan_request_obj["classifiers"],
         priority=scan_request_obj["priority"],
     )
     await manifests.put(manifest)
 
+    await skyscan_k8s_job_coll.insert_one(
+        {
+            "scan_id": scan_id,
+            "k8_job": skyscan_k8s_job_dict,
+        }
+    )
+
     await designate_for_startup(
         scan_id,
-        scanner_wrapper.job_obj,
         scan_backlog,
         scan_request_obj["priority"],
     )
@@ -647,6 +661,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
+            self.skyscan_k8s_job_coll,
             scan_request_obj,
             new_scan_id=new_scan_id,
         )
@@ -1027,7 +1042,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             try:
                 pods_411["pod_status"] = k8s.utils.KubeAPITools.get_pod_status(
                     self.k8s_batch_api,
-                    SkymapScannerK8sWrapper.get_job_name(scan_id),
+                    SkyScanK8sJobFactory.get_job_name(scan_id),
                     ENV.K8S_NAMESPACE,
                 )
                 pods_411["pod_message"] = "retrieved"
@@ -1071,7 +1086,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         try:
             pod_container_logs = k8s.utils.KubeAPITools.get_container_logs(
                 self.k8s_batch_api,
-                SkymapScannerK8sWrapper.get_job_name(scan_id),
+                SkyScanK8sJobFactory.get_job_name(scan_id),
                 ENV.K8S_NAMESPACE,
             )
             pod_container_logs_message = "retrieved"

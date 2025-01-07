@@ -2,30 +2,23 @@
 instances."""
 
 import logging
+import textwrap
 from pathlib import Path
+from typing import Any
 
-import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
+import yaml
 from rest_tools.client import ClientCredentialsAuth
 
-from .utils import KubeAPITools
 from .. import images
 from ..config import (
     DebugMode,
     ENV,
 )
-from ..database import schema
 
 LOGGER = logging.getLogger(__name__)
 
-
-def get_cluster_auth_v1envvars(
-    cluster: schema.InHouseClusterInfo,
-) -> list[kubernetes.client.V1EnvVar]:
-    """Get the `V1EnvVar`s for workers' auth."""
-    LOGGER.debug(f"getting auth secret env vars for {cluster=}")
-    _, info = cluster.to_known_cluster()
-    return info["v1envvars"]  # type: ignore[no-any-return]
+sdict = dict[str, Any]
 
 
 def get_cluster_starter_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
@@ -52,11 +45,13 @@ def get_cluster_starter_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
     ]
 
 
-class SkymapScannerK8sWrapper:
-    """Wraps a Skymap Scanner Kubernetes job with tools to start and manage."""
+class SkyScanK8sJobFactory:
+    """Makes Skymap Scanner Kubernetes jobs, plus misc tools."""
 
-    def __init__(
-        self,
+    COMMON_SPACE_VOLUME_PATH = Path("/common-space")
+
+    @staticmethod
+    def make(
         #
         docker_tag: str,
         scan_id: str,
@@ -74,56 +69,116 @@ class SkymapScannerK8sWrapper:
         rest_address: str,
         skyscan_mq_client_timeout_wait_for_first_message: int | None,
         scanner_server_env_from_user: dict,
-    ):
+    ) -> tuple[sdict, str]:
+        """Make the K8s job dict.
+
+        Also, returns the server's args (so the user can see this later).
+        """
         LOGGER.info(f"making k8s job for {scan_id=}")
-        self.scan_id = scan_id
-        self.env_dict = {}
 
-        common_space_volume_path = Path("/common-space")
-
-        # CONTAINER: SkyScan Server
-        self.scanner_server_args = self.get_scanner_server_args(
-            common_space_volume_path=common_space_volume_path,
+        # pre-create some job components
+        scanner_server_args = SkyScanK8sJobFactory.get_scanner_server_args(
             reco_algo=reco_algo,
             nsides=nsides,
             is_real_event=is_real_event,
             predictive_scanning_threshold=predictive_scanning_threshold,
         )
-        scanner_server = KubeAPITools.create_container(
-            f"skyscan-server-{scan_id}",
-            images.get_skyscan_docker_image(docker_tag),
-            self.make_skyscan_server_v1envvars(
-                rest_address=rest_address,
-                scan_id=scan_id,
-                skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
-                scanner_server_env_from_user=scanner_server_env_from_user,
-            ),
-            self.scanner_server_args.split(),
-            cpu=1,
-            volumes={common_space_volume_path.name: common_space_volume_path},
-            memory=scanner_server_memory_bytes,
-        )
-        self.env_dict["scanner_server"] = [e.to_dict() for e in scanner_server.env]
-
-        # s3 uploader
-        s3_uploader = KubeAPITools.create_container(
-            f"s3-uploader-{scan_id}",
-            images.get_skyscan_docker_image(docker_tag),
-            [],
-            "python s3_uploader.py".split(),  # TODO: write an impromptu script and put in job
-            cpu=0.25,
-            volumes={common_space_volume_path.name: common_space_volume_path},
-            memory=humanfriendly.parse_size("0.25 G"),
+        scanner_server_envvars = SkyScanK8sJobFactory.make_skyscan_server_v1envvars(
+            rest_address=rest_address,
+            scan_id=scan_id,
+            skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
+            scanner_server_env_from_user=scanner_server_env_from_user,
         )
 
-        # job
-        self.job_obj = KubeAPITools.kube_create_job_object(
-            self.get_job_name(scan_id),
-            [scanner_server, s3_uploader],
-            ENV.K8S_NAMESPACE,
-            ENV.K8S_TTL_SECONDS_AFTER_FINISHED,
-            volumes=[common_space_volume_path.name],
+        # assemble the job
+        job_dict = SkyScanK8sJobFactory._make_job(
+            scan_id,
+            docker_tag,
+            s3_obj_url,
+            scanner_server_memory_bytes,
+            scanner_server_args,
+            scanner_server_envvars,
         )
+
+        return job_dict, scanner_server_args
+
+    @staticmethod
+    def _make_job(
+        scan_id: str,
+        docker_tag: str,
+        s3_obj_url: str,
+        scanner_server_memory_bytes: int,
+        scanner_server_args: str,
+        scanner_server_envvars: list[kubernetes.client.V1EnvVar],
+    ) -> sdict:
+        """Create the K8s job manifest.
+
+        NOTE: Let's keep definitions as straightforward as possible.
+        """
+        job_yaml = textwrap.dedent(  # fixes """-indentation
+            f"""
+            apiVersion: batch/v1
+            kind: Job
+            metadata:
+              namespace: {ENV.K8S_NAMESPACE}
+              name: {SkyScanK8sJobFactory.get_job_name(scan_id)}
+              labels:
+                app.kubernetes.io/instance: {ENV.K8S_APPLICATION_NAME}
+              annotations:
+                argocd.argoproj.io/sync-options: "Prune=false"
+            spec:
+              ttlSecondsAfterFinished: {ENV.K8S_TTL_SECONDS_AFTER_FINISHED}
+              backoffLimit: 0
+              activeDeadlineSeconds: {ENV.K8S_ACTIVE_DEADLINE_SECONDS}
+              template:
+                metadata:
+                  labels:
+                    app: scanner-instance
+                spec:
+                  serviceAccountName: {ENV.K8S_SKYSCAN_JOBS_SERVICE_ACCOUNT}
+                  restartPolicy: Never
+                  containers:
+                    - name: skyscan-server-{scan_id}
+                      image: {images.get_skyscan_docker_image(docker_tag)}
+                      command: []
+                      args: {scanner_server_args.split()}
+                      env:
+                      resources:
+                        limits:
+                          memory: "{scanner_server_memory_bytes}"
+                          cpu: "1"
+                        requests:
+                          memory: "{scanner_server_memory_bytes}"
+                          cpu: "1"
+                          ephemeral-storage: "1M"
+                      volumeMounts:
+                        - name: common-space-volume
+                          mountPath: "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH}"
+                    - name: s3-uploader-{scan_id}
+                      restartPolicy: OnFailure
+                      image: {images.get_skyscan_docker_image(docker_tag)}
+                      command: []
+                      args: ["echo", "{s3_obj_url}"]
+                      resources:
+                        limits:
+                          memory: "256Mi"
+                          cpu: "0.25"
+                        requests:
+                          memory: "256Mi"
+                          cpu: "0.25"
+                          ephemeral-storage: "1M"
+                      volumeMounts:
+                        - name: common-space-volume
+                          mountPath: "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH}"
+                  volumes:
+                    - name: common-space-volume
+                      emptyDir: {{}}
+            """
+        )
+
+        # Parse the YAML string into a Python dictionary
+        job_dict = yaml.safe_load(job_yaml)
+        return job_dict
 
     @staticmethod
     def get_job_name(scan_id: str) -> str:
@@ -132,7 +187,6 @@ class SkymapScannerK8sWrapper:
 
     @staticmethod
     def get_scanner_server_args(
-        common_space_volume_path: Path,
         reco_algo: str,
         nsides: dict[int, int],
         is_real_event: bool,
@@ -142,9 +196,9 @@ class SkymapScannerK8sWrapper:
         args = (
             f"python -m skymap_scanner.server "
             f" --reco-algo {reco_algo}"
-            f" --cache-dir {common_space_volume_path} "
+            f" --cache-dir {SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH} "
             # f" --output-dir {common_space_volume_path} "  # output is sent to skydriver
-            f" --client-startup-json {common_space_volume_path/'startup.json'} "
+            f" --client-startup-json {SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH/'startup.json'} "
             f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "  # k1:v1 k2:v2
             f" {'--real-event' if is_real_event else '--simulated-event'} "
             f" --predictive-scanning-threshold {predictive_scanning_threshold} "
@@ -227,12 +281,12 @@ class SkymapScannerK8sWrapper:
 
         # 4. generate & add auth tokens
         tokens = {
-            "SKYSCAN_BROKER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
+            "SKYSCAN_BROKER_AUTH": SkyScanK8sJobFactory._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_BROKER,
                 ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
             ),
-            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
+            "SKYSCAN_SKYDRIVER_AUTH": SkyScanK8sJobFactory._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,

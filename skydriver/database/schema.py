@@ -42,7 +42,7 @@ class ScanBacklogEntry(ScanIDDataclass):
     """An entry for the scan backlog used for rate-limiting."""
 
     timestamp: float
-    pickled_k8s_job: bytes
+    pickled_k8s_job: bytes | None = None  # **DEPRECATED** replaced SkyScanK8sJob in db
     priority: int = 0
     pending_timestamp: float = 0.0
     next_attempt: int = 0
@@ -144,7 +144,7 @@ class Manifest(ScanIDDataclass):
 
     ewms_task: dict | str  # `""` -> workflow request has not (yet) been sent to EWMS
     # ^^^ str  -> EWMS workflow id (i.e. this id points to info in EWMS)
-    # ^^^ dict -> *DEPRECATED* was used in skydriver 1.x to use local k8s starter/stopper
+    # ^^^ dict -> **DEPRECATED** was used in skydriver 1.x to use local k8s starter/stopper
 
     # attrs placed in k8s job obj
     scanner_server_args: str
