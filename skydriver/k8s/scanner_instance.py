@@ -6,7 +6,6 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
-import kubernetes.client  # type: ignore[import-untyped]
 import yaml
 from rest_tools.client import ClientCredentialsAuth
 
@@ -19,30 +18,6 @@ from ..config import (
 LOGGER = logging.getLogger(__name__)
 
 sdict = dict[str, Any]
-
-
-def get_cluster_starter_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
-    """Get the `V1EnvVar`s for TMS's S3 auth."""
-    return [
-        kubernetes.client.V1EnvVar(
-            name="EWMS_TMS_S3_ACCESS_KEY_ID",
-            value_from=kubernetes.client.V1EnvVarSource(
-                secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                    name=ENV.K8S_SECRET_NAME,
-                    key="ewms_tms_s3_access_key_id",
-                )
-            ),
-        ),
-        kubernetes.client.V1EnvVar(
-            name="EWMS_TMS_S3_SECRET_KEY",
-            value_from=kubernetes.client.V1EnvVarSource(
-                secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                    name=ENV.K8S_SECRET_NAME,
-                    key="ewms_tms_s3_secret_key",
-                )
-            ),
-        ),
-    ]
 
 
 class SkyScanK8sJobFactory:
@@ -109,7 +84,7 @@ class SkyScanK8sJobFactory:
         s3_obj_url: str,
         scanner_server_memory_bytes: int,
         scanner_server_args: str,
-        scanner_server_envvars: list[kubernetes.client.V1EnvVar],
+        scanner_server_envvars: list[tuple[str, str]],
     ) -> sdict:
         """Create the K8s job manifest.
 
@@ -228,7 +203,7 @@ class SkyScanK8sJobFactory:
         scan_id: str,
         skyscan_mq_client_timeout_wait_for_first_message: int | None,
         scanner_server_env_from_user: dict,
-    ) -> list[kubernetes.client.V1EnvVar]:
+    ) -> list[tuple[str, str]]:
         """Get the environment variables provided to the skyscan server.
 
         Also, get the secrets' keys & their values.
@@ -248,12 +223,7 @@ class SkyScanK8sJobFactory:
             "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
             "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
         }
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(name=k, value=str(v))
-                for k, v in required.items()
-            ]
-        )
+        env.extend([(k, str(v)) for k, v in required.items()])
 
         # 3. add extra env vars, then filter out if 'None'
         prefiltered = {
@@ -271,13 +241,7 @@ class SkyScanK8sJobFactory:
             #
             "SKYSCAN_MQ_CLIENT_TIMEOUT_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
         }
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(name=k, value=str(v))
-                for k, v in prefiltered.items()
-                if v is not None
-            ]
-        )
+        env.extend([(k, str(v)) for k, v in prefiltered.items() if v is not None])
 
         # 4. generate & add auth tokens
         tokens = {
@@ -292,19 +256,9 @@ class SkyScanK8sJobFactory:
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
             ),
         }
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(name=k, value=str(v))
-                for k, v in tokens.items()
-            ]
-        )
+        env.extend([(k, str(v)) for k, v in tokens.items()])
 
         # 5. Add user's env
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(name=k, value=str(v))
-                for k, v in scanner_server_env_from_user.items()
-            ]
-        )
+        env.extend([(k, str(v)) for k, v in scanner_server_env_from_user.items()])
 
         return env
