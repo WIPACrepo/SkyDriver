@@ -2,10 +2,9 @@
 
 import asyncio
 import logging
-import pickle
 import time
 
-import kubernetes.client  # type: ignore[import-untyped]
+import kubernetes.client.V1Job  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from rest_tools.client import RestClient
 from tornado import web
@@ -39,12 +38,13 @@ async def designate_for_startup(
         )
 
 
-async def get_next_backlog_entry(
+async def get_next(
     scan_backlog: database.interface.ScanBacklogClient,
     manifests: database.interface.ManifestClient,
     scan_request_client: AsyncIOMotorCollection,
+    skyscan_k8s_job_client: AsyncIOMotorClient,
     include_low_priority_scans: bool,
-) -> tuple[database.schema.ScanBacklogEntry, database.schema.Manifest, dict]:
+) -> tuple[database.schema.ScanBacklogEntry, database.schema.Manifest, dict, dict]:
     """Get the next entry & remove any that have been cancelled."""
     while True:
         # get next up -- raises DocumentNotFoundException if none
@@ -70,8 +70,12 @@ async def get_next_backlog_entry(
             {"scan_id": manifest.scan_id}
         )
 
+        # grab the k8s
+        doc = await skyscan_k8s_job_client.find_one({"scan_id": manifest.scan_id})
+        skyscan_k8s_job = doc["skyscan_k8s_job_dict"]
+
         # all good!
-        return entry, manifest, scan_request_obj  # ready to start job
+        return entry, manifest, scan_request_obj, skyscan_k8s_job
 
 
 async def run(
@@ -166,6 +170,12 @@ async def _run(
             database.utils._SCAN_REQUEST_COLL_NAME,
         )
     )
+    skyscan_k8s_job_client = (
+        AsyncIOMotorCollection(  # in contrast, this one is accessed directly
+            mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+            database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
+        )
+    )
 
     last_log_heartbeat = 0.0  # log every so often, not on every iteration
     long_interval_timer = IntervalTimer(ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
@@ -176,10 +186,11 @@ async def _run(
 
         # get next entry
         try:
-            entry, manifest, scan_request_obj = await get_next_backlog_entry(
+            entry, manifest, scan_request_obj, skyscan_k8s_job = await get_next(
                 backlog_client,
                 manifest_client,
                 scan_request_client,
+                skyscan_k8s_job_client,
                 # include low priority scans only when enough time has passed
                 include_low_priority_scans=long_interval_timer.has_interval_elapsed(),
             )
@@ -187,32 +198,21 @@ async def _run(
             long_interval_timer.fastforward()
             continue  # empty queue-
 
-        # request a workflow on EWMS?
-        if not isinstance(manifest.ewms_task, database.schema.InHouseStarterInfo):
-            try:
-                workflow_id = await ewms.request_workflow_on_ewms(
-                    ewms_rc,
-                    manifest,
-                    scan_request_obj,
-                )
-            except Exception as e:
-                LOGGER.exception(e)
-                long_interval_timer.fastforward()  # nothing was started, so don't wait long
-                continue
-            await manifest_client.collection.find_one_and_update(
-                {"scan_id": manifest.scan_id},
-                {"$set": {"ewms_task": workflow_id}},
-            )
-
-        # TODO: Start K8s Job
-
-        # get k8s job object
+        # request a workflow on EWMS
         try:
-            job_obj = pickle.loads(entry.pickled_k8s_job)
+            workflow_id = await ewms.request_workflow_on_ewms(
+                ewms_rc,
+                manifest,
+                scan_request_obj,
+            )
         except Exception as e:
             LOGGER.exception(e)
             long_interval_timer.fastforward()  # nothing was started, so don't wait long
             continue
+        await manifest_client.collection.find_one_and_update(
+            {"scan_id": manifest.scan_id},
+            {"$set": {"ewms_task": workflow_id}},
+        )
 
         LOGGER.info(
             f"Starting Scanner Instance: ({entry.scan_id=}) ({entry.timestamp})"
@@ -221,7 +221,7 @@ async def _run(
 
         # start k8s job -- this could be any k8s job (pre- or post-ewms switchover)
         try:
-            resp = KubeAPITools.start_job(k8s_batch_api, job_obj)
+            resp = KubeAPITools.start_job(k8s_batch_api, skyscan_k8s_job)
             LOGGER.info(resp)
         except kubernetes.client.exceptions.ApiException as e:
             # k8s job (backlog entry) will be revived & restarted in future iteration
@@ -231,3 +231,4 @@ async def _run(
 
         # remove from backlog now that startup succeeded
         await backlog_client.remove(entry)
+        # TODO: remove k8s job doc?

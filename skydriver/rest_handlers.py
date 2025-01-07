@@ -596,7 +596,7 @@ async def _start_scan(
     await skyscan_k8s_job_coll.insert_one(
         {
             "scan_id": scan_id,
-            "k8_job": skyscan_k8s_job_dict,
+            "skyscan_k8s_job_dict": skyscan_k8s_job_dict,
         }
     )
 

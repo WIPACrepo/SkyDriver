@@ -4,7 +4,6 @@ instances."""
 import logging
 import textwrap
 from pathlib import Path
-from typing import Any
 
 import yaml
 from rest_tools.client import ClientCredentialsAuth
@@ -13,11 +12,10 @@ from .. import images
 from ..config import (
     DebugMode,
     ENV,
+    sdict,
 )
 
 LOGGER = logging.getLogger(__name__)
-
-sdict = dict[str, Any]
 
 
 class SkyScanK8sJobFactory:
