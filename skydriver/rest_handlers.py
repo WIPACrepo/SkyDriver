@@ -756,7 +756,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # check DB states
         manifest = await self.manifests.get(scan_id, True)
         if (
-            manifest.ewms_task.complete and not args.delete_completed_scan
+            manifest.ewms_finished and not args.delete_completed_scan
         ):  # workforce is done
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
