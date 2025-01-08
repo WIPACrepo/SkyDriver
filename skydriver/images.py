@@ -6,6 +6,9 @@ from pathlib import Path
 
 import cachetools.func
 import requests
+from dateutil import parser as dateutil_parser
+
+from skydriver.config import ENV
 
 LOGGER = logging.getLogger(__name__)
 
@@ -70,6 +73,17 @@ def _match_sha_to_majminpatch(sha: str) -> str | None:
     return None
 
 
+@cachetools.func.lru_cache()
+def _get_image_ts(docker_tag: str) -> float:
+    """Get the timestamp for when the image was created."""
+    try:
+        dtime = requests.get(f"{DOCKERHUB_API_URL}/{docker_tag}").json()["last_updated"]
+        return dateutil_parser.parse(dtime).timestamp()
+    except Exception as e:
+        LOGGER.exception(e)
+        raise e
+
+
 @cachetools.func.ttl_cache(ttl=5 * 60)
 def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
     """Get the '#.#.#' tag on Docker Hub w/ `docker_tag`'s SHA if possible.
@@ -94,14 +108,22 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
     if VERSION_REGEX_MAJMINPATCH.fullmatch(docker_tag):
         return docker_tag
 
+    # check that the image is not too old
+    if _get_image_ts(docker_tag) < _get_image_ts(ENV.MIN_SKYMAP_SCANNER_TAG):
+        raise ValueError(
+            "Image tag is too old to be supported--contact admins for more info"
+        )
+
     _error = ValueError("Image tag could not resolve to a full version")
 
+    # get sha
     try:
         sha = requests.get(f"{DOCKERHUB_API_URL}/{docker_tag}").json()["digest"]
     except Exception as e:
         LOGGER.exception(e)
         raise _error
 
+    # match sha to vX.Y.Z
     try:
         if majminpatch := _match_sha_to_majminpatch(sha):
             return majminpatch
@@ -112,6 +134,7 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
         raise _error
 
 
+@cachetools.func.ttl_cache(ttl=5 * 60)
 def tag_exists_on_docker_hub(docker_tag: str) -> bool:
     """Return whether the tag exists on Docker Hub."""
     if not docker_tag or not docker_tag.strip():
