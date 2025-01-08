@@ -136,14 +136,14 @@ class SkyScanK8sJobFactory:
                       volumeMounts:
                         - name: common-space-volume
                           mountPath: "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH}"
-                    - name: s3-uploader-{scan_id}
+                    - name: s3-sidecar-{scan_id}
                       restartPolicy: OnFailure
-                      image: {images.get_skyscan_docker_image(docker_tag)}
-                      command: ["/scripts/s3_upload.sh"]
-                      args: ["{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH/'startup.json'}"]
+                      image: {ENV.THIS_IMAGE_WITH_TAG}
+                      command: ["python", "-m", "s3_sidecar.post"]
+                      args: ["{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH/'startup.json'}" "--wait-indefinitely"]
                       env:
                         - name: S3_URL
-                          value: "{ENV.S3_URL}"
+                          value: "{ENV.S3_URL}" 
                         - name: S3_ACCESS_KEY_ID
                           valueFrom:
                             secretKeyRef:
@@ -169,19 +169,9 @@ class SkyScanK8sJobFactory:
                       volumeMounts:
                         - name: common-space-volume
                           mountPath: "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH}"
-                        - name: scripts
-                          mountPath: /scripts
-                          readOnly: true
                   volumes:
                     - name: common-space-volume
                       emptyDir: {{}}
-                    - name: scripts
-                      configMap:
-                        name: skyscan-sidecar-scripts
-                        defaultMode: 0777
-                        items:
-                        - key: "s3_upload.sh"
-                          path: "s3_upload.sh"
             """
         )
 
