@@ -2,7 +2,7 @@
 
 from rest_tools.client import RestClient
 
-from . import database, images
+from . import database, images, s3
 
 
 async def request_workflow_on_ewms(
@@ -14,6 +14,7 @@ async def request_workflow_on_ewms(
     if isinstance(manifest.ewms_task, database.schema.InHouseStarterInfo):
         raise TypeError("Manifest is not designated for EWMS")
 
+    s3_url_get = s3.generate_s3_get_url(manifest.scan_id)
     image = images.get_skyscan_docker_image(scan_request_obj["docker_tag"])
 
     body = {
@@ -36,7 +37,7 @@ async def request_workflow_on_ewms(
                     "bash -c "
                     '"'  # quote for bash -c "..."
                     "curl --fail-with-body --max-time 60 -o {{DATA_HUB}}/startup.json "
-                    f"'{manifest.s3_obj_url}'"  # single-quote the url
+                    f"'{s3_url_get}'"  # single-quote the url
                     '"'  # unquote for bash -c "..."
                 ),
                 "n_workers": scan_request_obj["request_clusters"][0][1],

@@ -146,9 +146,8 @@ class Manifest(ScanIDDataclass):
     # ^^^ str  -> EWMS workflow id (i.e. this id points to info in EWMS)
     # ^^^ dict -> **DEPRECATED** was used in skydriver 1.x to use local k8s starter/stopper
 
-    # attrs placed in k8s job obj
+    # args placed in k8s job obj
     scanner_server_args: str
-    s3_obj_url: str = ""  # in 2.x scans, this is always set
 
     priority: int = (
         0  # same as https://htcondor.readthedocs.io/en/latest/users-manual/priorities-and-preemption.html#job-priority

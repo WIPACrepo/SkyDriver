@@ -1,10 +1,8 @@
 """Utilities for interacting with S3 buckets."""
 
 import logging
-import pathlib
 
 import boto3
-import requests
 
 from .config import ENV
 
@@ -22,8 +20,13 @@ def _get_client():
     )
 
 
-def generate_s3_url(scan_id: str) -> str:
-    """Generate a pre-signed S3 url for putting shared files."""
+def make_object_key(scan_id: str) -> str:
+    """Construct the object key from the scan_id (deterministic)."""
+    return f"{scan_id}-s3-object"
+
+
+def generate_s3_get_url(object_key: str) -> str:
+    """Generate a pre-signed S3 url for retrieving shared files."""
     s3_client = _get_client()
 
     # get GET url
@@ -31,29 +34,8 @@ def generate_s3_url(scan_id: str) -> str:
         "get_object",
         Params={
             "Bucket": ENV.S3_BUCKET,
-            "Key": f"{scan_id}-s3-object",
+            "Key": object_key,
         },
         ExpiresIn=24 * 60 * 60,  # seconds
     )
     return get_url
-
-
-def upload_to_s3(fpath: pathlib.Path) -> str:
-    """Upload a file to S3."""
-    s3_client = _get_client()
-
-    # POST
-    upload_details = s3_client.generate_presigned_post(
-        ENV.S3_BUCKET, ENV.S3_OBJECT_DEST_FILE
-    )
-
-    LOGGER.info("uploading S3...")
-    with open(fpath, "rb") as f:
-        response = requests.post(
-            upload_details["url"],
-            data=upload_details["fields"],
-            files={"file": (fpath.name, f)},  # maps filename to obj
-        )
-
-    print(f"Upload response: {response.status_code}")
-    print(str(response.content))

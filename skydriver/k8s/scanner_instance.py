@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 from rest_tools.client import ClientCredentialsAuth
 
-from .. import images
+from .. import images, s3
 from ..config import (
     DebugMode,
     ENV,
@@ -34,8 +34,6 @@ class SkyScanK8sJobFactory:
         nsides: dict[int, int],
         is_real_event: bool,
         predictive_scanning_threshold: float,
-        # s3 uploader
-        s3_obj_url: str,
         # universal
         debug_mode: list[DebugMode],
         # env
@@ -67,7 +65,6 @@ class SkyScanK8sJobFactory:
         job_dict = SkyScanK8sJobFactory._make_job(
             scan_id,
             docker_tag,
-            s3_obj_url,
             scanner_server_memory_bytes,
             scanner_server_args,
             scanner_server_envvars,
@@ -79,7 +76,6 @@ class SkyScanK8sJobFactory:
     def _make_job(
         scan_id: str,
         docker_tag: str,
-        s3_obj_url: str,
         scanner_server_memory_bytes: int,
         scanner_server_args: str,
         scanner_server_envvars: sdict,
@@ -160,8 +156,8 @@ class SkyScanK8sJobFactory:
                               key: {ENV.S3_SECRET_KEY__K8S_SECRET_KEY}
                         - name: S3_BUCKET
                           value: "{ENV.S3_BUCKET}"
-                        - name: S3_OBJECT_DEST_FILE
-                          value: "path/to/object" # Replace with destination path
+                        - name: S3_OBJECT_KEY
+                          value: "{s3.make_object_key(scan_id)}"
                       resources:
                         limits:
                           memory: "256Mi"

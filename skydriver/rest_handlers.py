@@ -27,7 +27,7 @@ from rest_tools.server import (
 from tornado import web
 from wipac_dev_tools import argparse_tools
 
-from . import database, images, k8s, s3
+from . import database, images, k8s
 from .config import (
     DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
     DEFAULT_WORKER_DISK_BYTES,
@@ -555,7 +555,6 @@ async def _start_scan(
     new_scan_id: str = "",  # don't use scan_request_obj.scan_id--this could be a rescan
 ) -> schema.Manifest:
     scan_id = new_scan_id or scan_request_obj["scan_id"]
-    s3_obj_url = s3.generate_s3_url(scan_id)
 
     # get the container info ready
     skyscan_k8s_job_dict, scanner_server_args = SkyScanK8sJobFactory.make(
@@ -567,8 +566,6 @@ async def _start_scan(
         nsides=scan_request_obj["nsides"],
         is_real_event=scan_request_obj["real_or_simulated_event"] in REAL_CHOICES,
         predictive_scanning_threshold=scan_request_obj["predictive_scanning_threshold"],
-        # s3 uploader
-        s3_obj_url=s3_obj_url,
         # universal
         debug_mode=_debug_mode(scan_request_obj["debug_mode"]),
         # env
