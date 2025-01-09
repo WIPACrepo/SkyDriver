@@ -29,7 +29,7 @@ async def get_workflow_id(scan_id: str) -> str:
     return workflow_id
 
 
-async def get_ewms_attrs(workflow_id: str) -> dict[str, str]:
+async def get_ewms_attrs(workflow_id: str) -> dict[str, dict[str, str]]:
     """Retrieve the EWMS attributes for the workflow."""
     LOGGER.info(f"getting EWMS attributes for workflow {workflow_id}...")
 
@@ -67,16 +67,18 @@ async def get_ewms_attrs(workflow_id: str) -> dict[str, str]:
     )
 
     return {
-        # to-client
-        "SKYSCAN_MQ_TOCLIENT": toclient["mqid"],
-        "SKYSCAN_MQ_TOCLIENT_AUTH_TOKEN": toclient["auth_token"],
-        "SKYSCAN_MQ_TOCLIENT_BROKER_TYPE": toclient["broker_type"],
-        "SKYSCAN_MQ_TOCLIENT_BROKER_ADDRESS": toclient["broker_address"],
-        # from-client
-        "SKYSCAN_MQ_FROMCLIENT": fromclient["mqid"],
-        "SKYSCAN_MQ_FROMCLIENT_AUTH_TOKEN": fromclient["auth_token"],
-        "SKYSCAN_MQ_FROMCLIENT_BROKER_TYPE": fromclient["broker_type"],
-        "SKYSCAN_MQ_FROMCLIENT_BROKER_ADDRESS": fromclient["broker_address"],
+        "toclient": {
+            "name": toclient["mqid"],
+            "auth_token": toclient["auth_token"],
+            "broker_type": toclient["broker_type"],
+            "broker_address": toclient["broker_address"],
+        },
+        "fromclient": {
+            "name": fromclient["mqid"],
+            "auth_token": fromclient["auth_token"],
+            "broker_type": fromclient["broker_type"],
+            "broker_address": fromclient["broker_address"],
+        },
     }
 
 

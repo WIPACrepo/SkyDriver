@@ -22,6 +22,8 @@ class SkyScanK8sJobFactory:
     """Makes Skymap Scanner Kubernetes jobs, plus misc tools."""
 
     COMMON_SPACE_VOLUME_PATH = Path("/common-space")
+    _STARTUP_JSON_FPATH = COMMON_SPACE_VOLUME_PATH / "startup.json"
+    _EWMS_JSON_FPATH = COMMON_SPACE_VOLUME_PATH / "ewms.json"
 
     @staticmethod
     def make(
@@ -123,7 +125,7 @@ class SkyScanK8sJobFactory:
                     - name: init-ewms-{scan_id}
                       image: {ENV.THIS_IMAGE_WITH_TAG}
                       command: ["python", "-m", "ewms_init_container"]
-                      args: ["{scan_id}", "--json-out", "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH/'ewms_env.json'}"]
+                      args: ["{scan_id}", "--json-out", "{SkyScanK8sJobFactory._EWMS_JSON_FPATH}"]
                   containers:
                     - name: skyscan-server-{scan_id}
                       image: {images.get_skyscan_docker_image(docker_tag)}
@@ -145,7 +147,7 @@ class SkyScanK8sJobFactory:
                       restartPolicy: OnFailure
                       image: {ENV.THIS_IMAGE_WITH_TAG}
                       command: ["python", "-m", "s3_sidecar.post"]
-                      args: ["{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH/'startup.json'}", "--wait-indefinitely"]
+                      args: ["{SkyScanK8sJobFactory._STARTUP_JSON_FPATH}", "--wait-indefinitely"]
                       env:
                         - name: S3_URL
                           value: "{ENV.S3_URL}" 
@@ -202,7 +204,7 @@ class SkyScanK8sJobFactory:
             f" --reco-algo {reco_algo}"
             f" --cache-dir {SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH} "
             # f" --output-dir {common_space_volume_path} "  # output is sent to skydriver
-            f" --client-startup-json {SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH/'startup.json'} "
+            f" --client-startup-json {SkyScanK8sJobFactory._STARTUP_JSON_FPATH} "
             f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "  # k1:v1 k2:v2
             f" {'--real-event' if is_real_event else '--simulated-event'} "
             f" --predictive-scanning-threshold {predictive_scanning_threshold} "
@@ -240,7 +242,7 @@ class SkyScanK8sJobFactory:
         # 1. add required env vars
         required = {
             # broker/mq vars
-            "SKYSCAN_BROKER_ADDRESS": ENV.SKYSCAN_BROKER_ADDRESS,
+            "SKYSCAN_EWMS_JSON": str(SkyScanK8sJobFactory._EWMS_JSON_FPATH),
             # skydriver vars
             "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
             "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,

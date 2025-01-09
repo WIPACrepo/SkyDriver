@@ -94,7 +94,6 @@ class EnvConfig:
     KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST: str = ""
 
     # skyscan (forwarded)
-    SKYSCAN_BROKER_ADDRESS: str = "localhost"
     # TODO: see https://github.com/WIPACrepo/wipac-dev-tools/pull/69
     SKYSCAN_PROGRESS_INTERVAL_SEC: Optional[int] = None
     SKYSCAN_RESULT_INTERVAL_SEC: Optional[int] = None
