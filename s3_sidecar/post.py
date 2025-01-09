@@ -71,6 +71,7 @@ def main() -> None:
     if args.wait_indefinitely:
         LOGGER.info("Waiting for file to exist...")
         while not args.fpath.exists():
+            # TODO: use wipac_dev_tools.timing_tools.IntervalTimer to log every X sec
             time.sleep(1)
 
     post(args.fpath)
