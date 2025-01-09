@@ -119,6 +119,10 @@ class SkyScanK8sJobFactory:
                 spec:
                   serviceAccountName: {ENV.K8S_SKYSCAN_JOBS_SERVICE_ACCOUNT}
                   restartPolicy: Never
+                  initContainers:
+                    - name: init-ewms-{scan_id}
+                      image: {ENV.THIS_IMAGE_WITH_TAG}
+                      command: ["python", "-m", "ewms_init_container"]
                   containers:
                     - name: skyscan-server-{scan_id}
                       image: {images.get_skyscan_docker_image(docker_tag)}
@@ -136,7 +140,7 @@ class SkyScanK8sJobFactory:
                       volumeMounts:
                         - name: common-space-volume
                           mountPath: "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH}"
-                    - name: s3-sidecar-{scan_id}
+                    - name: sidecar-s3-{scan_id}
                       restartPolicy: OnFailure
                       image: {ENV.THIS_IMAGE_WITH_TAG}
                       command: ["python", "-m", "s3_sidecar.post"]
