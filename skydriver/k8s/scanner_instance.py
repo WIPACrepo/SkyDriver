@@ -12,10 +12,29 @@ from .. import images, s3
 from ..config import (
     DebugMode,
     ENV,
+    QUEUE_ALIAS_FROMCLIENT,
+    QUEUE_ALIAS_TOCLIENT,
     sdict,
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _to_inline_yaml(obj: list[str] | sdict) -> str:
+    """Convert obj-based attrs to yaml-syntax"""
+    # -> inline, compact formatting, no indenting needed
+    if isinstance(obj, dict):
+        return yaml.safe_dump(
+            [{"name": k, "value": v} for k, v in obj.items()],
+            default_flow_style=True,
+        )
+    elif isinstance(obj, list):
+        yaml.safe_dump(
+            obj,
+            default_flow_style=True,
+        )
+    else:
+        raise TypeError(f"unsupported type {type(obj)}")
 
 
 class SkyScanK8sJobFactory:
@@ -86,16 +105,18 @@ class SkyScanK8sJobFactory:
 
         NOTE: Let's keep definitions as straightforward as possible.
         """
-
-        # first, convert obj-based attrs to yaml-syntax
-        # -> inline, compact formatting, no indenting needed
-        scanner_env_yaml = yaml.safe_dump(
-            [{"name": k, "value": v} for k, v in scanner_server_envvars.items()],
-            default_flow_style=True,
-        )
-        scanner_args_yaml = yaml.safe_dump(
-            scanner_server_args.split(),
-            default_flow_style=True,
+        init_ewms_envvars = {}
+        for k in ["SKYSCAN_SKYDRIVER_ADDRESS", "SKYSCAN_SKYDRIVER_AUTH"]:
+            init_ewms_envvars[k] = scanner_server_envvars[k]
+        init_ewms_envvars.update(
+            {
+                "EWMS_ADDRESS": ENV.EWMS_ADDRESS,
+                "EWMS_TOKEN_URL": ENV.EWMS_TOKEN_URL,
+                "EWMS_CLIENT_ID": ENV.EWMS_CLIENT_ID,
+                "EWMS_CLIENT_SECRET": ENV.EWMS_CLIENT_SECRET,
+                "QUEUE_ALIAS_TOCLIENT": QUEUE_ALIAS_TOCLIENT,
+                "QUEUE_ALIAS_FROMCLIENT": QUEUE_ALIAS_FROMCLIENT,
+            }
         )
 
         # now, assemble
@@ -126,12 +147,13 @@ class SkyScanK8sJobFactory:
                       image: {ENV.THIS_IMAGE_WITH_TAG}
                       command: ["python", "-m", "ewms_init_container"]
                       args: ["{scan_id}", "--json-out", "{SkyScanK8sJobFactory._EWMS_JSON_FPATH}"]
+                      env: {_to_inline_yaml(init_ewms_envvars)}
                   containers:
                     - name: skyscan-server-{scan_id}
                       image: {images.get_skyscan_docker_image(docker_tag)}
                       command: []
-                      args: {scanner_args_yaml}
-                      env: {scanner_env_yaml}
+                      args: {_to_inline_yaml(scanner_server_args.split())}
+                      env: {_to_inline_yaml(scanner_server_envvars)}
                       resources:
                         limits:
                           memory: "{scanner_server_memory_bytes}"

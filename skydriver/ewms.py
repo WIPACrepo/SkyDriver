@@ -3,6 +3,7 @@
 from rest_tools.client import RestClient
 
 from . import database, images, s3
+from .config import QUEUE_ALIAS_FROMCLIENT, QUEUE_ALIAS_TOCLIENT
 
 
 async def request_workflow_on_ewms(
@@ -18,14 +19,14 @@ async def request_workflow_on_ewms(
     image = images.get_skyscan_docker_image(scan_request_obj["docker_tag"])
 
     body = {
-        "public_queue_aliases": ["to-client-queue", "from-client-queue"],
+        "public_queue_aliases": [QUEUE_ALIAS_TOCLIENT, QUEUE_ALIAS_FROMCLIENT],
         "tasks": [
             {
                 "cluster_locations": [
                     cname for cname, _ in scan_request_obj["request_clusters"]
                 ],
-                "input_queue_aliases": ["to-client-queue"],
-                "output_queue_aliases": ["from-client-queue"],
+                "input_queue_aliases": [QUEUE_ALIAS_TOCLIENT],
+                "output_queue_aliases": [QUEUE_ALIAS_FROMCLIENT],
                 "task_image": image,
                 "task_args": (
                     "python -m skymap_scanner.client "

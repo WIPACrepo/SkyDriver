@@ -30,6 +30,9 @@ CLUSTER_STOPPER_K8S_JOB_N_RETRIES = 6
 
 SCAN_MIN_PRIORITY_TO_START_ASAP = 100
 
+QUEUE_ALIAS_TOCLIENT = "to-client-queue"  # this *needs* to stay constant, stored in db
+QUEUE_ALIAS_FROMCLIENT = "from-client-queue"  # ''
+
 
 @enum.unique
 class DebugMode(enum.Enum):
