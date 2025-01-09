@@ -584,7 +584,8 @@ async def _start_scan(
         is_deleted=False,
         i3_event_id=scan_request_obj["i3_event_id"],
         scanner_server_args=scanner_server_args,
-        ewms_task="",  # set once the workflow request has been sent to EWMS (see backlogger)
+        ewms_workflow_id=schema.PENDING_EWMS_WORKFLOW,
+        # ^^^ set once the workflow request has been sent to EWMS (see backlogger)
         classifiers=scan_request_obj["classifiers"],
         priority=scan_request_obj["priority"],
     )
@@ -681,8 +682,13 @@ async def stop_skyscan_workers(
         return manifest
 
     # request to ewms
-    if manifest.ewms_task and isinstance(manifest.ewms_task, str):
-        await request_stop_on_ewms(ewms_rc, manifest.ewms_task)
+    if manifest.ewms_workflow_id:
+        if manifest.ewms_workflow_id == schema.PENDING_EWMS_WORKFLOW:
+            LOGGER.info(
+                "OK: attempted to stop skyscan workers but scan has not been sent to EWMS"
+            )
+        else:
+            await request_stop_on_ewms(ewms_rc, manifest.ewms_workflow_id)
     else:
         raise web.HTTPError(
             400,

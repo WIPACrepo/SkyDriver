@@ -11,7 +11,7 @@ async def request_workflow_on_ewms(
     scan_request_obj: dict,
 ) -> str:
     """Request a workflow in EWMS."""
-    if not (isinstance(manifest.ewms_task, str) and manifest.ewms_task):
+    if manifest.ewms_workflow_id != database.schema.PENDING_EWMS_WORKFLOW:
         raise TypeError("Manifest is not designated for EWMS")
 
     s3_url_get = s3.generate_s3_get_url(manifest.scan_id)

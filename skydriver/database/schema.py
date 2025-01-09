@@ -131,7 +131,10 @@ def obfuscate_cl_args(args: str) -> str:
     return " ".join(out_args)
 
 
+PENDING_EWMS_WORKFLOW = "pending ewms"
+
 DEPRECATED_EVENT_I3LIVE_JSON_DICT = "use 'i3_event_id'"
+DEPRECATED_EWMS_TASK = "use 'ewms_workflow_id'"
 
 
 @typechecked
@@ -142,12 +145,15 @@ class Manifest(ScanIDDataclass):
     timestamp: float
     is_deleted: bool
 
-    ewms_task: dict | str  # `""` -> workflow request has not (yet) been sent to EWMS
-    # ^^^ str  -> EWMS workflow id (i.e. this id points to info in EWMS)
-    # ^^^ dict -> **DEPRECATED** was used in skydriver 1.x to use local k8s starter/stopper
-
     # args placed in k8s job obj
     scanner_server_args: str
+
+    # EWMS interface
+    ewms_workflow_id: str | None = None  # id points to info in EWMS
+    ewms_finished: bool = False  # a cache so we don't have to call to ewms each time
+    # -> deprecated fields -- see __post_init__ for backward compatibility  logic
+    ewms_task: dict | str = DEPRECATED_EWMS_TASK  # **DEPRECATED**
+    # ^^^ was used in skydriver 1.x to use local k8s starter/stopper
 
     priority: int = (
         0  # same as https://htcondor.readthedocs.io/en/latest/users-manual/priorities-and-preemption.html#job-priority
@@ -171,9 +177,8 @@ class Manifest(ScanIDDataclass):
 
     last_updated: float = 0.0
 
-    ewms_finished: bool = False  # a cache so we don't have to call to ewms each time
-
     def __post_init__(self) -> None:
+        # Backward compatibility: 'i3_event_id' replaced 'event_i3live_json_dict'
         if (
             not self.i3_event_id
             and self.event_i3live_json_dict == DEPRECATED_EVENT_I3LIVE_JSON_DICT
@@ -182,11 +187,19 @@ class Manifest(ScanIDDataclass):
                 "Manifest must define 'i3_event_id' "
                 "(old manifests may define 'event_i3live_json_dict' instead)"
             )
-        self.scanner_server_args = obfuscate_cl_args(self.scanner_server_args)
 
+        # Backward compatibility: 'ewms_workflow_id' replaced 'ewms_task'
+        if not self.ewms_workflow_id and self.ewms_task == DEPRECATED_EWMS_TASK:
+            raise ValueError(
+                "Manifest must define 'ewms_workflow_id' "
+                "(old manifests may define 'ewms_task' instead)"
+            )
         # Backward compatibility: 1.x had 'complete' in a nested field
         if isinstance(self.ewms_task, dict):
             self.ewms_finished = self.ewms_task.get("complete", False)
+
+        # don't show sensitive data to user
+        self.scanner_server_args = obfuscate_cl_args(self.scanner_server_args)
 
     def get_state(self) -> ScanState:
         """Determine the state of the scan by parsing attributes."""

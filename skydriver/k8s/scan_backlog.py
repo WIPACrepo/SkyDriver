@@ -211,7 +211,7 @@ async def _run(
             continue
         await manifest_client.collection.find_one_and_update(
             {"scan_id": manifest.scan_id},
-            {"$set": {"ewms_task": workflow_id}},
+            {"$set": {"ewms_workflow_id": workflow_id}},
         )
 
         LOGGER.info(
