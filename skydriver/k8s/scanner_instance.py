@@ -123,6 +123,7 @@ class SkyScanK8sJobFactory:
                     - name: init-ewms-{scan_id}
                       image: {ENV.THIS_IMAGE_WITH_TAG}
                       command: ["python", "-m", "ewms_init_container"]
+                      args: ["{scan_id}", "--json-out", "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH/'ewms_env.json'}"]
                   containers:
                     - name: skyscan-server-{scan_id}
                       image: {images.get_skyscan_docker_image(docker_tag)}
@@ -144,7 +145,7 @@ class SkyScanK8sJobFactory:
                       restartPolicy: OnFailure
                       image: {ENV.THIS_IMAGE_WITH_TAG}
                       command: ["python", "-m", "s3_sidecar.post"]
-                      args: ["{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH/'startup.json'}" "--wait-indefinitely"]
+                      args: ["{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH/'startup.json'}", "--wait-indefinitely"]
                       env:
                         - name: S3_URL
                           value: "{ENV.S3_URL}" 
