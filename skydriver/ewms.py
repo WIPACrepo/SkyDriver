@@ -1,9 +1,14 @@
 """Tools for interfacing with EMWS."""
 
+import logging
+
+import requests
 from rest_tools.client import RestClient
 
 from . import database, images, s3
 from .config import QUEUE_ALIAS_FROMCLIENT, QUEUE_ALIAS_TOCLIENT
+
+LOGGER = logging.Logger(__name__)
 
 
 async def request_workflow_on_ewms(
@@ -85,15 +90,22 @@ async def request_stop_on_ewms(
     """Signal that an EWMS workflow is finished, and stop whatever is needed.
 
     Returns the number of stopped taskforces.
+
+    Suppresses any HTTP errors.
     """
-    if abort:
-        resp = await ewms_rc.request(
-            "POST",
-            f"/v0/workflows/{workflow_id}/actions/abort",
-        )
+    try:
+        if abort:
+            resp = await ewms_rc.request(
+                "POST",
+                f"/v0/workflows/{workflow_id}/actions/abort",
+            )
+        else:
+            resp = await ewms_rc.request(
+                "POST",
+                f"/v0/workflows/{workflow_id}/actions/finished",
+            )
+    except requests.exceptions.HTTPError as e:
+        LOGGER.warning(repr(e))
+        return 0
     else:
-        resp = await ewms_rc.request(
-            "POST",
-            f"/v0/workflows/{workflow_id}/actions/finished",
-        )
-    return resp["n_taskforces"]
+        return resp["n_taskforces"]

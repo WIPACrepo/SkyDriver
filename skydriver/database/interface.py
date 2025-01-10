@@ -115,25 +115,17 @@ class ManifestClient:
         progress: schema.Progress | None = None,
         event_metadata: schema.EventMetadata | None = None,
         scan_metadata: schema.StrDict | None = None,
-        ewms_finished: bool | None = None,  # workforce is done
     ) -> schema.Manifest:
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching manifest for {scan_id=}")
 
-        if not (
-            progress
-            or event_metadata
-            or scan_metadata
-            or ewms_finished is not None  # True/False is ok # workforce is done
-        ):
+        if not (progress or event_metadata or scan_metadata):
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
             return await self.get(scan_id, incl_del=True)
 
         upserting: schema.StrDict = {}
         if progress:
             upserting["progress"] = progress
-        if ewms_finished is not None:
-            upserting["ewms_finished"] = ewms_finished
 
         # Validate, then store
         # NOTE: in theory there's a race condition (get+upsert)

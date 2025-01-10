@@ -679,8 +679,6 @@ async def stop_skyscan_workers(
 ) -> database.schema.Manifest:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     manifest = await manifests.get(scan_id, True)
-    if manifest.ewms_finished:  # workforce is done
-        return manifest
 
     # request to ewms
     if manifest.ewms_workflow_id:
@@ -688,15 +686,15 @@ async def stop_skyscan_workers(
             LOGGER.info(
                 "OK: attempted to stop skyscan workers but scan has not been sent to EWMS"
             )
-            return manifest
         else:
             await request_stop_on_ewms(ewms_rc, manifest.ewms_workflow_id, abort=abort)
-            return await manifests.patch(scan_id, ewms_finished=True)
     else:
         raise web.HTTPError(
             400,
             log_message="Could not stop scanner workers since this is a non-EWMS scan.",
         )
+
+    return manifest
 
 
 # -----------------------------------------------------------------------------
@@ -760,8 +758,10 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # check DB states
         manifest = await self.manifests.get(scan_id, True)
         if (
-            manifest.ewms_finished and not args.delete_completed_scan
-        ):  # workforce is done
+            manifest.progress
+            and manifest.progress.processing_stats.finished
+            and not args.delete_completed_scan
+        ):
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
                 400,

@@ -150,7 +150,6 @@ class Manifest(ScanIDDataclass):
 
     # EWMS interface
     ewms_workflow_id: str | None = None  # id points to info in EWMS
-    ewms_finished: bool = False  # a cache so we don't have to call to ewms each time
     # -> deprecated fields -- see __post_init__ for backward compatibility  logic
     ewms_task: dict | str = DEPRECATED_EWMS_TASK  # **DEPRECATED**
     # ^^^ was used in skydriver 1.x to use local k8s starter/stopper
@@ -194,9 +193,6 @@ class Manifest(ScanIDDataclass):
                 "Manifest must define 'ewms_workflow_id' "
                 "(old manifests may define 'ewms_task' instead)"
             )
-        # Backward compatibility: 1.x had 'complete' in a nested field
-        if isinstance(self.ewms_task, dict):
-            self.ewms_finished = self.ewms_task.get("complete", False)
 
         # don't show sensitive data to user
         self.scanner_server_args = obfuscate_cl_args(self.scanner_server_args)
