@@ -133,7 +133,7 @@ async def get_taskforce_phases(
     """Get all the states of all the taskforces associated with the workflow."""
     resp = await ewms_rc.request(
         "POST",
-        f"/v0/query/taskforces",
+        "/v0/query/taskforces",
         {"workflow_id": workflow_id},
     )
     return [

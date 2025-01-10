@@ -172,7 +172,7 @@ class SkyScanK8sJobFactory:
                       args: ["{SkyScanK8sJobFactory._STARTUP_JSON_FPATH}", "--wait-indefinitely"]
                       env:
                         - name: S3_URL
-                          value: "{ENV.S3_URL}" 
+                          value: "{ENV.S3_URL}"
                         - name: S3_ACCESS_KEY_ID
                           valueFrom:
                             secretKeyRef:

@@ -1,14 +1,18 @@
 """Test dynamically generating the scan state."""
 
 import time
+from unittest.mock import MagicMock
 
 import pytest
 
 from skydriver.database import schema
+from skydriver.database.schema import get_scan_state
 
 
-def test_00__scan_finished_successfully() -> None:
+async def test_00__scan_finished_successfully() -> None:
     """Test with SCAN_FINISHED_SUCCESSFULLY."""
+    ewms_rc = MagicMock()
+
     manifest = schema.Manifest(
         scan_id="abc123",
         timestamp=time.time(),
@@ -38,7 +42,8 @@ def test_00__scan_finished_successfully() -> None:
         ),
     )
     assert (
-        await get_scan_state(manifest)() == schema.ScanState.SCAN_FINISHED_SUCCESSFULLY
+        await get_scan_state(manifest, ewms_rc)
+        == schema.ScanState.SCAN_FINISHED_SUCCESSFULLY
     )
 
 
@@ -49,10 +54,12 @@ def test_00__scan_finished_successfully() -> None:
         (False, schema.ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED),
     ],
 )
-def test_10__partial_result_generated(
+async def test_10__partial_result_generated(
     is_complete: bool, state: schema.ScanState
 ) -> None:
     """Test normal and stopped variants."""
+    ewms_rc = MagicMock()
+
     manifest = schema.Manifest(
         scan_id="abc123",
         timestamp=time.time(),
@@ -93,7 +100,7 @@ def test_10__partial_result_generated(
             str(time.time()),
         ),
     )
-    assert await get_scan_state(manifest)() == state
+    assert await get_scan_state(manifest, ewms_rc) == state
 
 
 @pytest.mark.parametrize(
@@ -103,10 +110,12 @@ def test_10__partial_result_generated(
         (False, schema.ScanState.IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO),
     ],
 )
-def test_20__waiting_on_first_pixel_reco(
+async def test_20__waiting_on_first_pixel_reco(
     is_complete: bool, state: schema.ScanState
 ) -> None:
     """Test normal and stopped variants."""
+    ewms_rc = MagicMock()
+
     manifest = schema.Manifest(
         scan_id="abc123",
         timestamp=time.time(),
@@ -147,7 +156,7 @@ def test_20__waiting_on_first_pixel_reco(
             str(time.time()),
         ),
     )
-    assert await get_scan_state(manifest)() == state
+    assert await get_scan_state(manifest, ewms_rc) == state
 
 
 @pytest.mark.parametrize(
@@ -157,10 +166,12 @@ def test_20__waiting_on_first_pixel_reco(
         (False, schema.ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP),
     ],
 )
-def test_30__waiting_on_cluster_startup(
+async def test_30__waiting_on_cluster_startup(
     is_complete: bool, state: schema.ScanState
 ) -> None:
     """Test normal and stopped variants."""
+    ewms_rc = MagicMock()
+
     manifest = schema.Manifest(
         scan_id="abc123",
         timestamp=time.time(),
@@ -201,7 +212,7 @@ def test_30__waiting_on_cluster_startup(
             str(time.time()),
         ),
     )
-    assert await get_scan_state(manifest)() == state
+    assert await get_scan_state(manifest, ewms_rc) == state
 
 
 @pytest.mark.parametrize(
@@ -211,10 +222,12 @@ def test_30__waiting_on_cluster_startup(
         (False, schema.ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP),
     ],
 )
-def test_40__waiting_on_scanner_server_startup(
+async def test_40__waiting_on_scanner_server_startup(
     is_complete: bool, state: schema.ScanState
 ) -> None:
     """Test normal and stopped variants."""
+    ewms_rc = MagicMock()
+
     manifest = schema.Manifest(
         scan_id="abc123",
         timestamp=time.time(),
@@ -255,7 +268,7 @@ def test_40__waiting_on_scanner_server_startup(
         #     str(time.time()),
         # ),
     )
-    assert await get_scan_state(manifest)() == state
+    assert await get_scan_state(manifest, ewms_rc) == state
 
 
 @pytest.mark.parametrize(
@@ -265,8 +278,10 @@ def test_40__waiting_on_scanner_server_startup(
         (False, schema.ScanState.PENDING__PRESTARTUP),
     ],
 )
-def test_50__prestartup(is_complete: bool, state: schema.ScanState) -> None:
+async def test_50__prestartup(is_complete: bool, state: schema.ScanState) -> None:
     """Test normal and stopped varriants."""
+    ewms_rc = MagicMock()
+
     manifest = schema.Manifest(
         scan_id="abc123",
         timestamp=time.time(),
@@ -307,4 +322,4 @@ def test_50__prestartup(is_complete: bool, state: schema.ScanState) -> None:
         #     str(time.time()),
         # ),
     )
-    assert await get_scan_state(manifest)() == state
+    assert await get_scan_state(manifest, ewms_rc) == state
