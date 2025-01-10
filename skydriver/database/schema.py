@@ -5,7 +5,10 @@ import enum
 from typing import Any
 
 import wipac_dev_tools as wdt
+from rest_tools.client import RestClient
 from typeguard import typechecked
+
+from skydriver import ewms
 
 StrDict = dict[str, Any]
 
@@ -14,12 +17,6 @@ class ScanState(enum.Enum):
     """A non-persisted scan state."""
 
     SCAN_FINISHED_SUCCESSFULLY = enum.auto()
-
-    STOPPED__PARTIAL_RESULT_GENERATED = enum.auto()
-    STOPPED__WAITING_ON_FIRST_PIXEL_RECO = enum.auto()
-    STOPPED__WAITING_ON_CLUSTER_STARTUP = enum.auto()
-    STOPPED__WAITING_ON_SCANNER_SERVER_STARTUP = enum.auto()
-    STOPPED__PRESTARTUP = enum.auto()
 
     IN_PROGRESS__PARTIAL_RESULT_GENERATED = enum.auto()
     IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO = enum.auto()
@@ -197,38 +194,53 @@ class Manifest(ScanIDDataclass):
         # don't show sensitive data to user
         self.scanner_server_args = obfuscate_cl_args(self.scanner_server_args)
 
-    def get_state(self) -> ScanState:
-        """Determine the state of the scan by parsing attributes."""
-        if (
-            self.ewms_task.complete
-            and self.progress
-            and self.progress.processing_stats.finished
-        ):
-            return ScanState.SCAN_FINISHED_SUCCESSFULLY
-
-        def get_nonfinished_state() -> ScanState:
-            if self.progress:  # from scanner server
-                if self.ewms_task.clusters:
-                    # NOTE - we only know if the workers have started up once the server has gotten pixels
-                    if self.progress.processing_stats.rate:
-                        return ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
-                    else:
-                        return ScanState.IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO
-                else:
-                    return ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP
-            else:
-                if self.ewms_task.clusters:
-                    return ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
-                else:
-                    return ScanState.PENDING__PRESTARTUP
-
-        if self.ewms_task.complete:
-            return ScanState[f"STOPPED__{get_nonfinished_state().name.split('__')[1]}"]
-        else:
-            return get_nonfinished_state()
-
     def __repr__(self) -> str:
         dicto = dc.asdict(self)
         dicto.pop("event_i3live_json_dict")
         rep = f"{self.__class__.__name__}{dicto}"
         return rep
+
+
+async def get_scan_state(manifest: Manifest, ewms_rc: RestClient) -> str:
+    """Determine the state of the scan by parsing attributes and talking with EWMS."""
+    if manifest.progress and manifest.progress.processing_stats.finished:
+        return ScanState.SCAN_FINISHED_SUCCESSFULLY.name
+
+    def _has_scanner_server_started() -> bool:
+        return bool(manifest.progress)  # attr only updated by scanner server requests
+
+    def _has_request_been_sent_to_ewms() -> bool:
+        return (
+            manifest.ewms_workflow_id == PENDING_EWMS_WORKFLOW  # pending ewms req.
+            or (  # backward compatibility...
+                manifest.ewms_task != DEPRECATED_EWMS_TASK
+                and manifest.ewms_task.get("clusters")
+            )
+        )
+
+    def _get_nonfinished_state() -> ScanState:
+        # has the scanner server started?
+        # -> yes
+        if _has_scanner_server_started():
+            if _has_request_been_sent_to_ewms():
+                return ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP
+            else:
+                if manifest.progress.processing_stats.rate:
+                    return ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
+                else:
+                    return ScanState.IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO
+        # -> no
+        else:
+            if _has_request_been_sent_to_ewms():
+                # NOTE: assume that the ewms-request and scanner server startup happen in tandem
+                return ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
+            else:
+                return ScanState.PENDING__PRESTARTUP
+
+    # is EWMS still running the scan workers?
+    # -> yes
+    if dtype := await ewms.get_deactivated_type(ewms_rc, manifest.ewms_workflow_id):
+        return f"{dtype.upper()}__{_get_nonfinished_state().name.split('__')[1]}"
+    # -> no
+    else:
+        return _get_nonfinished_state().name

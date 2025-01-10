@@ -2,6 +2,7 @@
 
 import logging
 
+import cachetools.func
 import requests
 from rest_tools.client import RestClient
 
@@ -109,3 +110,33 @@ async def request_stop_on_ewms(
         return 0
     else:
         return resp["n_taskforces"]
+
+
+@cachetools.func.ttl_cache(ttl=1 * 60)  # don't cache too long, but avoid spamming ewms
+async def get_deactivated_type(ewms_rc: RestClient, workflow_id: str) -> str | None:
+    """Grab the 'deactivated' field for the workflow.
+
+    Example: 'ABORTED', 'FINISHED
+    """
+    workflow = await ewms_rc.request(
+        "GET",
+        f"/v0/workflows/{workflow_id}",
+    )
+    return workflow["deactivated"]
+
+
+@cachetools.func.ttl_cache(ttl=1 * 60)  # don't cache too long, but avoid spamming ewms
+async def get_taskforce_phases(
+    ewms_rc: RestClient,
+    workflow_id: str,
+) -> list[dict[str, str]]:
+    """Get all the states of all the taskforces associated with the workflow."""
+    resp = await ewms_rc.request(
+        "POST",
+        f"/v0/query/taskforces",
+        {"workflow_id": workflow_id},
+    )
+    return [
+        {"taskforce": tf["taskforce_uuid"], "phase": tf["phase"]}
+        for tf in resp["taskforces"]
+    ]

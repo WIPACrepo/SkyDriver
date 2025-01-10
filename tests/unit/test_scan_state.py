@@ -37,7 +37,9 @@ def test_00__scan_finished_successfully() -> None:
             str(time.time()),
         ),
     )
-    assert manifest.get_state() == schema.ScanState.SCAN_FINISHED_SUCCESSFULLY
+    assert (
+        await get_scan_state(manifest)() == schema.ScanState.SCAN_FINISHED_SUCCESSFULLY
+    )
 
 
 @pytest.mark.parametrize(
@@ -91,7 +93,7 @@ def test_10__partial_result_generated(
             str(time.time()),
         ),
     )
-    assert manifest.get_state() == state
+    assert await get_scan_state(manifest)() == state
 
 
 @pytest.mark.parametrize(
@@ -145,7 +147,7 @@ def test_20__waiting_on_first_pixel_reco(
             str(time.time()),
         ),
     )
-    assert manifest.get_state() == state
+    assert await get_scan_state(manifest)() == state
 
 
 @pytest.mark.parametrize(
@@ -199,7 +201,7 @@ def test_30__waiting_on_cluster_startup(
             str(time.time()),
         ),
     )
-    assert manifest.get_state() == state
+    assert await get_scan_state(manifest)() == state
 
 
 @pytest.mark.parametrize(
@@ -253,7 +255,7 @@ def test_40__waiting_on_scanner_server_startup(
         #     str(time.time()),
         # ),
     )
-    assert manifest.get_state() == state
+    assert await get_scan_state(manifest)() == state
 
 
 @pytest.mark.parametrize(
@@ -305,4 +307,4 @@ def test_50__prestartup(is_complete: bool, state: schema.ScanState) -> None:
         #     str(time.time()),
         # ),
     )
-    assert manifest.get_state() == state
+    assert await get_scan_state(manifest)() == state

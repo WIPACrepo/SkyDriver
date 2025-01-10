@@ -58,10 +58,10 @@ async def get_next(
             await scan_backlog.remove(entry)
             continue
 
-        # check if scan was aborted (cancelled)
+        # check if scan was 'deleted'
         manifest = await manifests.get(entry.scan_id, incl_del=True)
         if manifest.is_deleted:
-            LOGGER.info(f"Backlog entry was aborted ({entry.scan_id=})")
+            LOGGER.info(f"Backlog entry was removed ({entry.scan_id=})")
             await scan_backlog.remove(entry)
             continue
 

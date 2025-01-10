@@ -27,7 +27,7 @@ from rest_tools.server import (
 from tornado import web
 from wipac_dev_tools import argparse_tools
 
-from . import database, images, k8s
+from . import database, ewms, images, k8s
 from .config import (
     DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
     DEFAULT_WORKER_DISK_BYTES,
@@ -38,6 +38,7 @@ from .config import (
     is_testing,
 )
 from .database import schema
+from .database.schema import get_scan_state
 from .ewms import request_stop_on_ewms
 from .k8s.scan_backlog import designate_for_startup
 from .k8s.scanner_instance import SkyScanK8sJobFactory
@@ -1062,12 +1063,15 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                     LOGGER.exception(e)
 
         # respond
+        scan_state = await get_scan_state(manifest, self.ewms_rc)
         resp = {
-            "scan_state": manifest.get_state().name,
+            "scan_state": scan_state,
             "is_deleted": manifest.is_deleted,
-            "scan_complete": manifest.ewms_task.complete,  # workforce is done
+            "scan_complete": bool(
+                scan_state == schema.ScanState.SCAN_FINISHED_SUCCESSFULLY.name
+            ),
             "pods": pods_411,
-            "clusters": [dc.asdict(c) for c in manifest.ewms_task.clusters],
+            "clusters": await ewms.get_taskforce_phases(manifest.ewms_workflow_id),
         }
         if not args.include_pod_statuses:
             resp.pop("pods")
