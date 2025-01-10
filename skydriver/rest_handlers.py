@@ -687,15 +687,15 @@ async def stop_skyscan_workers(
             LOGGER.info(
                 "OK: attempted to stop skyscan workers but scan has not been sent to EWMS"
             )
+            return manifest
         else:
             await request_stop_on_ewms(ewms_rc, manifest.ewms_workflow_id)
+            return await manifests.patch(scan_id, ewms_finished=True)
     else:
         raise web.HTTPError(
             400,
             log_message="Could not stop scanner workers since this is a non-EWMS scan.",
         )
-
-    return await manifests.patch(scan_id, ewms_finished=True)  # workforce is done
 
 
 # -----------------------------------------------------------------------------
