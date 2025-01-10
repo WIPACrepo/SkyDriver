@@ -675,6 +675,7 @@ async def stop_skyscan_workers(
     manifests: database.interface.ManifestClient,
     scan_id: str,
     ewms_rc: RestClient,
+    abort: bool,
 ) -> database.schema.Manifest:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     manifest = await manifests.get(scan_id, True)
@@ -689,7 +690,7 @@ async def stop_skyscan_workers(
             )
             return manifest
         else:
-            await request_stop_on_ewms(ewms_rc, manifest.ewms_workflow_id)
+            await request_stop_on_ewms(ewms_rc, manifest.ewms_workflow_id, abort=abort)
             return await manifests.patch(scan_id, ewms_finished=True)
     else:
         raise web.HTTPError(
@@ -771,7 +772,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # mark as deleted -> also stops backlog from starting
         manifest = await self.manifests.mark_as_deleted(scan_id)
         # abort
-        await stop_skyscan_workers(self.manifests, scan_id, self.ewms_rc)
+        await stop_skyscan_workers(self.manifests, scan_id, self.ewms_rc, abort=True)
 
         try:
             result_dict = dc.asdict(await self.results.get(scan_id))
@@ -1015,7 +1016,9 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             await asyncio.sleep(
                 WAIT_BEFORE_TEARDOWN
             )  # regular time.sleep() sleeps the entire server
-            await stop_skyscan_workers(self.manifests, scan_id, self.k8s_batch_api)
+            await stop_skyscan_workers(
+                self.manifests, scan_id, self.k8s_batch_api, abort=False
+            )
 
 
 # -----------------------------------------------------------------------------

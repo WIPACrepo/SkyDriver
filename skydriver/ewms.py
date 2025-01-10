@@ -80,13 +80,20 @@ async def request_workflow_on_ewms(
 async def request_stop_on_ewms(
     ewms_rc: RestClient,
     workflow_id: str,
+    abort: bool,
 ) -> int:
     """Signal that an EWMS workflow is finished, and stop whatever is needed.
 
     Returns the number of stopped taskforces.
     """
-    resp = await ewms_rc.request(
-        "POST",
-        f"/v0/workflows/{workflow_id}/actions/finished",
-    )
+    if abort:
+        resp = await ewms_rc.request(
+            "POST",
+            f"/v0/workflows/{workflow_id}/actions/abort",
+        )
+    else:
+        resp = await ewms_rc.request(
+            "POST",
+            f"/v0/workflows/{workflow_id}/actions/finished",
+        )
     return resp["n_taskforces"]
