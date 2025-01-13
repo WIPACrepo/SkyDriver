@@ -9,6 +9,18 @@ env:
   SCAN_BACKLOG_RUNNER_DELAY: 1
   SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: 200
   LOG_LEVEL: debug
+  # mandatory env vars...
+  EWMS_ADDRESS: fcb6c253
+  EWMS_TOKEN_URL: 65f3b929
+  EWMS_CLIENT_ID: b75a974d
+  EWMS_CLIENT_SECRET: 411b16fe
+  S3_URL: a4f92304
+  S3_ACCESS_KEY_ID: 36c5c849
+  S3_ACCESS_KEY_ID__K8S_SECRET_KEY: 230ec9dc
+  S3_SECRET_KEY: 8dea68a1
+  S3_SECRET_KEY__K8S_SECRET_KEY: cdf7c60b
+  S3_BUCKET: 72017610
+
 
 
 jobs:
@@ -140,7 +152,7 @@ jobs:
               --env THIS_IMAGE_WITH_TAG=$THIS_IMAGE_WITH_TAG \
               $(env | grep '^SKYSCAN_' | awk '$0="--env "$0') \
               $(env | grep '^EWMS_' | awk '$0="--env "$0') \
-              $(env | grep '^CLIENTMANAGER_' | awk '$0="--env "$0') \
+              $(env | grep '^S3_' | awk '$0="--env "$0') \
               $(env | grep '^CI_' | awk '$0="--env "$0') \
               $(env | grep '^SCAN_' | awk '$0="--env "$0') \
               --mount type=bind,source=$(realpath $DIR),target=/local/$DIR \
