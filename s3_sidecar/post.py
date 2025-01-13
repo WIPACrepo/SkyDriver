@@ -6,7 +6,7 @@ import os
 import time
 from pathlib import Path
 
-import boto3
+import boto3  # type: ignore[import-untyped]
 import requests
 
 LOGGER = logging.getLogger(__package__)

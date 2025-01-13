@@ -29,7 +29,7 @@ def _to_inline_yaml(obj: list[str] | sdict) -> str:
             default_flow_style=True,
         )
     elif isinstance(obj, list):
-        yaml.safe_dump(
+        return yaml.safe_dump(
             obj,
             default_flow_style=True,
         )

@@ -206,22 +206,21 @@ async def get_scan_state(manifest: Manifest, ewms_rc: RestClient) -> str:
     if manifest.progress and manifest.progress.processing_stats.finished:
         return ScanState.SCAN_FINISHED_SUCCESSFULLY.name
 
-    def _has_scanner_server_started() -> bool:
-        return bool(manifest.progress)  # attr only updated by scanner server requests
-
     def _has_request_been_sent_to_ewms() -> bool:
-        return (
+        return bool(
             manifest.ewms_workflow_id == PENDING_EWMS_WORKFLOW  # pending ewms req.
             or (  # backward compatibility...
                 manifest.ewms_task != DEPRECATED_EWMS_TASK
+                and isinstance(manifest.ewms_task, dict)
                 and manifest.ewms_task.get("clusters")
             )
         )
 
-    def _get_nonfinished_state() -> ScanState:
+    def get_nonfinished_state() -> ScanState:
+        """Get the ScanState of the scan, only by parsing attributes."""
         # has the scanner server started?
         # -> yes
-        if _has_scanner_server_started():
+        if manifest.progress:  # attr only updated by scanner server requests
             if _has_request_been_sent_to_ewms():
                 return ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP
             else:
@@ -239,8 +238,13 @@ async def get_scan_state(manifest: Manifest, ewms_rc: RestClient) -> str:
 
     # is EWMS still running the scan workers?
     # -> yes
-    if dtype := await ewms.get_deactivated_type(ewms_rc, manifest.ewms_workflow_id):
-        return f"{dtype.upper()}__{_get_nonfinished_state().name.split('__')[1]}"
-    # -> no
+    if manifest.ewms_workflow_id and (
+        dtype := await ewms.get_deactivated_type(ewms_rc, manifest.ewms_workflow_id)
+    ):
+        return f"{dtype.upper()}__{get_nonfinished_state().name.split('__')[1]}"
+    # -> BACKWARD COMPATIBILITY: is this an old/pre-ewms scan?
+    elif manifest.ewms_task.get("complete"):
+        return f"STOPPED__{get_nonfinished_state().name.split('__')[1]}"
+    # -> no, this is a non-finished scan
     else:
-        return _get_nonfinished_state().name
+        return get_nonfinished_state().name

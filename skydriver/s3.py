@@ -2,7 +2,7 @@
 
 import logging
 
-import boto3
+import boto3  # type: ignore[import-untyped]
 
 from .config import ENV
 
