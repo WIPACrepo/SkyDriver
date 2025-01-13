@@ -16,7 +16,7 @@ class _ScanState(enum.Enum):
     IN_PROGRESS__PARTIAL_RESULT_GENERATED = enum.auto()
     IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO = enum.auto()
     PENDING__WAITING_ON_SCANNER_SERVER_STARTUP = enum.auto()
-    PENDING__IN_BACKLOG = enum.auto()
+    PENDING__PRESTARTUP = enum.auto()
 
 
 async def get_scan_state(manifest: Manifest, ewms_rc: RestClient) -> str:
@@ -24,7 +24,7 @@ async def get_scan_state(manifest: Manifest, ewms_rc: RestClient) -> str:
     if manifest.progress and manifest.progress.processing_stats.finished:
         return _ScanState.SCAN_FINISHED_SUCCESSFULLY.name
 
-    def _has_request_been_sent_to_ewms() -> bool:
+    def _has_cleared_backlog() -> bool:
         return bool(
             (  # has a real workflow id
                 manifest.ewms_workflow_id
@@ -39,8 +39,8 @@ async def get_scan_state(manifest: Manifest, ewms_rc: RestClient) -> str:
 
     def get_nonfinished_state() -> _ScanState:
         """Get the ScanState of the scan, only by parsing attributes."""
-        # has scan cleared the backlog? (aka, has been submitted EWMS?)
-        if _has_request_been_sent_to_ewms():
+        # has scan cleared the backlog? (aka, has been *submitted* EWMS?)
+        if _has_cleared_backlog():
             # has the scanner server started?
             if manifest.progress:
                 # how far along is the scanner server?
@@ -53,19 +53,23 @@ async def get_scan_state(manifest: Manifest, ewms_rc: RestClient) -> str:
             # no -> hasn't started yet
             else:
                 return _ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
-        # no -> still in backlog
+        # no -> still in backlog (or aborted while in backlog)
         else:
-            return _ScanState.PENDING__IN_BACKLOG
+            return _ScanState.PENDING__PRESTARTUP
 
-    # is EWMS still running the scan workers?
-    # -> yes
-    if manifest.ewms_workflow_id and (
-        dtype := await ewms.get_deactivated_type(ewms_rc, manifest.ewms_workflow_id)
+    state = get_nonfinished_state().name  # start here, augment if needed
+
+    # AUGMENT STATUS...
+    if (  # Backward Compatibility: is this an old/pre-ewms scan?
+        not manifest.ewms_workflow_id
+        and isinstance(manifest.ewms_task, dict)
+        and manifest.ewms_task.get("complete")
     ):
-        return f"{dtype.upper()}__{get_nonfinished_state().name.split('__')[1]}"
-    # -> BACKWARD COMPATIBILITY: is this an old/pre-ewms scan?
-    elif isinstance(manifest.ewms_task, dict) and manifest.ewms_task.get("complete"):
-        return f"STOPPED__{get_nonfinished_state().name.split('__')[1]}"
-    # -> no, this is a non-finished scan
+        return f"STOPPED__{state.split('__')[1]}"  # we didn't have info on what kind of stop
+    # has EWMS ceased running the scan workers?
+    elif dtype := await ewms.get_deactivated_type(ewms_rc, manifest.ewms_workflow_id):
+        # -> yes, the ewms workflow has been deactivated
+        return f"{dtype.upper()}__{state.split('__')[1]}"
     else:
-        return get_nonfinished_state().name
+        # -> no, this is a non-finished scan
+        return state

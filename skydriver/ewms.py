@@ -8,6 +8,7 @@ from rest_tools.client import RestClient
 
 from . import database, images, s3
 from .config import QUEUE_ALIAS_FROMCLIENT, QUEUE_ALIAS_TOCLIENT
+from .database.schema import PENDING_EWMS_WORKFLOW
 
 LOGGER = logging.Logger(__name__)
 
@@ -118,6 +119,9 @@ async def get_deactivated_type(ewms_rc: RestClient, workflow_id: str) -> str | N
 
     Example: 'ABORTED', 'FINISHED
     """
+    if workflow_id == PENDING_EWMS_WORKFLOW:
+        return None
+
     workflow = await ewms_rc.request(
         "GET",
         f"/v0/workflows/{workflow_id}",

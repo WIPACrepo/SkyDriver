@@ -1,11 +1,11 @@
 """Test dynamically generating the scan state."""
 
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from skydriver.database import schema
+from skydriver.database.schema import PENDING_EWMS_WORKFLOW
 from skydriver.utils import get_scan_state
 
 
@@ -93,7 +93,7 @@ async def test_20__waiting_on_first_pixel_reco(
         scanner_server_args=MagicMock(),
         #
         # now, args that actually matter:
-        ewms_workflow_id="pending ewms",
+        ewms_workflow_id="ewms123",
         progress=MagicMock(
             spec_set=["processing_stats"],  # no magic strict attrs -- kind of like dict
             processing_stats=MagicMock(
@@ -102,68 +102,13 @@ async def test_20__waiting_on_first_pixel_reco(
                     "rate",
                 ],
                 finished=False,
-                rate={"abc": 123},
+                rate=None,
             ),
         ),
     )
-    assert await get_scan_state(manifest, ewms_rc) == state
 
-
-@pytest.mark.parametrize(
-    "ewms_dtype,state",
-    [
-        ("ABORTED", "ABORTED__WAITING_ON_CLUSTER_STARTUP"),
-        ("FINISHED", "FINISHED__WAITING_ON_CLUSTER_STARTUP"),
-        (None, "PENDING__WAITING_ON_CLUSTER_STARTUP"),
-    ],
-)
-async def test_30__waiting_on_cluster_startup(
-    ewms_dtype: str | None, state: str
-) -> None:
-    """Test normal and stopped variants."""
-    ewms_rc = MagicMock()
-
-    manifest = schema.Manifest(
-        scan_id="abc123",
-        timestamp=time.time(),
-        is_deleted=False,
-        event_i3live_json_dict={"abc": 123},
-        scanner_server_args="",
-        ewms_task=schema.InHouseStarterInfo(
-            tms_args=[],
-            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
-            complete=is_complete,
-            # clusters=[
-            #     schema.ManualCluster(
-            #         orchestrator="condor",
-            #         location=schema.HTCondorLocation(
-            #             collector="foo",
-            #             schedd="bar",
-            #         ),
-            #         n_workers=111,
-            #         cluster_id="abc123",  # "" is a non-started cluster
-            #         starter_info={"abc": 123},
-            #     )
-            # ],
-        ),
-        #
-        progress=schema.Progress(
-            "summary",
-            "epilogue",
-            {},
-            schema.ProgressProcessingStats(
-                start={},
-                runtime={},
-                # rate={"abc": 123},
-                # end,
-                # finished=True,
-                # predictions,
-            ),
-            1.0,
-            str(time.time()),
-        ),
-    )
-    assert await get_scan_state(manifest, ewms_rc) == state
+    with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
+        assert await get_scan_state(manifest, ewms_rc) == state
 
 
 @pytest.mark.parametrize(
@@ -181,98 +126,44 @@ async def test_40__waiting_on_scanner_server_startup(
     ewms_rc = MagicMock()
 
     manifest = schema.Manifest(
-        scan_id="abc123",
-        timestamp=time.time(),
-        is_deleted=False,
-        event_i3live_json_dict={"abc": 123},
-        scanner_server_args="",
-        ewms_task=schema.InHouseStarterInfo(
-            tms_args=[],
-            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
-            complete=is_complete,
-            clusters=[
-                schema.InHouseClusterInfo(
-                    orchestrator="condor",
-                    location=schema.HTCondorLocation(
-                        collector="foo",
-                        schedd="bar",
-                    ),
-                    n_workers=111,
-                    cluster_id="abc123",  # "" is a non-started cluster
-                    starter_info={"abc": 123},
-                )
-            ],
-        ),
+        scan_id=MagicMock(),
+        timestamp=MagicMock(),
+        is_deleted=MagicMock(),
+        event_i3live_json_dict=MagicMock(),
+        scanner_server_args=MagicMock(),
         #
-        # progress=schema.Progress(
-        #     "summary",
-        #     "epilogue",
-        #     {},
-        #     schema.ProgressProcessingStats(
-        #         start={},
-        #         runtime={},
-        #         # rate={"abc": 123},
-        #         # end,
-        #         # finished=True,
-        #         # predictions,
-        #     ),
-        #     1.0,
-        #     str(time.time()),
-        # ),
+        # now, args that actually matter:
+        ewms_workflow_id="ewms123",
+        progress=None,
     )
-    assert await get_scan_state(manifest, ewms_rc) == state
+
+    with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
+        assert await get_scan_state(manifest, ewms_rc) == state
 
 
 @pytest.mark.parametrize(
     "ewms_dtype,state",
     [
-        ("ABORTED", "ABORTED__IN_BACKLOG"),
-        ("FINISHED", "FINISHED__IN_BACKLOG"),
-        (None, "PENDING__IN_BACKLOG"),
+        ("ABORTED", "ABORTED__PRESTARTUP"),
+        ("FINISHED", "FINISHED__PRESTARTUP"),
+        (None, "PENDING__PRESTARTUP"),
     ],
 )
-async def test_50__IN_BACKLOG(ewms_dtype: str | None, state: str) -> None:
+async def test_50__prestartup(ewms_dtype: str | None, state: str) -> None:
     """Test normal and stopped varriants."""
     ewms_rc = MagicMock()
 
     manifest = schema.Manifest(
-        scan_id="abc123",
-        timestamp=time.time(),
-        is_deleted=False,
-        event_i3live_json_dict={"abc": 123},
-        scanner_server_args="",
-        ewms_task=schema.InHouseStarterInfo(
-            tms_args=[],
-            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
-            complete=is_complete,
-            # clusters=[
-            #     schema.ManualCluster(
-            #         orchestrator="condor",
-            #         location=schema.HTCondorLocation(
-            #             collector="foo",
-            #             schedd="bar",
-            #         ),
-            #         n_workers=111,
-            #         cluster_id="abc123",  # "" is a non-started cluster
-            #         starter_info={"abc": 123},
-            #     )
-            # ],
-        ),
+        scan_id=MagicMock(),
+        timestamp=MagicMock(),
+        is_deleted=MagicMock(),
+        event_i3live_json_dict=MagicMock(),
+        scanner_server_args=MagicMock(),
         #
-        # progress=schema.Progress(
-        #     "summary",
-        #     "epilogue",
-        #     {},
-        #     schema.ProgressProcessingStats(
-        #         start={},
-        #         runtime={},
-        #         # rate={"abc": 123},
-        #         # end,
-        #         # finished=True,
-        #         # predictions,
-        #     ),
-        #     1.0,
-        #     str(time.time()),
-        # ),
+        # now, args that actually matter:
+        ewms_workflow_id=PENDING_EWMS_WORKFLOW,
+        progress=None,
     )
-    assert await get_scan_state(manifest, ewms_rc) == state
+
+    with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
+        assert await get_scan_state(manifest, ewms_rc) == state
