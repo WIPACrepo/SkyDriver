@@ -97,7 +97,7 @@ jobs:
 
       - name: test
         run: |
-          pytest -vvv tests/unit
+          pytest -vvv tests/unit --exitfirst
 
       - name: Dump logs
         if: always()
