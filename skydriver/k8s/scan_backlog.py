@@ -66,12 +66,14 @@ async def get_next(
             continue
 
         # grab the scan request object--it has other info
-        scan_request_obj = await scan_request_client.find_one(
+        scan_request_obj = await scan_request_client.find_one(  # type: ignore[attr-defined]
             {"scan_id": manifest.scan_id}
         )
 
         # grab the k8s
-        doc = await skyscan_k8s_job_client.find_one({"scan_id": manifest.scan_id})
+        doc = await skyscan_k8s_job_client.find_one(  # type: ignore[attr-defined]
+            {"scan_id": manifest.scan_id},
+        )
         skyscan_k8s_job = doc["skyscan_k8s_job_dict"]
 
         # all good!

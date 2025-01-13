@@ -574,7 +574,7 @@ async def _start_scan(
         priority=scan_request_obj["priority"],
     )
     await manifests.put(manifest)
-    await skyscan_k8s_job_coll.insert_one(
+    await skyscan_k8s_job_coll.insert_one(  # type: ignore[attr-defined]
         {
             "scan_id": scan_id,
             "skyscan_k8s_job_dict": skyscan_k8s_job_dict,
@@ -1047,6 +1047,12 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # respond
         scan_state = await get_scan_state(manifest, self.ewms_rc)
+        if manifest.ewms_workflow_id:
+            clusters = await ewms.get_taskforce_phases(
+                self.ewms_rc, manifest.ewms_workflow_id
+            )
+        else:
+            clusters = []
         resp = {
             "scan_state": scan_state,
             "is_deleted": manifest.is_deleted,
@@ -1054,9 +1060,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 scan_state == schema.ScanState.SCAN_FINISHED_SUCCESSFULLY.name
             ),
             "pods": pods_411,
-            "clusters": await ewms.get_taskforce_phases(
-                self.ewms_rc, manifest.ewms_workflow_id
-            ),
+            "clusters": clusters,
         }
         if not args.include_pod_statuses:
             resp.pop("pods")
