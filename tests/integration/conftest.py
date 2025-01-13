@@ -3,7 +3,7 @@
 import asyncio
 import socket
 from typing import Any, AsyncIterator, Callable
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 
 import kubernetes.client  # type: ignore[import]
 import pytest
@@ -131,11 +131,12 @@ async def server(
 
     mongo_client = await create_mongodb_client()
     k8s_batch_api = Mock()
+    ewms_rc = MagicMock()
     backlog_task = asyncio.create_task(
-        skydriver.k8s.scan_backlog.run(mongo_client, k8s_batch_api)
+        skydriver.k8s.scan_backlog.run(mongo_client, k8s_batch_api, ewms_rc)
     )
     await asyncio.sleep(0)  # start up previous task
-    rs = await make(mongo_client, k8s_batch_api)
+    rs = await make(mongo_client, k8s_batch_api, ewms_rc)
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:

@@ -41,8 +41,8 @@ async def designate_for_startup(
 async def get_next(
     scan_backlog: database.interface.ScanBacklogClient,
     manifests: database.interface.ManifestClient,
-    scan_request_client: AsyncIOMotorCollection,
-    skyscan_k8s_job_client: AsyncIOMotorClient,
+    scan_request_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
+    skyscan_k8s_job_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     include_low_priority_scans: bool,
 ) -> tuple[database.schema.ScanBacklogEntry, database.schema.Manifest, dict, dict]:
     """Get the next entry & remove any that have been cancelled."""
@@ -212,6 +212,7 @@ async def _run(
         await manifest_client.collection.find_one_and_update(
             {"scan_id": manifest.scan_id},
             {"$set": {"ewms_workflow_id": workflow_id}},
+            return_dclass=dict,
         )
 
         LOGGER.info(

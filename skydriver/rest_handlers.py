@@ -534,7 +534,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 async def _start_scan(
     manifests: database.interface.ManifestClient,
     scan_backlog: database.interface.ScanBacklogClient,
-    skyscan_k8s_job_coll: AsyncIOMotorCollection,
+    skyscan_k8s_job_coll: AsyncIOMotorCollection,  # type: ignore[valid-type]
     scan_request_obj: dict,
     new_scan_id: str = "",  # don't use scan_request_obj.scan_id--this could be a rescan
 ) -> schema.Manifest:
@@ -1054,7 +1054,9 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 scan_state == schema.ScanState.SCAN_FINISHED_SUCCESSFULLY.name
             ),
             "pods": pods_411,
-            "clusters": await ewms.get_taskforce_phases(manifest.ewms_workflow_id),
+            "clusters": await ewms.get_taskforce_phases(
+                self.ewms_rc, manifest.ewms_workflow_id
+            ),
         }
         if not args.include_pod_statuses:
             resp.pop("pods")

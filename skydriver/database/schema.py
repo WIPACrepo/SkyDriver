@@ -243,7 +243,7 @@ async def get_scan_state(manifest: Manifest, ewms_rc: RestClient) -> str:
     ):
         return f"{dtype.upper()}__{get_nonfinished_state().name.split('__')[1]}"
     # -> BACKWARD COMPATIBILITY: is this an old/pre-ewms scan?
-    elif manifest.ewms_task.get("complete"):
+    elif isinstance(manifest.ewms_task, dict) and manifest.ewms_task.get("complete"):
         return f"STOPPED__{get_nonfinished_state().name.split('__')[1]}"
     # -> no, this is a non-finished scan
     else:

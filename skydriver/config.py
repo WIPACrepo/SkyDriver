@@ -6,7 +6,6 @@ import logging
 from typing import Any, Optional
 
 import humanfriendly
-import kubernetes.client  # type: ignore[import-untyped]
 from wipac_dev_tools import from_environment_as_dataclass, logging_tools
 
 sdict = dict[str, Any]
