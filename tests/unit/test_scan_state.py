@@ -57,7 +57,11 @@ async def test_10__partial_result_generated(ewms_dtype: str, state: str) -> None
         progress=MagicMock(
             spec_set=["processing_stats"],  # no magic strict attrs -- kind of like dict
             processing_stats=MagicMock(
-                spec_set=["rate"],  # no magic strict attrs -- kind of like dict
+                spec_set=[  # no magic strict attrs -- kind of like dict
+                    "finished",
+                    "rate",
+                ],
+                finished=False,
                 rate={"abc": 123},
             ),
         ),
