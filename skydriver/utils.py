@@ -58,7 +58,7 @@ async def get_scan_state(manifest: Manifest, ewms_rc: RestClient) -> str:
     # is EWMS still running the scan workers?
     # -> yes
     if manifest.ewms_workflow_id and (
-        dtype := await ewms.get_deactivated_type(ewms_rc, manifest.ewms_workflow_id)
+        dtype := (await ewms.get_deactivated_type(ewms_rc, manifest.ewms_workflow_id))
     ):
         return f"{dtype.upper()}__{get_nonfinished_state().name.split('__')[1]}"
     # -> BACKWARD COMPATIBILITY: is this an old/pre-ewms scan?
