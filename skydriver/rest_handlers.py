@@ -38,10 +38,10 @@ from .config import (
     is_testing,
 )
 from .database import schema
-from .database.schema import get_scan_state
 from .ewms import request_stop_on_ewms
 from .k8s.scan_backlog import designate_for_startup
 from .k8s.scanner_instance import SkyScanK8sJobFactory
+from .utils import get_scan_state
 
 LOGGER = logging.getLogger(__name__)
 

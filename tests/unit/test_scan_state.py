@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from skydriver.database import schema
-from skydriver.database.schema import get_scan_state
+from skydriver.utils import get_scan_state
 
 
 async def test_00__scan_finished_successfully() -> None:
