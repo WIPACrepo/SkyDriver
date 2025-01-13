@@ -27,7 +27,7 @@ from rest_tools.server import (
 from tornado import web
 from wipac_dev_tools import argparse_tools
 
-from . import database, ewms, images, k8s
+from . import database, ewms, images, k8s, utils
 from .config import (
     DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
     DEFAULT_WORKER_DISK_BYTES,
@@ -1057,7 +1057,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "scan_state": scan_state,
             "is_deleted": manifest.is_deleted,
             "scan_complete": bool(
-                scan_state == schema.ScanState.SCAN_FINISHED_SUCCESSFULLY.name
+                scan_state == utils._ScanState.SCAN_FINISHED_SUCCESSFULLY.name
             ),
             "pods": pods_411,
             "clusters": clusters,

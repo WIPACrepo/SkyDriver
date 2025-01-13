@@ -2,7 +2,7 @@
 
 import logging
 
-import aiocache
+import aiocache  # type: ignore[import-untyped]
 import requests
 from rest_tools.client import RestClient
 
