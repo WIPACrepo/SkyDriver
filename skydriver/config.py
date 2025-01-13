@@ -136,58 +136,10 @@ LOCAL_K8S_HOST = "local"
 # known cluster locations
 KNOWN_CLUSTERS: dict[str, dict[str, Any]] = {
     "sub-2": {
-        "orchestrator": "condor",
-        "location": {
-            "collector": "glidein-cm.icecube.wisc.edu",
-            "schedd": "sub-2.icecube.wisc.edu",
-        },
-        "v1envvars": [
-            kubernetes.client.V1EnvVar(
-                name="CONDOR_TOKEN",
-                value_from=kubernetes.client.V1EnvVarSource(
-                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                        name=ENV.K8S_SECRET_NAME,
-                        key="condor_token_sub2",
-                    )
-                ),
-            )
-        ],
-        "max_n_clients_during_debug_mode": 10,
+        "max_n_clients_during_debug_mode": 100,
     },
     LOCAL_K8S_HOST: {
-        "orchestrator": "k8s",
-        "location": {
-            "host": LOCAL_K8S_HOST,
-            "namespace": ENV.K8S_NAMESPACE,
-        },
-        "v1envvars": [],
-    },
-    "gke-2306": {
-        "orchestrator": "k8s",
-        "location": {
-            "host": "https://34.171.167.119:443",
-            "namespace": "icecube-skymap-scanner",
-        },
-        "v1envvars": [
-            kubernetes.client.V1EnvVar(
-                name="WORKER_K8S_CACERT",
-                value_from=kubernetes.client.V1EnvVarSource(
-                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                        name=ENV.K8S_SECRET_NAME,
-                        key="worker_k8s_cacert_gke",
-                    )
-                ),
-            ),
-            kubernetes.client.V1EnvVar(
-                name="WORKER_K8S_TOKEN",
-                value_from=kubernetes.client.V1EnvVarSource(
-                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                        name=ENV.K8S_SECRET_NAME,
-                        key="worker_k8s_token_gke",
-                    )
-                ),
-            ),
-        ],
+        "max_n_clients_during_debug_mode": 5,
     },
 }
 

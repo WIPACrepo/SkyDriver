@@ -237,27 +237,6 @@ class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-def _cluster_lookup(name: str, n_workers: int) -> database.schema.InHouseClusterInfo:
-    """Grab the ManualCluster object known using `name`."""
-    if cluster := KNOWN_CLUSTERS.get(name):
-        if cluster["orchestrator"] == "condor":
-            return database.schema.InHouseClusterInfo(
-                orchestrator=cluster["orchestrator"],
-                location=database.schema.HTCondorLocation(**cluster["location"]),
-                n_workers=n_workers,
-            )
-        elif cluster["orchestrator"] == "k8s":
-            return database.schema.InHouseClusterInfo(
-                orchestrator=cluster["orchestrator"],
-                location=database.schema.KubernetesLocation(**cluster["location"]),
-                n_workers=n_workers,
-            )
-    raise argparse.ArgumentTypeError(
-        f"requested unknown cluster: {name} (available:"
-        f" {', '.join(KNOWN_CLUSTERS.keys())})"
-    )
-
-
 def _json_to_dict(val: Any) -> dict:
     _error = argparse.ArgumentTypeError("must be JSON-string or JSON-friendly dict")
     # str -> json-dict
@@ -303,9 +282,13 @@ def _validate_request_clusters(
     # check all entries are 2-lists (or tuple)
     if not all(isinstance(a, list | tuple) and len(a) == 2 for a in list_tups):
         raise _error
-    # check that all locations are known (this validates sooner than ewms, if using ewms)
+    # check that all locations are known (this validates sooner than ewms)
     for name, n_workers in list_tups:
-        _cluster_lookup(name, n_workers)
+        if name not in KNOWN_CLUSTERS:
+            raise argparse.ArgumentTypeError(
+                f"requested unknown cluster: {name} (available:"
+                f" {', '.join(KNOWN_CLUSTERS.keys())})"
+            )
 
     return list_tups
 
