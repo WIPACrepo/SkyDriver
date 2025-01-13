@@ -1,7 +1,7 @@
 """Test dynamically generating the scan state."""
 
 import time
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,93 +14,48 @@ async def test_00__scan_finished_successfully() -> None:
     ewms_rc = MagicMock()
 
     manifest = schema.Manifest(
-        scan_id="abc123",
-        timestamp=time.time(),
-        is_deleted=False,
-        event_i3live_json_dict={"abc": 123},
-        scanner_server_args="",
-        ewms_task=schema.InHouseStarterInfo(
-            tms_args=[],
-            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
-            complete=True,
-        ),
+        scan_id=MagicMock(),
+        timestamp=MagicMock(),
+        is_deleted=MagicMock(),
+        event_i3live_json_dict=MagicMock(),
+        scanner_server_args=MagicMock(),
         #
-        progress=schema.Progress(
-            "summary",
-            "epilogue",
-            {},
-            schema.ProgressProcessingStats(
-                start={},
-                runtime={},
-                # rate,
-                # end,
-                finished=True,
-                # predictions,
-            ),
-            1.0,
-            str(time.time()),
-        ),
+        # now, args that actually matter:
+        ewms_workflow_id="ewms123",
+        progress=MagicMock(processing_stats=MagicMock(finished=True)),
     )
     assert (
         await get_scan_state(manifest, ewms_rc)
-        == schema.ScanState.SCAN_FINISHED_SUCCESSFULLY
+        == schema.ScanState.SCAN_FINISHED_SUCCESSFULLY.name
     )
 
 
 @pytest.mark.parametrize(
-    "is_complete,state",
+    "ewms_dtype,state",
     [
-        (True, schema.ScanState.STOPPED__PARTIAL_RESULT_GENERATED),
-        (False, schema.ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED),
+        ("ABORTED", "ABORTED__PARTIAL_RESULT_GENERATED"),
+        ("FINISHED", "FINISHED__PARTIAL_RESULT_GENERATED"),
+        (None, schema.ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED.name),
     ],
 )
-async def test_10__partial_result_generated(
-    is_complete: bool, state: schema.ScanState
-) -> None:
+async def test_10__partial_result_generated(ewms_dtype: str, state: str) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
 
     manifest = schema.Manifest(
-        scan_id="abc123",
-        timestamp=time.time(),
-        is_deleted=False,
-        event_i3live_json_dict={"abc": 123},
-        scanner_server_args="",
-        ewms_task=schema.InHouseStarterInfo(
-            tms_args=[],
-            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
-            complete=is_complete,
-            clusters=[
-                schema.InHouseClusterInfo(
-                    orchestrator="condor",
-                    location=schema.HTCondorLocation(
-                        collector="foo",
-                        schedd="bar",
-                    ),
-                    n_workers=111,
-                    cluster_id="abc123",  # "" is a non-started cluster
-                    starter_info={"abc": 123},
-                )
-            ],
-        ),
+        scan_id=MagicMock(),
+        timestamp=MagicMock(),
+        is_deleted=MagicMock(),
+        event_i3live_json_dict=MagicMock(),
+        scanner_server_args=MagicMock(),
         #
-        progress=schema.Progress(
-            "summary",
-            "epilogue",
-            {},
-            schema.ProgressProcessingStats(
-                start={},
-                runtime={},
-                rate={"abc": 123},
-                # end,
-                # finished=True,
-                # predictions,
-            ),
-            1.0,
-            str(time.time()),
-        ),
+        # now, args that actually matter:
+        ewms_workflow_id="ewms123",
+        progress=MagicMock(processing_stats=MagicMock(rate={"abc": 123})),
     )
-    assert await get_scan_state(manifest, ewms_rc) == state
+
+    with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
+        assert await get_scan_state(manifest, ewms_rc) == state
 
 
 @pytest.mark.parametrize(
@@ -111,7 +66,7 @@ async def test_10__partial_result_generated(
     ],
 )
 async def test_20__waiting_on_first_pixel_reco(
-    is_complete: bool, state: schema.ScanState
+    stopped: bool, state: schema.ScanState
 ) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
@@ -167,7 +122,7 @@ async def test_20__waiting_on_first_pixel_reco(
     ],
 )
 async def test_30__waiting_on_cluster_startup(
-    is_complete: bool, state: schema.ScanState
+    stopped: bool, state: schema.ScanState
 ) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
@@ -223,7 +178,7 @@ async def test_30__waiting_on_cluster_startup(
     ],
 )
 async def test_40__waiting_on_scanner_server_startup(
-    is_complete: bool, state: schema.ScanState
+    stopped: bool, state: schema.ScanState
 ) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
@@ -278,7 +233,7 @@ async def test_40__waiting_on_scanner_server_startup(
         (False, schema.ScanState.PENDING__PRESTARTUP),
     ],
 )
-async def test_50__prestartup(is_complete: bool, state: schema.ScanState) -> None:
+async def test_50__prestartup(stopped: bool, state: schema.ScanState) -> None:
     """Test normal and stopped varriants."""
     ewms_rc = MagicMock()
 
