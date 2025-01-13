@@ -2,7 +2,7 @@
 
 import logging
 
-import cachetools.func
+import aiocache
 import requests
 from rest_tools.client import RestClient
 
@@ -112,7 +112,7 @@ async def request_stop_on_ewms(
         return resp["n_taskforces"]
 
 
-@cachetools.func.ttl_cache(ttl=1 * 60)  # don't cache too long, but avoid spamming ewms
+@aiocache.cached(ttl=1 * 60)  # don't cache too long, but avoid spamming ewms
 async def get_deactivated_type(ewms_rc: RestClient, workflow_id: str) -> str | None:
     """Grab the 'deactivated' field for the workflow.
 
@@ -125,7 +125,7 @@ async def get_deactivated_type(ewms_rc: RestClient, workflow_id: str) -> str | N
     return workflow["deactivated"]
 
 
-@cachetools.func.ttl_cache(ttl=1 * 60)  # don't cache too long, but avoid spamming ewms
+@aiocache.cached(ttl=1 * 60)  # don't cache too long, but avoid spamming ewms
 async def get_taskforce_phases(
     ewms_rc: RestClient,
     workflow_id: str,
