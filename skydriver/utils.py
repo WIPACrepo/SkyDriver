@@ -8,7 +8,7 @@ from . import ewms
 from .database.schema import DEPRECATED_EWMS_TASK, Manifest, PENDING_EWMS_WORKFLOW
 
 
-class ScanState(enum.Enum):
+class _ScanState(enum.Enum):
     """A non-persisted scan state."""
 
     SCAN_FINISHED_SUCCESSFULLY = enum.auto()
@@ -23,7 +23,7 @@ class ScanState(enum.Enum):
 async def get_scan_state(manifest: Manifest, ewms_rc: RestClient) -> str:
     """Determine the state of the scan by parsing attributes and talking with EWMS."""
     if manifest.progress and manifest.progress.processing_stats.finished:
-        return ScanState.SCAN_FINISHED_SUCCESSFULLY.name
+        return _ScanState.SCAN_FINISHED_SUCCESSFULLY.name
 
     def _has_request_been_sent_to_ewms() -> bool:
         return bool(
@@ -35,25 +35,25 @@ async def get_scan_state(manifest: Manifest, ewms_rc: RestClient) -> str:
             )
         )
 
-    def get_nonfinished_state() -> ScanState:
+    def get_nonfinished_state() -> _ScanState:
         """Get the ScanState of the scan, only by parsing attributes."""
         # has the scanner server started?
         # -> yes
         if manifest.progress:  # attr only updated by scanner server requests
             if _has_request_been_sent_to_ewms():
-                return ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP
+                return _ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP
             else:
                 if manifest.progress.processing_stats.rate:
-                    return ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
+                    return _ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
                 else:
-                    return ScanState.IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO
+                    return _ScanState.IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO
         # -> no
         else:
             if _has_request_been_sent_to_ewms():
                 # NOTE: assume that the ewms-request and scanner server startup happen in tandem
-                return ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
+                return _ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
             else:
-                return ScanState.PENDING__PRESTARTUP
+                return _ScanState.PENDING__PRESTARTUP
 
     # is EWMS still running the scan workers?
     # -> yes

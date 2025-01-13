@@ -24,10 +24,7 @@ async def test_00__scan_finished_successfully() -> None:
         ewms_workflow_id="ewms123",
         progress=MagicMock(processing_stats=MagicMock(finished=True)),
     )
-    assert (
-        await get_scan_state(manifest, ewms_rc)
-        == schema.ScanState.SCAN_FINISHED_SUCCESSFULLY.name
-    )
+    assert await get_scan_state(manifest, ewms_rc) == "SCAN_FINISHED_SUCCESSFULLY"
 
 
 @pytest.mark.parametrize(
@@ -35,7 +32,7 @@ async def test_00__scan_finished_successfully() -> None:
     [
         ("ABORTED", "ABORTED__PARTIAL_RESULT_GENERATED"),
         ("FINISHED", "FINISHED__PARTIAL_RESULT_GENERATED"),
-        (None, schema.ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED.name),
+        (None, "IN_PROGRESS__PARTIAL_RESULT_GENERATED"),
     ],
 )
 async def test_10__partial_result_generated(ewms_dtype: str, state: str) -> None:
@@ -59,15 +56,13 @@ async def test_10__partial_result_generated(ewms_dtype: str, state: str) -> None
 
 
 @pytest.mark.parametrize(
-    "is_complete,state",
+    "ewms_dtype,state",
     [
-        (True, schema.ScanState.STOPPED__WAITING_ON_FIRST_PIXEL_RECO),
-        (False, schema.ScanState.IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO),
+        (True, "STOPPED__WAITING_ON_FIRST_PIXEL_RECO"),
+        (False, "IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO"),
     ],
 )
-async def test_20__waiting_on_first_pixel_reco(
-    stopped: bool, state: schema.ScanState
-) -> None:
+async def test_20__waiting_on_first_pixel_reco(ewms_dtype: str, state: str) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
 
@@ -115,15 +110,13 @@ async def test_20__waiting_on_first_pixel_reco(
 
 
 @pytest.mark.parametrize(
-    "is_complete,state",
+    "ewms_dtype,state",
     [
-        (True, schema.ScanState.STOPPED__WAITING_ON_CLUSTER_STARTUP),
-        (False, schema.ScanState.PENDING__WAITING_ON_CLUSTER_STARTUP),
+        (True, "STOPPED__WAITING_ON_CLUSTER_STARTUP"),
+        (False, "PENDING__WAITING_ON_CLUSTER_STARTUP"),
     ],
 )
-async def test_30__waiting_on_cluster_startup(
-    stopped: bool, state: schema.ScanState
-) -> None:
+async def test_30__waiting_on_cluster_startup(ewms_dtype: str, state: str) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
 
@@ -171,14 +164,14 @@ async def test_30__waiting_on_cluster_startup(
 
 
 @pytest.mark.parametrize(
-    "is_complete,state",
+    "ewms_dtype,state",
     [
-        (True, schema.ScanState.STOPPED__WAITING_ON_SCANNER_SERVER_STARTUP),
-        (False, schema.ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP),
+        (True, "STOPPED__WAITING_ON_SCANNER_SERVER_STARTUP"),
+        (False, "PENDING__WAITING_ON_SCANNER_SERVER_STARTUP"),
     ],
 )
 async def test_40__waiting_on_scanner_server_startup(
-    stopped: bool, state: schema.ScanState
+    ewms_dtype: str, state: str
 ) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
@@ -227,13 +220,13 @@ async def test_40__waiting_on_scanner_server_startup(
 
 
 @pytest.mark.parametrize(
-    "is_complete,state",
+    "ewms_dtype,state",
     [
-        (True, schema.ScanState.STOPPED__PRESTARTUP),
-        (False, schema.ScanState.PENDING__PRESTARTUP),
+        (True, "STOPPED__PRESTARTUP"),
+        (False, "PENDING__PRESTARTUP"),
     ],
 )
-async def test_50__prestartup(stopped: bool, state: schema.ScanState) -> None:
+async def test_50__prestartup(ewms_dtype: str, state: str) -> None:
     """Test normal and stopped varriants."""
     ewms_rc = MagicMock()
 
