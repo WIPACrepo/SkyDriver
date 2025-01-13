@@ -23,9 +23,9 @@ async def test_00__scan_finished_successfully() -> None:
         # now, args that actually matter:
         ewms_workflow_id="ewms123",
         progress=MagicMock(
-            spec_set=["processing_stats"],
+            spec_set=[],  # enforce strict attribute access (same behavior if this was a dict)
             processing_stats=MagicMock(
-                spec_set=["finished"],
+                spec_set=[],  # enforce strict attribute access (same behavior if this was a dict)
                 finished=True,
             ),
         ),
@@ -55,9 +55,9 @@ async def test_10__partial_result_generated(ewms_dtype: str, state: str) -> None
         # now, args that actually matter:
         ewms_workflow_id="ewms123",
         progress=MagicMock(
-            spec_set=["processing_stats"],
+            spec_set=[],  # enforce strict attribute access (same behavior if this was a dict)
             processing_stats=MagicMock(
-                spec_set=["rate"],
+                spec_set=[],  # enforce strict attribute access (same behavior if this was a dict)
                 rate={"abc": 123},
             ),
         ),
