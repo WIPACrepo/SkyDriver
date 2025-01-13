@@ -41,7 +41,7 @@ async def test_00__scan_finished_successfully() -> None:
         (None, "IN_PROGRESS__PARTIAL_RESULT_GENERATED"),
     ],
 )
-async def test_10__partial_result_generated(ewms_dtype: str, state: str) -> None:
+async def test_10__partial_result_generated(ewms_dtype: str | None, state: str) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
 
@@ -74,52 +74,36 @@ async def test_10__partial_result_generated(ewms_dtype: str, state: str) -> None
 @pytest.mark.parametrize(
     "ewms_dtype,state",
     [
-        (True, "STOPPED__WAITING_ON_FIRST_PIXEL_RECO"),
-        (False, "IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO"),
+        ("ABORTED", "ABORTED__WAITING_ON_FIRST_PIXEL_RECO"),
+        ("FINISHED", "FINISHED__WAITING_ON_FIRST_PIXEL_RECO"),
+        (None, "IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO"),
     ],
 )
-async def test_20__waiting_on_first_pixel_reco(ewms_dtype: str, state: str) -> None:
+async def test_20__waiting_on_first_pixel_reco(
+    ewms_dtype: str | None, state: str
+) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
 
     manifest = schema.Manifest(
-        scan_id="abc123",
-        timestamp=time.time(),
-        is_deleted=False,
-        event_i3live_json_dict={"abc": 123},
-        scanner_server_args="",
-        ewms_task=schema.InHouseStarterInfo(
-            tms_args=[],
-            env_vars=schema.EnvVars(scanner_server=[], tms_starters=[]),
-            complete=is_complete,
-            clusters=[
-                schema.InHouseClusterInfo(
-                    orchestrator="condor",
-                    location=schema.HTCondorLocation(
-                        collector="foo",
-                        schedd="bar",
-                    ),
-                    n_workers=111,
-                    cluster_id="abc123",  # "" is a non-started cluster
-                    starter_info={"abc": 123},
-                )
-            ],
-        ),
+        scan_id=MagicMock(),
+        timestamp=MagicMock(),
+        is_deleted=MagicMock(),
+        event_i3live_json_dict=MagicMock(),
+        scanner_server_args=MagicMock(),
         #
-        progress=schema.Progress(
-            "summary",
-            "epilogue",
-            {},
-            schema.ProgressProcessingStats(
-                start={},
-                runtime={},
-                # rate={"abc": 123},
-                # end,
-                # finished=True,
-                # predictions,
+        # now, args that actually matter:
+        ewms_workflow_id="pending ewms",
+        progress=MagicMock(
+            spec_set=["processing_stats"],  # no magic strict attrs -- kind of like dict
+            processing_stats=MagicMock(
+                spec_set=[  # no magic strict attrs -- kind of like dict
+                    "finished",
+                    "rate",
+                ],
+                finished=False,
+                rate={"abc": 123},
             ),
-            1.0,
-            str(time.time()),
         ),
     )
     assert await get_scan_state(manifest, ewms_rc) == state
@@ -128,11 +112,14 @@ async def test_20__waiting_on_first_pixel_reco(ewms_dtype: str, state: str) -> N
 @pytest.mark.parametrize(
     "ewms_dtype,state",
     [
-        (True, "STOPPED__WAITING_ON_CLUSTER_STARTUP"),
-        (False, "PENDING__WAITING_ON_CLUSTER_STARTUP"),
+        ("ABORTED", "ABORTED__WAITING_ON_CLUSTER_STARTUP"),
+        ("FINISHED", "FINISHED__WAITING_ON_CLUSTER_STARTUP"),
+        (None, "PENDING__WAITING_ON_CLUSTER_STARTUP"),
     ],
 )
-async def test_30__waiting_on_cluster_startup(ewms_dtype: str, state: str) -> None:
+async def test_30__waiting_on_cluster_startup(
+    ewms_dtype: str | None, state: str
+) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
 
@@ -182,12 +169,13 @@ async def test_30__waiting_on_cluster_startup(ewms_dtype: str, state: str) -> No
 @pytest.mark.parametrize(
     "ewms_dtype,state",
     [
-        (True, "STOPPED__WAITING_ON_SCANNER_SERVER_STARTUP"),
-        (False, "PENDING__WAITING_ON_SCANNER_SERVER_STARTUP"),
+        ("ABORTED", "ABORTED__WAITING_ON_SCANNER_SERVER_STARTUP"),
+        ("FINISHED", "FINISHED__WAITING_ON_SCANNER_SERVER_STARTUP"),
+        (None, "PENDING__WAITING_ON_SCANNER_SERVER_STARTUP"),
     ],
 )
 async def test_40__waiting_on_scanner_server_startup(
-    ewms_dtype: str, state: str
+    ewms_dtype: str | None, state: str
 ) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
@@ -238,11 +226,12 @@ async def test_40__waiting_on_scanner_server_startup(
 @pytest.mark.parametrize(
     "ewms_dtype,state",
     [
-        (True, "STOPPED__PRESTARTUP"),
-        (False, "PENDING__PRESTARTUP"),
+        ("ABORTED", "ABORTED__IN_BACKLOG"),
+        ("FINISHED", "FINISHED__IN_BACKLOG"),
+        (None, "PENDING__IN_BACKLOG"),
     ],
 )
-async def test_50__prestartup(ewms_dtype: str, state: str) -> None:
+async def test_50__IN_BACKLOG(ewms_dtype: str | None, state: str) -> None:
     """Test normal and stopped varriants."""
     ewms_rc = MagicMock()
 
