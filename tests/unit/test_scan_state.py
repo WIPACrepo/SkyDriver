@@ -22,7 +22,13 @@ async def test_00__scan_finished_successfully() -> None:
         #
         # now, args that actually matter:
         ewms_workflow_id="ewms123",
-        progress=MagicMock(processing_stats=MagicMock(finished=True)),
+        progress=MagicMock(
+            spec_set=["processing_stats"],
+            processing_stats=MagicMock(
+                spec_set=["finished"],
+                finished=True,
+            ),
+        ),
     )
     assert await get_scan_state(manifest, ewms_rc) == "SCAN_FINISHED_SUCCESSFULLY"
 
@@ -48,7 +54,13 @@ async def test_10__partial_result_generated(ewms_dtype: str, state: str) -> None
         #
         # now, args that actually matter:
         ewms_workflow_id="ewms123",
-        progress=MagicMock(processing_stats=MagicMock(rate={"abc": 123})),
+        progress=MagicMock(
+            spec_set=["processing_stats"],
+            processing_stats=MagicMock(
+                spec_set=["rate"],
+                rate={"abc": 123},
+            ),
+        ),
     )
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
