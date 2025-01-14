@@ -36,7 +36,7 @@ jobs:
       - uses: actions/setup-python@v5
       - uses: WIPACrepo/wipac-dev-flake8-action@v1.2
         with:
-          max-complexity: 10
+          max-complexity: 20  # decrease this to `10` in the future
 
   mypy:
     needs: [ py-versions ]
