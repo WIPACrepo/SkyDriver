@@ -63,7 +63,7 @@ jobs:
     outputs:
       OKAY: ${{ steps.detect.outputs.OKAY }}
     steps:
-      - name: is this a non-dependabot branch?
+      - name: is this a bot-writable branch?
         id: detect
         # dependabot can't access normal secrets
         #   & don't run non-branch triggers (like tags)
