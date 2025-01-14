@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: versions
-        uses: WIPACrepo/wipac-dev-py-versions-action@v2.1
+        uses: WIPACrepo/wipac-dev-py-versions-action@v2.5
 
 
   #############################################################################
@@ -102,6 +102,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - if: needs.writable-branch-detect.outputs.OKAY == 'true'
+        uses: docker/setup-buildx-action@v2
+      - if: needs.writable-branch-detect.outputs.OKAY == 'true'
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile
+          tags: skydriver:py-dep-this
       - if: needs.writable-branch-detect.outputs.OKAY == 'true'
         uses: WIPACrepo/wipac-dev-py-dependencies-action@v2.0
 
