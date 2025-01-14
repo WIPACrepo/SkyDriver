@@ -112,7 +112,7 @@ jobs:
           tags: skydriver:py-dep-this
           load: true
       - if: needs.writable-branch-detect.outputs.OKAY == 'true'
-        uses: WIPACrepo/wipac-dev-py-dependencies-action@v2.0
+        uses: WIPACrepo/wipac-dev-py-dependencies-action@podman-fix
 
 
   #############################################################################
