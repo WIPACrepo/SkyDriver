@@ -1,6 +1,6 @@
 name: wipac ci/cd
 
-on: [push]
+on: [ push ]
 
 env:
   CI_TEST: 'yes'
@@ -19,61 +19,108 @@ jobs:
     outputs:
       matrix: ${{ steps.versions.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - id: versions
         uses: WIPACrepo/wipac-dev-py-versions-action@v2.1
+
+
+  #############################################################################
+  # LINTERS
+  #############################################################################
+
 
   flake8:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
-      - uses: WIPACrepo/wipac-dev-flake8-action@v1.0
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - uses: WIPACrepo/wipac-dev-flake8-action@v1.2
+        with:
+          max-complexity: 10
 
   mypy:
-    needs: [py-versions]
+    needs: [ py-versions ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.py3 }}
       - uses: WIPACrepo/wipac-dev-mypy-action@v2.0
 
+
+  #############################################################################
+  # PACKAGING
+  #############################################################################
+
+
+  writable-branch-detect:
+    runs-on: ubuntu-latest
+    outputs:
+      OKAY: ${{ steps.detect.outputs.OKAY }}
+    steps:
+      - name: is this a non-dependabot branch?
+        id: detect
+        # dependabot can't access normal secrets
+        #   & don't run non-branch triggers (like tags)
+        #   & we don't want to trigger an update on PR's merge to main/master/default (which is a branch)
+        run: |
+          if [[ \
+              ${{github.actor}} != 'dependabot[bot]' && \
+              ${{github.ref_type}} == 'branch' && \
+              ${{format('refs/heads/{0}', github.event.repository.default_branch)}} != ${{github.ref}} \
+          ]]; then
+            echo "OKAY=true" >> "$GITHUB_OUTPUT"
+            echo "yes, this branch is compatible"
+          else
+            echo "OKAY=false" >> "$GITHUB_OUTPUT"
+            echo "no, this branch is incompatible"
+          fi
+
   py-setup:
+    needs: [ writable-branch-detect ]
     runs-on: ubuntu-latest
     steps:
-      # dependabot can't access normal secrets
-      #   & don't run non-branch triggers (like tags)
-      - if: |
-          github.actor != 'dependabot[bot]' &&
-          github.ref_type == 'branch'
-        name: checkout (only for non-dependabot non-default branches)
-        uses: actions/checkout@v3
+      - if: needs.writable-branch-detect.outputs.OKAY == 'true'
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-      - if: |
-          github.actor != 'dependabot[bot]' &&
-          github.ref_type == 'branch'
-        name: wipac-dev-py-setup-action (only for non-dependabot non-default branches)
-        uses: WIPACrepo/wipac-dev-py-setup-action@v2.9
+      - if: needs.writable-branch-detect.outputs.OKAY == 'true'
+        uses: WIPACrepo/wipac-dev-py-setup-action@v3.1
         with:
           base-keywords: WIPAC IceCube
 
+  py-dependencies:
+    needs: [ writable-branch-detect ]
+    runs-on: ubuntu-latest
+    steps:
+      - if: needs.writable-branch-detect.outputs.OKAY == 'true'
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - if: needs.writable-branch-detect.outputs.OKAY == 'true'
+        uses: WIPACrepo/wipac-dev-py-dependencies-action@v1.3
+
+
+  #############################################################################
+  # TESTS
+  #############################################################################
+
+
   unit-tests:
-    needs: [py-versions]
+    needs: [ py-versions ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.py3 }}
 
@@ -92,7 +139,7 @@ jobs:
           cat pytest.logs || true
 
   integration-tests:
-    needs: [py-versions]
+    needs: [ py-versions ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -102,9 +149,9 @@ jobs:
       mongo:
         image: bitnami/mongodb:4
         ports:
-        - 27017:27017
+          - 27017:27017
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v2
       - uses: docker/build-push-action@v3
         with:
@@ -130,7 +177,7 @@ jobs:
           echo "#!/bin/bash" >> $DIR/test-script.sh
           echo "set -xe" >> $DIR/test-script.sh
           echo "pip install .[tests]" >> $DIR/test-script.sh
-          echo "python -m pytest -vvv tests/integration" >> $DIR/test-script.sh
+          echo "python -m pytest -vvv tests/integration --exitfirst" >> $DIR/test-script.sh
           chmod +x $DIR/test-script.sh
           cat $DIR/test-script.sh
 
@@ -159,7 +206,7 @@ jobs:
   test-build-docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v2
       - uses: docker/build-push-action@v3
         with:
@@ -170,17 +217,17 @@ jobs:
   release:
     # only run on main/master/default
     if: format('refs/heads/{0}', github.event.repository.default_branch) == github.ref
-    needs: [flake8, mypy, py-setup, unit-tests, integration-tests, test-build-docker]
+    needs: [ flake8, mypy, py-setup, py-dependencies, unit-tests, integration-tests, test-build-docker ]
     runs-on: ubuntu-latest
     concurrency: release
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-        token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-    - name: Python Semantic Release
-      uses: python-semantic-release/python-semantic-release@v7.34.6
-      with:
-        github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        # repository_username: __token__
-        # repository_password: ${{ secrets.PYPI_TOKEN }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - name: Python Semantic Release
+        uses: python-semantic-release/python-semantic-release@v7.34.6
+        with:
+          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          # repository_username: __token__
+          # repository_password: ${{ secrets.PYPI_TOKEN }}
