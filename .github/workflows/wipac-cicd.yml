@@ -207,6 +207,7 @@ jobs:
               $(env | grep '^SKYSCAN_' | awk '$0="--env "$0') \
               $(env | grep '^EWMS_' | awk '$0="--env "$0') \
               $(env | grep '^S3_' | awk '$0="--env "$0') \
+              $(env | grep '^CI' | awk '$0="--env "$0') \
               $(env | grep '^CI_' | awk '$0="--env "$0') \
               $(env | grep '^SCAN_' | awk '$0="--env "$0') \
               --mount type=bind,source=$(realpath $DIR),target=/local/$DIR \
