@@ -83,4 +83,4 @@ async def drop_database(motor_client: AsyncIOMotorClient) -> None:  # type: igno
     """Drop the database -- only useful during CI testing."""
     if not ENV.CI:
         raise RuntimeError("Cannot drop database if not in testing mode")
-    await motor_client.drop_database(_DB_NAME)
+    await motor_client.drop_database(_DB_NAME)  # type: ignore[attr-defined]
