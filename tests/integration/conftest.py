@@ -13,7 +13,7 @@ from rest_tools.client import RestClient
 import skydriver
 import skydriver.images  # noqa: F401  # export
 from skydriver.database import create_mongodb_client
-from skydriver.database.utils import drop_collections
+from skydriver.database.utils import drop_database
 from skydriver.server import make
 
 
@@ -34,10 +34,10 @@ async def mongo_clear() -> Any:
     """Clear the MongoDB after test completes."""
     motor_client = await create_mongodb_client()
     try:
-        await drop_collections(motor_client)
+        await drop_database(motor_client)
         yield
     finally:
-        await drop_collections(motor_client)
+        await drop_database(motor_client)
 
 
 ########################################################################################
