@@ -7,7 +7,7 @@ import requests
 from rest_tools.client import RestClient
 
 from . import database, images, s3
-from .config import QUEUE_ALIAS_FROMCLIENT, QUEUE_ALIAS_TOCLIENT
+from .config import ENV, QUEUE_ALIAS_FROMCLIENT, QUEUE_ALIAS_TOCLIENT
 from .database.schema import PENDING_EWMS_WORKFLOW
 
 LOGGER = logging.Logger(__name__)
@@ -91,29 +91,26 @@ async def request_stop_on_ewms(
     ewms_rc: RestClient,
     workflow_id: str,
     abort: bool,
-) -> int:
+) -> None:
     """Signal that an EWMS workflow is finished, and stop whatever is needed.
-
-    Returns the number of stopped taskforces.
 
     Suppresses any HTTP errors.
     """
     try:
         if abort:
-            resp = await ewms_rc.request(
+            await ewms_rc.request(
                 "POST",
                 f"/v0/workflows/{workflow_id}/actions/abort",
             )
         else:
-            resp = await ewms_rc.request(
+            await ewms_rc.request(
                 "POST",
                 f"/v0/workflows/{workflow_id}/actions/finished",
             )
     except requests.exceptions.HTTPError as e:
         LOGGER.warning(repr(e))
-        return 0
-    else:
-        return resp["n_taskforces"]
+        if ENV.CI:
+            raise e
 
 
 @aiocache.cached(ttl=1 * 60)  # don't cache too long, but avoid spamming ewms

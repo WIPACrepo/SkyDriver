@@ -18,6 +18,8 @@ def dummy_workflows_post():
     workflow_id = uuid.uuid4().hex
     minimal_wf_doc = {
         "workflow_id": workflow_id,
+        "deactivated": None,
+        # add more fields only if needed in tests--keep things simple
     }
 
     DONT_CALL_IT_A_DB[workflow_id] = minimal_wf_doc
@@ -27,6 +29,23 @@ def dummy_workflows_post():
             "workflow": minimal_wf_doc,
         }
     )
+
+
+@app.route(f"/v0/workflows/<workflow_id>", methods=["GET"])
+def dummy_workflows_get(workflow_id: str):
+    return jsonify(DONT_CALL_IT_A_DB[workflow_id])
+
+
+@app.route(f"/v0/workflows/<workflow_id>/actions/abort", methods=["POST"])
+def dummy_workflows_abort(workflow_id: str):
+    DONT_CALL_IT_A_DB[workflow_id].update({"deactivated": "abort"})
+    return jsonify({})
+
+
+@app.route(f"/v0/workflows/<workflow_id>/actions/finished", methods=["POST"])
+def dummy_workflows_finished(workflow_id: str):
+    DONT_CALL_IT_A_DB[workflow_id].update({"deactivated": "finished"})
+    return jsonify({})
 
 
 if __name__ == "__main__":
