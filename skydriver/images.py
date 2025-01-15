@@ -155,6 +155,8 @@ def resolve_docker_tag(docker_tag: str) -> str:
     NOTE: Assumes tag exists (or will soon) on CVMFS. Condor will back
           off & retry until the image exists
     """
+    LOGGER.info(f"checking docker tag: {docker_tag}")
+
     if docker_tag == "latest":  # 'latest' doesn't exist in CVMFS
         return _try_resolve_to_majminpatch_docker_hub("latest")
 
