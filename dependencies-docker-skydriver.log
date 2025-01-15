@@ -43,7 +43,7 @@ typeguard==4.4.1
 typing_extensions==4.12.2
 urllib3==2.3.0
 websocket-client==1.8.0
-wipac-dev-tools==1.14.0
+wipac-dev-tools==1.15.0
 wipac-rest-tools==1.8.5
 ########################################################################
 #  pipdeptree
@@ -113,7 +113,7 @@ skydriver-clientmanager-ewms-sidecar
 ├── tornado [required: Any, installed: 6.4.2]
 ├── typeguard [required: Any, installed: 4.4.1]
 │   └── typing_extensions [required: >=4.10.0, installed: 4.12.2]
-├── wipac-dev-tools [required: Any, installed: 1.14.0]
+├── wipac-dev-tools [required: Any, installed: 1.15.0]
 │   ├── requests [required: Any, installed: 2.32.3]
 │   │   ├── certifi [required: >=2017.4.17, installed: 2024.12.14]
 │   │   ├── charset-normalizer [required: >=2,<4, installed: 3.4.1]
@@ -137,7 +137,7 @@ skydriver-clientmanager-ewms-sidecar
     │       └── urllib3 [required: >=1.21.1,<3, installed: 2.3.0]
     ├── tornado [required: Any, installed: 6.4.2]
     ├── urllib3 [required: >=2.0.4, installed: 2.3.0]
-    └── wipac-dev-tools [required: Any, installed: 1.14.0]
+    └── wipac-dev-tools [required: Any, installed: 1.15.0]
         ├── requests [required: Any, installed: 2.32.3]
         │   ├── certifi [required: >=2017.4.17, installed: 2024.12.14]
         │   ├── charset-normalizer [required: >=2,<4, installed: 3.4.1]
