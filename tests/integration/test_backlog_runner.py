@@ -53,8 +53,8 @@ async def test_00(
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
 
     # call counts
-    kapitsj_mock.assert_called_once()
     s3gs3gurl_mock.assert_called_once()
+    kapitsj_mock.assert_called_once()
 
     print_it(await rc.request("GET", "/scans/backlog"))
 
@@ -80,17 +80,17 @@ async def test_01(
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
         print_it(await rc.request("GET", "/scans/backlog"))
         # call counts
-        assert kapitsj_mock.call_count >= i + 1  # in case runner is faster
         assert s3gs3gurl_mock.call_count >= i + 1  # in case runner is faster
+        assert kapitsj_mock.call_count >= i + 1  # in case runner is faster
     # call counts
-    assert kapitsj_mock.call_count == N_JOBS
     assert s3gs3gurl_mock.call_count == N_JOBS
+    assert kapitsj_mock.call_count == N_JOBS
 
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
 
     # any extra calls?
-    assert kapitsj_mock.call_count == N_JOBS
     assert s3gs3gurl_mock.call_count == N_JOBS
+    assert kapitsj_mock.call_count == N_JOBS
 
     print_it(await rc.request("GET", "/scans/backlog"))
 
@@ -129,17 +129,17 @@ async def test_10(
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
         print_it(await rc.request("GET", "/scans/backlog"))
         # call counts
-        assert kapitsj_mock.call_count >= i + 1  # in case runner is faster
         assert s3gs3gurl_mock.call_count >= i + 1  # in case runner is faster
+        assert kapitsj_mock.call_count >= i + 1  # in case runner is faster
     # call counts
-    assert kapitsj_mock.call_count == N_JOBS - 2
     assert s3gs3gurl_mock.call_count == N_JOBS - 2
+    assert kapitsj_mock.call_count == N_JOBS - 2
 
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
 
     # any extra calls?
-    assert kapitsj_mock.call_count == N_JOBS - 2
     assert s3gs3gurl_mock.call_count == N_JOBS - 2
+    assert kapitsj_mock.call_count == N_JOBS - 2
 
     print_it(await rc.request("GET", "/scans/backlog"))
     assert not (await rc.request("GET", "/scans/backlog"))["entries"]
