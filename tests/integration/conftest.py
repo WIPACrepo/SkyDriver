@@ -3,7 +3,7 @@
 import asyncio
 import socket
 from typing import Any, AsyncIterator, Callable
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import kubernetes.client  # type: ignore[import-untyped]
 import pytest
@@ -12,6 +12,7 @@ from rest_tools.client import RestClient
 
 import skydriver
 import skydriver.images  # noqa: F401  # export
+from skydriver.__main__ import setup_ewms_client
 from skydriver.database import create_mongodb_client
 from skydriver.database.utils import drop_database
 from skydriver.server import make
@@ -131,7 +132,7 @@ async def server(
 
     mongo_client = await create_mongodb_client()
     k8s_batch_api = Mock()
-    ewms_rc = MagicMock()
+    ewms_rc = setup_ewms_client()
     backlog_task = asyncio.create_task(
         skydriver.k8s.scan_backlog.run(mongo_client, k8s_batch_api, ewms_rc)
     )

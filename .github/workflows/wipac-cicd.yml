@@ -10,7 +10,7 @@ env:
   SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: 200
   LOG_LEVEL: debug
   # mandatory env vars...
-  EWMS_ADDRESS: fcb6c253
+  EWMS_ADDRESS: http://localhost:8081
   EWMS_TOKEN_URL: 65f3b929
   EWMS_CLIENT_ID: b75a974d
   EWMS_CLIENT_SECRET: 411b16fe
@@ -80,6 +80,7 @@ jobs:
         #   & don't run non-branch triggers (like tags)
         #   & we don't want to trigger an update on PR's merge to main/master/default (which is a branch)
         run: |
+          set -euo pipefail
           if [[ \
               ${{github.actor}} != 'dependabot[bot]' && \
               ${{github.ref_type}} == 'branch' && \
@@ -146,16 +147,19 @@ jobs:
 
       - name: pip install
         run: |
+          set -euo pipefail
           pip install --upgrade pip wheel setuptools
           pip install .[tests]
 
       - name: test
         run: |
+          set -euo pipefail
           pytest -vvv tests/unit --exitfirst
 
       - name: Dump logs
         if: always()
         run: |
+          set -euo pipefail
           cat pytest.logs || true
 
   integration-tests:
@@ -184,6 +188,9 @@ jobs:
 
       - name: test
         run: |
+          set -euo pipefail
+          python tests/integration/dummy_ewms.py &> ./dummy_ewms.out &
+          
           export LATEST_TAG=$( \
               curl -I https://github.com/icecube/skymap_scanner/releases/latest \
               | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}' \
@@ -214,15 +221,21 @@ jobs:
               --mount type=bind,source=$(realpath $DIR),target=/local/$DIR \
               wipac/skydriver:local \
               /local/$DIR/test-script.sh
-
+      #
       - name: dump test logs
         if: always()
         run: |
+          set -euo pipefail
           docker logs test || true
-
+      - name: dump dummy-ewms logs
+        if: always()
+        run: |
+          set -euo pipefail
+          cat ./dummy_ewms.out
       - name: dump mongo logs
         if: always()
         run: |
+          set -euo pipefail
           docker logs "${{ job.services.mongo.id }}" || true
 
   test-build-docker:
