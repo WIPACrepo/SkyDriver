@@ -20,7 +20,10 @@ async def request_workflow_on_ewms(
 ) -> str:
     """Request a workflow in EWMS."""
     if manifest.ewms_workflow_id != database.schema.PENDING_EWMS_WORKFLOW:
-        raise TypeError("Manifest is not designated for EWMS")
+        if manifest.ewms_workflow_id:
+            raise TypeError("Scan has already been sent to EWMS")
+        else:  # None
+            raise TypeError("Scan is not designated for EWMS")
 
     s3_url_get = s3.generate_s3_get_url(manifest.scan_id)
     image = images.get_skyscan_docker_image(scan_request_obj["docker_tag"])

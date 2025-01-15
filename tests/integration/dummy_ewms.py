@@ -1,6 +1,7 @@
 """A dummy EWMS server for testing."""
 
 import os
+import uuid
 from typing import Any
 
 from flask import Flask, jsonify
@@ -10,18 +11,22 @@ app = Flask(__name__)
 DONT_CALL_IT_A_DB: dict[str, Any] = {}
 
 
-@app.route("/v0/mqs/workflows/<workflow_id>/mq-group/activation", methods=["POST"])
-def dummy_mq_group_activation_post(workflow_id: str):
-    # in the real mqs, there's a bunch of db logic, etc.
+@app.route("/v0/workflows", methods=["POST"])
+def dummy_workflows_post():
+    # in the real ewms, there's a bunch of db logic, etc.
 
-    stored = DONT_CALL_IT_A_DB[workflow_id]
-    for mqprofile in stored["mqprofiles"]:
-        mqprofile["is_activated"] = True
-        mqprofile["auth_token"] = "DUMMY_TOKEN"
-        mqprofile["broker_type"] = "DUMMY_BROKER_TYPE"
-        mqprofile["broker_address"] = "DUMMY_BROKER_ADDRESS"
+    workflow_id = uuid.uuid4().hex
+    minimal_wf_doc = {
+        "workflow_id": workflow_id,
+    }
 
-    return jsonify(stored)
+    DONT_CALL_IT_A_DB[workflow_id] = minimal_wf_doc
+
+    return jsonify(
+        {
+            "workflow": minimal_wf_doc,
+        }
+    )
 
 
 if __name__ == "__main__":
