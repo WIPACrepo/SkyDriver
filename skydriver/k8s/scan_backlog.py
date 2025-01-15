@@ -102,14 +102,6 @@ async def run(
         LOGGER.info("Restarted scan backlog runner.")
 
 
-def _logging_heartbeat(last_log_time: float) -> float:
-    if time.time() - last_log_time > ENV.SCAN_BACKLOG_RUNNER_DELAY:
-        LOGGER.info("scan backlog runner is still alive")
-        return time.time()
-    else:
-        return last_log_time
-
-
 async def _run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
@@ -131,12 +123,14 @@ async def _run(
         )
     )
 
-    last_log_heartbeat = 0.0  # log every so often, not on every iteration
-    long_interval_timer = IntervalTimer(ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
+    timer_main_loop = IntervalTimer(ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
+    timer_logging = IntervalTimer(ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
 
+    # main loop
     while True:
         await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_SHORT_DELAY)
-        last_log_heartbeat = _logging_heartbeat(last_log_heartbeat)
+        if timer_logging.has_interval_elapsed():
+            LOGGER.info("scan backlog runner is still alive")
 
         # get next entry
         try:
@@ -146,10 +140,10 @@ async def _run(
                 scan_request_client,
                 skyscan_k8s_job_client,
                 # include low priority scans only when enough time has passed
-                include_low_priority_scans=long_interval_timer.has_interval_elapsed(),
+                include_low_priority_scans=timer_main_loop.has_interval_elapsed(),
             )
         except database.mongodc.DocumentNotFoundException:
-            long_interval_timer.fastforward()
+            timer_main_loop.fastforward()
             continue  # empty queue-
 
         # request a workflow on EWMS
@@ -161,7 +155,7 @@ async def _run(
             )
         except Exception as e:
             LOGGER.exception(e)
-            long_interval_timer.fastforward()  # nothing was started, so don't wait long
+            timer_main_loop.fastforward()  # nothing was started, so don't wait long
             continue
         await manifest_client.collection.find_one_and_update(
             {"scan_id": manifest.scan_id},
@@ -181,7 +175,7 @@ async def _run(
         except kubernetes.client.exceptions.ApiException as e:
             # k8s job (backlog entry) will be revived & restarted in future iteration
             LOGGER.exception(e)
-            long_interval_timer.fastforward()  # nothing was started, so don't wait long
+            timer_main_loop.fastforward()  # nothing was started, so don't wait long
             continue
 
         # remove from backlog now that startup succeeded
