@@ -31,18 +31,18 @@ def dummy_workflows_post():
     )
 
 
-@app.route(f"/v0/workflows/<workflow_id>", methods=["GET"])
+@app.route("/v0/workflows/<workflow_id>", methods=["GET"])
 def dummy_workflows_get(workflow_id: str):
     return jsonify(DONT_CALL_IT_A_DB[workflow_id])
 
 
-@app.route(f"/v0/workflows/<workflow_id>/actions/abort", methods=["POST"])
+@app.route("/v0/workflows/<workflow_id>/actions/abort", methods=["POST"])
 def dummy_workflows_abort(workflow_id: str):
     DONT_CALL_IT_A_DB[workflow_id].update({"deactivated": "abort"})
     return jsonify({})
 
 
-@app.route(f"/v0/workflows/<workflow_id>/actions/finished", methods=["POST"])
+@app.route("/v0/workflows/<workflow_id>/actions/finished", methods=["POST"])
 def dummy_workflows_finished(workflow_id: str):
     DONT_CALL_IT_A_DB[workflow_id].update({"deactivated": "finished"})
     return jsonify({})
