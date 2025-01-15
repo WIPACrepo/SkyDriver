@@ -20,7 +20,7 @@ env:
   S3_SECRET_KEY: 8dea68a1
   S3_SECRET_KEY__K8S_SECRET_KEY: cdf7c60b
   S3_BUCKET: 72017610
-
+  MIN_SKYMAP_SCANNER_TAG: "v3.21.2" # TODO: remove once skyscan v4 is out (that's the real min)
 
 
 jobs:
@@ -210,6 +210,7 @@ jobs:
               $(env | grep '^CI' | awk '$0="--env "$0') \
               $(env | grep '^CI_' | awk '$0="--env "$0') \
               $(env | grep '^SCAN_' | awk '$0="--env "$0') \
+              $(env | grep '^MIN_SKYMAP_SCANNER_TAG' | awk '$0="--env "$0') \
               --mount type=bind,source=$(realpath $DIR),target=/local/$DIR \
               wipac/skydriver:local \
               /local/$DIR/test-script.sh
