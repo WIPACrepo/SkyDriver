@@ -4,7 +4,7 @@ import asyncio
 import logging
 import time
 
-import kubernetes.client.V1Job  # type: ignore[import-untyped]
+import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from rest_tools.client import RestClient
 from tornado import web

@@ -5,7 +5,7 @@ import socket
 from typing import Any, AsyncIterator, Callable
 from unittest.mock import MagicMock, Mock
 
-import kubernetes.client  # type: ignore[import]
+import kubernetes.client  # type: ignore[import-untyped]
 import pytest
 import pytest_asyncio
 from rest_tools.client import RestClient
