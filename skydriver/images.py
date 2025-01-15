@@ -85,7 +85,7 @@ def _parse_image_ts(info: dict) -> float:
 @cachetools.func.lru_cache()  # cache it forever
 def min_skymap_scanner_tag_ts() -> float:
     """Get the timestamp for when the `MIN_SKYMAP_SCANNER_TAG` image was created."""
-    info = get_info_from_docker_hub(ENV.MIN_SKYMAP_SCANNER_TAG)
+    info = get_info_from_docker_hub(ENV.MIN_SKYMAP_SCANNER_TAG.lstrip("v"))
     return _parse_image_ts(info)
 
 
