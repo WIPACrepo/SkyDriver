@@ -8,6 +8,7 @@ from pathlib import Path
 
 import boto3  # type: ignore[import-untyped]
 import requests
+from wipac_dev_tools.timing_tools import IntervalTimer
 
 LOGGER = logging.getLogger(__package__)
 
@@ -68,10 +69,13 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    logger_timer = IntervalTimer(5, LOGGER)
+
     if args.wait_indefinitely:
         LOGGER.info("Waiting for file to exist...")
         while not args.fpath.exists():
-            # TODO: use wipac_dev_tools.timing_tools.IntervalTimer to log every X sec
+            if logger_timer.has_interval_elapsed():
+                LOGGER.info("still waiting...")
             time.sleep(1)
 
     post(args.fpath)
