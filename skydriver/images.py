@@ -157,11 +157,17 @@ def resolve_docker_tag(docker_tag: str) -> str:
     """
     LOGGER.info(f"checking docker tag: {docker_tag}")
 
-    if docker_tag == "latest":  # 'latest' doesn't exist in CVMFS
-        return _try_resolve_to_majminpatch_docker_hub("latest")
+    try:
 
-    if VERSION_REGEX_PREFIX_V.fullmatch(docker_tag):
-        # v4 -> 4; v5.1 -> 5.1; v3.6.9 -> 3.6.9
-        docker_tag = docker_tag.lstrip("v")
+        if docker_tag == "latest":  # 'latest' doesn't exist in CVMFS
+            return _try_resolve_to_majminpatch_docker_hub("latest")
 
-    return _try_resolve_to_majminpatch_docker_hub(docker_tag)
+        if VERSION_REGEX_PREFIX_V.fullmatch(docker_tag):
+            # v4 -> 4; v5.1 -> 5.1; v3.6.9 -> 3.6.9
+            docker_tag = docker_tag.lstrip("v")
+
+        return _try_resolve_to_majminpatch_docker_hub(docker_tag)
+
+    except Exception as e:
+        LOGGER.exception(e)
+        raise e
