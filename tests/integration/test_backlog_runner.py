@@ -95,10 +95,6 @@ async def test_01(
     print_it(await rc.request("GET", "/scans/backlog"))
 
 
-# mock skydriver.k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper.go b/c it calls start_job
-@mock.patch(
-    "skydriver.k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper.go", new=Mock()
-)
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 @mock.patch("skydriver.s3.generate_s3_get_url")
 async def test_10(
