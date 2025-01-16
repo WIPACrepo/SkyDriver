@@ -67,9 +67,9 @@ async def main():
         total += len(resp["manifests"])
         for m in resp["manifests"]:
             if m["i3_event_id"]:
-                versions["v1.1"].append(m["scan_id"])
+                versions["v1.2"].append(m["scan_id"])
             elif isinstance(m["event_i3live_json_dict"], dict):
-                versions["v1.0"].append(m["scan_id"])
+                versions["<=v1.1"].append(m["scan_id"])
             else:
                 versions["other"].append(m["scan_id"])
     pprint.pprint(versions)
