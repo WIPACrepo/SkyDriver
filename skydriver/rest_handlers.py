@@ -573,7 +573,7 @@ async def _start_scan(
         classifiers=scan_request_obj["classifiers"],
         priority=scan_request_obj["priority"],
     )
-    await manifests.put(manifest)
+    manifest = await manifests.put(manifest)
     await skyscan_k8s_job_coll.insert_one(  # type: ignore[attr-defined]
         {
             "scan_id": scan_id,
