@@ -110,6 +110,13 @@ async def _launch_scan(
     assert RE_UUID4HEX.fullmatch(resp["i3_event_id"])
     assert launch_time < resp["timestamp"] < resp["last_updated"] < time.time()
 
+    # query the SkyScanK8sJobs coll
+    # -> since the scanner-server metadata is no longer stored in the manifest
+    # TODO
+
+    # query the ScanRequests coll
+    # TODO
+
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
     for got_args, exp_args in zip(resp["ewms_task"]["tms_args"], tms_args):
@@ -732,11 +739,14 @@ async def _after_scan_start_logic(
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
 
+    # TODO: at what point do we expect the backlogger to request to ewms?
+    # TODO: we need to assert what ewms is sent (store in dummy ewms, and query here; or assert the call?)
+
     #
     # INITIAL UPDATES
     #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    manifest = await _clientmanager_reply(
+    manifest = await _clientmanager_reply(  # TODO: remove/replace (and anywhere else)
         rc,
         scan_id,
         clusters[0] if isinstance(clusters, list) else list(clusters.items())[0],

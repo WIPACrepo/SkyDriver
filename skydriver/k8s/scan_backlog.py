@@ -17,7 +17,7 @@ from ..config import ENV
 LOGGER = logging.getLogger(__name__)
 
 
-async def designate_for_startup(
+async def put_on_backlog(
     scan_id: str,
     scan_backlog: database.interface.ScanBacklogClient,
     priority: int,

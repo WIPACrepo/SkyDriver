@@ -39,7 +39,7 @@ from .config import (
 )
 from .database import schema
 from .ewms import request_stop_on_ewms
-from .k8s.scan_backlog import designate_for_startup
+from .k8s.scan_backlog import put_on_backlog
 from .k8s.scanner_instance import SkyScanK8sJobFactory
 from .utils import get_scan_state
 
@@ -582,7 +582,7 @@ async def _start_scan(
     )
 
     # place on backlog
-    await designate_for_startup(
+    await put_on_backlog(
         scan_id,
         scan_backlog,
         scan_request_obj["priority"],

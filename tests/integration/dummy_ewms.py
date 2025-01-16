@@ -1,10 +1,11 @@
 """A dummy EWMS server for testing."""
 
 import os
+import pprint
 import uuid
 from typing import Any
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
@@ -15,6 +16,11 @@ DONT_CALL_IT_A_DB: dict[str, Any] = {}
 def dummy_workflows_post():
     # in the real ewms, there's a bunch of db logic, etc.
 
+    # IRL, we'd do something with this, but this isn't real life
+    req_json = request.get_json()
+    pprint.pprint(req_json)
+
+    # "make" a workflow
     workflow_id = uuid.uuid4().hex
     minimal_wf_doc = {
         "workflow_id": workflow_id,
