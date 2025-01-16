@@ -4,6 +4,7 @@ import asyncio
 import copy
 import logging
 import os
+import pprint
 import random
 import re
 import time
@@ -76,11 +77,13 @@ async def _launch_scan(
 ) -> dict:
     # launch scan
     launch_time = time.time()
+    print(f"now: {launch_time}")
     post_resp = await rc.request(
         "POST",
         "/scan",
         {**post_scan_body, "manifest_projection": ["*"]},
     )
+    pprint.pprint(post_resp)
 
     scanner_server_args = (
         f"python -m skymap_scanner.server "
@@ -112,8 +115,14 @@ async def _launch_scan(
     )
     assert RE_UUID4HEX.fullmatch(post_resp["scan_id"])
     assert RE_UUID4HEX.fullmatch(post_resp["i3_event_id"])
+    # check timestamps
+    post_launch_ts = time.time()
+    print(f"now: {post_launch_ts}")
     assert (
-        launch_time < post_resp["timestamp"] < post_resp["last_updated"] < time.time()
+        launch_time
+        < post_resp["timestamp"]
+        < post_resp["last_updated"]
+        < post_launch_ts
     )
 
     # query the SkyScanK8sJobs coll
@@ -121,6 +130,7 @@ async def _launch_scan(
     doc = await mongo_client["SkyDriver_DB"]["SkyScanK8sJobs"].find_one(
         {"scan_id": post_resp["scan_id"]}
     )
+    pprint.pprint(doc)
     assert doc == dict(
         scan_id=post_resp["scan_id"],
         rescan_ids=[],
