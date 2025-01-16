@@ -138,29 +138,25 @@ async def _launch_scan(
         docker_tag=post_scan_body["docker_tag"],
         #
         # skyscan server config
-        scanner_server_memory_bytes=post_scan_body["scanner_server_memory"],
+        scanner_server_memory_bytes=humanfriendly.parse_size("1024M"),
         reco_algo=post_scan_body["reco_algo"],
         nsides=post_scan_body["nsides"],
         real_or_simulated_event=post_scan_body["real_or_simulated_event"],
-        predictive_scanning_threshold=post_scan_body["predictive_scanning_threshold"],
+        predictive_scanning_threshold=1.0,
         #
         classifiers=post_scan_body["classifiers"],
         #
         # cluster (condor) config
         request_clusters=post_scan_body["cluster"],
-        worker_memory_bytes=post_scan_body["worker_memory"],
-        worker_disk_bytes=post_scan_body["worker_disk"],
+        worker_memory_bytes=humanfriendly.parse_size("8GB"),
+        worker_disk_bytes=humanfriendly.parse_size("1GB"),
         max_pixel_reco_time=post_scan_body["max_pixel_reco_time"],
         max_worker_runtime=post_scan_body["max_worker_runtime"],
-        priority=post_scan_body["priority"],
+        priority=0,
         debug_mode=[post_scan_body["debug_mode"]],
         #
         # misc
-        skyscan_mq_client_timeout_wait_for_first_message=(
-            post_scan_body["skyscan_mq_client_timeout_wait_for_first_message"]
-            if post_scan_body["skyscan_mq_client_timeout_wait_for_first_message"] != -1
-            else None
-        ),
+        skyscan_mq_client_timeout_wait_for_first_message=None,
         i3_event_id=post_resp["i3_event_id"],
         rest_address="",
         scanner_server_env_from_user=post_scan_body["scanner_server_env"],
