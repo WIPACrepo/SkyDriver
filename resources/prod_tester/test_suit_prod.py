@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tarfile
 from datetime import datetime
+from pathlib import Path
 
 import texttable  # type: ignore
 from rest_tools.client import RestClient
@@ -118,14 +119,24 @@ async def launch_scans(
         )
         test.test_status = test_getter.TestStatus.RUNNING
         try:
-            scan_id = await test_runner.launch_a_scan(
-                rc,
-                test.event_file,
-                cluster,
-                n_workers,
-                test.reco_algo,
-            )
-            test.scan_id = scan_id
+            # rescan?
+            if test.rescan_origin_id:
+                manifest = await test_runner.rescan_a_scan(
+                    rc,
+                    test.rescan_origin_id,
+                )
+                test.scan_id = manifest["scan_id"]
+                assert test.scan_id != test.rescan_origin_id
+            # or normal scan?
+            else:
+                manifest = await test_runner.launch_a_scan(
+                    rc,
+                    test.event_file,
+                    cluster,
+                    n_workers,
+                    test.reco_algo,
+                )
+                test.scan_id = manifest["scan_id"]
         except Exception as e:
             logging.error(f"Failed to launch test #{i+1}: {e}")
             raise
@@ -156,23 +167,46 @@ def display_test_status(tests: list[test_getter.TestParamSet]):
     print(table.draw())
 
 
+def _match_rescans_to_tests(
+    rescans: list[test_getter.TestParamSet], tests: list[test_getter.TestParamSet]
+) -> None:
+    """Match rescans to tests, in order to send the rescan id to skydriver."""
+    logging.info("matching tests to rescan-tests")
+    logging.info(json.dumps([r.to_json() for r in rescans], indent=4))
+    for t in tests:
+        for r in rescans:
+            if (t.reco_algo, t.event_file.name) == (r.reco_algo, r.event_file.name):
+                t.rescan_origin_id = r.scan_id
+                break
+        if not t.rescan_origin_id:
+            raise RuntimeError(f"could not match test to rescan-test: {t}")
+
+
 async def test_all(
     rc: RestClient,
     cluster: str,
     n_workers: int,
-):
+    rescans: list[test_getter.TestParamSet] | None,
+) -> None:
+    """Do all the tests."""
+    # setup
     tests = list(test_getter.setup_tests())
-    tests = await launch_scans(
+    if rescans:
+        _match_rescans_to_tests(rescans, tests)
+
+    # launch!
+    tests = await launch_scans(  # adds scan ids to 'tests'
         tests,
         rc,
         cluster,
         n_workers,
     )
+    with open(config.SANDBOX_MAP_FPATH, "w") as f:  # dump to file
+        json.dump([t.to_json() for t in tests], f, indent=4)
     display_test_status(tests)
 
-    checker = ResultChecker()
-
     # start test-waiters
+    checker = ResultChecker()
     logging.info("Starting scan watchers...")
     tasks = set()
     for test in tests:
@@ -199,6 +233,7 @@ async def test_all(
                 logging.error(f"A test failed: {repr(e)}")
             display_test_status(tests)
 
+    # how'd it all go?
     if n_failed:
         raise RuntimeError(f"{n_failed}/{len(tests)} tests failed.")
     else:
@@ -226,8 +261,45 @@ async def main():
         type=int,
         help="number of workers to request",
     )
+    parser.add_argument(
+        "--rescan",
+        default=False,
+        action="store_true",
+        help="submit rescans for all test-scans in existing (previously ran) sandbox",
+    )
+    parser.add_argument(
+        "--rescan-dir",
+        type=Path,
+        default=config.SANDBOX_DIR,
+        help="the existing (previously ran) sandbox to submit rescans for",
+    )
     args = parser.parse_args()
 
+    if args.rescan:
+        # grab json map
+        if args.rescan_dir.is_dir():
+            with open(args.rescan_dir / config.SANDBOX_MAP_FPATH.name) as f:
+                json_data = json.loads(f.read())
+        else:
+            with tarfile.open(args.rescan_dir) as tar:
+                member = tar.getmember(
+                    f"{config.SANDBOX_DIR.name}/{config.SANDBOX_MAP_FPATH.name}"
+                )
+                with tar.extractfile(member) as f:
+                    json_data = json.loads(f.read())
+        rescans = [
+            test_getter.TestParamSet(
+                Path(x["event_file"]),
+                x["reco_algo"],
+                Path(x["result_file"]),
+                x["scan_id"],
+            )
+            for x in json_data
+        ]
+    else:
+        rescans = None
+
+    # tar existing sandbox
     if config.SANDBOX_DIR.exists():
         logging.info(
             f"taring the existing '{config.SANDBOX_DIR}', then overwriting the directory"
@@ -238,8 +310,19 @@ async def main():
             "w",
         ) as tar:
             tar.add(config.SANDBOX_DIR, arcname=os.path.basename(config.SANDBOX_DIR))
-        # then rm -rf the dir
-        shutil.rmtree(config.SANDBOX_DIR)
+        # then rm -rf the dir (saving the downloaded files)
+        for entry in config.SANDBOX_DIR.iterdir():
+            if entry.name in {
+                "expected_results",  # dir
+                "realtime_events",  # dir
+                "compare_scan_results.py",  # file
+                "tests.yml",  # file
+            }:
+                continue
+            if entry.is_dir():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
     config.SANDBOX_DIR.mkdir(exist_ok=True)
 
     rc = test_runner.get_rest_client(args.skydriver_url)
@@ -248,6 +331,7 @@ async def main():
         rc,
         args.cluster,
         args.n_workers,
+        rescans,
     )
 
 

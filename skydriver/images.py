@@ -1,6 +1,5 @@
 """Utilities for dealing with docker/cvmfs/singularity images."""
 
-
 import logging
 import re
 from pathlib import Path
@@ -51,6 +50,26 @@ def get_skyscan_docker_image(tag: str) -> str:
 # utils
 
 
+def _match_sha_to_majminpatch(sha: str) -> str | None:
+    """Finds the image w/ same SHA and has a version tag like '#.#.#'.
+
+    No error handling
+    """
+    url = DOCKERHUB_API_URL
+    while True:
+        resp = requests.get(url).json()
+        for result in resp["results"]:
+            if sha != result.get("digest", result["images"][0]["digest"]):
+                # some old ones have their 'digest' in their 'images' list entry
+                continue
+            if VERSION_REGEX_MAJMINPATCH.fullmatch(result["name"]):
+                return result["name"]  # type: ignore[no-any-return]
+        if not resp["next"]:
+            break
+        url = resp["next"]
+    return None
+
+
 @cachetools.func.ttl_cache(ttl=5 * 60)
 def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
     """Get the '#.#.#' tag on Docker Hub w/ `docker_tag`'s SHA if possible.
@@ -74,25 +93,6 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
 
     if VERSION_REGEX_MAJMINPATCH.fullmatch(docker_tag):
         return docker_tag
-
-    def _match_sha_to_majminpatch(sha: str) -> str | None:
-        """Finds the image w/ same SHA and has a version tag like '#.#.#'.
-
-        No error handling
-        """
-        url = DOCKERHUB_API_URL
-        while True:
-            resp = requests.get(url).json()
-            for result in resp["results"]:
-                if sha != result.get("digest", result["images"][0]["digest"]):
-                    # some old ones have their 'digest' in their 'images' list entry
-                    continue
-                if VERSION_REGEX_MAJMINPATCH.fullmatch(result["name"]):
-                    return result["name"]  # type: ignore[no-any-return]
-            if not resp["next"]:
-                break
-            url = resp["next"]
-        return None
 
     _error = ValueError("Image tag could not resolve to a full version")
 

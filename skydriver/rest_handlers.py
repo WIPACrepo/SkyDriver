@@ -1,9 +1,11 @@
 """Handlers for the SkyDriver REST API server interface."""
 
+import argparse
 import asyncio
 import dataclasses as dc
 import json
 import logging
+import re
 import uuid
 from typing import Any, Type, TypeVar
 
@@ -11,9 +13,16 @@ import humanfriendly
 import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
 from dacite.exceptions import DaciteError
-from motor.motor_asyncio import AsyncIOMotorClient
-from rest_tools.server import RestHandler, token_attribute_role_mapping_auth
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+from pymongo import ReturnDocument
+from rest_tools.server import (
+    ArgumentHandler,
+    ArgumentSource,
+    RestHandler,
+    token_attribute_role_mapping_auth,
+)
 from tornado import web
+from wipac_dev_tools import argparse_tools
 
 from . import database, images, k8s
 from .config import (
@@ -23,12 +32,13 @@ from .config import (
     DebugMode,
     ENV,
     KNOWN_CLUSTERS,
-    SCAN_MIN_PRIORITY_TO_START_NOW,
     is_testing,
 )
+from .database import schema
+from .k8s.scan_backlog import designate_for_startup
+from .k8s.scanner_instance import SkymapScannerK8sWrapper
 
 LOGGER = logging.getLogger(__name__)
-
 
 # -----------------------------------------------------------------------------
 # constants
@@ -41,11 +51,6 @@ MAX_CLASSIFIERS_LEN = 25
 
 WAIT_BEFORE_TEARDOWN = 60
 
-DEFAULT_EXCLUDED_MANIFEST_FIELDS = {
-    "event_i3live_json_dict",
-}
-
-
 # -----------------------------------------------------------------------------
 # REST requestor auth
 
@@ -53,13 +58,13 @@ DEFAULT_EXCLUDED_MANIFEST_FIELDS = {
 USER_ACCT = "user"
 SKYMAP_SCANNER_ACCT = "system"
 
-
 if is_testing():
 
-    def service_account_auth(**kwargs):  # type: ignore
+    def service_account_auth(roles: list[str], **kwargs):  # type: ignore
         def make_wrapper(method):  # type: ignore[no-untyped-def]
             async def wrapper(self, *args, **kwargs):  # type: ignore[no-untyped-def]
                 LOGGER.warning("TESTING: auth disabled")
+                self.auth_roles = [roles[0]]  # make as a list containing just 1st role
                 return await method(self, *args, **kwargs)
 
             return wrapper
@@ -84,7 +89,7 @@ def all_dc_fields(class_or_instance: Any) -> set[str]:
     return set(f.name for f in dc.fields(class_or_instance))
 
 
-def dict_projection(dicto: dict, projection: set[str]) -> dict:
+def dict_projection(dicto: dict, projection: set[str] | list[str]) -> dict:
     """Keep only the keys in the `projection`.
 
     If `projection` is empty or includes '*', return all fields.
@@ -94,6 +99,12 @@ def dict_projection(dicto: dict, projection: set[str]) -> dict:
     if not projection:
         return dicto
     return {k: v for k, v in dicto.items() if k in projection}
+
+
+def _arg_dict_strict(val: Any) -> dict:
+    if not isinstance(val, dict):
+        raise argparse.ArgumentTypeError("arg must be a dict")
+    return val
 
 
 # -----------------------------------------------------------------------------
@@ -116,6 +127,18 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
         self.manifests = database.interface.ManifestClient(mongo_client)
         self.results = database.interface.ResultClient(mongo_client)
         self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
+        self.scan_request_coll = (
+            AsyncIOMotorCollection(  # in contrast, this one is accessed directly
+                mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+                database.utils._SCAN_REQUEST_COLL_NAME,
+            )
+        )
+        self.i3_event_coll = (
+            AsyncIOMotorCollection(  # in contrast, this one is accessed directly
+                mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+                database.utils._I3_EVENT_COLL_NAME,
+            )
+        )
         self.k8s_batch_api = k8s_batch_api
 
 
@@ -144,36 +167,36 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self) -> None:
         """Get matching scan manifest(s) for the given search."""
-        mongo_filter: dict[str, Any] = self.get_argument(
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        arghand.add_argument(
             "filter",
-            type=dict,
-            strict_type=True,
+            type=_arg_dict_strict,
         )
-        incl_del = self.get_argument("include_deleted", default=False, type=bool)
-
+        arghand.add_argument(
+            "include_deleted",
+            default=False,
+            type=bool,
+        )
         # response args
-        manifest_projection = self.get_argument(
+        arghand.add_argument(
             "manifest_projection",
-            default=(
-                all_dc_fields(database.schema.Manifest)
-                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-            ),
-            type=set[str],
+            default=all_dc_fields(database.schema.Manifest),
+            type=str,
         )
+        args = arghand.parse_args()
 
-        if "is_deleted" not in mongo_filter and not incl_del:
-            mongo_filter["is_deleted"] = False
+        if "is_deleted" not in args.filter and not args.include_deleted:
+            args.filter["is_deleted"] = False
 
         manifests = [
-            dict_projection(dc.asdict(m), manifest_projection)
-            async for m in self.manifests.find_all(mongo_filter)
+            dict_projection(dc.asdict(m), args.manifest_projection)
+            async for m in self.manifests.find_all(args.filter)
         ]
 
         self.write({"manifests": manifests})
 
     #
-    # NOTE - 'EventMappingHandler' needs to stay user-read-only b/c
-    #         it's indirectly updated by the launching of a new scan
+    # NOTE - handler needs to stay user-read-only
     #
 
 
@@ -201,7 +224,7 @@ class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-def cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
+def _cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
     """Grab the Cluster object known using `name`."""
     if cluster := KNOWN_CLUSTERS.get(name):
         if cluster["orchestrator"] == "condor":
@@ -216,14 +239,14 @@ def cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
                 location=database.schema.KubernetesLocation(**cluster["location"]),
                 n_workers=n_workers,
             )
-    raise TypeError(
+    raise argparse.ArgumentTypeError(
         f"requested unknown cluster: {name} (available:"
         f" {', '.join(KNOWN_CLUSTERS.keys())})"
     )
 
 
 def _json_to_dict(val: Any) -> dict:
-    _error = TypeError("must be JSON-string or JSON-friendly dict")
+    _error = argparse.ArgumentTypeError("must be JSON-string or JSON-friendly dict")
     # str -> json-dict
     if isinstance(val, str):
         try:
@@ -244,45 +267,56 @@ def _json_to_dict(val: Any) -> dict:
     raise _error
 
 
-def _dict_or_list_to_request_clusters(
+def _validate_request_clusters(
     val: dict | list,
-) -> list[database.schema.Cluster]:
-    _error = TypeError(
+) -> list[tuple[str, int]]:
+    _error = argparse.ArgumentTypeError(
         "must be a dict of cluster location and number of workers, Ex: {'sub-2': 1500, ...}"
-        " (to request a cluster location more than once, provide a list of 2-lists instead),"
-        # TODO: make n_workers optional when using "TMS smart starter"
+        " (to request a cluster location more than once, provide a list of 2-lists instead)"
+        # TODO: make n_workers optional when using "EWMS smart starter"
     )
     if isinstance(val, dict):
-        val = list(val.items())  # {'a': 1, 'b': 2} -> [('a', 1), ('b', 2)}
-    if not val:
+        # {'a': 1, 'b': 2} -> [('a', 1), ('b', 2)}
+        list_tups: list[tuple[str, int]] = list(val.items())
+    else:
+        list_tups = val
+    del val
+
+    # validate
+    if not list_tups:
         raise _error
-    if not isinstance(val, list):
+    if not isinstance(list_tups, list):
         raise _error
     # check all entries are 2-lists (or tuple)
-    if not all(isinstance(a, list | tuple) and len(a) == 2 for a in val):
+    if not all(isinstance(a, list | tuple) and len(a) == 2 for a in list_tups):
         raise _error
-    #
-    return [cluster_lookup(name, n_workers) for name, n_workers in val]
+    # check that all locations are known (this validates sooner than ewms, if using ewms)
+    for name, n_workers in list_tups:
+        _cluster_lookup(name, n_workers)
+
+    return list_tups
 
 
 def _classifiers_validator(val: Any) -> dict[str, str | bool | float | int]:
     # type checks
     if not isinstance(val, dict):
-        raise TypeError("must be a dict")
+        raise argparse.ArgumentTypeError("must be a dict")
     if any(v for v in val.values() if not isinstance(v, str | bool | float | int)):
-        raise TypeError("entry must be 'str | bool | float | int'")
+        raise argparse.ArgumentTypeError("entry must be 'str | bool | float | int'")
 
     # size check
     if len(val) > MAX_CLASSIFIERS_LEN:
-        raise ValueError(f"must be at most {MAX_CLASSIFIERS_LEN} entries long")
+        raise argparse.ArgumentTypeError(
+            f"must be at most {MAX_CLASSIFIERS_LEN} entries long"
+        )
     for key, subval in val.items():
         if len(key) > MAX_CLASSIFIERS_LEN:
-            raise ValueError(
+            raise argparse.ArgumentTypeError(
                 f"key must be at most {MAX_CLASSIFIERS_LEN} characters long"
             )
         try:
             if len(subval) > MAX_CLASSIFIERS_LEN:
-                raise ValueError(
+                raise argparse.ArgumentTypeError(
                     f"str-field must be at most {MAX_CLASSIFIERS_LEN} characters long"
                 )
         except TypeError:
@@ -301,13 +335,7 @@ def _data_size_parse(val: Any) -> int:
     try:
         return humanfriendly.parse_size(str(val))  # type: ignore[no-any-return]
     except humanfriendly.InvalidSize:
-        raise ValueError("invalid data size")
-
-
-def _validate_arg(val: Any, test: bool, exc: Exception) -> Any:
-    if test:
-        return val
-    raise exc
+        raise argparse.ArgumentTypeError("invalid data size")
 
 
 class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
@@ -318,218 +346,308 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self) -> None:
         """Start a new scan."""
-
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
         # docker args
-        docker_tag = self.get_argument(  # any tag on docker hub (including 'latest') -- must also be on CVMFS (but not checked here)
+        arghand.add_argument(
+            # any tag on docker hub (including 'latest') -- must also be on CVMFS (but not checked here)
             "docker_tag",
             type=images.resolve_docker_tag,
-            forbiddens=[r"\s*"],  # no empty string / whitespace
         )
-
         # scanner server args
-        scanner_server_memory_bytes = self.get_argument(
+        arghand.add_argument(
             "scanner_server_memory",
             type=_data_size_parse,
             default=DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
         )
-
         # client worker args
-        worker_memory_bytes = self.get_argument(
+        arghand.add_argument(
             "worker_memory",
             type=_data_size_parse,
             default=DEFAULT_WORKER_MEMORY_BYTES,
         )
-        self.get_argument(  # NOTE - DEPRECATED
+        arghand.add_argument(  # NOTE - DEPRECATED
             "memory",
-            type=lambda x: _validate_arg(
+            type=lambda x: argparse_tools.validate_arg(
                 x,
                 not bool(x),  # False if given
-                ValueError("argument is deprecated, please use 'worker_memory'"),
+                argparse.ArgumentTypeError(
+                    "argument is deprecated--use 'worker_memory'"
+                ),
             ),
             default=None,
-            forbiddens=[r"\s*"],  # no empty string / whitespace
         )
-        worker_disk_bytes = self.get_argument(
+        arghand.add_argument(
             "worker_disk",
             type=_data_size_parse,
             default=DEFAULT_WORKER_DISK_BYTES,
         )
-        request_clusters = self.get_argument(
+        arghand.add_argument(
             "cluster",
-            type=_dict_or_list_to_request_clusters,
+            type=_validate_request_clusters,
         )
-
         # scanner args
-        reco_algo = self.get_argument(
+        arghand.add_argument(
             "reco_algo",
-            type=str,
-            forbiddens=[r"\s*"],  # no empty string / whitespace
+            type=lambda x: argparse_tools.validate_arg(
+                x,
+                bool(re.match(r"\S", x)),  # no empty string / whitespace
+                argparse.ArgumentTypeError("cannot be empty string / whitespace"),
+            ),
         )
-        event_i3live_json_dict = self.get_argument(
+        arghand.add_argument(
             "event_i3live_json",
             type=_json_to_dict,  # JSON-string/JSON-friendly dict -> dict
         )
-        nsides: dict[int, int] = self.get_argument(
+        arghand.add_argument(
             "nsides",
-            type=dict,
-            strict_type=True,
+            type=_arg_dict_strict,
         )
-        real_or_simulated_event = self.get_argument(
+        arghand.add_argument(
             "real_or_simulated_event",  # as opposed to simulation
             type=str,
             choices=REAL_CHOICES + SIM_CHOICES,
         )
-        predictive_scanning_threshold = self.get_argument(
+        arghand.add_argument(
             "predictive_scanning_threshold",
             type=float,
             default=1.0,
-            strict_type=False,  # allow casting from int (1)
         )
-        max_pixel_reco_time = self.get_argument(
+        arghand.add_argument(
             "max_pixel_reco_time",
             type=int,
         )
-        max_worker_runtime = self.get_argument(
+        arghand.add_argument(
             "max_worker_runtime",
             type=int,
             default=4 * 60 * 60,
         )
-        skyscan_mq_client_timeout_wait_for_first_message: int | None = (
-            self.get_argument(
-                # TODO - remove when TMS is handling workforce-scaling
-                "skyscan_mq_client_timeout_wait_for_first_message",
-                type=int,
-                default=-1,  # elephant in Cairo
-            )
+        arghand.add_argument(
+            # TODO - remove when TMS is handling workforce-scaling
+            "skyscan_mq_client_timeout_wait_for_first_message",
+            type=int,
+            default=-1,  # elephant in Cairo, see below
         )
-        if skyscan_mq_client_timeout_wait_for_first_message == -1:
-            skyscan_mq_client_timeout_wait_for_first_message = None
-        debug_mode = self.get_argument(
+        arghand.add_argument(
             "debug_mode",
             type=_debug_mode,
             default=[],
         )
-        if DebugMode.CLIENT_LOGS in debug_mode:
-            for cluster in request_clusters:
-                cname, cinfo = cluster.to_known_cluster()
-                if cluster.n_workers > cinfo.get(
-                    "max_n_clients_during_debug_mode", float("inf")
+        # other args
+        arghand.add_argument(
+            "classifiers",
+            type=_classifiers_validator,
+            default={},
+        )
+        arghand.add_argument(
+            "priority",
+            type=int,
+            default=0,
+        )
+        arghand.add_argument(
+            "scanner_server_env",
+            type=_classifiers_validator,  # piggy-back this validator
+            default={},
+        )
+        # response args
+        arghand.add_argument(
+            "manifest_projection",
+            default=all_dc_fields(database.schema.Manifest),
+            type=str,
+        )
+        args = arghand.parse_args()
+
+        # more arg validation
+        if DebugMode.CLIENT_LOGS in args.debug_mode:
+            for cname, cworkers in args.cluster:
+                if cworkers > (
+                    val := KNOWN_CLUSTERS[cname].get(
+                        "max_n_clients_during_debug_mode", float("inf")
+                    )
                 ):
                     raise web.HTTPError(
                         400,
                         log_message=(
                             f"Too many workers: Cluster '{cname}' can only have "
-                            f"{cinfo.get('max_n_clients_during_debug_mode')} "
+                            f"{val} "
                             f"workers when 'debug_mode' "
                             f"includes '{DebugMode.CLIENT_LOGS.value}'"
                         ),
                     )
 
-        # other args
-        classifiers = self.get_argument(
-            "classifiers",
-            type=_classifiers_validator,
-            default={},
-        )
-        priority = self.get_argument(
-            "priority",
-            type=int,
-            default=0,
-        )
-        scanner_server_env_from_user = self.get_argument(
-            "scanner_server_env",
-            type=_classifiers_validator,  # piggy-back this validator
-            default={},
-        )
-
-        # response args
-        manifest_projection = self.get_argument(
-            "manifest_projection",
-            default=(
-                all_dc_fields(database.schema.Manifest)
-                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-            ),
-            type=set[str],
-        )
-
         # generate unique scan_id
         scan_id = uuid.uuid4().hex
 
-        # get the container info ready
-        scanner_wrapper = k8s.scanner_instance.SkymapScannerK8sWrapper(
-            docker_tag=docker_tag,
+        # Before doing anything else, persist in DB
+        # -> store the event in its own collection to reduce redundancy
+        i3_event_id = uuid.uuid4().hex
+        await self.i3_event_coll.insert_one(
+            {
+                "i3_event_id": i3_event_id,
+                "json_dict": args.event_i3live_json,  # this was transformed into dict
+            }
+        )
+        # -> store scan_request_obj in db
+        scan_request_obj = dict(
             scan_id=scan_id,
-            # server
-            scanner_server_memory_bytes=scanner_server_memory_bytes,
-            reco_algo=reco_algo,
-            nsides=nsides,
-            is_real_event=real_or_simulated_event in REAL_CHOICES,
-            predictive_scanning_threshold=predictive_scanning_threshold,
-            # cluster starter
-            starter_exc=str(  # TODO - remove once tested in prod
-                classifiers.get("__unstable_starter_exc", "clientmanager")
+            rescan_ids=[],
+            #
+            docker_tag=args.docker_tag,
+            scanner_server_memory_bytes=args.scanner_server_memory,  # already in bytes
+            reco_algo=args.reco_algo,
+            nsides=args.nsides,
+            real_or_simulated_event=args.real_or_simulated_event,
+            predictive_scanning_threshold=args.predictive_scanning_threshold,
+            classifiers=args.classifiers,
+            request_clusters=args.cluster,  # a list
+            worker_memory_bytes=args.worker_memory,
+            worker_disk_bytes=args.worker_disk,  # already in bytes
+            max_pixel_reco_time=args.max_pixel_reco_time,
+            max_worker_runtime=args.max_worker_runtime,
+            priority=args.priority,
+            debug_mode=[d.value for d in args.debug_mode],
+            skyscan_mq_client_timeout_wait_for_first_message=(
+                args.skyscan_mq_client_timeout_wait_for_first_message
+                if args.skyscan_mq_client_timeout_wait_for_first_message != -1
+                else None
             ),
-            request_clusters=request_clusters,
-            worker_memory_bytes=worker_memory_bytes,
-            worker_disk_bytes=worker_disk_bytes,
-            max_pixel_reco_time=max_pixel_reco_time,
-            max_worker_runtime=max_worker_runtime,
-            priority=priority,
-            # universal
-            debug_mode=debug_mode,
-            # env
+            i3_event_id=i3_event_id,  # foreign key to i3_event collection
             rest_address=self.request.full_url().rstrip(self.request.uri),
-            skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
-            scanner_server_env_from_user=scanner_server_env_from_user,
+            scanner_server_env_from_user=args.scanner_server_env,
         )
+        await self.scan_request_coll.insert_one(scan_request_obj)
 
-        # put in db (do before k8s start so if k8s fail, we can debug using db's info)
-        manifest = await self.manifests.post(
-            event_i3live_json_dict,
-            scan_id,
-            scanner_wrapper.scanner_server_args,
-            scanner_wrapper.cluster_starter_args_list,
-            from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
-            classifiers,
-            priority,
+        # go!
+        manifest = await _start_scan(
+            self.manifests,
+            self.scan_backlog,
+            scan_request_obj,
         )
-
-        enqueue = True
-
-        # start now?
-        if priority >= SCAN_MIN_PRIORITY_TO_START_NOW:
-            try:
-                resp = k8s.utils.KubeAPITools.start_job(
-                    self.k8s_batch_api,
-                    scanner_wrapper.job_obj,
-                )
-                LOGGER.info(resp)
-            except kubernetes.client.exceptions.ApiException as e:
-                # job (entry) will be enqueued and tried again per priority
-                LOGGER.exception(e)
-            else:
-                enqueue = False
-
-        # start later?
-        if enqueue:
-            # enqueue skymap scanner instance to be started in-time
-            try:
-                LOGGER.info(f"enqueuing k8s job for {scan_id=}")
-                await k8s.scan_backlog.enqueue(
-                    scan_id,
-                    scanner_wrapper.job_obj,
-                    self.scan_backlog,
-                    manifest.priority,
-                )
-            except Exception as e:
-                LOGGER.exception(e)
-                raise web.HTTPError(
-                    400,
-                    log_message="Failed to enqueue Kubernetes job for Scanner instance",
-                )
-
         self.write(
-            dict_projection(dc.asdict(manifest), manifest_projection),
+            dict_projection(dc.asdict(manifest), args.manifest_projection),
+        )
+
+
+async def _start_scan(
+    manifests: database.interface.ManifestClient,
+    scan_backlog: database.interface.ScanBacklogClient,
+    scan_request_obj: dict,
+    new_scan_id: str = "",  # don't use scan_request_obj.scan_id--this could be a rescan
+) -> schema.Manifest:
+    scan_id = new_scan_id or scan_request_obj["scan_id"]
+
+    # get the container info ready
+    scanner_wrapper = SkymapScannerK8sWrapper(
+        docker_tag=scan_request_obj["docker_tag"],
+        scan_id=scan_id,
+        # server
+        scanner_server_memory_bytes=scan_request_obj["scanner_server_memory_bytes"],
+        reco_algo=scan_request_obj["reco_algo"],
+        nsides=scan_request_obj["nsides"],
+        is_real_event=scan_request_obj["real_or_simulated_event"] in REAL_CHOICES,
+        predictive_scanning_threshold=scan_request_obj["predictive_scanning_threshold"],
+        # cluster starter
+        starter_exc=str(  # TODO - remove once tested in prod
+            scan_request_obj["classifiers"].get(
+                "__unstable_starter_exc", "clientmanager"
+            )
+        ),
+        request_clusters=[
+            _cluster_lookup(name, n_workers)  # values were pre-validated on user input
+            for name, n_workers in scan_request_obj["request_clusters"]
+        ],
+        worker_memory_bytes=scan_request_obj["worker_memory_bytes"],
+        worker_disk_bytes=scan_request_obj["worker_disk_bytes"],
+        max_pixel_reco_time=scan_request_obj["max_pixel_reco_time"],
+        max_worker_runtime=scan_request_obj["max_worker_runtime"],
+        priority=scan_request_obj["priority"],
+        # universal
+        debug_mode=_debug_mode(scan_request_obj["debug_mode"]),
+        # env
+        rest_address=scan_request_obj["rest_address"],
+        skyscan_mq_client_timeout_wait_for_first_message=scan_request_obj[
+            "skyscan_mq_client_timeout_wait_for_first_message"
+        ],
+        scanner_server_env_from_user=scan_request_obj["scanner_server_env_from_user"],
+    )
+
+    # put in db (do before k8s start so if k8s fail, we can debug using db's info)
+    manifest = await manifests.post(
+        scan_request_obj["i3_event_id"],
+        scan_id,
+        scanner_wrapper.scanner_server_args,
+        scanner_wrapper.cluster_starter_args_list,
+        from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
+        scan_request_obj["classifiers"],
+        scan_request_obj["priority"],
+    )
+
+    await designate_for_startup(
+        scan_id,
+        scanner_wrapper.job_obj,
+        scan_backlog,
+        scan_request_obj["priority"],
+    )
+
+    return manifest
+
+
+# -----------------------------------------------------------------------------
+
+
+class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles actions on copying a scan's manifest and starting that."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/actions/rescan$"
+
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    async def post(self, scan_id: str) -> None:
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        # response args
+        arghand.add_argument(
+            "manifest_projection",
+            default=all_dc_fields(database.schema.Manifest),
+            type=str,
+        )
+        args = arghand.parse_args()
+
+        # generate unique scan_id
+        new_scan_id = uuid.uuid4().hex
+
+        # grab the original requester's 'scan_request_obj'
+        scan_request_obj = await self.scan_request_coll.find_one_and_update(
+            {"scan_id": scan_id},
+            {"$push": {"rescan_ids": new_scan_id}},
+            return_document=ReturnDocument.AFTER,
+        )
+        # -> backup plan: was this scan_id actually a rescan itself?
+        if not scan_request_obj:
+            scan_request_obj = await self.scan_request_coll.find_one_and_update(
+                {"rescan_ids": scan_id},  # one in a list
+                {"$push": {"rescan_ids": new_scan_id}},
+                return_document=ReturnDocument.AFTER,
+            )
+        # -> error: couldn't find it anywhere
+        if not scan_request_obj:
+            raise web.HTTPError(
+                404,
+                log_message="Could not find original scan-request information to start a rescan",
+            )
+
+        # add to 'classifiers' so the user has provenance info
+        # NOTE: the scan request in the database will NOT be updated, only new objects
+        scan_request_obj["classifiers"].update(
+            {"rescan": True, "origin_scan_id": scan_id}
+        )
+
+        # go!
+        manifest = await _start_scan(
+            self.manifests,
+            self.scan_backlog,
+            scan_request_obj,
+            new_scan_id=new_scan_id,
+        )
+        self.write(
+            dict_projection(dc.asdict(manifest), args.manifest_projection),
         )
 
 
@@ -608,26 +726,24 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def delete(self, scan_id: str) -> None:
         """Abort a scan and/or mark manifest & result as "deleted"."""
-        delete_completed_scan = self.get_argument(
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        arghand.add_argument(
             "delete_completed_scan",
             default=False,
             type=bool,
         )
-
         # response args
-        manifest_projection = self.get_argument(
+        arghand.add_argument(
             "manifest_projection",
-            default=(
-                all_dc_fields(database.schema.Manifest)
-                - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-            ),
-            type=set[str],
+            default=all_dc_fields(database.schema.Manifest),
+            type=str,
         )
+        args = arghand.parse_args()
 
         # check DB states
         manifest = await self.manifests.get(scan_id, True)
         if (
-            manifest.ewms_task.complete and not delete_completed_scan
+            manifest.ewms_task.complete and not args.delete_completed_scan
         ):  # workforce is done
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
@@ -650,7 +766,9 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         self.write(
             {
-                "manifest": dict_projection(dc.asdict(manifest), manifest_projection),
+                "manifest": dict_projection(
+                    dc.asdict(manifest), args.manifest_projection
+                ),
                 "result": result_dict,
             }
         )
@@ -658,34 +776,24 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get manifest & result."""
-        incl_del = self.get_argument(
+        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
+        arghand.add_argument(
             "include_deleted",
             default=False,
             type=bool,
         )
-        # # response args
-        # manifest_projection = self.get_argument(
-        #     "manifest_projection",
-        #     default=(
-        #         all_dc_fields(database.schema.Manifest)
-        #         - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-        #     ),
-        #     type=set[str],
-        # )
-        manifest_projection = (
-            all_dc_fields(database.schema.Manifest) - DEFAULT_EXCLUDED_MANIFEST_FIELDS
-        )
+        args = arghand.parse_args()
 
         result, manifest = await get_result_safely(
             self.manifests,
             self.results,
             scan_id,
-            incl_del,
+            args.include_deleted,
         )
 
         self.write(
             {
-                "manifest": dict_projection(dc.asdict(manifest), manifest_projection),
+                "manifest": dc.asdict(manifest),
                 "result": dc.asdict(result) if result else {},
             }
         )
@@ -702,28 +810,53 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
-        incl_del = self.get_argument(
+        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
+        arghand.add_argument(
             "include_deleted",
             default=False,
             type=bool,
         )
-        # # response args
-        # manifest_projection = self.get_argument(
-        #     "manifest_projection",
-        #     default=all_dc_fields(database.schema.Manifest),
-        #     type=set[str],
-        # )
-
-        manifest = await self.manifests.get(scan_id, incl_del)
-
-        self.write(
-            # dict_projection(dc.asdict(manifest), manifest_projection),
-            dc.asdict(manifest)
+        # response args
+        arghand.add_argument(
+            "projection",
+            default=all_dc_fields(database.schema.Manifest),
+            type=str,
         )
+        args = arghand.parse_args()
+
+        # get manifest from db
+        manifest = await self.manifests.get(scan_id, args.include_deleted)
+
+        # Backward Compatibility for Skymap Scanner:
+        #   Include the whole event dict in the response like the 'old' manifest.
+        #   This overrides the manifest's field which should be an id.
+        if (
+            self.auth_roles[0] == SKYMAP_SCANNER_ACCT  # type: ignore
+            and "event_i3live_json_dict" in args.projection
+            and manifest.i3_event_id  # if no id, then event already in manifest
+        ):
+            if i3event_doc := await self.i3_event_coll.find_one(
+                {"i3_event_id": manifest.i3_event_id}
+            ):
+                manifest.event_i3live_json_dict = i3event_doc["json_dict"]
+            else:  # this would mean the event was removed from the db
+                error_msg = (
+                    f"No i3 event document found with id '{manifest.i3_event_id}'"
+                    f"--if other fields are wanted, re-request using 'projection'"
+                )
+                raise web.HTTPError(
+                    404,
+                    log_message=error_msg,
+                    reason=error_msg,
+                )
+
+        resp = dict_projection(dc.asdict(manifest), args.projection)
+        self.write(resp)
 
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
 
         T = TypeVar("T")
 
@@ -733,35 +866,36 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             try:
                 return from_dict(data_class, val)
             except DaciteError as e:
-                raise ValueError(str(e))
+                raise argparse.ArgumentTypeError(str(e))
 
-        progress = self.get_argument(
+        arghand.add_argument(
             "progress",
             type=lambda x: from_dict_wrapper_or_none(database.schema.Progress, x),
             default=None,
         )
-        event_metadata = self.get_argument(
+        arghand.add_argument(
             "event_metadata",
             type=lambda x: from_dict_wrapper_or_none(database.schema.EventMetadata, x),
             default=None,
         )
-        scan_metadata: database.schema.StrDict = self.get_argument(
+        arghand.add_argument(
             "scan_metadata",
             type=dict,
             default={},
         )
-        cluster = self.get_argument(
+        arghand.add_argument(
             "cluster",
             type=lambda x: from_dict_wrapper_or_none(database.schema.Cluster, x),
             default=None,
         )
+        args = arghand.parse_args()
 
         manifest = await self.manifests.patch(
             scan_id,
-            progress,
-            event_metadata,
-            scan_metadata,
-            cluster,
+            args.progress,
+            args.event_metadata,
+            args.scan_metadata,
+            args.cluster,
         )
 
         # NOTE - the following will be moved to TMS, then improved
@@ -804,6 +938,48 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
+class ScanI3EventHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+    """Handles grabbing i3 events using scan ids."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/i3-event$"
+
+    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
+        """Get scan's i3 event."""
+        manifest = await self.manifests.get(scan_id, True)
+
+        # look up event in collection
+        if manifest.i3_event_id:
+            doc = await self.i3_event_coll.find_one(
+                {"i3_event_id": manifest.i3_event_id}
+            )
+            if doc:
+                i3_event = doc["json_dict"]
+            else:  # this would mean the event was removed from the db
+                error_msg = (
+                    f"No i3 event document found with id '{manifest.i3_event_id}'"
+                )
+                raise web.HTTPError(
+                    404,
+                    log_message=error_msg,
+                    reason=error_msg,
+                )
+        # unless, this is an old scan -- where the whole dict was stored w/ the manifest
+        else:
+            i3_event = manifest.event_i3live_json_dict
+
+        self.write({"i3_event": i3_event})
+
+    #
+    # NOTE - handler needs to stay user-read-only
+    #
+    # FUTURE - add delete?
+    #
+
+
+# -----------------------------------------------------------------------------
+
+
 class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     """Handles actions on persisted scan results."""
 
@@ -812,17 +988,19 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted result."""
-        incl_del = self.get_argument(
+        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
+        arghand.add_argument(
             "include_deleted",
             default=False,
             type=bool,
         )
+        args = arghand.parse_args()
 
         result, _ = await get_result_safely(
             self.manifests,
             self.results,
             scan_id,
-            incl_del,
+            args.include_deleted,
         )
 
         self.write(dc.asdict(result) if result else {})
@@ -830,21 +1008,25 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's result."""
-        skyscan_result: dict[str, Any] = self.get_argument(
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        arghand.add_argument(
             "skyscan_result",
-            type=dict,
-            strict_type=True,
+            type=_arg_dict_strict,
         )
-        is_final = self.get_argument("is_final", type=bool)
+        arghand.add_argument(
+            "is_final",
+            type=bool,
+        )
+        args = arghand.parse_args()
 
-        if not skyscan_result:
+        if not args.skyscan_result:
             self.write({})
             return
 
         result_dc = await self.results.put(
             scan_id,
-            skyscan_result,
-            is_final,
+            args.skyscan_result,
+            args.is_final,
         )
         self.write(dc.asdict(result_dc))
 
@@ -853,7 +1035,7 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # AFTER RESPONSE #
 
         # when we get the final result, it's time to tear down
-        if is_final:
+        if args.is_final:
             await asyncio.sleep(
                 WAIT_BEFORE_TEARDOWN
             )  # regular time.sleep() sleeps the entire server
@@ -871,21 +1053,23 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
-        include_pod_statuses = self.get_argument(
+        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
+        arghand.add_argument(
             "include_pod_statuses",
             type=bool,
             default=False,
         )
+        args = arghand.parse_args()
 
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         # get pod status
         pods_411: dict[str, Any] = {}
-        if include_pod_statuses:
+        if args.include_pod_statuses:
             try:
                 pods_411["pod_status"] = k8s.utils.KubeAPITools.get_pod_status(
                     self.k8s_batch_api,
-                    k8s.scanner_instance.SkymapScannerK8sWrapper.get_job_name(scan_id),
+                    SkymapScannerK8sWrapper.get_job_name(scan_id),
                     ENV.K8S_NAMESPACE,
                 )
                 pods_411["pod_message"] = "retrieved"
@@ -906,7 +1090,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             "pods": pods_411,
             "clusters": [dc.asdict(c) for c in manifest.ewms_task.clusters],
         }
-        if not include_pod_statuses:
+        if not args.include_pod_statuses:
             resp.pop("pods")
         self.write(resp)
 
@@ -919,7 +1103,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
 
 class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
-    """Handles relying logs for scans."""
+    """Handles relaying logs for scans."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/logs$"
 
@@ -929,7 +1113,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         try:
             pod_container_logs = k8s.utils.KubeAPITools.get_container_logs(
                 self.k8s_batch_api,
-                k8s.scanner_instance.SkymapScannerK8sWrapper.get_job_name(scan_id),
+                SkymapScannerK8sWrapper.get_job_name(scan_id),
                 ENV.K8S_NAMESPACE,
             )
             pod_container_logs_message = "retrieved"

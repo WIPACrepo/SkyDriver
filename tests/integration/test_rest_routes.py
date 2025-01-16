@@ -1,8 +1,7 @@
 """Integration tests for the REST server."""
 
 import asyncio
-import hashlib
-import json
+import copy
 import logging
 import os
 import random
@@ -93,14 +92,9 @@ async def _launch_scan(
         scan_id=resp["scan_id"],
         is_deleted=False,
         timestamp=resp["timestamp"],  # see below
-        event_i3live_json_dict__hash=hashlib.md5(
-            json.dumps(
-                post_scan_body["event_i3live_json"],
-                sort_keys=True,
-                ensure_ascii=True,
-            ).encode("utf-8")
-        ).hexdigest(),
-        event_i3live_json_dict=post_scan_body["event_i3live_json"],
+        event_i3live_json_dict__hash=None,  # field has been deprecated, always 'None'
+        event_i3live_json_dict="use 'i3_event_id'",  # field has been deprecated
+        i3_event_id=resp["i3_event_id"],  # see below
         event_metadata=None,
         scan_metadata=None,
         progress=None,
@@ -117,6 +111,7 @@ async def _launch_scan(
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
     assert RE_UUID4HEX.fullmatch(resp["scan_id"])
+    assert RE_UUID4HEX.fullmatch(resp["i3_event_id"])
     assert launch_time < resp["timestamp"] < resp["last_updated"] < time.time()
 
     # check args (avoid whitespace headaches...)
@@ -239,9 +234,6 @@ async def _launch_scan(
     # get scan_id
     assert resp["scan_id"]
 
-    # remove fields usually not returned
-    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert resp["ewms_task"].pop("env_vars")  # remove to match with other requests
     return resp  # type: ignore[no-any-return]
 
 
@@ -270,12 +262,12 @@ async def _do_patch(
     now = time.time()
 
     resp = await rc.request("PATCH", f"/scan/{scan_id}/manifest", body)
-    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert resp["ewms_task"].pop("env_vars")  # remove to match with other requests
     assert resp == dict(
         scan_id=scan_id,
         is_deleted=False,
         timestamp=resp["timestamp"],  # see below
+        i3_event_id=resp["i3_event_id"],  # not checking
+        event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
         event_i3live_json_dict__hash=resp[
             "event_i3live_json_dict__hash"
         ],  # not checking
@@ -305,7 +297,7 @@ async def _do_patch(
                 else resp["ewms_task"]["clusters"]  # not checking
             ),
         ),
-        classifiers=CLASSIFIERS,
+        classifiers=resp["classifiers"],  # not checking
         last_updated=resp["last_updated"],  # see below
         priority=0,
         # TODO: check more fields in future (hint: ctrl+F this comment)
@@ -315,8 +307,6 @@ async def _do_patch(
     manifest = resp  # keep around
     # query progress
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert resp["ewms_task"].pop("env_vars")  # remove to match with other requests
     assert resp == manifest
     return manifest  # type: ignore[no-any-return]
 
@@ -467,8 +457,6 @@ async def _send_result(
 
     # query progress
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert resp["ewms_task"].pop("env_vars")  # remove to match with other requests
     assert resp == last_known_manifest
 
     # query result
@@ -556,8 +544,6 @@ async def _delete_scan(
     resp = await rc.request(
         "GET", f"/scan/{scan_id}/manifest", {"include_deleted": True}
     )
-    assert resp.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert resp["ewms_task"].pop("env_vars")  # remove to match with other requests
     assert resp == del_resp["manifest"]
 
     # RESULT: query w/ scan id (fails)
@@ -627,7 +613,8 @@ async def _delete_scan(
             "include_deleted": True,
         },
     )
-    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
+    assert scan_id in [m["scan_id"] for m in resp["manifests"]]
+    # ^^^ not testing that this is unique b/c the event could've been re-ran (rescan)
     resp = await rc.request(
         "POST",
         "/scans/find",
@@ -640,7 +627,8 @@ async def _delete_scan(
             },
         },
     )
-    assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
+    assert scan_id in [m["scan_id"] for m in resp["manifests"]]
+    # ^^^ not testing that this is unique b/c the event could've been re-ran (rescan)
 
 
 def get_tms_args(
@@ -703,7 +691,7 @@ def get_tms_args(
         ],
     ],
 )
-async def test_00(
+async def test_000(
     clusters: list | dict,
     docker_tag_input: str,
     docker_tag_expected: str,
@@ -714,9 +702,6 @@ async def test_00(
     """Test normal scan creation and retrieval."""
     rc = server()
 
-    #
-    # LAUNCH SCAN
-    #
     manifest = await _launch_scan(
         rc,
         {
@@ -726,7 +711,25 @@ async def test_00(
         },
         get_tms_args(clusters, docker_tag_expected, known_clusters),
     )
+
+    await _after_scan_start_logic(
+        rc,
+        manifest,
+        clusters,
+        known_clusters,
+        test_wait_before_teardown,
+    )
+
+
+async def _after_scan_start_logic(
+    rc: RestClient,
+    manifest: dict,
+    clusters: list | dict,
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+):
     scan_id = manifest["scan_id"]
+
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -784,8 +787,6 @@ async def test_00(
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert manifest["ewms_task"].pop("env_vars")  # remove to match with other requests
     assert manifest["ewms_task"]["complete"]  # workforce is done
 
     #
@@ -797,7 +798,122 @@ async def test_00(
 POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
-async def test_01__bad_data(
+def _assert_manifests_equal_with_normalization(
+    manifest_beta: dict, manifest_alpha: dict
+):
+    """
+    Asserts that specific keys in two manifests are equal after normalization.
+    Handles dynamically generated fields such as UUIDs and scan IDs.
+
+    Args:
+        manifest_beta (dict): The first manifest to compare.
+        manifest_alpha (dict): The second manifest to compare.
+
+    Raises:
+        AssertionError: If any of the specified keys are not equal after normalization.
+    """
+    keys_to_compare = [
+        "i3_event_id",
+        "ewms_task",
+        "priority",
+        "scanner_server_args",
+    ]
+
+    def normalize_ewms_task(ewms_task: dict) -> dict:
+        """
+        Normalizes the `ewms_task` dictionary by redacting specific dynamic sub-keys.
+        """
+        normalized = copy.deepcopy(ewms_task)
+
+        # Normalize `env_vars.scanner_server`
+        for dicto in normalized["env_vars"]["scanner_server"]:
+            if dicto["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID":
+                dicto["value"] = "<redacted>"
+        # Normalize `env_vars.scanner_server`
+        for listo in normalized["env_vars"]["tms_starters"]:
+            for dicto in listo:
+                if dicto["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID":
+                    dicto["value"] = "<redacted>"
+
+        # Normalize `tms_args`
+        normalized["tms_args"] = [
+            re.sub(r"--uuid [a-f0-9\-]+", "--uuid <redacted>", arg)
+            for arg in normalized["tms_args"]
+        ]
+
+        return normalized
+
+    for key in keys_to_compare:
+        if key == "ewms_task":
+            normalized_beta = normalize_ewms_task(manifest_beta[key])
+            normalized_alpha = normalize_ewms_task(manifest_alpha[key])
+            assert normalized_beta == normalized_alpha, (
+                f"Mismatch in key '{key}':\n"
+                f"Beta: {normalized_beta}\n"
+                f"Alpha: {normalized_alpha}"
+            )
+        else:
+            assert manifest_beta[key] == manifest_alpha[key], (
+                f"Mismatch in key '{key}':\n"
+                f"Beta: {manifest_beta.get(key)}\n"
+                f"Alpha: {manifest_alpha.get(key)}"
+            )
+
+    assert manifest_beta["timestamp"] > manifest_alpha["timestamp"]
+
+
+async def test_010__rescan(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+) -> None:
+    rc = server()
+
+    clusters = {"foobar": 1, "a-schedd": 999, "cloud": 4568}
+
+    # OG SCAN
+    manifest_alpha = await _launch_scan(
+        rc,
+        {
+            **POST_SCAN_BODY,
+            "docker_tag": "3.4.0",
+            "cluster": clusters,
+        },
+        get_tms_args(clusters, "3.4.0", known_clusters),
+    )
+    await _after_scan_start_logic(
+        rc,
+        manifest_alpha,
+        clusters,
+        known_clusters,
+        test_wait_before_teardown,
+    )
+
+    # RESCAN
+    manifest_beta = await rc.request(
+        "POST",
+        f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
+    )
+    # compare manifests
+    assert manifest_beta["classifiers"] == {
+        **manifest_alpha["classifiers"],
+        **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
+    }
+    _assert_manifests_equal_with_normalization(manifest_beta, manifest_alpha)
+    # continue on...
+    await _after_scan_start_logic(
+        rc,
+        manifest_beta,
+        clusters,
+        known_clusters,
+        test_wait_before_teardown,
+    )
+
+
+########################################################################################
+
+
+async def test_100__bad_data(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
@@ -821,7 +937,12 @@ async def test_01__bad_data(
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: `\w+`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
+        match=re.escape(
+            f"400 Client Error: the following arguments are required: "
+            f"docker_tag, cluster, reco_algo, event_i3live_json, nsides, "
+            f"real_or_simulated_event, max_pixel_reco_time "
+            f"for url: {rc.address}/scan"
+        ),
     ) as e:
         await rc.request("POST", "/scan", {})
     print(e.value)
@@ -836,7 +957,7 @@ async def test_01__bad_data(
             print(f"{arg}: [{bad_val}]")
             with pytest.raises(
                 requests.exceptions.HTTPError,
-                match=rf"400 Client Error: `{arg}`: \(ValueError\) .+ for url: {rc.address}/scan",
+                match=rf"400 Client Error: argument {arg}: .+ for url: {rc.address}/scan",
             ) as e:
                 await rc.request(
                     "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, arg: bad_val}
@@ -852,7 +973,7 @@ async def test_01__bad_data(
         print(f"[{bad_val}]")
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=rf"400 Client Error: `cluster`: \(ValueError\) .+ for url: {rc.address}/scan",
+            match=rf"400 Client Error: argument cluster: .+ for url: {rc.address}/scan",
         ) as e:
             await rc.request(
                 "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "cluster": bad_val}
@@ -864,7 +985,10 @@ async def test_01__bad_data(
             print(arg)
             with pytest.raises(
                 requests.exceptions.HTTPError,
-                match=rf"400 Client Error: `{arg}`: \(MissingArgumentError\) required argument is missing for url: {rc.address}/scan",
+                match=re.escape(
+                    f"400 Client Error: the following arguments are required: {arg} "
+                    f"for url: {rc.address}/scan"
+                ),
             ) as e:
                 # remove arg from body
                 await rc.request(
@@ -876,7 +1000,7 @@ async def test_01__bad_data(
     # # bad docker tag
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: `docker_tag`: \(ValueError\) .+ for url: {rc.address}/scan",
+        match=rf"400 Client Error: argument docker_tag: invalid type for url: {rc.address}/scan",
     ) as e:
         await rc.request(
             "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "docker_tag": "foo"}
@@ -954,7 +1078,7 @@ async def test_01__bad_data(
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=rf"400 Client Error: `progress`: \(ValueError\) missing value for field .* for url: {rc.address}/scan/{scan_id}/manifest",
+            match=rf"400 Client Error: argument progress: missing value for field .* for url: {rc.address}/scan/{scan_id}/manifest",
         ) as e:
             await rc.request(
                 "PATCH", f"/scan/{scan_id}/manifest", {"progress": bad_val}
@@ -982,7 +1106,9 @@ async def test_01__bad_data(
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"400 Client Error: `skyscan_result`: (MissingArgumentError) required argument is missing for url: {rc.address}/scan/{scan_id}/result"
+            f"400 Client Error: the following arguments are required: "
+            f"skyscan_result, is_final "
+            f"for url: {rc.address}/scan/{scan_id}/result"
         ),
     ) as e:
         await rc.request("PUT", f"/scan/{scan_id}/result", {})
@@ -998,7 +1124,8 @@ async def test_01__bad_data(
         with pytest.raises(
             requests.exceptions.HTTPError,
             match=re.escape(
-                f"400 Client Error: `skyscan_result`: (ValueError) type mismatch: 'dict' (value is '{type(bad_val)}') for url: {rc.address}/scan/{scan_id}/result"
+                f"400 Client Error: argument skyscan_result: arg must be a dict "
+                f"for url: {rc.address}/scan/{scan_id}/result"
             ),
         ) as e:
             await rc.request(
@@ -1013,8 +1140,6 @@ async def test_01__bad_data(
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert manifest.pop("event_i3live_json_dict")  # remove to match with other requests
-    # assert manifest["ewms_task"].pop("env_vars")  # remove to match with other requests
     assert manifest["ewms_task"]["complete"]  # workforce is done
 
     #

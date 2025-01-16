@@ -1,6 +1,5 @@
 """General Mongo utils."""
 
-
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ASCENDING, DESCENDING
 
@@ -10,6 +9,8 @@ _DB_NAME = "SkyDriver_DB"
 _MANIFEST_COLL_NAME = "Manifests"
 _RESULTS_COLL_NAME = "Results"
 _SCAN_BACKLOG_COLL_NAME = "ScanBacklog"
+_SCAN_REQUEST_COLL_NAME = "ScanRequests"
+_I3_EVENT_COLL_NAME = "I3Events"
 
 
 async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
@@ -17,6 +18,20 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:  # type: ign
 
     Call on server startup.
     """
+    # USER SCAN REQUESTS COLL
+    await motor_client[_DB_NAME][_SCAN_REQUEST_COLL_NAME].create_index(  # type: ignore[index]
+        "scan_id",
+        name="scan_id_index",
+        unique=True,
+    )
+
+    # I3 EVENTS COLL
+    await motor_client[_DB_NAME][_I3_EVENT_COLL_NAME].create_index(  # type: ignore[index]
+        "i3_event_id",
+        name="i3_event_id_index",
+        unique=True,
+    )
+
     # MANIFEST COLL
     await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].create_index(  # type: ignore[index]
         "scan_id",

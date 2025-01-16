@@ -1,4 +1,4 @@
-name: docker releases
+name: image publish
 
 on:
   push:
@@ -18,7 +18,6 @@ env:
 
 jobs:
   docker:
-    name: "Docker Image"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Project
