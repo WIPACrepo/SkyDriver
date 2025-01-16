@@ -8,6 +8,7 @@ from unittest.mock import Mock
 import kubernetes.client  # type: ignore[import-untyped]
 import pytest
 import pytest_asyncio
+from motor.motor_asyncio import AsyncIOMotorClient
 from rest_tools.client import RestClient
 
 import skydriver
@@ -116,9 +117,16 @@ def test_wait_before_teardown() -> float:
 
 
 @pytest_asyncio.fixture
+async def mongo_client() -> AsyncIOMotorClient:
+    """A fixture to keep number of mongo connections to a minimum (aka 1)."""
+    return await create_mongodb_client()
+
+
+@pytest_asyncio.fixture
 async def server(
     monkeypatch: Any,
     port: int,
+    mongo_client: AsyncIOMotorClient,
     mongo_clear: Any,  # pylint:disable=unused-argument
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
@@ -130,7 +138,6 @@ async def server(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
 
-    mongo_client = await create_mongodb_client()
     k8s_batch_api = Mock()
     ewms_rc = setup_ewms_client()
     backlog_task = asyncio.create_task(

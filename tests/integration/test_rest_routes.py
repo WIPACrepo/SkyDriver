@@ -13,6 +13,7 @@ from typing import Any, Callable
 import humanfriendly
 import pytest
 import requests
+from motor.motor_asyncio import AsyncIOMotorClient
 from rest_tools.client import RestClient
 
 import skydriver.images  # noqa: F401  # export
@@ -68,11 +69,14 @@ REQUIRED_FIELDS = [
 
 
 async def _launch_scan(
-    rc: RestClient, post_scan_body: dict, tms_args: list[str]
+    rc: RestClient,
+    mongo_client: AsyncIOMotorClient,
+    post_scan_body: dict,
+    tms_args: list[str],
 ) -> dict:
     # launch scan
     launch_time = time.time()
-    resp = await rc.request(
+    post_resp = await rc.request(
         "POST",
         "/scan",
         {**post_scan_body, "manifest_projection": ["*"]},
@@ -88,35 +92,76 @@ async def _launch_scan(
         f"--predictive-scanning-threshold 1.0 "  # the default
     )
 
-    assert resp == dict(
-        scan_id=resp["scan_id"],
+    assert post_resp == dict(
+        scan_id=post_resp["scan_id"],  # see below
         is_deleted=False,
-        timestamp=resp["timestamp"],  # see below
+        timestamp=post_resp["timestamp"],  # see below
         event_i3live_json_dict__hash=None,  # field has been deprecated, always 'None'
         event_i3live_json_dict="use 'i3_event_id'",  # field has been deprecated
-        i3_event_id=resp["i3_event_id"],  # see below
+        i3_event_id=post_resp["i3_event_id"],  # see below
         event_metadata=None,
         scan_metadata=None,
         progress=None,
-        scanner_server_args=resp["scanner_server_args"],  # see below
+        scanner_server_args=post_resp["scanner_server_args"],  # see below
         ewms_task="use 'ewms_workflow_id'",
         ewms_workflow_id="pending-ewms",
         classifiers=post_scan_body["classifiers"],
-        last_updated=resp["last_updated"],  # see below
+        last_updated=post_resp["last_updated"],  # see below
         priority=0,
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
-    assert RE_UUID4HEX.fullmatch(resp["scan_id"])
-    assert RE_UUID4HEX.fullmatch(resp["i3_event_id"])
-    assert launch_time < resp["timestamp"] < resp["last_updated"] < time.time()
+    assert RE_UUID4HEX.fullmatch(post_resp["scan_id"])
+    assert RE_UUID4HEX.fullmatch(post_resp["i3_event_id"])
+    assert (
+        launch_time < post_resp["timestamp"] < post_resp["last_updated"] < time.time()
+    )
 
     # query the SkyScanK8sJobs coll
     # -> since the scanner-server metadata is no longer stored in the manifest
-    # TODO
+    doc = await mongo_client["SkyDriver_DB"]["SkyScanK8sJobs"].find_one(
+        {"scan_id": post_resp["scan_id"]}
+    )
+    assert doc == dict(
+        scan_id=post_resp["scan_id"],
+        rescan_ids=[],
+        #
+        docker_tag=post_scan_body["docker_tag"],
+        #
+        # skyscan server config
+        scanner_server_memory_bytes=post_scan_body["scanner_server_memory"],
+        reco_algo=post_scan_body["reco_algo"],
+        nsides=post_scan_body["nsides"],
+        real_or_simulated_event=post_scan_body["real_or_simulated_event"],
+        predictive_scanning_threshold=post_scan_body["predictive_scanning_threshold"],
+        #
+        classifiers=post_scan_body["classifiers"],
+        #
+        # cluster (condor) config
+        request_clusters=post_scan_body["cluster"],
+        worker_memory_bytes=post_scan_body["worker_memory"],
+        worker_disk_bytes=post_scan_body["worker_disk"],
+        max_pixel_reco_time=post_scan_body["max_pixel_reco_time"],
+        max_worker_runtime=post_scan_body["max_worker_runtime"],
+        priority=post_scan_body["priority"],
+        debug_mode=[post_scan_body["debug_mode"]],
+        #
+        # misc
+        skyscan_mq_client_timeout_wait_for_first_message=(
+            post_scan_body["skyscan_mq_client_timeout_wait_for_first_message"]
+            if post_scan_body["skyscan_mq_client_timeout_wait_for_first_message"] != -1
+            else None
+        ),
+        i3_event_id=post_resp["i3_event_id"],
+        rest_address="",
+        scanner_server_env_from_user=post_scan_body["scanner_server_env"],
+    )
 
     # query the ScanRequests coll
     # TODO
+    assert 0
 
+
+def foo():
     # check args (avoid whitespace headaches...)
     assert resp["scanner_server_args"].split() == scanner_server_args.split()
     for got_args, exp_args in zip(resp["ewms_task"]["tms_args"], tms_args):
@@ -701,12 +746,14 @@ async def test_000(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,
 ) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
 
     manifest = await _launch_scan(
         rc,
+        mongo_client,
         {
             **POST_SCAN_BODY,
             "docker_tag": docker_tag_input,
