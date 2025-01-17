@@ -127,26 +127,26 @@ async def _launch_scan(
 
     # query the ScanRequests coll
     doc = await mongo_client["SkyDriver_DB"]["ScanRequests"].find_one(
-        {"scan_id": post_resp["scan_id"]}
+        {"scan_id": post_resp["scan_id"]}, {"_id": 0}
     )
     pprint.pprint(doc)
     assert doc == dict(
         scan_id=post_resp["scan_id"],
         rescan_ids=[],
         #
-        docker_tag=post_scan_body["docker_tag"],
+        docker_tag=os.environ["LATEST_TAG"],
         #
         # skyscan server config
         scanner_server_memory_bytes=humanfriendly.parse_size("1024M"),
         reco_algo=post_scan_body["reco_algo"],
-        nsides=post_scan_body["nsides"],
+        nsides={str(k): v for k, v in post_scan_body["nsides"].items()},
         real_or_simulated_event=post_scan_body["real_or_simulated_event"],
         predictive_scanning_threshold=1.0,
         #
         classifiers=post_scan_body["classifiers"],
         #
         # cluster (condor) config
-        request_clusters=post_scan_body["cluster"],
+        request_clusters=list(post_scan_body["cluster"].items()),
         worker_memory_bytes=humanfriendly.parse_size("8GB"),
         worker_disk_bytes=humanfriendly.parse_size("1GB"),
         max_pixel_reco_time=post_scan_body["max_pixel_reco_time"],
@@ -157,7 +157,7 @@ async def _launch_scan(
         # misc
         skyscan_mq_client_timeout_wait_for_first_message=None,
         i3_event_id=post_resp["i3_event_id"],
-        rest_address="",
+        rest_address="http://localhost:41161",
         scanner_server_env_from_user=post_scan_body["scanner_server_env"],
     )
 
