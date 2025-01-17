@@ -1144,8 +1144,8 @@ async def test_100__bad_data(
             rc,
             scan_id,
             event_metadata=dict(
-                run_id=event_metadata["run_id"],
-                event_id=event_metadata["event_id"],
+                run_id=manifest["event_metadata"]["run_id"],
+                event_id=manifest["event_metadata"]["event_id"],
                 event_type="funky",
                 mjd=23423432.3,
                 is_real_event=IS_REAL_EVENT,
@@ -1260,7 +1260,23 @@ async def test_100__bad_data(
     print(e.value)
 
     # OK
-    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
+    await _delete_scan(
+        rc,
+        manifest["event_metadata"],
+        scan_id,
+        manifest,
+        result,
+        True,
+        True,
+    )
 
     # also OK
-    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
+    await _delete_scan(
+        rc,
+        manifest["event_metadata"],
+        scan_id,
+        manifest,
+        result,
+        True,
+        True,
+    )
