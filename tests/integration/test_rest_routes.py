@@ -125,7 +125,26 @@ async def _launch_scan(
         < post_launch_ts
     )
 
-    # query the ScanRequests coll
+    # check database
+    rest_address = await _assert_db_scanrequests_coll(
+        mongo_client, post_scan_body, post_resp
+    )
+    await _assert_db_skyscank8sjobs_coll(
+        mongo_client, post_scan_body, post_resp, scanner_server_args, rest_address
+    )
+
+    return post_resp  # type: ignore[no-any-return]
+
+
+async def _assert_db_scanrequests_coll(
+    mongo_client: AsyncIOMotorClient,
+    post_scan_body: dict,
+    post_resp: dict,
+) -> str:
+    """Query the ScanRequests coll.
+
+    Return the REST address
+    """
     doc_sr = await mongo_client["SkyDriver_DB"]["ScanRequests"].find_one(
         {"scan_id": post_resp["scan_id"]}, {"_id": 0}
     )
@@ -162,6 +181,16 @@ async def _launch_scan(
     )
     assert re.fullmatch(rf"{re.escape('http://localhost:')}\d+", doc_sr["rest_address"])
 
+    return doc_sr["rest_address"]
+
+
+async def _assert_db_skyscank8sjobs_coll(
+    mongo_client: AsyncIOMotorClient,
+    post_scan_body: dict,
+    post_resp: dict,
+    scanner_server_args: str,
+    rest_address: str,
+):
     # query the SkyScanK8sJobs coll
     # -> since the scanner-server metadata is no longer stored in the manifest
     doc_k8s = await mongo_client["SkyDriver_DB"]["SkyScanK8sJobs"].find_one(
@@ -196,7 +225,7 @@ async def _launch_scan(
                                     },
                                     {
                                         "name": "SKYSCAN_SKYDRIVER_ADDRESS",
-                                        "value": doc_sr["rest_address"],
+                                        "value": rest_address,
                                     },
                                     {
                                         "name": "SKYSCAN_SKYDRIVER_SCAN_ID",
@@ -305,7 +334,7 @@ async def _launch_scan(
                                 "env": [
                                     {
                                         "name": "SKYSCAN_SKYDRIVER_ADDRESS",
-                                        "value": doc_sr["rest_address"],
+                                        "value": rest_address,
                                     },
                                     {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
                                     {
@@ -346,8 +375,6 @@ async def _launch_scan(
             },
         },
     }
-
-    return post_resp  # type: ignore[no-any-return]
 
 
 async def _do_patch(
