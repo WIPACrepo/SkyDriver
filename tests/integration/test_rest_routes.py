@@ -160,7 +160,7 @@ async def _launch_scan(
         rest_address=doc["rest_address"],  # see below
         scanner_server_env_from_user=post_scan_body["scanner_server_env"],
     )
-    assert re.fullmatch(f"{re.escape('http://localhost:')}\d+", doc["rest_address"])
+    assert re.fullmatch(rf"{re.escape('http://localhost:')}\d+", doc["rest_address"])
 
     # query the SkyScanK8sJobs coll
     # -> since the scanner-server metadata is no longer stored in the manifest
