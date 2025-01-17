@@ -126,7 +126,7 @@ async def mongo_client() -> AsyncIOMotorClient:
 async def server(
     monkeypatch: Any,
     port: int,
-    mongo_client: AsyncIOMotorClient,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     mongo_clear: Any,  # pylint:disable=unused-argument
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""

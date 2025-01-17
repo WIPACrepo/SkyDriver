@@ -68,9 +68,8 @@ REQUIRED_FIELDS = [
 
 async def _launch_scan(
     rc: RestClient,
-    mongo_client: AsyncIOMotorClient,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     post_scan_body: dict,
-    tms_args: list[str],
 ) -> dict:
     # launch scan
     launch_time = time.time()
@@ -134,7 +133,7 @@ async def _launch_scan(
 
 
 async def _assert_db_scanrequests_coll(
-    mongo_client: AsyncIOMotorClient,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     post_scan_body: dict,
     post_resp: dict,
 ) -> str:
@@ -182,7 +181,7 @@ async def _assert_db_scanrequests_coll(
 
 
 async def _assert_db_skyscank8sjobs_coll(
-    mongo_client: AsyncIOMotorClient,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     post_scan_body: dict,
     post_resp: dict,
     scanner_server_args: str,
@@ -727,39 +726,6 @@ async def _delete_scan(
     # ^^^ not testing that this is unique b/c the event could've been re-ran (rescan)
 
 
-def get_tms_args(
-    clusters: list | dict,
-    docker_tag_expected: str,
-    known_clusters: dict,
-) -> list[str]:
-    tms_args = []
-    for cluster in clusters if isinstance(clusters, list) else list(clusters.items()):
-        orchestrator = known_clusters[cluster[0]]["orchestrator"]
-        location = known_clusters[cluster[0]]["location"]
-        image = (
-            f"/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:{docker_tag_expected}"
-            if orchestrator == "condor"
-            else f"icecube/skymap_scanner:{docker_tag_expected}"
-        )
-        tms_args += [
-            f"python -m clientmanager "
-            f" --uuid {CLUSTER_ID_PLACEHOLDER} "
-            f" {orchestrator} "
-            f" {' '.join(f'--{k} {v}' for k,v in location.items())} "
-            f" start "
-            f" --n-workers {cluster[1]} "
-            f" --worker-memory-bytes {humanfriendly.parse_size('8GB')} "
-            f" --worker-disk-bytes {humanfriendly.parse_size('1GB')} "
-            f" --image {image} "
-            f" --client-startup-json /common-space/startup.json "
-            f" --max-worker-runtime {4 * 60 * 60} "
-            f" --priority 0 "
-            f" --spool "
-        ]
-
-    return tms_args
-
-
 async def _is_scan_complete(rc: RestClient, scan_id: str) -> bool:
     resp = await rc.request("GET", f"/scan/{scan_id}/status")
     pprint.pprint(resp)
@@ -802,7 +768,7 @@ async def test_000(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
@@ -815,7 +781,6 @@ async def test_000(
             "docker_tag": docker_tag_input,
             "cluster": clusters,
         },
-        get_tms_args(clusters, docker_tag_expected, known_clusters),
     )
 
     await _after_scan_start_logic(
@@ -968,6 +933,7 @@ async def test_010__rescan(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> None:
     rc = server()
 
@@ -976,12 +942,12 @@ async def test_010__rescan(
     # OG SCAN
     manifest_alpha = await _launch_scan(
         rc,
+        mongo_client,
         {
             **POST_SCAN_BODY,
             "docker_tag": "3.4.0",
             "cluster": clusters,
         },
-        get_tms_args(clusters, "3.4.0", known_clusters),
     )
     await _after_scan_start_logic(
         rc,
@@ -1015,6 +981,7 @@ async def test_100__bad_data(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
@@ -1108,12 +1075,8 @@ async def test_100__bad_data(
     # OK
     manifest = await _launch_scan(
         rc,
+        mongo_client,
         POST_SCAN_BODY_FOR_TEST_01,
-        get_tms_args(
-            POST_SCAN_BODY_FOR_TEST_01["cluster"],  # type: ignore[arg-type]
-            os.environ["LATEST_TAG"],
-            known_clusters,
-        ),
     )
     scan_id = manifest["scan_id"]
     # follow-up query
