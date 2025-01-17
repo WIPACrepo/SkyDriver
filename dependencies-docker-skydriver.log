@@ -18,7 +18,6 @@ dacite==1.8.1
 dnspython==2.7.0
 durationpy==0.9
 google-auth==2.37.0
-htcondor==24.3.0
 humanfriendly==10.0
 idna==3.10
 jmespath==1.0.1
@@ -72,7 +71,6 @@ skydriver-s3-sidecar-ewms-init-container
 │           │   └── six [required: >=1.5, installed: 1.17.0]
 │           └── urllib3 [required: >=1.25.4,<3,!=2.2.0, installed: 2.3.0]
 ├── dacite [required: Any, installed: 1.8.1]
-├── htcondor [required: Any, installed: 24.3.0]
 ├── humanfriendly [required: Any, installed: 10.0]
 ├── kubernetes [required: Any, installed: 31.0.0]
 │   ├── certifi [required: >=14.05.14, installed: 2024.12.14]
