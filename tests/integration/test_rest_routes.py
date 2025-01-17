@@ -157,9 +157,10 @@ async def _launch_scan(
         # misc
         skyscan_mq_client_timeout_wait_for_first_message=None,
         i3_event_id=post_resp["i3_event_id"],
-        rest_address="http://localhost:41161",
+        rest_address=doc["rest_address"],  # see below
         scanner_server_env_from_user=post_scan_body["scanner_server_env"],
     )
+    assert re.fullmatch(f"{re.escape('http://localhost:')}\d+", doc["rest_address"])
 
     # query the SkyScanK8sJobs coll
     # -> since the scanner-server metadata is no longer stored in the manifest
