@@ -374,7 +374,7 @@ async def _assert_db_skyscank8sjobs_coll(
     }
 
 
-async def _patch_manifest(
+async def _do_patch(
     rc: RestClient,
     scan_id: str,
     progress: StrDict | None = None,
@@ -460,9 +460,9 @@ async def _patch_progress_and_scan_metadata(
         )
         # update progress (update `scan_metadata` sometimes--not as important)
         if i % 2:  # odd
-            manifest = await _patch_manifest(rc, scan_id, progress=progress)
+            manifest = await _do_patch(rc, scan_id, progress=progress)
         else:  # even
-            manifest = await _patch_manifest(
+            manifest = await _do_patch(
                 rc,
                 scan_id,
                 progress=progress,
@@ -484,7 +484,7 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
         is_real_event=IS_REAL_EVENT,
     )
 
-    await _patch_manifest(rc, scan_id, event_metadata=event_metadata)
+    manifest = await _do_patch(rc, scan_id, event_metadata=event_metadata)
 
     # query by run+event id
     resp = await rc.request(
@@ -526,7 +526,7 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
     )
     assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
 
-    return event_metadata
+    return manifest
 
 
 async def _send_result(
@@ -760,6 +760,12 @@ def get_tms_args(
     return tms_args
 
 
+async def _is_scan_complete(rc: RestClient, scan_id: str) -> bool:
+    resp = await rc.request("GET", f"/scans/{scan_id}/status")
+    pprint.pprint(resp)
+    return resp["scan_complete"]
+
+
 ########################################################################################
 # TESTS
 ########################################################################################
@@ -842,7 +848,7 @@ async def _after_scan_start_logic(
     #
     # INITIAL UPDATES
     #
-    event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
+    manifest = await _server_reply_with_event_metadata(rc, scan_id)
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -867,17 +873,25 @@ async def _after_scan_start_logic(
     #
     # SEND RESULT(s)
     #
-    assert not manifest["ewms_task"]["complete"]  # workforce is not done
+    assert not await _is_scan_complete(rc, manifest["scan_id"])  # workforce is not done
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert manifest["ewms_task"]["complete"]  # workforce is done
+    assert await _is_scan_complete(rc, manifest["scan_id"])  # workforce is done
 
     #
     # DELETE SCAN
     #
-    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
+    await _delete_scan(
+        rc,
+        manifest["event_metadata"],
+        scan_id,
+        manifest,
+        result,
+        True,
+        True,
+    )
 
 
 POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
@@ -1112,7 +1126,7 @@ async def test_100__bad_data(
     #
     # INITIAL UPDATES
     #
-    event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
+    manifest = await _server_reply_with_event_metadata(rc, scan_id)
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -1126,7 +1140,7 @@ async def test_100__bad_data(
             f"400 Client Error: Cannot change an existing event_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
-        await _patch_manifest(
+        await _do_patch(
             rc,
             scan_id,
             event_metadata=dict(
@@ -1173,7 +1187,7 @@ async def test_100__bad_data(
             f"400 Client Error: Cannot change an existing scan_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
-        await _patch_manifest(rc, scan_id, scan_metadata={"boo": "baz", "bot": "fox"})
+        await _do_patch(rc, scan_id, scan_metadata={"boo": "baz", "bot": "fox"})
 
     #
     # SEND RESULT
@@ -1218,7 +1232,7 @@ async def test_100__bad_data(
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert manifest["ewms_task"]["complete"]  # workforce is done
+    assert await _is_scan_complete(rc, manifest["scan_id"])  # workforce is done
 
     #
     # DELETE SCAN
