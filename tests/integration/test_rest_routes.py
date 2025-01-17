@@ -5,10 +5,8 @@ import copy
 import logging
 import os
 import pprint
-import random
 import re
 import time
-import uuid
 from typing import Any, Callable
 
 import humanfriendly
@@ -21,16 +19,13 @@ import skydriver.images  # noqa: F401  # export
 
 LOGGER = logging.getLogger(__name__)
 
-
-# pylint: disable=redefined-outer-name
-
-
 skydriver.config.config_logging()
 
 StrDict = dict[str, Any]
 
 ########################################################################################
-
+# CONSTANTS
+########################################################################################
 
 RE_UUID4HEX = re.compile(r"[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}")
 
@@ -66,6 +61,8 @@ REQUIRED_FIELDS = [
 ]
 
 
+########################################################################################
+# UTILS
 ########################################################################################
 
 
@@ -377,14 +374,12 @@ async def _assert_db_skyscank8sjobs_coll(
     }
 
 
-async def _do_patch(
+async def _patch_manifest(
     rc: RestClient,
     scan_id: str,
     progress: StrDict | None = None,
     event_metadata: StrDict | None = None,
     scan_metadata: StrDict | None = None,
-    cluster: StrDict | None = None,
-    previous_clusters: list[StrDict] | None = None,
 ) -> StrDict:
     # do PATCH @ /scan/{scan_id}/manifest, assert response
     body = {}
@@ -394,9 +389,6 @@ async def _do_patch(
         body["event_metadata"] = event_metadata
     if scan_metadata:
         body["scan_metadata"] = scan_metadata
-    if cluster:
-        body["cluster"] = cluster
-        assert isinstance(previous_clusters, list)  # gotta include this one too
     assert body
 
     now = time.time()
@@ -468,9 +460,9 @@ async def _patch_progress_and_scan_metadata(
         )
         # update progress (update `scan_metadata` sometimes--not as important)
         if i % 2:  # odd
-            manifest = await _do_patch(rc, scan_id, progress=progress)
+            manifest = await _patch_manifest(rc, scan_id, progress=progress)
         else:  # even
-            manifest = await _do_patch(
+            manifest = await _patch_manifest(
                 rc,
                 scan_id,
                 progress=progress,
@@ -492,7 +484,7 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
         is_real_event=IS_REAL_EVENT,
     )
 
-    await _do_patch(rc, scan_id, event_metadata=event_metadata)
+    await _patch_manifest(rc, scan_id, event_metadata=event_metadata)
 
     # query by run+event id
     resp = await rc.request(
@@ -535,34 +527,6 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
     assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
 
     return event_metadata
-
-
-async def _clientmanager_reply(
-    rc: RestClient,
-    scan_id: str,
-    cluster_name__n_workers: tuple[str, int],
-    previous_clusters: list[StrDict],
-    known_clusters: dict,
-) -> StrDict:
-    # reply as the clientmanager with a new cluster
-    cluster = dict(
-        orchestrator=known_clusters[cluster_name__n_workers[0]]["orchestrator"],
-        location=known_clusters[cluster_name__n_workers[0]]["location"],
-        cluster_id=f"cluster-{random.randint(1, 10000)}",
-        n_workers=cluster_name__n_workers[1],
-        starter_info={},
-        statuses={},
-        top_task_errors={},
-        uuid=str(uuid.uuid4().hex),
-    )
-
-    manifest = await _do_patch(
-        rc,
-        scan_id,
-        cluster=cluster,
-        previous_clusters=previous_clusters,
-    )
-    return manifest
 
 
 async def _send_result(
@@ -797,6 +761,8 @@ def get_tms_args(
 
 
 ########################################################################################
+# TESTS
+########################################################################################
 
 
 @pytest.mark.parametrize(
@@ -877,13 +843,6 @@ async def _after_scan_start_logic(
     # INITIAL UPDATES
     #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    manifest = await _clientmanager_reply(  # TODO: remove/replace (and anywhere else)
-        rc,
-        scan_id,
-        clusters[0] if isinstance(clusters, list) else list(clusters.items())[0],
-        [],
-        known_clusters,
-    )
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -901,17 +860,6 @@ async def _after_scan_start_logic(
     # FIRST, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
-    # NEXT, spin up more workers in clusters
-    for cluster_name__n_workers in (
-        clusters[1:] if isinstance(clusters, list) else list(clusters.items())[1:]
-    ):
-        manifest = await _clientmanager_reply(
-            rc,
-            scan_id,
-            cluster_name__n_workers,
-            manifest["ewms_task"]["clusters"],
-            known_clusters,
-        )
     # THEN, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
@@ -1165,13 +1113,6 @@ async def test_100__bad_data(
     # INITIAL UPDATES
     #
     event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    manifest = await _clientmanager_reply(
-        rc,
-        scan_id,
-        ("foobar", random.randint(1, 10000)),
-        [],
-        known_clusters,
-    )
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -1185,7 +1126,7 @@ async def test_100__bad_data(
             f"400 Client Error: Cannot change an existing event_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
-        await _do_patch(
+        await _patch_manifest(
             rc,
             scan_id,
             event_metadata=dict(
@@ -1232,7 +1173,7 @@ async def test_100__bad_data(
             f"400 Client Error: Cannot change an existing scan_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
-        await _do_patch(rc, scan_id, scan_metadata={"boo": "baz", "bot": "fox"})
+        await _patch_manifest(rc, scan_id, scan_metadata={"boo": "baz", "bot": "fox"})
 
     #
     # SEND RESULT
