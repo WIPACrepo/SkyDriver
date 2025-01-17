@@ -347,7 +347,7 @@ async def _launch_scan(
         },
     }
 
-    return resp  # type: ignore[no-any-return]
+    return post_resp  # type: ignore[no-any-return]
 
 
 async def _do_patch(
