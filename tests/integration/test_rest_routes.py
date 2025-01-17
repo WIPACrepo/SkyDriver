@@ -248,8 +248,10 @@ async def _launch_scan(
                                         "name": "S3_ACCESS_KEY_ID",
                                         "valueFrom": {
                                             "secretKeyRef": {
-                                                "key": os.environ["S3_ACCESS_KEY_ID"],
-                                                "name": None,
+                                                "key": os.environ[
+                                                    "S3_ACCESS_KEY_ID__K8S_SECRET_KEY"
+                                                ],
+                                                "name": os.environ["K8S_SECRET_NAME"],
                                             }
                                         },
                                     },
@@ -257,8 +259,10 @@ async def _launch_scan(
                                         "name": "S3_SECRET_KEY",
                                         "valueFrom": {
                                             "secretKeyRef": {
-                                                "key": os.environ["S3_SECRET_KEY"],
-                                                "name": None,
+                                                "key": os.environ[
+                                                    "S3_SECRET_KEY__K8S_SECRET_KEY"
+                                                ],
+                                                "name": os.environ["K8S_SECRET_NAME"],
                                             }
                                         },
                                     },
