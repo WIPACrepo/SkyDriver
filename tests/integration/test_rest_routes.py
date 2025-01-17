@@ -125,9 +125,8 @@ async def _launch_scan(
         < post_launch_ts
     )
 
-    # query the SkyScanK8sJobs coll
-    # -> since the scanner-server metadata is no longer stored in the manifest
-    doc = await mongo_client["SkyDriver_DB"]["SkyScanK8sJobs"].find_one(
+    # query the ScanRequests coll
+    doc = await mongo_client["SkyDriver_DB"]["ScanRequests"].find_one(
         {"scan_id": post_resp["scan_id"]}
     )
     pprint.pprint(doc)
@@ -162,8 +161,14 @@ async def _launch_scan(
         scanner_server_env_from_user=post_scan_body["scanner_server_env"],
     )
 
-    # query the ScanRequests coll
+    # query the SkyScanK8sJobs coll
+    # -> since the scanner-server metadata is no longer stored in the manifest
+    doc = await mongo_client["SkyDriver_DB"]["SkyScanK8sJobs"].find_one(
+        {"scan_id": post_resp["scan_id"]}
+    )
+    pprint.pprint(doc)
     # TODO
+
     assert 0
 
 
