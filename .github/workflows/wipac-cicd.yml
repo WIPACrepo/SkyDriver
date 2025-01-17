@@ -214,6 +214,7 @@ jobs:
           docker run --network="host" --rm -i --name test \
               --env LATEST_TAG=$LATEST_TAG \
               --env THIS_IMAGE_WITH_TAG=$THIS_IMAGE_WITH_TAG \
+              --env K8S_SECRET_NAME=$K8S_SECRET_NAME \
               $(env | grep '^SKYSCAN_' | awk '$0="--env "$0') \
               $(env | grep '^EWMS_' | awk '$0="--env "$0') \
               $(env | grep '^S3_' | awk '$0="--env "$0') \
