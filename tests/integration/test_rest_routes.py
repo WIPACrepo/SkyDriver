@@ -427,16 +427,8 @@ async def _do_patch(
             else resp["progress"]  # not checking
         ),
         scanner_server_args=resp["scanner_server_args"],  # not checking
-        ewms_task=dict(
-            tms_args=resp["ewms_task"]["tms_args"],  # not checking
-            env_vars=resp["ewms_task"]["env_vars"],  # not checking
-            complete=False,
-            clusters=(
-                previous_clusters + [cluster]  # type: ignore[operator]  # see assert ^^^^
-                if cluster
-                else resp["ewms_task"]["clusters"]  # not checking
-            ),
-        ),
+        ewms_task="use 'ewms_workflow_id'",
+        ewms_workflow_id="pending-ewms",
         classifiers=resp["classifiers"],  # not checking
         last_updated=resp["last_updated"],  # see below
         priority=0,
