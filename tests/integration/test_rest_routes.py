@@ -126,11 +126,11 @@ async def _launch_scan(
     )
 
     # query the ScanRequests coll
-    doc = await mongo_client["SkyDriver_DB"]["ScanRequests"].find_one(
+    doc_sr = await mongo_client["SkyDriver_DB"]["ScanRequests"].find_one(
         {"scan_id": post_resp["scan_id"]}, {"_id": 0}
     )
-    pprint.pprint(doc)
-    assert doc == dict(
+    pprint.pprint(doc_sr)
+    assert doc_sr == dict(
         scan_id=post_resp["scan_id"],
         rescan_ids=[],
         #
@@ -157,17 +157,191 @@ async def _launch_scan(
         # misc
         skyscan_mq_client_timeout_wait_for_first_message=None,
         i3_event_id=post_resp["i3_event_id"],
-        rest_address=doc["rest_address"],  # see below
+        rest_address=doc_sr["rest_address"],  # see below
         scanner_server_env_from_user=post_scan_body["scanner_server_env"],
     )
-    assert re.fullmatch(rf"{re.escape('http://localhost:')}\d+", doc["rest_address"])
+    assert re.fullmatch(rf"{re.escape('http://localhost:')}\d+", doc_sr["rest_address"])
 
     # query the SkyScanK8sJobs coll
     # -> since the scanner-server metadata is no longer stored in the manifest
-    doc = await mongo_client["SkyDriver_DB"]["SkyScanK8sJobs"].find_one(
-        {"scan_id": post_resp["scan_id"]}
+    doc_k8s = await mongo_client["SkyDriver_DB"]["SkyScanK8sJobs"].find_one(
+        {"scan_id": post_resp["scan_id"]}, {"_id": 0}
     )
-    pprint.pprint(doc)
+    pprint.pprint(doc_k8s)
+    assert doc_k8s == {
+        "scan_id": post_resp["scan_id"],
+        "skyscan_k8s_job_dict": {
+            "apiVersion": "batch/v1",
+            "kind": "Job",
+            "metadata": {
+                "annotations": {"argocd.argoproj.io/sync-options": "Prune=false"},
+                "labels": {"app.kubernetes.io/instance": None},
+                "name": f"skyscan-{post_resp['scan_id']}",
+                "namespace": None,
+            },
+            "spec": {
+                "activeDeadlineSeconds": 86400,
+                "backoffLimit": 0,
+                "template": {
+                    "metadata": {"labels": {"app": "scanner-instance"}},
+                    "spec": {
+                        "containers": [
+                            {
+                                "args": scanner_server_args.split(),
+                                "command": [],
+                                "env": [
+                                    {
+                                        "name": "SKYSCAN_EWMS_JSON",
+                                        "value": "/common-space/ewms.json",
+                                    },
+                                    {
+                                        "name": "SKYSCAN_SKYDRIVER_ADDRESS",
+                                        "value": doc_sr["rest_address"],
+                                    },
+                                    {
+                                        "name": "SKYSCAN_SKYDRIVER_SCAN_ID",
+                                        "value": post_resp["scan_id"],
+                                    },
+                                    {
+                                        "name": "SKYSCAN_EWMS_PILOT_LOG",
+                                        "value": "WARNING",
+                                    },
+                                    {
+                                        "name": "SKYSCAN_MQ_CLIENT_LOG",
+                                        "value": "WARNING",
+                                    },
+                                    {"name": "SKYSCAN_BROKER_AUTH", "value": ""},
+                                    {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
+                                ]
+                                + [  # add those from 'post_scan_body'
+                                    {"name": k, "value": v}
+                                    for k, v in post_scan_body[
+                                        "scanner_server_env"
+                                    ].items()
+                                ],
+                                "image": f"icecube/skymap_scanner:{os.environ['LATEST_TAG']}",
+                                "name": f'skyscan-server-{post_resp["scan_id"]}',
+                                "resources": {
+                                    "limits": {"cpu": "1", "memory": "1024000000"},
+                                    "requests": {
+                                        "cpu": "1",
+                                        "ephemeral-storage": "1M",
+                                        "memory": "1024000000",
+                                    },
+                                },
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/common-space",
+                                        "name": "common-space-volume",
+                                    }
+                                ],
+                            },
+                            {
+                                "args": [
+                                    "/common-space/startup.json",
+                                    "--wait-indefinitely",
+                                ],
+                                "command": ["python", "-m", "s3_sidecar.post"],
+                                "env": [
+                                    {"name": "S3_URL", "value": os.environ["S3_URL"]},
+                                    {
+                                        "name": "S3_ACCESS_KEY_ID",
+                                        "valueFrom": {
+                                            "secretKeyRef": {
+                                                "key": os.environ["S3_ACCESS_KEY_ID"],
+                                                "name": None,
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "name": "S3_SECRET_KEY",
+                                        "valueFrom": {
+                                            "secretKeyRef": {
+                                                "key": os.environ["S3_SECRET_KEY"],
+                                                "name": None,
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "name": "S3_BUCKET",
+                                        "value": os.environ["S3_BUCKET"],
+                                    },
+                                    {
+                                        "name": "S3_OBJECT_KEY",
+                                        "value": f"{post_resp['scan_id']}-s3-object",
+                                    },
+                                ],
+                                "image": os.environ["THIS_IMAGE_WITH_TAG"],
+                                "name": f"sidecar-s3-{post_resp['scan_id']}",
+                                "resources": {
+                                    "limits": {"cpu": "0.25", "memory": "256Mi"},
+                                    "requests": {
+                                        "cpu": "0.25",
+                                        "ephemeral-storage": "1M",
+                                        "memory": "256Mi",
+                                    },
+                                },
+                                "restartPolicy": "OnFailure",
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/common-space",
+                                        "name": "common-space-volume",
+                                    }
+                                ],
+                            },
+                        ],
+                        "initContainers": [
+                            {
+                                "args": [
+                                    post_resp["scan_id"],
+                                    "--json-out",
+                                    "/common-space/ewms.json",
+                                ],
+                                "command": ["python", "-m", "ewms_init_container"],
+                                "env": [
+                                    {
+                                        "name": "SKYSCAN_SKYDRIVER_ADDRESS",
+                                        "value": doc_sr["rest_address"],
+                                    },
+                                    {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
+                                    {
+                                        "name": "EWMS_ADDRESS",
+                                        "value": os.environ["EWMS_ADDRESS"],
+                                    },
+                                    {
+                                        "name": "EWMS_TOKEN_URL",
+                                        "value": os.environ["EWMS_TOKEN_URL"],
+                                    },
+                                    {
+                                        "name": "EWMS_CLIENT_ID",
+                                        "value": os.environ["EWMS_CLIENT_ID"],
+                                    },
+                                    {
+                                        "name": "EWMS_CLIENT_SECRET",
+                                        "value": os.environ["EWMS_CLIENT_SECRET"],
+                                    },
+                                    {
+                                        "name": "QUEUE_ALIAS_TOCLIENT",
+                                        "value": "to-client-queue",
+                                    },
+                                    {
+                                        "name": "QUEUE_ALIAS_FROMCLIENT",
+                                        "value": "from-client-queue",
+                                    },
+                                ],
+                                "image": os.environ["THIS_IMAGE_WITH_TAG"],
+                                "name": f"init-ewms-{post_resp['scan_id']}",
+                            }
+                        ],
+                        "restartPolicy": "Never",
+                        "serviceAccountName": None,
+                        "volumes": [{"emptyDir": {}, "name": "common-space-volume"}],
+                    },
+                },
+                "ttlSecondsAfterFinished": 600,
+            },
+        },
+    }
     # TODO
 
     assert 0
