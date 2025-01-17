@@ -761,7 +761,7 @@ def get_tms_args(
 
 
 async def _is_scan_complete(rc: RestClient, scan_id: str) -> bool:
-    resp = await rc.request("GET", f"/scans/{scan_id}/status")
+    resp = await rc.request("GET", f"/scan/{scan_id}/status")
     pprint.pprint(resp)
     return resp["scan_complete"]
 
