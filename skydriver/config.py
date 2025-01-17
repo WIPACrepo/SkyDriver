@@ -19,6 +19,7 @@ DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES: int = humanfriendly.parse_siz
 )
 DEFAULT_WORKER_MEMORY_BYTES: int = humanfriendly.parse_size("8GB")
 DEFAULT_WORKER_DISK_BYTES: int = humanfriendly.parse_size("1GB")
+DEFAULT_MAX_WORKER_RUNTIME = 4 * 60 * 60
 
 K8S_CONTAINER_MEMORY_DEFAULT_BYTES: int = humanfriendly.parse_size("64M")
 K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES: int = humanfriendly.parse_size("256M")

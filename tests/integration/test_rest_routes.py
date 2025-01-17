@@ -151,7 +151,7 @@ async def _launch_scan(
         worker_memory_bytes=humanfriendly.parse_size("8GB"),
         worker_disk_bytes=humanfriendly.parse_size("1GB"),
         max_pixel_reco_time=post_scan_body["max_pixel_reco_time"],
-        max_worker_runtime=post_scan_body["max_worker_runtime"],
+        max_worker_runtime=4 * 60 * 60,
         priority=0,
         debug_mode=[post_scan_body["debug_mode"]],
         #
