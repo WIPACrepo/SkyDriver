@@ -117,7 +117,7 @@ def test_wait_before_teardown() -> float:
 
 
 @pytest_asyncio.fixture
-async def mongo_client() -> AsyncIOMotorClient:
+async def mongo_client() -> AsyncIOMotorClient:  # type: ignore[valid-type]
     """A fixture to keep number of mongo connections to a minimum (aka 1)."""
     return await create_mongodb_client()
 

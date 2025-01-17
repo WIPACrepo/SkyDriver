@@ -141,7 +141,7 @@ async def _assert_db_scanrequests_coll(
 
     Return the REST address
     """
-    doc_sr = await mongo_client["SkyDriver_DB"]["ScanRequests"].find_one(
+    doc_sr = await mongo_client["SkyDriver_DB"]["ScanRequests"].find_one(  # type: ignore[index]
         {"scan_id": post_resp["scan_id"]}, {"_id": 0}
     )
     pprint.pprint(doc_sr)
@@ -189,7 +189,7 @@ async def _assert_db_skyscank8sjobs_coll(
 ):
     # query the SkyScanK8sJobs coll
     # -> since the scanner-server metadata is no longer stored in the manifest
-    doc_k8s = await mongo_client["SkyDriver_DB"]["SkyScanK8sJobs"].find_one(
+    doc_k8s = await mongo_client["SkyDriver_DB"]["SkyScanK8sJobs"].find_one(  # type: ignore[index]
         {"scan_id": post_resp["scan_id"]}, {"_id": 0}
     )
     pprint.pprint(doc_k8s)
