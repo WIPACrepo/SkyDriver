@@ -9,7 +9,7 @@ from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
-DONT_CALL_IT_A_DB: dict[str, Any] = {}
+DONT_CALL_IT_A_DB__WORKFLOWS: dict[str, Any] = {}
 
 
 @app.route("/v0/workflows", methods=["POST"])
@@ -28,7 +28,7 @@ def dummy_workflows_post():
         # add more fields only if needed in tests--keep things simple
     }
 
-    DONT_CALL_IT_A_DB[workflow_id] = minimal_wf_doc
+    DONT_CALL_IT_A_DB__WORKFLOWS[workflow_id] = minimal_wf_doc
 
     return jsonify(
         {
@@ -39,19 +39,35 @@ def dummy_workflows_post():
 
 @app.route("/v0/workflows/<workflow_id>", methods=["GET"])
 def dummy_workflows_get(workflow_id: str):
-    return jsonify(DONT_CALL_IT_A_DB[workflow_id])
+    return jsonify(DONT_CALL_IT_A_DB__WORKFLOWS[workflow_id])
 
 
 @app.route("/v0/workflows/<workflow_id>/actions/abort", methods=["POST"])
 def dummy_workflows_abort(workflow_id: str):
-    DONT_CALL_IT_A_DB[workflow_id].update({"deactivated": "abort"})
+    DONT_CALL_IT_A_DB__WORKFLOWS[workflow_id].update({"deactivated": "abort"})
     return jsonify({})
 
 
 @app.route("/v0/workflows/<workflow_id>/actions/finished", methods=["POST"])
 def dummy_workflows_finished(workflow_id: str):
-    DONT_CALL_IT_A_DB[workflow_id].update({"deactivated": "finished"})
+    DONT_CALL_IT_A_DB__WORKFLOWS[workflow_id].update({"deactivated": "finished"})
     return jsonify({})
+
+
+@app.route("/v0/query/taskforces", methods=["POST"])
+def dummy_query_taskforces():
+    workflow_id = request.get_json("workflow_id")
+
+    # respond with correctly-syntaxed gibberish
+    resp = {
+        "taskforces": [
+            {
+                "taskforce": f"TF-{workflow_id}",
+                "phase": "the-best-phase-ever",
+            }
+        ]
+    }
+    return jsonify(resp)
 
 
 if __name__ == "__main__":

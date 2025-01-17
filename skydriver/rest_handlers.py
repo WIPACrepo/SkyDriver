@@ -39,6 +39,7 @@ from .config import (
     is_testing,
 )
 from .database import schema
+from .database.schema import PENDING_EWMS_WORKFLOW
 from .ewms import request_stop_on_ewms
 from .k8s.scan_backlog import put_on_backlog
 from .k8s.scanner_instance import SkyScanK8sJobFactory
@@ -1046,14 +1047,21 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                     pods_411["pod_message"] = "pod(s) not found"
                     LOGGER.exception(e)
 
-        # respond
+        # scan state
         scan_state = await get_scan_state(manifest, self.ewms_rc)
-        if manifest.ewms_workflow_id:
+
+        # ewms
+        if (
+            manifest.ewms_workflow_id
+            and manifest.ewms_workflow_id != PENDING_EWMS_WORKFLOW
+        ):
             clusters = await ewms.get_taskforce_phases(
                 self.ewms_rc, manifest.ewms_workflow_id
             )
         else:
             clusters = []
+
+        # respond
         resp = {
             "scan_state": scan_state,
             "is_deleted": manifest.is_deleted,
