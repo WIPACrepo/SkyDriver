@@ -30,6 +30,7 @@ from wipac_dev_tools import argparse_tools
 from . import database, ewms, images, k8s, utils
 from .config import (
     DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
+    DEFAULT_MAX_WORKER_RUNTIME,
     DEFAULT_WORKER_DISK_BYTES,
     DEFAULT_WORKER_MEMORY_BYTES,
     DebugMode,
