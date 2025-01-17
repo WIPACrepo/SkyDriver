@@ -807,7 +807,7 @@ async def _after_scan_start_logic(
     await asyncio.sleep(int(os.environ["SCAN_BACKLOG_RUNNER_SHORT_DELAY"]) * 2)  # extra
     ewms_workflow_id = (
         await rc.request(
-            "GET", f"/scan/{scan_id}", {"projection": ["ewms_workflow_id"]}
+            "GET", f"/scan/{scan_id}", {"manifest_projection": ["ewms_workflow_id"]}
         )
     )["ewms_workflow_id"]
     assert RE_UUID4HEX.fullmatch(ewms_workflow_id)
