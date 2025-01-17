@@ -144,7 +144,7 @@ async def _run(
             )
         except database.mongodc.DocumentNotFoundException:
             timer_main_loop.fastforward()
-            continue  # empty queue-
+            continue  # there's no scan to start
 
         # request a workflow on EWMS
         try:

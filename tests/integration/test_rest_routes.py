@@ -804,7 +804,7 @@ async def _after_scan_start_logic(
     assert resp["result"] == {}
 
     # wait backlogger to request to ewms
-    await asyncio.sleep(int(os.environ["SCAN_BACKLOG_RUNNER_SHORT_DELAY"]) * 2)  # extra
+    await asyncio.sleep(int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"]) * 5)  # extra
     ewms_workflow_id = (await rc.request("GET", f"/scan/{scan_id}/manifest"))[
         "ewms_workflow_id"
     ]
