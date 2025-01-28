@@ -5,7 +5,6 @@ import asyncio
 import dataclasses as dc
 import json
 import logging
-import pickle
 import re
 import time
 import uuid
@@ -616,25 +615,24 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         new_scan_id = uuid.uuid4().hex
 
         # grab the original requester's 'scan_request_obj'
-        doc = await self.scan_request_coll.find_one_and_update(
+        scan_request_obj = await self.scan_request_coll.find_one_and_update(
             {"scan_id": scan_id},
             {"$push": {"rescan_ids": new_scan_id}},
             return_document=ReturnDocument.AFTER,
         )
         # -> backup plan: was this scan_id actually a rescan itself?
-        if not doc:
-            doc = await self.scan_request_coll.find_one_and_update(
+        if not scan_request_obj:
+            scan_request_obj = await self.scan_request_coll.find_one_and_update(
                 {"rescan_ids": scan_id},  # one in a list
                 {"$push": {"rescan_ids": new_scan_id}},
                 return_document=ReturnDocument.AFTER,
             )
         # -> error: couldn't find it anywhere
-        if not doc:
+        if not scan_request_obj:
             raise web.HTTPError(
                 404,
                 log_message="Could not find original scan-request information to start a rescan",
             )
-        scan_request_obj = pickle.loads(doc["scan_request_obj_pkl"])
 
         # add to 'classifiers' so the user has provenance info
         scan_request_obj["classifiers"].update(
