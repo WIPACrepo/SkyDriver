@@ -3,6 +3,7 @@
 import asyncio
 import socket
 from typing import Any, AsyncIterator, Callable
+from unittest import mock
 from unittest.mock import Mock
 
 import kubernetes.client  # type: ignore[import-untyped]
@@ -123,6 +124,7 @@ async def mongo_client() -> AsyncIOMotorClient:  # type: ignore[valid-type]
 
 
 @pytest_asyncio.fixture
+@mock.patch("skydriver.k8s.utils.KubeAPITools.start_job", return_value=None)
 async def server(
     monkeypatch: Any,
     port: int,
