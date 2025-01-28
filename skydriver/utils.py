@@ -4,7 +4,7 @@ import enum
 
 from rest_tools.client import RestClient
 
-from . import ewms
+from . import database, ewms
 from .database.schema import DEPRECATED_EWMS_TASK, Manifest, PENDING_EWMS_WORKFLOW
 
 
@@ -12,6 +12,9 @@ class _ScanState(enum.Enum):
     """A non-persisted scan state."""
 
     SCAN_FINISHED_SUCCESSFULLY = enum.auto()
+    # ^^^ indicates the scanner sent finished results. in reality, the scanner or ewms
+    # could've crashed immediately after BUT the user only cares about the RESULTS--so,
+    # this would still be considered a SUCCESS in *this* context
 
     IN_PROGRESS__PARTIAL_RESULT_GENERATED = enum.auto()
     IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO = enum.auto()
@@ -19,9 +22,14 @@ class _ScanState(enum.Enum):
     PENDING__PRESTARTUP = enum.auto()
 
 
-async def get_scan_state(manifest: Manifest, ewms_rc: RestClient) -> str:
+async def get_scan_state(
+    manifest: Manifest,
+    ewms_rc: RestClient,
+    results: database.interface.ResultClient,
+) -> str:
     """Determine the state of the scan by parsing attributes and talking with EWMS."""
-    if manifest.progress and manifest.progress.processing_stats.finished:
+    if (await results.get(manifest.scan_id)).is_final:
+        # NOTE: see note on 'SCAN_FINISHED_SUCCESSFULLY' above
         return _ScanState.SCAN_FINISHED_SUCCESSFULLY.name
 
     def _has_cleared_backlog() -> bool:

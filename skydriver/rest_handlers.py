@@ -1051,7 +1051,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                     LOGGER.exception(e)
 
         # scan state
-        scan_state = await get_scan_state(manifest, self.ewms_rc)
+        scan_state = await get_scan_state(manifest, self.ewms_rc, self.results)
 
         # ewms
         if (
