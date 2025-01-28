@@ -1,6 +1,6 @@
 """Test dynamically generating the scan state."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -9,9 +9,19 @@ from skydriver.database.schema import PENDING_EWMS_WORKFLOW
 from skydriver.utils import get_scan_state
 
 
-async def test_00__scan_finished_successfully() -> None:
-    """Test with SCAN_FINISHED_SUCCESSFULLY."""
+@pytest.mark.parametrize(
+    "processing_stats_is_finished",
+    [True, False],
+)
+async def test_00__scan_finished_successfully(
+    processing_stats_is_finished: bool,
+) -> None:
+    """Test with SCAN_FINISHED_SUCCESSFULLY.
+
+    `processing_stats.is_finished` does not affect "SCAN_FINISHED_SUCCESSFULLY"
+    """
     ewms_rc = MagicMock()
+    results = MagicMock(get=AsyncMock(return_value=MagicMock(is_final=True)))
 
     manifest = schema.Manifest(
         scan_id=MagicMock(),
@@ -26,11 +36,14 @@ async def test_00__scan_finished_successfully() -> None:
             spec_set=["processing_stats"],  # no magic strict attrs -- kind of like dict
             processing_stats=MagicMock(
                 spec_set=["finished"],  # no magic strict attrs -- kind of like dict
-                finished=True,
+                finished=processing_stats_is_finished,
             ),
         ),
     )
-    assert await get_scan_state(manifest, ewms_rc) == "SCAN_FINISHED_SUCCESSFULLY"
+
+    assert (
+        await get_scan_state(manifest, ewms_rc, results) == "SCAN_FINISHED_SUCCESSFULLY"
+    )
 
 
 @pytest.mark.parametrize(
@@ -44,6 +57,7 @@ async def test_00__scan_finished_successfully() -> None:
 async def test_10__partial_result_generated(ewms_dtype: str | None, state: str) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
+    results = MagicMock(get=AsyncMock(return_value=MagicMock(is_final=False)))
 
     manifest = schema.Manifest(
         scan_id=MagicMock(),
@@ -68,7 +82,7 @@ async def test_10__partial_result_generated(ewms_dtype: str | None, state: str) 
     )
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
-        assert await get_scan_state(manifest, ewms_rc) == state
+        assert await get_scan_state(manifest, ewms_rc, results) == state
 
 
 @pytest.mark.parametrize(
@@ -84,6 +98,7 @@ async def test_20__waiting_on_first_pixel_reco(
 ) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
+    results = MagicMock(get=AsyncMock(return_value=MagicMock(is_final=False)))
 
     manifest = schema.Manifest(
         scan_id=MagicMock(),
@@ -108,7 +123,7 @@ async def test_20__waiting_on_first_pixel_reco(
     )
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
-        assert await get_scan_state(manifest, ewms_rc) == state
+        assert await get_scan_state(manifest, ewms_rc, results) == state
 
 
 @pytest.mark.parametrize(
@@ -124,6 +139,7 @@ async def test_40__waiting_on_scanner_server_startup(
 ) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
+    results = MagicMock(get=AsyncMock(return_value=MagicMock(is_final=False)))
 
     manifest = schema.Manifest(
         scan_id=MagicMock(),
@@ -138,7 +154,7 @@ async def test_40__waiting_on_scanner_server_startup(
     )
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
-        assert await get_scan_state(manifest, ewms_rc) == state
+        assert await get_scan_state(manifest, ewms_rc, results) == state
 
 
 @pytest.mark.parametrize(
@@ -152,6 +168,7 @@ async def test_40__waiting_on_scanner_server_startup(
 async def test_50__prestartup(ewms_dtype: str | None, state: str) -> None:
     """Test normal and stopped varriants."""
     ewms_rc = MagicMock()
+    results = MagicMock(get=AsyncMock(return_value=MagicMock(is_final=False)))
 
     manifest = schema.Manifest(
         scan_id=MagicMock(),
@@ -166,4 +183,4 @@ async def test_50__prestartup(ewms_dtype: str | None, state: str) -> None:
     )
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
-        assert await get_scan_state(manifest, ewms_rc) == state
+        assert await get_scan_state(manifest, ewms_rc, results) == state
