@@ -62,7 +62,7 @@ def dummy_query_taskforces():
     resp = {
         "taskforces": [
             {
-                "taskforce": f"TF-{workflow_id}",
+                "taskforce_uuid": f"TF-{workflow_id}",
                 "phase": "the-best-phase-ever",
             }
         ]
