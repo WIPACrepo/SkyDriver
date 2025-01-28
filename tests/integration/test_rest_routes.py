@@ -826,10 +826,8 @@ async def _after_scan_start_logic(
     # wait backlogger to request to ewms
     assert int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"])
     await asyncio.sleep(int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"]) * 5)  # extra
-    ewms_workflow_id = (await rc.request("GET", f"/scan/{scan_id}/manifest"))[
-        "ewms_workflow_id"
-    ]
-    assert RE_UUID4HEX.fullmatch(ewms_workflow_id)
+    manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    assert RE_UUID4HEX.fullmatch(manifest["ewms_workflow_id"])
 
     #
     # INITIAL UPDATES
