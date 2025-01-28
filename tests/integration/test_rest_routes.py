@@ -610,11 +610,6 @@ async def _delete_scan(
             "scan_id": scan_id,
             "is_deleted": True,
             "progress": manifest["progress"],
-            "ewms_task": {
-                **resp["manifest"]["ewms_task"],
-                # whether workforce is done
-                "complete": manifest["ewms_task"]["complete"],
-            },
             "last_updated": resp["manifest"]["last_updated"],  # see below
             # TODO: check more fields in future (hint: ctrl+F this comment)
         },
