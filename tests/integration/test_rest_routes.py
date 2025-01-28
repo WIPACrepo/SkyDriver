@@ -70,6 +70,7 @@ async def _launch_scan(
     rc: RestClient,
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     post_scan_body: dict,
+    docker_tag_expected: str,
 ) -> dict:
     # launch scan
     launch_time = time.time()
@@ -126,6 +127,7 @@ async def _launch_scan(
         mongo_client,
         post_scan_body,
         post_resp,
+        docker_tag_expected,
     )
     await _assert_db_skyscank8sjobs_coll(
         mongo_client,
@@ -142,6 +144,7 @@ async def _assert_db_scanrequests_coll(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     post_scan_body: dict,
     post_resp: dict,
+    docker_tag_expected: str,
 ) -> str:
     """Query the ScanRequests coll.
 
@@ -155,7 +158,7 @@ async def _assert_db_scanrequests_coll(
         scan_id=post_resp["scan_id"],
         rescan_ids=[],
         #
-        docker_tag=os.environ["LATEST_TAG"],
+        docker_tag=docker_tag_expected,
         #
         # skyscan server config
         scanner_server_memory_bytes=humanfriendly.parse_size("1024M"),
@@ -796,6 +799,7 @@ async def test_000(
             "docker_tag": docker_tag_input,
             "cluster": clusters,
         },
+        docker_tag_expected,
     )
 
     await _after_scan_start_logic(
@@ -959,6 +963,7 @@ async def test_010__rescan(
             "docker_tag": "3.4.0",
             "cluster": clusters,
         },
+        "3.4.0",
     )
     await _after_scan_start_logic(
         rc,
@@ -1088,6 +1093,7 @@ async def test_100__bad_data(
         rc,
         mongo_client,
         POST_SCAN_BODY_FOR_TEST_01,
+        os.environ["LATEST_TAG"],
     )
     scan_id = manifest["scan_id"]
     # follow-up query
