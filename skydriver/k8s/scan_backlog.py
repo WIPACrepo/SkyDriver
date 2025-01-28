@@ -199,3 +199,6 @@ async def _run(
 
         # remove from backlog now that startup succeeded
         await scan_backlog.remove(entry)
+        await asyncio.sleep(  # wait so to not overwhelm resources (also, see `sleep()` at top)
+            ENV.SCAN_BACKLOG_RUNNER_DELAY - ENV.SCAN_BACKLOG_RUNNER_SHORT_DELAY
+        )
