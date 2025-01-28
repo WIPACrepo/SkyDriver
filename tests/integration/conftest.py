@@ -124,7 +124,6 @@ async def mongo_client() -> AsyncIOMotorClient:  # type: ignore[valid-type]
 
 
 @pytest_asyncio.fixture
-@mock.patch("skydriver.k8s.utils.KubeAPITools.start_job", return_value=None)
 async def server(
     monkeypatch: Any,
     port: int,
@@ -133,6 +132,19 @@ async def server(
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
 
+    # NOTE: cannot use @mock.patch with @pytest_asyncio.fixture
+    # NOTE: cannot use `yield from` on async iterator
+
+    with mock.patch("skydriver.k8s.utils.KubeAPITools.start_job", return_value=None):
+        async for y in _server(monkeypatch, port, mongo_client):
+            yield y
+
+
+async def _server(
+        monkeypatch: Any,
+        port: int,
+        mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+) -> AsyncIterator[Callable[[], RestClient]]:
     # patch at directly named import that happens before running the test
     monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
     monkeypatch.setattr(skydriver.config, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
