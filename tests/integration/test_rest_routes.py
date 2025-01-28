@@ -21,7 +21,7 @@ LOGGER = logging.getLogger(__name__)
 
 skydriver.config.config_logging()
 
-StrDict = dict[str, Any]
+sdict = dict[str, Any]
 
 ########################################################################################
 # CONSTANTS
@@ -382,10 +382,11 @@ async def _assert_db_skyscank8sjobs_coll(
 async def _do_patch(
     rc: RestClient,
     scan_id: str,
-    progress: StrDict | None = None,
-    event_metadata: StrDict | None = None,
-    scan_metadata: StrDict | None = None,
-) -> StrDict:
+        manifest: sdict,
+        progress: sdict | None = None,
+        event_metadata: sdict | None = None,
+        scan_metadata: sdict | None = None,
+) -> sdict:
     # do PATCH @ /scan/{scan_id}/manifest, assert response
     body = {}
     if progress:
@@ -403,13 +404,15 @@ async def _do_patch(
         scan_id=scan_id,
         is_deleted=False,
         timestamp=resp["timestamp"],  # see below
-        i3_event_id=resp["i3_event_id"],  # not checking
-        event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
-        event_i3live_json_dict__hash=resp[
+        i3_event_id=manifest["i3_event_id"],  # should not change
+        event_i3live_json_dict=manifest["event_i3live_json_dict"],  # should not change
+        event_i3live_json_dict__hash=manifest[
             "event_i3live_json_dict__hash"
-        ],  # not checking
-        event_metadata=event_metadata if event_metadata else resp["event_metadata"],
-        scan_metadata=scan_metadata if scan_metadata else resp["scan_metadata"],
+        ],  # should not change
+        event_metadata=(
+            event_metadata if event_metadata else manifest["event_metadata"]
+        ),
+        scan_metadata=(scan_metadata if scan_metadata else manifest["scan_metadata"]),
         progress=(
             {  # inject the auto-filled args
                 **progress,
@@ -421,12 +424,12 @@ async def _do_patch(
                 },
             }
             if progress
-            else resp["progress"]  # not checking
+            else manifest["progress"]  # should not change
         ),
-        scanner_server_args=resp["scanner_server_args"],  # not checking
+        scanner_server_args=manifest["scanner_server_args"],  # should not change
         ewms_task="use 'ewms_workflow_id'",
-        ewms_workflow_id="pending-ewms",
-        classifiers=resp["classifiers"],  # not checking
+        ewms_workflow_id=manifest["ewms_workflow_id"],  # should not change
+        classifiers=manifest["classifiers"],  # should not change
         last_updated=resp["last_updated"],  # see below
         priority=0,
         # TODO: check more fields in future (hint: ctrl+F this comment)
@@ -443,8 +446,9 @@ async def _do_patch(
 async def _patch_progress_and_scan_metadata(
     rc: RestClient,
     scan_id: str,
+        manifest: sdict,
     n: int,
-) -> StrDict:
+) -> sdict:
     # send progress updates
     for i in range(n):
         progress = dict(
@@ -465,18 +469,28 @@ async def _patch_progress_and_scan_metadata(
         )
         # update progress (update `scan_metadata` sometimes--not as important)
         if i % 2:  # odd
-            manifest = await _do_patch(rc, scan_id, progress=progress)
+            manifest = await _do_patch(
+                rc,
+                scan_id,
+                manifest,
+                progress=progress,
+            )
         else:  # even
             manifest = await _do_patch(
                 rc,
                 scan_id,
+                manifest,
                 progress=progress,
                 scan_metadata={"scan_id": scan_id, "foo": "bar"},
             )
     return manifest
 
 
-async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> StrDict:
+async def _server_reply_with_event_metadata(
+        rc: RestClient,
+        scan_id: str,
+        manifest: sdict,
+) -> sdict:
     # reply as the scanner server with the newly gathered run+event ids
     event_id = 123
     run_id = 456
@@ -489,7 +503,7 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
         is_real_event=IS_REAL_EVENT,
     )
 
-    manifest = await _do_patch(rc, scan_id, event_metadata=event_metadata)
+    manifest = await _do_patch(rc, scan_id, manifest, event_metadata=event_metadata)
 
     # query by run+event id
     resp = await rc.request(
@@ -537,9 +551,9 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
 async def _send_result(
     rc: RestClient,
     scan_id: str,
-    last_known_manifest: StrDict,
+        manifest: sdict,
     is_final: bool,
-) -> StrDict:
+) -> sdict:
     # send finished result
     result = {"alpha": (11 + 1) ** 11, "beta": -11}
     if is_final:
@@ -558,7 +572,7 @@ async def _send_result(
 
     # query progress
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert resp == last_known_manifest
+    assert resp == manifest
 
     # query result
     resp = await rc.request("GET", f"/scan/{scan_id}/result")
@@ -566,7 +580,7 @@ async def _send_result(
 
     # query scan
     resp = await rc.request("GET", f"/scan/{scan_id}")
-    assert resp["manifest"] == last_known_manifest
+    assert resp["manifest"] == manifest
     assert resp["result"] == result
 
     return result
@@ -574,10 +588,10 @@ async def _send_result(
 
 async def _delete_scan(
     rc: RestClient,
-    event_metadata: StrDict,
+        event_metadata: sdict,
     scan_id: str,
-    last_known_manifest: StrDict,
-    last_known_result: StrDict,
+        manifest: sdict,
+        last_known_result: sdict,
     is_final: bool,
     delete_completed_scan: bool | None,
 ) -> None:
@@ -595,11 +609,11 @@ async def _delete_scan(
             # only checking these fields:
             "scan_id": scan_id,
             "is_deleted": True,
-            "progress": last_known_manifest["progress"],
+            "progress": manifest["progress"],
             "ewms_task": {
                 **resp["manifest"]["ewms_task"],
                 # whether workforce is done
-                "complete": last_known_manifest["ewms_task"]["complete"],
+                "complete": manifest["ewms_task"]["complete"],
             },
             "last_updated": resp["manifest"]["last_updated"],  # see below
             # TODO: check more fields in future (hint: ctrl+F this comment)
@@ -798,7 +812,7 @@ async def test_000(
 
 async def _after_scan_start_logic(
     rc: RestClient,
-    manifest: dict,
+        manifest: sdict,
     test_wait_before_teardown: float,
 ):
     scan_id = manifest["scan_id"]
@@ -820,7 +834,7 @@ async def _after_scan_start_logic(
     #
     # INITIAL UPDATES
     #
-    manifest = await _server_reply_with_event_metadata(rc, scan_id)
+    manifest = await _server_reply_with_event_metadata(rc, scan_id, manifest)
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -830,17 +844,17 @@ async def _after_scan_start_logic(
     #
     # ADD PROGRESS
     #
-    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
 
     #
     # SEND INTERMEDIATES (these can happen in any order, or even async)
     #
     # FIRST, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
-    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
     # THEN, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
-    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
 
     #
     # SEND RESULT(s)
@@ -1092,7 +1106,7 @@ async def test_100__bad_data(
     #
     # INITIAL UPDATES
     #
-    manifest = await _server_reply_with_event_metadata(rc, scan_id)
+    manifest = await _server_reply_with_event_metadata(rc, scan_id, manifest)
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -1109,6 +1123,7 @@ async def test_100__bad_data(
         await _do_patch(
             rc,
             scan_id,
+            manifest,
             event_metadata=dict(
                 run_id=manifest["event_metadata"]["run_id"],
                 event_id=manifest["event_metadata"]["event_id"],
@@ -1144,7 +1159,7 @@ async def test_100__bad_data(
         print(e.value)
 
     # OK
-    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
 
     # ATTEMPT OVERWRITE
     with pytest.raises(
@@ -1153,7 +1168,9 @@ async def test_100__bad_data(
             f"400 Client Error: Cannot change an existing scan_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
-        await _do_patch(rc, scan_id, scan_metadata={"boo": "baz", "bot": "fox"})
+        await _do_patch(
+            rc, scan_id, manifest, scan_metadata={"boo": "baz", "bot": "fox"}
+        )
 
     #
     # SEND RESULT
