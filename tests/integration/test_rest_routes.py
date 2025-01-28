@@ -135,6 +135,7 @@ async def _launch_scan(
         post_resp,
         scanner_server_args,
         rest_address,
+        docker_tag_expected,
     )
 
     return post_resp  # type: ignore[no-any-return]
@@ -195,6 +196,7 @@ async def _assert_db_skyscank8sjobs_coll(
     post_resp: dict,
     scanner_server_args: str,
     rest_address: str,
+    docker_tag_expected: str,
 ):
     # query the SkyScanK8sJobs coll
     # -> since the scanner-server metadata is no longer stored in the manifest
@@ -253,7 +255,7 @@ async def _assert_db_skyscank8sjobs_coll(
                                         "scanner_server_env"
                                     ].items()
                                 ],
-                                "image": f"icecube/skymap_scanner:{os.environ['LATEST_TAG']}",
+                                "image": f"icecube/skymap_scanner:{docker_tag_expected}",
                                 "name": f'skyscan-server-{post_resp["scan_id"]}',
                                 "resources": {
                                     "limits": {"cpu": "1", "memory": "1024000000"},
