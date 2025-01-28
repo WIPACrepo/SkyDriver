@@ -141,7 +141,12 @@ async def server(
     k8s_batch_api = Mock()
     ewms_rc = setup_ewms_client()
     backlog_task = asyncio.create_task(
-        skydriver.k8s.scan_backlog.run(mongo_client, k8s_batch_api, ewms_rc)
+        skydriver.k8s.scan_backlog.run(
+            mongo_client,
+            k8s_batch_api,
+            ewms_rc,
+            Mock(),  # s3_client
+        )
     )
     await asyncio.sleep(0)  # start up previous task
     rs = await make(mongo_client, k8s_batch_api, ewms_rc)

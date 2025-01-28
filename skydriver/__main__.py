@@ -3,6 +3,8 @@
 import asyncio
 import logging
 
+import boto3
+import botocore.client
 from rest_tools.client import ClientCredentialsAuth, RestClient
 
 from . import database, k8s, server
@@ -28,6 +30,17 @@ def setup_ewms_client() -> RestClient:
         )
 
 
+def setup_s3_client() -> botocore.client.BaseClient:
+    """Connect to S3 server."""
+    return boto3.client(
+        "s3",
+        "us-east-1",
+        endpoint_url=ENV.S3_URL,
+        aws_access_key_id=ENV.S3_ACCESS_KEY_ID,
+        aws_secret_access_key=ENV.S3_SECRET_KEY,
+    )
+
+
 async def main() -> None:
     """Establish connections and start components."""
 
@@ -48,10 +61,15 @@ async def main() -> None:
     ewms_rc = setup_ewms_client()
     LOGGER.info("EWMS client connected.")
 
+    # S3 client
+    LOGGER.info("Setting up s3 client...")
+    s3_client = setup_s3_client()
+    LOGGER.info("S3 client connected.")
+
     # Scan Backlog Runner
     LOGGER.info("Starting scan backlog runner...")
     backlog_task = asyncio.create_task(
-        k8s.scan_backlog.run(mongo_client, k8s_batch_api, ewms_rc)
+        k8s.scan_backlog.run(mongo_client, k8s_batch_api, ewms_rc, s3_client)
     )
     await asyncio.sleep(0)  # start up previous task
 

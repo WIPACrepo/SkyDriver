@@ -3,6 +3,7 @@
 import logging
 
 import aiocache  # type: ignore[import-untyped]
+import botocore.client
 import requests
 from rest_tools.client import RestClient
 
@@ -15,6 +16,7 @@ LOGGER = logging.Logger(__name__)
 
 async def request_workflow_on_ewms(
     ewms_rc: RestClient,
+        s3_client: botocore.client.BaseClient,
     manifest: database.schema.Manifest,
     scan_request_obj: dict,
 ) -> str:
@@ -25,7 +27,7 @@ async def request_workflow_on_ewms(
         else:  # None
             raise TypeError("Scan is not designated for EWMS")
 
-    s3_url_get = s3.generate_s3_get_url(manifest.scan_id)
+    s3_url_get = s3.generate_s3_get_url(s3_client, manifest.scan_id)
     image = images.get_skyscan_docker_image(scan_request_obj["docker_tag"])
 
     body = {

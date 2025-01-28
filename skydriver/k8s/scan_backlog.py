@@ -4,6 +4,7 @@ import asyncio
 import logging
 import time
 
+import botocore.client
 import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from rest_tools.client import RestClient
@@ -85,6 +86,7 @@ async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
     ewms_rc: RestClient,
+        s3_client: botocore.client.BaseClient,
 ) -> None:
     """Error-handling around the scan backlog runner loop."""
     LOGGER.info("Started scan backlog runner.")
@@ -92,7 +94,7 @@ async def run(
     while True:
         # let's go!
         try:
-            await _run(mongo_client, k8s_batch_api, ewms_rc)
+            await _run(mongo_client, k8s_batch_api, ewms_rc, s3_client)
         except Exception as e:
             LOGGER.exception(e)
 
@@ -106,6 +108,7 @@ async def _run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
     ewms_rc: RestClient,
+        s3_client: botocore.client.BaseClient,
 ) -> None:
     """The (actual) main loop."""
     manifest_client = database.interface.ManifestClient(mongo_client)
@@ -150,6 +153,7 @@ async def _run(
         try:
             workflow_id = await ewms.request_workflow_on_ewms(
                 ewms_rc,
+                s3_client,
                 manifest,
                 scan_request_obj,
             )

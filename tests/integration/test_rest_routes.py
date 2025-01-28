@@ -123,10 +123,16 @@ async def _launch_scan(
 
     # check database
     rest_address = await _assert_db_scanrequests_coll(
-        mongo_client, post_scan_body, post_resp
+        mongo_client,
+        post_scan_body,
+        post_resp,
     )
     await _assert_db_skyscank8sjobs_coll(
-        mongo_client, post_scan_body, post_resp, scanner_server_args, rest_address
+        mongo_client,
+        post_scan_body,
+        post_resp,
+        scanner_server_args,
+        rest_address,
     )
 
     return post_resp  # type: ignore[no-any-return]
