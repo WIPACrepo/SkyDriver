@@ -382,10 +382,10 @@ async def _assert_db_skyscank8sjobs_coll(
 async def _do_patch(
     rc: RestClient,
     scan_id: str,
-        manifest: sdict,
-        progress: sdict | None = None,
-        event_metadata: sdict | None = None,
-        scan_metadata: sdict | None = None,
+    manifest: sdict,
+    progress: sdict | None = None,
+    event_metadata: sdict | None = None,
+    scan_metadata: sdict | None = None,
 ) -> sdict:
     # do PATCH @ /scan/{scan_id}/manifest, assert response
     body = {}
@@ -446,7 +446,7 @@ async def _do_patch(
 async def _patch_progress_and_scan_metadata(
     rc: RestClient,
     scan_id: str,
-        manifest: sdict,
+    manifest: sdict,
     n: int,
 ) -> sdict:
     # send progress updates
@@ -487,9 +487,9 @@ async def _patch_progress_and_scan_metadata(
 
 
 async def _server_reply_with_event_metadata(
-        rc: RestClient,
-        scan_id: str,
-        manifest: sdict,
+    rc: RestClient,
+    scan_id: str,
+    manifest: sdict,
 ) -> sdict:
     # reply as the scanner server with the newly gathered run+event ids
     event_id = 123
@@ -551,7 +551,7 @@ async def _server_reply_with_event_metadata(
 async def _send_result(
     rc: RestClient,
     scan_id: str,
-        manifest: sdict,
+    manifest: sdict,
     is_final: bool,
 ) -> sdict:
     # send finished result
@@ -588,10 +588,10 @@ async def _send_result(
 
 async def _delete_scan(
     rc: RestClient,
-        event_metadata: sdict,
+    event_metadata: sdict,
     scan_id: str,
-        manifest: sdict,
-        last_known_result: sdict,
+    manifest: sdict,
+    last_known_result: sdict,
     is_final: bool,
     delete_completed_scan: bool | None,
 ) -> None:
@@ -812,7 +812,7 @@ async def test_000(
 
 async def _after_scan_start_logic(
     rc: RestClient,
-        manifest: sdict,
+    manifest: sdict,
     test_wait_before_teardown: float,
 ):
     scan_id = manifest["scan_id"]
