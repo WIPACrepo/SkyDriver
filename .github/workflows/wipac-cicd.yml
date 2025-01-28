@@ -21,7 +21,7 @@ env:
   S3_SECRET_KEY__K8S_SECRET_KEY: cdf7c60b
   S3_BUCKET: 72017610
   K8S_SECRET_NAME: super-secrets
-  MIN_SKYMAP_SCANNER_TAG: "v3.21.2" # TODO: remove once skyscan v4 is out (that's the real min)
+  MIN_SKYMAP_SCANNER_TAG: "v3.1.2" # TODO: remove once skyscan v4 is out (that's the real min)
 
 
 jobs:
