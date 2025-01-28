@@ -1,7 +1,6 @@
 """Integration tests for the REST server."""
 
 import asyncio
-import copy
 import logging
 import os
 import pprint
@@ -886,70 +885,6 @@ async def _after_scan_start_logic(
 POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
-def _assert_manifests_equal_with_normalization(
-    manifest_beta: dict, manifest_alpha: dict
-):
-    """
-    Asserts that specific keys in two manifests are equal after normalization.
-    Handles dynamically generated fields such as UUIDs and scan IDs.
-
-    Args:
-        manifest_beta (dict): The first manifest to compare.
-        manifest_alpha (dict): The second manifest to compare.
-
-    Raises:
-        AssertionError: If any of the specified keys are not equal after normalization.
-    """
-    keys_to_compare = [
-        "i3_event_id",
-        "ewms_task",
-        "priority",
-        "scanner_server_args",
-    ]
-
-    def normalize_ewms_task(ewms_task: dict) -> dict:
-        """
-        Normalizes the `ewms_task` dictionary by redacting specific dynamic sub-keys.
-        """
-        normalized = copy.deepcopy(ewms_task)
-
-        # Normalize `env_vars.scanner_server`
-        for dicto in normalized["env_vars"]["scanner_server"]:
-            if dicto["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID":
-                dicto["value"] = "<redacted>"
-        # Normalize `env_vars.scanner_server`
-        for listo in normalized["env_vars"]["tms_starters"]:
-            for dicto in listo:
-                if dicto["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID":
-                    dicto["value"] = "<redacted>"
-
-        # Normalize `tms_args`
-        normalized["tms_args"] = [
-            re.sub(r"--uuid [a-f0-9\-]+", "--uuid <redacted>", arg)
-            for arg in normalized["tms_args"]
-        ]
-
-        return normalized
-
-    for key in keys_to_compare:
-        if key == "ewms_task":
-            normalized_beta = normalize_ewms_task(manifest_beta[key])
-            normalized_alpha = normalize_ewms_task(manifest_alpha[key])
-            assert normalized_beta == normalized_alpha, (
-                f"Mismatch in key '{key}':\n"
-                f"Beta: {normalized_beta}\n"
-                f"Alpha: {normalized_alpha}"
-            )
-        else:
-            assert manifest_beta[key] == manifest_alpha[key], (
-                f"Mismatch in key '{key}':\n"
-                f"Beta: {manifest_beta.get(key)}\n"
-                f"Alpha: {manifest_alpha.get(key)}"
-            )
-
-    assert manifest_beta["timestamp"] > manifest_alpha["timestamp"]
-
-
 async def test_010__rescan(
     server: Callable[[], RestClient],
     known_clusters: dict,
@@ -987,7 +922,7 @@ async def test_010__rescan(
         **manifest_alpha["classifiers"],
         **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
     }
-    _assert_manifests_equal_with_normalization(manifest_beta, manifest_alpha)
+    assert manifest_beta == manifest_alpha
     # continue on...
     await _after_scan_start_logic(
         rc,
