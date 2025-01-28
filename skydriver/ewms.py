@@ -16,7 +16,7 @@ LOGGER = logging.Logger(__name__)
 
 async def request_workflow_on_ewms(
     ewms_rc: RestClient,
-        s3_client: botocore.client.BaseClient,
+    s3_client: botocore.client.BaseClient,
     manifest: database.schema.Manifest,
     scan_request_obj: dict,
 ) -> str:
