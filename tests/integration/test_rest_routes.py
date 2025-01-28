@@ -171,7 +171,11 @@ async def _assert_db_scanrequests_coll(
         classifiers=post_scan_body["classifiers"],
         #
         # cluster (condor) config
-        request_clusters=list([k, v] for k, v in post_scan_body["cluster"].items()),
+        request_clusters=(
+            list([k, v] for k, v in post_scan_body["cluster"].items())
+            if isinstance(post_scan_body["cluster"], dict)
+            else post_scan_body["cluster"]
+        ),
         worker_memory_bytes=humanfriendly.parse_size("8GB"),
         worker_disk_bytes=humanfriendly.parse_size("1GB"),
         max_pixel_reco_time=post_scan_body["max_pixel_reco_time"],
