@@ -1003,7 +1003,10 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                 WAIT_BEFORE_TEARDOWN
             )  # regular time.sleep() sleeps the entire server
             await stop_skyscan_workers(
-                self.manifests, scan_id, self.k8s_batch_api, abort=False
+                self.manifests,
+                scan_id,
+                self.ewms_rc,
+                abort=False,
             )
 
 
