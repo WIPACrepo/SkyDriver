@@ -2,8 +2,7 @@
 
 import logging
 
-import boto3  # type: ignore[import-untyped]
-import botocore.client
+import botocore.client  # type: ignore[import-untyped]
 
 from .config import ENV
 

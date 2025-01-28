@@ -4,7 +4,7 @@ import asyncio
 import logging
 import time
 
-import botocore.client
+import botocore.client  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from rest_tools.client import RestClient
