@@ -816,8 +816,6 @@ async def _after_scan_start_logic(
         "ewms_workflow_id"
     ]
     assert RE_UUID4HEX.fullmatch(ewms_workflow_id)
-    # TODO: assert the EWMS request is sent (store in dummy ewms, and query here; or assert the call?)
-    assert 0
 
     #
     # INITIAL UPDATES
