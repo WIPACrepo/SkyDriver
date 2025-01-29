@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v1.2.1 (2025-01-28)
+
+
+
+## v1.2.0 (2025-01-16)
+
+### Other
+
+* Bump CI Packages ([#126](https://github.com/WIPACrepo/SkyDriver/issues/126)) ([`9ae37a9`](https://github.com/WIPACrepo/SkyDriver/commit/9ae37a9dc003391fb78abfed99cbd654086ccbf2))
+
 ## v1.1.0 (2024-12-18)
 
 ### Other
