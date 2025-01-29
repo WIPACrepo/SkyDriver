@@ -29,6 +29,41 @@ def does_scan_state_indicate_final_result_received(state: str) -> bool:
     return state == _ScanState.SCAN_HAS_FINAL_RESULT.value
 
 
+def _has_cleared_backlog(manifest: Manifest) -> bool:
+    return bool(
+        (  # has a real workflow id
+            manifest.ewms_workflow_id
+            and manifest.ewms_workflow_id != PENDING_EWMS_WORKFLOW
+        )
+        or (  # backward compatibility...
+            manifest.ewms_task != DEPRECATED_EWMS_TASK
+            and isinstance(manifest.ewms_task, dict)
+            and manifest.ewms_task.get("clusters")
+        )
+    )
+
+
+def _get_nonfinished_state(manifest: Manifest) -> _ScanState:
+    """Get the ScanState of the scan, only by parsing attributes."""
+    # has scan cleared the backlog? (aka, has been *submitted* EWMS?)
+    if _has_cleared_backlog(manifest):
+        # has the scanner server started?
+        if manifest.progress:
+            # how far along is the scanner server?
+            # seen some pixels -> aka clients have processed pixels
+            if manifest.progress.processing_stats.rate:
+                return _ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
+            # 0% -> aka clients haven't finished any pixels (yet)
+            else:
+                return _ScanState.IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO
+        # no -> hasn't started yet
+        else:
+            return _ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
+    # no -> still in backlog (or aborted while in backlog)
+    else:
+        return _ScanState.PENDING__PRESTARTUP
+
+
 async def get_scan_state(
     manifest: Manifest,
     ewms_rc: RestClient,
@@ -47,40 +82,7 @@ async def get_scan_state(
         if e.status_code != 404:
             raise
 
-    def _has_cleared_backlog() -> bool:
-        return bool(
-            (  # has a real workflow id
-                manifest.ewms_workflow_id
-                and manifest.ewms_workflow_id != PENDING_EWMS_WORKFLOW
-            )
-            or (  # backward compatibility...
-                manifest.ewms_task != DEPRECATED_EWMS_TASK
-                and isinstance(manifest.ewms_task, dict)
-                and manifest.ewms_task.get("clusters")
-            )
-        )
-
-    def get_nonfinished_state() -> _ScanState:
-        """Get the ScanState of the scan, only by parsing attributes."""
-        # has scan cleared the backlog? (aka, has been *submitted* EWMS?)
-        if _has_cleared_backlog():
-            # has the scanner server started?
-            if manifest.progress:
-                # how far along is the scanner server?
-                # seen some pixels -> aka clients have processed pixels
-                if manifest.progress.processing_stats.rate:
-                    return _ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
-                # 0% -> aka clients haven't finished any pixels (yet)
-                else:
-                    return _ScanState.IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO
-            # no -> hasn't started yet
-            else:
-                return _ScanState.PENDING__WAITING_ON_SCANNER_SERVER_STARTUP
-        # no -> still in backlog (or aborted while in backlog)
-        else:
-            return _ScanState.PENDING__PRESTARTUP
-
-    state = get_nonfinished_state().name  # start here, augment if needed
+    state = _get_nonfinished_state(manifest).name  # start here, augment if needed
 
     # AUGMENT STATUS...
     if (  # Backward Compatibility: is this an old/pre-ewms scan?
