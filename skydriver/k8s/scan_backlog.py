@@ -69,7 +69,12 @@ async def get_next(
 
         # grab the scan request object--it has other info
         scan_request_obj = await scan_request_client.find_one(  # type: ignore[attr-defined]
-            {"scan_id": manifest.scan_id}
+            {
+                "$or": [
+                    {"scan_id": manifest.scan_id},
+                    {"rescan_ids": manifest.scan_id},  # one in a list
+                ]
+            }
         )
 
         # grab the k8s
@@ -86,7 +91,7 @@ async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
     ewms_rc: RestClient,
-        s3_client: botocore.client.BaseClient,
+    s3_client: botocore.client.BaseClient,
 ) -> None:
     """Error-handling around the scan backlog runner loop."""
     LOGGER.info("Started scan backlog runner.")
@@ -108,7 +113,7 @@ async def _run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
     ewms_rc: RestClient,
-        s3_client: botocore.client.BaseClient,
+    s3_client: botocore.client.BaseClient,
 ) -> None:
     """The (actual) main loop."""
     manifest_client = database.interface.ManifestClient(mongo_client)

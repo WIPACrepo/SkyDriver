@@ -614,19 +614,19 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # generate unique scan_id
         new_scan_id = uuid.uuid4().hex
 
-        # grab the original requester's 'scan_request_obj'
+        # grab the 'scan_request_obj'
         scan_request_obj = await self.scan_request_coll.find_one_and_update(
-            {"scan_id": scan_id},
+            {
+                "$or": [
+                    # grab the original requester's 'scan_request_obj'
+                    {"scan_id": scan_id},
+                    # -> backup plan: was this scan_id actually a rescan itself?
+                    {"rescan_ids": scan_id},  # one in a list
+                ]
+            },
             {"$push": {"rescan_ids": new_scan_id}},
             return_document=ReturnDocument.AFTER,
         )
-        # -> backup plan: was this scan_id actually a rescan itself?
-        if not scan_request_obj:
-            scan_request_obj = await self.scan_request_coll.find_one_and_update(
-                {"rescan_ids": scan_id},  # one in a list
-                {"$push": {"rescan_ids": new_scan_id}},
-                return_document=ReturnDocument.AFTER,
-            )
         # -> error: couldn't find it anywhere
         if not scan_request_obj:
             raise web.HTTPError(
