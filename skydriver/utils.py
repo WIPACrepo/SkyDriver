@@ -25,8 +25,8 @@ class _ScanState(enum.Enum):
 
 
 def does_scan_state_indicate_final_result_received(state: str) -> bool:
-    """Does the scan state indicate has result?"""
-    return state == _ScanState.SCAN_HAS_FINAL_RESULT.value
+    """Has the scan ended with a final result?"""
+    return state == _ScanState.SCAN_HAS_FINAL_RESULT.name
 
 
 def _has_cleared_backlog(manifest: Manifest) -> bool:
