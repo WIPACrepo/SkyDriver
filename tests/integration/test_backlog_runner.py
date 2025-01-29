@@ -1,7 +1,5 @@
 """Integration tests for backlog runner."""
 
-# pylint: disable=redefined-outer-name
-
 import asyncio
 import json
 from typing import Any, Callable

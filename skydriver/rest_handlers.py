@@ -117,10 +117,10 @@ def _arg_dict_strict(val: Any) -> dict:
 # handlers
 
 
-class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
+class BaseSkyDriverHandler(RestHandler):
     """BaseSkyDriverHandler is a RestHandler for all SkyDriver routes."""
 
-    def initialize(  # type: ignore  # pylint: disable=W0221
+    def initialize(  # type: ignore
         self,
         mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
         k8s_batch_api: kubernetes.client.BatchV1Api,
@@ -130,7 +130,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
     ) -> None:
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)  # type: ignore[no-untyped-call]
-        # pylint: disable=W0201
+
         self.manifests = database.interface.ManifestClient(mongo_client)
         self.results = database.interface.ResultClient(mongo_client)
         self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
@@ -159,7 +159,7 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
 # ----------------------------------------------------------------------------
 
 
-class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class MainHandler(BaseSkyDriverHandler):
     """MainHandler is a BaseSkyDriverHandler that handles the root route."""
 
     ROUTE = r"/$"
@@ -173,7 +173,7 @@ class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScansFindHandler(BaseSkyDriverHandler):
     """Handles finding scans by attributes."""
 
     ROUTE = r"/scans/find$"
@@ -217,7 +217,7 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanBacklogHandler(BaseSkyDriverHandler):
     """Handles looking at backlog."""
 
     ROUTE = r"/scans/backlog$"
@@ -335,7 +335,7 @@ def _data_size_parse(val: Any) -> int:
         raise argparse.ArgumentTypeError("invalid data size")
 
 
-class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanLauncherHandler(BaseSkyDriverHandler):
     """Handles starting new scans."""
 
     ROUTE = r"/scan$"
@@ -595,7 +595,7 @@ async def _start_scan(
 # -----------------------------------------------------------------------------
 
 
-class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanRescanHandler(BaseSkyDriverHandler):
     """Handles actions on copying a scan's manifest and starting that."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/actions/rescan$"
@@ -717,7 +717,7 @@ async def get_result_safely(
 # -----------------------------------------------------------------------------
 
 
-class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanHandler(BaseSkyDriverHandler):
     """Handles actions on scan's manifest."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)$"
@@ -804,7 +804,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanManifestHandler(BaseSkyDriverHandler):
     """Handles actions on scan's manifest."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/manifest$"
@@ -900,7 +900,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScanI3EventHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanI3EventHandler(BaseSkyDriverHandler):
     """Handles grabbing i3 events using scan ids."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/i3-event$"
@@ -942,7 +942,7 @@ class ScanI3EventHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanResultHandler(BaseSkyDriverHandler):
     """Handles actions on persisted scan results."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/result$"
@@ -1012,7 +1012,7 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanStatusHandler(BaseSkyDriverHandler):
     """Handles relying statuses for scans."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/status$"
@@ -1083,7 +1083,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanLogsHandler(BaseSkyDriverHandler):
     """Handles relaying logs for scans."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/logs$"
