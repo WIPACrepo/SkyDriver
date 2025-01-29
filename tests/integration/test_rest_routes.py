@@ -922,7 +922,12 @@ async def test_010__rescan(
         **manifest_alpha["classifiers"],
         **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
     }
-    assert manifest_beta == manifest_alpha
+    skip_keys = ["classifiers", "scan_id", "last_updated", "timestamp"]
+    assert {k: v for k, v in manifest_beta.items() if k not in skip_keys} == {
+        k: v for k, v in manifest_alpha.items() if k not in skip_keys
+    }
+    for sk in skip_keys:
+        assert manifest_beta[sk] != manifest_alpha[sk]
     # continue on...
     await _after_scan_start_logic(
         rc,
