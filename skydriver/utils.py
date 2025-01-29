@@ -3,6 +3,7 @@
 import enum
 
 from rest_tools.client import RestClient
+from tornado import web
 
 from . import database, ewms
 from .database.schema import DEPRECATED_EWMS_TASK, Manifest, PENDING_EWMS_WORKFLOW
@@ -37,9 +38,14 @@ async def get_scan_state(
 
     Returns the state as a human-readable string
     """
-    if (await results.get(manifest.scan_id)).is_final:
-        # NOTE: see note on 'SCAN_HAS_FINAL_RESULT' above
-        return _ScanState.SCAN_HAS_FINAL_RESULT.name
+    try:
+        if (await results.get(manifest.scan_id)).is_final:
+            # NOTE: see note on 'SCAN_HAS_FINAL_RESULT' above
+            return _ScanState.SCAN_HAS_FINAL_RESULT.name
+    except web.HTTPError as e:
+        # get() raises 404 when no result found
+        if e.status_code != 404:
+            raise
 
     def _has_cleared_backlog() -> bool:
         return bool(
