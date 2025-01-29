@@ -11,7 +11,7 @@ from .database.schema import DEPRECATED_EWMS_TASK, Manifest, PENDING_EWMS_WORKFL
 class _ScanState(enum.Enum):
     """A non-persisted scan state."""
 
-    SCAN_FINISHED_SUCCESSFULLY = enum.auto()
+    SCAN_HAS_FINAL_RESULT = enum.auto()
     # ^^^ indicates the scanner sent finished results. in reality, the scanner or ewms
     # could've crashed immediately after BUT the user only cares about the RESULTS--so,
     # this would still be considered a SUCCESS in *this* context
@@ -23,20 +23,23 @@ class _ScanState(enum.Enum):
     PENDING__PRESTARTUP = enum.auto()
 
 
+def does_scan_state_indicate_final_result_received(state: str) -> bool:
+    """Does the scan state indicate has result?"""
+    return state == _ScanState.SCAN_HAS_FINAL_RESULT.value
+
+
 async def get_scan_state(
     manifest: Manifest,
     ewms_rc: RestClient,
     results: database.interface.ResultClient,
-) -> tuple[str, bool]:
+) -> str:
     """Determine the state of the scan by parsing attributes and talking with EWMS.
 
-    Returns tuple:
-        1. the state as a human-readable string
-        2. a bool for whether the scan was successful or not
+    Returns the state as a human-readable string
     """
     if (await results.get(manifest.scan_id)).is_final:
-        # NOTE: see note on 'SCAN_FINISHED_SUCCESSFULLY' above
-        return _ScanState.SCAN_FINISHED_SUCCESSFULLY.name, True
+        # NOTE: see note on 'SCAN_HAS_FINAL_RESULT' above
+        return _ScanState.SCAN_HAS_FINAL_RESULT.name
 
     def _has_cleared_backlog() -> bool:
         return bool(
@@ -80,11 +83,11 @@ async def get_scan_state(
         and manifest.ewms_task.get("complete")
     ):
         # we didn't have info on what kind of stop
-        return f"STOPPED__{state.split('__')[1]}", False
+        return f"STOPPED__{state.split('__')[1]}"
     # has EWMS ceased running the scan workers?
     elif dtype := await ewms.get_deactivated_type(ewms_rc, manifest.ewms_workflow_id):
         # -> yes, the ewms workflow has been deactivated
-        return f"{dtype.upper()}__{state.split('__')[1]}", False
+        return f"{dtype.upper()}__{state.split('__')[1]}"
     else:
         # -> no, this is a non-finished scan
-        return state, False
+        return state

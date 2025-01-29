@@ -42,7 +42,7 @@ from .database.schema import PENDING_EWMS_WORKFLOW
 from .ewms import request_stop_on_ewms
 from .k8s.scan_backlog import put_on_backlog
 from .k8s.scanner_instance import SkyScanK8sJobFactory
-from .utils import get_scan_state
+from .utils import does_scan_state_indicate_final_result_received, get_scan_state
 
 LOGGER = logging.getLogger(__name__)
 
@@ -741,8 +741,9 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # check DB states
         manifest = await self.manifests.get(scan_id, True)
-        _, scan_complete = await get_scan_state(manifest, self.ewms_rc, self.results)
-        if scan_complete:
+        if does_scan_state_indicate_final_result_received(
+            await get_scan_state(manifest, self.ewms_rc, self.results)
+        ):
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
                 400,
@@ -1046,9 +1047,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                     LOGGER.exception(e)
 
         # scan state
-        scan_state, scan_complete = await get_scan_state(
-            manifest, self.ewms_rc, self.results
-        )
+        scan_state = await get_scan_state(manifest, self.ewms_rc, self.results)
 
         # ewms
         if (
@@ -1065,7 +1064,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         resp = {
             "scan_state": scan_state,
             "is_deleted": manifest.is_deleted,
-            "scan_complete": scan_complete,
+            "scan_complete": does_scan_state_indicate_final_result_received(scan_state),
             "pods": pods_411,
             "clusters": clusters,
         }

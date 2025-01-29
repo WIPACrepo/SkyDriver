@@ -13,12 +13,12 @@ from skydriver.utils import get_scan_state
     "processing_stats_is_finished",
     [True, False],
 )
-async def test_00__scan_finished_successfully(
+async def test_00__scan_has_final_result(
     processing_stats_is_finished: bool,
 ) -> None:
-    """Test with SCAN_FINISHED_SUCCESSFULLY.
+    """Test with SCAN_HAS_FINAL_RESULT.
 
-    `processing_stats.is_finished` does not affect "SCAN_FINISHED_SUCCESSFULLY"
+    `processing_stats.is_finished` does not affect "SCAN_HAS_FINAL_RESULT"
     """
     ewms_rc = MagicMock()
     results = MagicMock(get=AsyncMock(return_value=MagicMock(is_final=True)))
@@ -41,10 +41,7 @@ async def test_00__scan_finished_successfully(
         ),
     )
 
-    assert await get_scan_state(manifest, ewms_rc, results) == (
-        "SCAN_FINISHED_SUCCESSFULLY",
-        True,
-    )
+    assert await get_scan_state(manifest, ewms_rc, results) == "SCAN_HAS_FINAL_RESULT"
 
 
 @pytest.mark.parametrize(
@@ -83,7 +80,7 @@ async def test_10__partial_result_generated(ewms_dtype: str | None, state: str) 
     )
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
-        assert await get_scan_state(manifest, ewms_rc, results) == (state, False)
+        assert await get_scan_state(manifest, ewms_rc, results) == state
 
 
 @pytest.mark.parametrize(
@@ -124,7 +121,7 @@ async def test_20__waiting_on_first_pixel_reco(
     )
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
-        assert await get_scan_state(manifest, ewms_rc, results) == (state, False)
+        assert await get_scan_state(manifest, ewms_rc, results) == state
 
 
 @pytest.mark.parametrize(
@@ -155,7 +152,7 @@ async def test_40__waiting_on_scanner_server_startup(
     )
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
-        assert await get_scan_state(manifest, ewms_rc, results) == (state, False)
+        assert await get_scan_state(manifest, ewms_rc, results) == state
 
 
 @pytest.mark.parametrize(
@@ -184,4 +181,4 @@ async def test_50__prestartup(ewms_dtype: str | None, state: str) -> None:
     )
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
-        assert await get_scan_state(manifest, ewms_rc, results) == (state, False)
+        assert await get_scan_state(manifest, ewms_rc, results) == state
