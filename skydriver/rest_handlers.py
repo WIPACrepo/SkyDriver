@@ -26,7 +26,7 @@ from rest_tools.server import (
 from tornado import web
 from wipac_dev_tools import argparse_tools
 
-from . import database, ewms, images, k8s, utils
+from . import database, ewms, images, k8s
 from .config import (
     DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
     DEFAULT_MAX_WORKER_RUNTIME,
@@ -741,11 +741,8 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
         # check DB states
         manifest = await self.manifests.get(scan_id, True)
-        if (
-            manifest.progress
-            and manifest.progress.processing_stats.finished
-            and not args.delete_completed_scan
-        ):
+        _, scan_complete = await get_scan_state(manifest, self.ewms_rc, self.results)
+        if scan_complete:
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
                 400,
@@ -1049,7 +1046,9 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                     LOGGER.exception(e)
 
         # scan state
-        scan_state = await get_scan_state(manifest, self.ewms_rc, self.results)
+        scan_state, scan_complete = await get_scan_state(
+            manifest, self.ewms_rc, self.results
+        )
 
         # ewms
         if (
@@ -1066,9 +1065,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         resp = {
             "scan_state": scan_state,
             "is_deleted": manifest.is_deleted,
-            "scan_complete": bool(
-                scan_state == utils._ScanState.SCAN_FINISHED_SUCCESSFULLY.name
-            ),
+            "scan_complete": scan_complete,
             "pods": pods_411,
             "clusters": clusters,
         }

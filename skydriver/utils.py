@@ -18,6 +18,7 @@ class _ScanState(enum.Enum):
 
     IN_PROGRESS__PARTIAL_RESULT_GENERATED = enum.auto()
     IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO = enum.auto()
+
     PENDING__WAITING_ON_SCANNER_SERVER_STARTUP = enum.auto()
     PENDING__PRESTARTUP = enum.auto()
 
@@ -26,11 +27,16 @@ async def get_scan_state(
     manifest: Manifest,
     ewms_rc: RestClient,
     results: database.interface.ResultClient,
-) -> str:
-    """Determine the state of the scan by parsing attributes and talking with EWMS."""
+) -> tuple[str, bool]:
+    """Determine the state of the scan by parsing attributes and talking with EWMS.
+
+    Returns tuple:
+        1. the state as a human-readable string
+        2. a bool for whether the scan was successful or not
+    """
     if (await results.get(manifest.scan_id)).is_final:
         # NOTE: see note on 'SCAN_FINISHED_SUCCESSFULLY' above
-        return _ScanState.SCAN_FINISHED_SUCCESSFULLY.name
+        return _ScanState.SCAN_FINISHED_SUCCESSFULLY.name, True
 
     def _has_cleared_backlog() -> bool:
         return bool(
@@ -73,11 +79,12 @@ async def get_scan_state(
         and isinstance(manifest.ewms_task, dict)
         and manifest.ewms_task.get("complete")
     ):
-        return f"STOPPED__{state.split('__')[1]}"  # we didn't have info on what kind of stop
+        # we didn't have info on what kind of stop
+        return f"STOPPED__{state.split('__')[1]}", False
     # has EWMS ceased running the scan workers?
     elif dtype := await ewms.get_deactivated_type(ewms_rc, manifest.ewms_workflow_id):
         # -> yes, the ewms workflow has been deactivated
-        return f"{dtype.upper()}__{state.split('__')[1]}"
+        return f"{dtype.upper()}__{state.split('__')[1]}", False
     else:
         # -> no, this is a non-finished scan
-        return state
+        return state, False
