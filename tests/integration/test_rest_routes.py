@@ -249,7 +249,6 @@ async def _assert_db_skyscank8sjobs_coll(
                                         "name": "SKYSCAN_MQ_CLIENT_LOG",
                                         "value": "WARNING",
                                     },
-                                    {"name": "SKYSCAN_BROKER_AUTH", "value": ""},
                                     {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
                                 ]
                                 + [  # add those from 'post_scan_body'

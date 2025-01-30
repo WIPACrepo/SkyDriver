@@ -91,8 +91,6 @@ class EnvConfig:
 
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""
-    KEYCLOAK_CLIENT_ID_BROKER: str = ""
-    KEYCLOAK_CLIENT_SECRET_BROKER: str = ""
     KEYCLOAK_CLIENT_ID_SKYDRIVER_REST: str = ""
     KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST: str = ""
 
