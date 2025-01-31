@@ -5,7 +5,6 @@ import enum
 import logging
 from typing import Any, Optional
 
-import humanfriendly
 from wipac_dev_tools import from_environment_as_dataclass, logging_tools
 
 sdict = dict[str, Any]
@@ -13,10 +12,6 @@ sdict = dict[str, Any]
 # --------------------------------------------------------------------------------------
 # Constants
 
-
-DEFAULT_WORKER_MEMORY_BYTES: int = humanfriendly.parse_size("8GB")
-DEFAULT_WORKER_DISK_BYTES: int = humanfriendly.parse_size("1GB")
-DEFAULT_MAX_WORKER_RUNTIME = 4 * 60 * 60
 
 SCAN_MIN_PRIORITY_TO_START_ASAP = 100
 
@@ -80,7 +75,7 @@ class EnvConfig:
     K8S_TTL_SECONDS_AFTER_FINISHED: int = 10 * 60
     K8S_ACTIVE_DEADLINE_SECONDS: int = 24 * 60 * 60
     #
-    K8S_SCANNER_MEM_REQUEST: str = "1024M"  # note: this is also used as the limit
+    K8S_SCANNER_MEM_REQUEST__DEFAULT: str = "1024M"  # note: also used as the limit def.
     K8S_SCANNER_CPU_LIMIT: float = 1.0
     K8S_SCANNER_CPU_REQUEST: float = 0.10
     #
@@ -93,6 +88,11 @@ class EnvConfig:
     K8S_SCANNER_SIDECAR_S3_CPU_LIMIT: float = 0.05
     K8S_SCANNER_SIDECAR_S3_MEM_REQUEST: str = "1Mi"
     K8S_SCANNER_SIDECAR_S3_CPU_REQUEST: float = 0.10
+
+    # EWMS optional config
+    EWMS_WORKER_MEMORY__DEFAULT: str = "8GB"
+    EWMS_WORKER_DISK__DEFAULT: int = "1GB"
+    EWMS_MAX_WORKER_RUNTIME__DEFAULT: int = 4 * 60 * 60  # 4 hours
 
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""

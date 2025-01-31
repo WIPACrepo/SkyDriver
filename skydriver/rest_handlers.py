@@ -28,9 +28,6 @@ from wipac_dev_tools import argparse_tools
 
 from . import database, ewms, images, k8s
 from .config import (
-    DEFAULT_MAX_WORKER_RUNTIME,
-    DEFAULT_WORKER_DISK_BYTES,
-    DEFAULT_WORKER_MEMORY_BYTES,
     DebugMode,
     ENV,
     KNOWN_CLUSTERS,
@@ -353,13 +350,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         arghand.add_argument(
             "scanner_server_memory",
             type=_data_size_parse,
-            default=humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST),
+            default=humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT),
         )
         # client worker args
         arghand.add_argument(
             "worker_memory",
             type=_data_size_parse,
-            default=DEFAULT_WORKER_MEMORY_BYTES,
+            default=humanfriendly.parse_size(ENV.EWMS_WORKER_MEMORY__DEFAULT),
         )
         arghand.add_argument(  # NOTE - DEPRECATED
             "memory",
@@ -375,7 +372,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         arghand.add_argument(
             "worker_disk",
             type=_data_size_parse,
-            default=DEFAULT_WORKER_DISK_BYTES,
+            default=humanfriendly.parse_size(ENV.EWMS_WORKER_DISK__DEFAULT),
         )
         arghand.add_argument(
             "cluster",
@@ -415,7 +412,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         arghand.add_argument(
             "max_worker_runtime",
             type=int,
-            default=DEFAULT_MAX_WORKER_RUNTIME,
+            default=ENV.EWMS_MAX_WORKER_RUNTIME__DEFAULT,
         )
         arghand.add_argument(
             # TODO - remove when TMS is handling workforce-scaling

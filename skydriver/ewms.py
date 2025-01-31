@@ -74,7 +74,7 @@ async def request_workflow_on_ewms(
                 },
                 "worker_config": {
                     "do_transfer_worker_stdouterr": True,  # toggle?
-                    "max_worker_runtime": 6 * 60 * 60,  # 6 hours
+                    "max_worker_runtime": scan_request_obj["max_worker_runtime"],
                     "n_cores": 1,
                     "priority": scan_request_obj["priority"],
                     "worker_disk": scan_request_obj["worker_disk_bytes"],
