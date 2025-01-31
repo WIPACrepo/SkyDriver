@@ -22,12 +22,10 @@ K8S_CONTAINER_MEMORY_DEFAULT_BYTES: int = humanfriendly.parse_size("64M")
 K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES: int = humanfriendly.parse_size("256M")
 K8S_CONTAINER_MEMORY_CLUSTER_STARTER_BYTES: int = humanfriendly.parse_size("256M")
 
-CLUSTER_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED = 1 * 60 * 60
-CLUSTER_STOPPER_K8S_JOB_N_RETRIES = 6
-
 SCAN_MIN_PRIORITY_TO_START_ASAP = 100
 
-QUEUE_ALIAS_TOCLIENT = "to-client-queue"  # this *needs* to stay constant, stored in db
+# WARNING: these values must remain constant, they are cross-referenced in the db
+QUEUE_ALIAS_TOCLIENT = "to-client-queue"  # ''
 QUEUE_ALIAS_FROMCLIENT = "from-client-queue"  # ''
 
 
