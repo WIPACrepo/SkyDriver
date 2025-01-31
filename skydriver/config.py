@@ -14,9 +14,6 @@ sdict = dict[str, Any]
 # Constants
 
 
-DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES: int = humanfriendly.parse_size(
-    "1024M"
-)
 DEFAULT_WORKER_MEMORY_BYTES: int = humanfriendly.parse_size("8GB")
 DEFAULT_WORKER_DISK_BYTES: int = humanfriendly.parse_size("1GB")
 DEFAULT_MAX_WORKER_RUNTIME = 4 * 60 * 60
@@ -88,6 +85,20 @@ class EnvConfig:
     K8S_APPLICATION_NAME: str = ""
     K8S_TTL_SECONDS_AFTER_FINISHED: int = 10 * 60
     K8S_ACTIVE_DEADLINE_SECONDS: int = 24 * 60 * 60
+    #
+    K8S_SCANNER_MEM_REQUEST: str = "1024M"  # note: this is also used as the limit
+    K8S_SCANNER_CPU_LIMIT: float = 1.0
+    K8S_SCANNER_CPU_REQUEST: float = 0.10
+    #
+    K8S_SCANNER_INIT_MEM_LIMIT: str = "1Mi"
+    K8S_SCANNER_INIT_CPU_LIMIT: float = 0.05
+    K8S_SCANNER_INIT_MEM_REQUEST: str = "1Mi"
+    K8S_SCANNER_INIT_CPU_REQUEST: float = 0.10
+    #
+    K8S_SCANNER_SIDECAR_S3_MEM_LIMIT: str = "8Mi"
+    K8S_SCANNER_SIDECAR_S3_CPU_LIMIT: float = 0.05
+    K8S_SCANNER_SIDECAR_S3_MEM_REQUEST: str = "1Mi"
+    K8S_SCANNER_SIDECAR_S3_CPU_REQUEST: float = 0.10
 
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""

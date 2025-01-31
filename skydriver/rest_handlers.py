@@ -28,7 +28,6 @@ from wipac_dev_tools import argparse_tools
 
 from . import database, ewms, images, k8s
 from .config import (
-    DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
     DEFAULT_MAX_WORKER_RUNTIME,
     DEFAULT_WORKER_DISK_BYTES,
     DEFAULT_WORKER_MEMORY_BYTES,
@@ -354,7 +353,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         arghand.add_argument(
             "scanner_server_memory",
             type=_data_size_parse,
-            default=DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
+            default=humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST),
         )
         # client worker args
         arghand.add_argument(

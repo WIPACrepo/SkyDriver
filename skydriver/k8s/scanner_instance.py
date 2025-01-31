@@ -148,6 +148,14 @@ class SkyScanK8sJobFactory:
                       command: ["python", "-m", "ewms_init_container"]
                       args: ["{scan_id}", "--json-out", "{SkyScanK8sJobFactory._EWMS_JSON_FPATH}"]
                       env: {_to_inline_yaml(init_ewms_envvars)}
+                      resources:
+                        limits:
+                          memory: "{ENV.K8S_SCANNER_INIT_MEM_LIMIT}"
+                          cpu: "{ENV.K8S_SCANNER_INIT_CPU_LIMIT}"
+                        requests:
+                          memory: "{ENV.K8S_SCANNER_INIT_MEM_REQUEST}"
+                          cpu: "{ENV.K8S_SCANNER_INIT_CPU_REQUEST}"
+                          ephemeral-storage: "1M"
                   containers:
                     - name: skyscan-server-{scan_id}
                       image: {images.get_skyscan_docker_image(docker_tag)}
@@ -157,10 +165,10 @@ class SkyScanK8sJobFactory:
                       resources:
                         limits:
                           memory: "{scanner_server_memory_bytes}"
-                          cpu: "1"
+                          cpu: "{ENV.K8S_SCANNER_CPU_LIMIT}"
                         requests:
                           memory: "{scanner_server_memory_bytes}"
-                          cpu: "1"
+                          cpu: "{ENV.K8S_SCANNER_CPU_REQUEST}"
                           ephemeral-storage: "1M"
                       volumeMounts:
                         - name: common-space-volume
@@ -189,11 +197,11 @@ class SkyScanK8sJobFactory:
                           value: "{s3.make_object_key(scan_id)}"
                       resources:
                         limits:
-                          memory: "256Mi"
-                          cpu: "0.25"
+                          memory: "{ENV.K8S_SCANNER_SIDECAR_S3_MEM_LIMIT}"
+                          cpu: "{ENV.K8S_SCANNER_SIDECAR_S3_CPU_LIMIT}"
                         requests:
-                          memory: "256Mi"
-                          cpu: "0.25"
+                          memory: "{ENV.K8S_SCANNER_SIDECAR_S3_MEM_REQUEST}"
+                          cpu: "{ENV.K8S_SCANNER_SIDECAR_S3_CPU_REQUEST}"
                           ephemeral-storage: "1M"
                       volumeMounts:
                         - name: common-space-volume
