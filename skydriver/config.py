@@ -96,6 +96,7 @@ class EnvConfig:
     EWMS_WORKER_MEMORY__DEFAULT: str = "8GB"
     EWMS_WORKER_DISK__DEFAULT: str = "1GB"
     EWMS_MAX_WORKER_RUNTIME__DEFAULT: int = 4 * 60 * 60  # 4 hours
+    # note: other EWMS vars at top of class
 
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""
