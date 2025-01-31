@@ -18,10 +18,6 @@ DEFAULT_WORKER_MEMORY_BYTES: int = humanfriendly.parse_size("8GB")
 DEFAULT_WORKER_DISK_BYTES: int = humanfriendly.parse_size("1GB")
 DEFAULT_MAX_WORKER_RUNTIME = 4 * 60 * 60
 
-K8S_CONTAINER_MEMORY_DEFAULT_BYTES: int = humanfriendly.parse_size("64M")
-K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES: int = humanfriendly.parse_size("256M")
-K8S_CONTAINER_MEMORY_CLUSTER_STARTER_BYTES: int = humanfriendly.parse_size("256M")
-
 SCAN_MIN_PRIORITY_TO_START_ASAP = 100
 
 # WARNING: these values must remain constant, they are cross-referenced in the db
