@@ -260,9 +260,12 @@ async def _assert_db_skyscank8sjobs_coll(
                                 "image": f"icecube/skymap_scanner:{docker_tag_expected}",
                                 "name": f'skyscan-server-{post_resp["scan_id"]}',
                                 "resources": {
-                                    "limits": {"cpu": "1", "memory": "1024000000"},
+                                    "limits": {
+                                        "cpu": "1.0",
+                                        "memory": "1024000000",
+                                    },
                                     "requests": {
-                                        "cpu": "1",
+                                        "cpu": "0.1",
                                         "ephemeral-storage": "1M",
                                         "memory": "1024000000",
                                     },
@@ -316,11 +319,14 @@ async def _assert_db_skyscank8sjobs_coll(
                                 "image": os.environ["THIS_IMAGE_WITH_TAG"],
                                 "name": f"sidecar-s3-{post_resp['scan_id']}",
                                 "resources": {
-                                    "limits": {"cpu": "0.25", "memory": "256Mi"},
+                                    "limits": {
+                                        "cpu": "0.1",
+                                        "memory": "100M",
+                                    },
                                     "requests": {
-                                        "cpu": "0.25",
+                                        "cpu": "0.05",
                                         "ephemeral-storage": "1M",
-                                        "memory": "256Mi",
+                                        "memory": "10M",
                                     },
                                 },
                                 "restartPolicy": "OnFailure",
@@ -373,6 +379,17 @@ async def _assert_db_skyscank8sjobs_coll(
                                 ],
                                 "image": os.environ["THIS_IMAGE_WITH_TAG"],
                                 "name": f"init-ewms-{post_resp['scan_id']}",
+                                "resources": {
+                                    "limits": {
+                                        "cpu": "0.1",
+                                        "memory": "100M",
+                                    },
+                                    "requests": {
+                                        "cpu": "0.05",
+                                        "ephemeral-storage": "1M",
+                                        "memory": "10M",
+                                    },
+                                },
                             }
                         ],
                         "restartPolicy": "Never",
