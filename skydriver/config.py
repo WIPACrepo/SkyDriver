@@ -13,6 +13,9 @@ sdict = dict[str, Any]
 # Constants
 
 
+K8S_MIN_MEM_LIMIT = "100M"
+K8S_MIN_MEM_REQUEST = "10M"
+
 SCAN_MIN_PRIORITY_TO_START_ASAP = 100
 
 # WARNING: these values must remain constant, they are cross-referenced in the db
@@ -79,14 +82,14 @@ class EnvConfig:
     K8S_SCANNER_CPU_LIMIT: float = 1.0
     K8S_SCANNER_CPU_REQUEST: float = 0.10
     #
-    K8S_SCANNER_INIT_MEM_LIMIT: str = "1Mi"
+    K8S_SCANNER_INIT_MEM_LIMIT: str = K8S_MIN_MEM_LIMIT
     K8S_SCANNER_INIT_CPU_LIMIT: float = 0.05
-    K8S_SCANNER_INIT_MEM_REQUEST: str = "1Mi"
+    K8S_SCANNER_INIT_MEM_REQUEST: str = K8S_MIN_MEM_REQUEST
     K8S_SCANNER_INIT_CPU_REQUEST: float = 0.10
     #
-    K8S_SCANNER_SIDECAR_S3_MEM_LIMIT: str = "8Mi"
+    K8S_SCANNER_SIDECAR_S3_MEM_LIMIT: str = K8S_MIN_MEM_LIMIT
     K8S_SCANNER_SIDECAR_S3_CPU_LIMIT: float = 0.05
-    K8S_SCANNER_SIDECAR_S3_MEM_REQUEST: str = "1Mi"
+    K8S_SCANNER_SIDECAR_S3_MEM_REQUEST: str = K8S_MIN_MEM_REQUEST
     K8S_SCANNER_SIDECAR_S3_CPU_REQUEST: float = 0.10
 
     # EWMS optional config
