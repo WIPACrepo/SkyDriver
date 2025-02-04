@@ -28,7 +28,7 @@ class KubeAPITools:
             raise ValueError("Job object not created")
         try:
             api_response = kubernetes.utils.create_from_dict(
-                k8s_batch_api,
+                k8s_batch_api.api_client,
                 job_dict,
                 namespace=ENV.K8S_NAMESPACE,
             )
