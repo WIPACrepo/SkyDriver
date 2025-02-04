@@ -1,5 +1,6 @@
 """Tools for interfacing with EMWS."""
 
+import json
 import logging
 
 import aiocache  # type: ignore[import-untyped]
@@ -65,7 +66,7 @@ async def request_workflow_on_ewms(
                         "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": scan_request_obj[
                             "skyscan_mq_client_timeout_wait_for_first_message"
                         ],
-                        "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": 5 * 60,
+                        "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
                         "EWMS_PILOT_CONTAINER_DEBUG": "True",  # toggle?
                         "EWMS_PILOT_INFILE_EXT": ".json",
                         "EWMS_PILOT_OUTFILE_EXT": ".json",
@@ -85,8 +86,14 @@ async def request_workflow_on_ewms(
         ],
     }
 
-    resp = await ewms_rc.request("POST", "/v0/workflows", body)
-    return resp["workflow"]["workflow_id"]
+    try:
+        resp = await ewms_rc.request("POST", "/v0/workflows", body)
+    except requests.exceptions.HTTPError:
+        LOGGER.error(f"request to ewms failed with:")
+        LOGGER.error(json.dumps(body, indent=4))
+        raise
+    else:
+        return resp["workflow"]["workflow_id"]
 
 
 async def request_stop_on_ewms(
