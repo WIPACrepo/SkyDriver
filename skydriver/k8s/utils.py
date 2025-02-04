@@ -33,7 +33,7 @@ class KubeAPITools:
                 namespace=ENV.K8S_NAMESPACE,
             )
             LOGGER.info(api_response)
-        except ApiException:
+        except Exception:  # broad b/c re-raising
             LOGGER.error("request to make k8s job failed using:")
             LOGGER.error(json.dumps(job_dict, indent=4))
             raise
