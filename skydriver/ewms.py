@@ -59,17 +59,21 @@ async def request_workflow_on_ewms(
                 "pilot_config": {
                     "tag": "latest",
                     "environment": {
-                        "EWMS_PILOT_INIT_TIMEOUT": 61,  # 1 sec more than 'curl' timeout
-                        "EWMS_PILOT_TASK_TIMEOUT": scan_request_obj[
-                            "max_pixel_reco_time"
-                        ],
-                        "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": scan_request_obj[
-                            "skyscan_mq_client_timeout_wait_for_first_message"
-                        ],
-                        "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
-                        "EWMS_PILOT_CONTAINER_DEBUG": "True",  # toggle?
-                        "EWMS_PILOT_INFILE_EXT": ".json",
-                        "EWMS_PILOT_OUTFILE_EXT": ".json",
+                        k: v
+                        for k, v in {
+                            "EWMS_PILOT_INIT_TIMEOUT": 61,  # 1 sec more than 'curl' timeout
+                            "EWMS_PILOT_TASK_TIMEOUT": scan_request_obj[
+                                "max_pixel_reco_time"
+                            ],
+                            "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": scan_request_obj[
+                                "skyscan_mq_client_timeout_wait_for_first_message"
+                            ],
+                            "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
+                            "EWMS_PILOT_CONTAINER_DEBUG": "True",  # toggle?
+                            "EWMS_PILOT_INFILE_EXT": ".json",
+                            "EWMS_PILOT_OUTFILE_EXT": ".json",
+                        }.items()
+                        if v  # filter out any falsy values
                     },
                     "input_files": [],
                 },
