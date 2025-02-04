@@ -168,7 +168,7 @@ async def _run(
         try:
             resp = KubeAPITools.start_job(k8s_batch_api, skyscan_k8s_job)
             LOGGER.info(resp)
-        except kubernetes.client.exceptions.ApiException as e:
+        except kubernetes.utils.FailToCreateError as e:
             # k8s job (backlog entry) will be revived & restarted in future iteration
             LOGGER.exception(e)
             timer_main_loop.fastforward()  # nothing was started, so don't wait long
