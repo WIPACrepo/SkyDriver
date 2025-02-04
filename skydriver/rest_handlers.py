@@ -290,12 +290,12 @@ def _validate_request_clusters(
     return list_tups
 
 
-def _classifiers_validator(val: Any) -> dict[str, str | bool | float | int]:
+def _classifiers_validator(val: Any) -> dict[str, str | bool | float | int | None]:
     # type checks
     if not isinstance(val, dict):
         raise argparse.ArgumentTypeError("must be a dict")
-    if any(v for v in val.values() if not isinstance(v, str | bool | float | int)):
-        raise argparse.ArgumentTypeError("entry must be 'str | bool | float | int'")
+    if any(v for v in val.values() if not isinstance(v, str | bool | float | int | None)):
+        raise argparse.ArgumentTypeError("entry must be 'str | bool | float | int | None'")
 
     # size check
     if len(val) > MAX_CLASSIFIERS_LEN:

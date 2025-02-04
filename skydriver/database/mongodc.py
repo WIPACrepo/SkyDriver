@@ -5,6 +5,7 @@ import logging
 import time
 from typing import Any, AsyncIterator, Type, TypeVar
 
+import dacite
 import typeguard
 from dacite import from_dict
 from motor.motor_asyncio import AsyncIOMotorCollection
@@ -61,7 +62,13 @@ class MotorDataclassCollection(AsyncIOMotorCollection):  # type: ignore[misc, va
         if isinstance(doc, return_dclass):
             return doc
         else:
-            return from_dict(return_dclass, doc)
+            try:
+                return from_dict(return_dclass, doc)
+            except dacite.exceptions.DaciteError as e:
+                logging.error(repr(e))
+                logging.error("dacite validation failed on the following object:")
+                logging.error(doc)
+                raise e
 
     async def find_one_and_update(
         self,
