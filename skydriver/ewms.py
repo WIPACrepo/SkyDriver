@@ -93,7 +93,7 @@ async def request_workflow_on_ewms(
     try:
         resp = await ewms_rc.request("POST", "/v0/workflows", body)
     except requests.exceptions.HTTPError:
-        LOGGER.error(f"request to ewms failed with:")
+        LOGGER.error("request to ewms failed with:")
         LOGGER.error(json.dumps(body, indent=4))
         raise
     else:
