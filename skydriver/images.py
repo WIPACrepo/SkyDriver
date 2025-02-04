@@ -85,7 +85,7 @@ def _parse_image_ts(info: dict) -> float:
 @cachetools.func.lru_cache()  # cache it forever
 def min_skymap_scanner_tag_ts() -> float:
     """Get the timestamp for when the `MIN_SKYMAP_SCANNER_TAG` image was created."""
-    info = get_info_from_docker_hub(ENV.MIN_SKYMAP_SCANNER_TAG.lstrip("v"))
+    info, _ = get_info_from_docker_hub(ENV.MIN_SKYMAP_SCANNER_TAG)
     return _parse_image_ts(info)
 
 
@@ -107,11 +107,7 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
         ValueError -- if `docker_tag` doesn't exist on Docker Hub
         ValueError -- if there's an issue communicating w/ Docker Hub API
     """
-    info = get_info_from_docker_hub(docker_tag)
-
-    if VERSION_REGEX_MAJMINPATCH.fullmatch(docker_tag):
-        return docker_tag
-
+    info, docker_tag = get_info_from_docker_hub(docker_tag)
     # check that the image is not too old
     if _parse_image_ts(info) < min_skymap_scanner_tag_ts():
         raise ValueError(
@@ -119,6 +115,9 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
             f"'{ENV.MIN_SKYMAP_SCANNER_TAG}'. Contact admins for more info"
         )
 
+    # make sure tag is fully qualified
+    if VERSION_REGEX_MAJMINPATCH.fullmatch(docker_tag):
+        return docker_tag  # already full version
     # match sha to vX.Y.Z
     try:
         if majminpatch := _match_sha_to_majminpatch(info["digest"]):
@@ -130,8 +129,15 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
         raise ValueError("Image tag could not resolve to a full version")
 
 
-def get_info_from_docker_hub(docker_tag: str) -> dict:
-    """Get the json dict from GET @ Docker Hub."""
+def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
+    """Get the json dict from GET @ Docker Hub, and the non v-prefixed tag (see below).
+
+    Accepts v-prefixed tags, like 'v2.3.4', 'v4', etc.
+    """
+    if VERSION_REGEX_PREFIX_V.fullmatch(docker_tag):
+        # v4 -> 4; v5.1 -> 5.1; v3.6.9 -> 3.6.9
+        docker_tag = docker_tag.lstrip("v")
+
     _error = ValueError(f"Image tag not on Docker Hub: {docker_tag}")
 
     if not docker_tag or not docker_tag.strip():
@@ -146,7 +152,7 @@ def get_info_from_docker_hub(docker_tag: str) -> dict:
     if not resp.ok:
         raise _error
 
-    return resp.json()
+    return resp.json(), docker_tag
 
 
 def resolve_docker_tag(docker_tag: str) -> str:
@@ -156,18 +162,8 @@ def resolve_docker_tag(docker_tag: str) -> str:
           off & retry until the image exists
     """
     LOGGER.info(f"checking docker tag: {docker_tag}")
-
     try:
-
-        if docker_tag == "latest":  # 'latest' doesn't exist in CVMFS
-            return _try_resolve_to_majminpatch_docker_hub("latest")
-
-        if VERSION_REGEX_PREFIX_V.fullmatch(docker_tag):
-            # v4 -> 4; v5.1 -> 5.1; v3.6.9 -> 3.6.9
-            docker_tag = docker_tag.lstrip("v")
-
         return _try_resolve_to_majminpatch_docker_hub(docker_tag)
-
     except Exception as e:
         LOGGER.exception(e)
         raise e
