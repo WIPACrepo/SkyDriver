@@ -154,7 +154,24 @@ async def _run(
             timer_main_loop.fastforward()
             continue  # there's no scan to start
 
-        # request a workflow on EWMS
+        LOGGER.info(
+            f"Starting Scanner Instance: ({entry.scan_id=}) ({entry.timestamp})"
+        )
+        # NOTE: the job_obj is enormous, so don't log it
+
+        # 1st: start k8s job -- this could be any k8s job (pre- or post-ewms switchover)
+        # ^^^ b/c this uses local resources, if something goes wrong, this limits exposure
+        try:
+            resp = KubeAPITools.start_job(k8s_batch_api, skyscan_k8s_job)
+            LOGGER.info(resp)
+        except kubernetes.client.exceptions.ApiException as e:
+            # k8s job (backlog entry) will be revived & restarted in future iteration
+            LOGGER.exception(e)
+            timer_main_loop.fastforward()  # nothing was started, so don't wait long
+            continue
+
+        # 2nd: request a workflow on EWMS
+        # ^^^ do after k8s b/c now we know that that was successful
         try:
             workflow_id = await ewms.request_workflow_on_ewms(
                 ewms_rc,
@@ -171,21 +188,6 @@ async def _run(
             {"$set": {"ewms_workflow_id": workflow_id}},
             return_dclass=dict,
         )
-
-        LOGGER.info(
-            f"Starting Scanner Instance: ({entry.scan_id=}) ({entry.timestamp})"
-        )
-        # NOTE: the job_obj is enormous, so don't log it
-
-        # start k8s job -- this could be any k8s job (pre- or post-ewms switchover)
-        try:
-            resp = KubeAPITools.start_job(k8s_batch_api, skyscan_k8s_job)
-            LOGGER.info(resp)
-        except kubernetes.client.exceptions.ApiException as e:
-            # k8s job (backlog entry) will be revived & restarted in future iteration
-            LOGGER.exception(e)
-            timer_main_loop.fastforward()  # nothing was started, so don't wait long
-            continue
 
         # remove from backlog now that startup succeeded
         await backlog_client.remove(entry)
