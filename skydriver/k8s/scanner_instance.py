@@ -20,18 +20,17 @@ from ..config import (
 LOGGER = logging.getLogger(__name__)
 
 
-def _to_inline_yaml(obj: list[str] | sdict) -> str:
-    """Convert obj-based attrs to yaml-syntax"""
-    # -> inline, compact formatting, no indenting needed
+def _to_inline_yaml_str(obj: list[str] | sdict) -> str:
+    """Convert obj-based attrs to yaml-syntax where each value is a string."""
     if isinstance(obj, dict):
         return yaml.safe_dump(
-            [{"name": k, "value": v} for k, v in obj.items()],
-            default_flow_style=True,
+            [{"name": str(k), "value": str(v)} for k, v in obj.items()],
+            default_flow_style=True,  # inline, compact formatting, no indenting needed
         )
     elif isinstance(obj, list):
         return yaml.safe_dump(
-            obj,
-            default_flow_style=True,
+            [str(o) for o in obj],
+            default_flow_style=True,  # inline, compact formatting, no indenting needed
         )
     else:
         raise TypeError(f"unsupported type {type(obj)}")
@@ -105,6 +104,8 @@ class SkyScanK8sJobFactory:
 
         NOTE: Let's keep definitions as straightforward as possible.
         """
+        scanner_server_envvars = {k: str(v) for k, v in scanner_server_envvars.items()}
+
         init_ewms_envvars = {}
         for k in ["SKYSCAN_SKYDRIVER_ADDRESS", "SKYSCAN_SKYDRIVER_AUTH"]:
             init_ewms_envvars[k] = scanner_server_envvars[k]
@@ -147,7 +148,7 @@ class SkyScanK8sJobFactory:
                       image: {ENV.THIS_IMAGE_WITH_TAG}
                       command: ["python", "-m", "ewms_init_container"]
                       args: ["{scan_id}", "--json-out", "{SkyScanK8sJobFactory._EWMS_JSON_FPATH}"]
-                      env: {_to_inline_yaml(init_ewms_envvars)}
+                      env: {_to_inline_yaml_str(init_ewms_envvars)}
                       resources:
                         limits:
                           memory: "{ENV.K8S_SCANNER_INIT_MEM_LIMIT}"
@@ -160,8 +161,8 @@ class SkyScanK8sJobFactory:
                     - name: skyscan-server-{scan_id}
                       image: {images.get_skyscan_docker_image(docker_tag)}
                       command: []
-                      args: {_to_inline_yaml(scanner_server_args.split())}
-                      env: {_to_inline_yaml(scanner_server_envvars)}
+                      args: {_to_inline_yaml_str(scanner_server_args.split())}
+                      env: {_to_inline_yaml_str(scanner_server_envvars)}
                       resources:
                         limits:
                           memory: "{scanner_server_memory_bytes}"
