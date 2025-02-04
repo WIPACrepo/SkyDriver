@@ -5,7 +5,6 @@ import logging
 from typing import Any, Iterator
 
 import kubernetes.client  # type: ignore[import-untyped]
-from kubernetes.client.rest import ApiException  # type: ignore[import-untyped]
 
 from ..config import ENV, sdict
 
