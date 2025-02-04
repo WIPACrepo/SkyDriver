@@ -183,11 +183,12 @@ async def _run(
             LOGGER.exception(e)
             timer_main_loop.fastforward()  # nothing was started, so don't wait long
             continue
-        await manifest_client.collection.find_one_and_update(
-            {"scan_id": manifest.scan_id},
-            {"$set": {"ewms_workflow_id": workflow_id}},
-            return_dclass=dict,
-        )
+        else:
+            await manifest_client.collection.find_one_and_update(
+                {"scan_id": manifest.scan_id},
+                {"$set": {"ewms_workflow_id": workflow_id}},
+                return_dclass=dict,
+            )
 
         # remove from backlog now that startup succeeded
         await backlog_client.remove(entry)
