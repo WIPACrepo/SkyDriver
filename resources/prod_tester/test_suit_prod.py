@@ -112,6 +112,7 @@ async def launch_scans(
     rc: RestClient,
     cluster: str,
     n_workers: int,
+    skyscan_docker_tag: str,
 ) -> list[test_getter.TestParamSet]:
     for i, test in enumerate(tests):
         logging.info(
@@ -135,6 +136,7 @@ async def launch_scans(
                     cluster,
                     n_workers,
                     test.reco_algo,
+                    skyscan_docker_tag,
                 )
                 test.scan_id = manifest["scan_id"]
         except Exception as e:
@@ -187,6 +189,7 @@ async def test_all(
     cluster: str,
     n_workers: int,
     rescans: list[test_getter.TestParamSet] | None,
+    skyscan_docker_tag: str,
 ) -> None:
     """Do all the tests."""
     # setup
@@ -200,6 +203,7 @@ async def test_all(
         rc,
         cluster,
         n_workers,
+        skyscan_docker_tag,
     )
     with open(config.SANDBOX_MAP_FPATH, "w") as f:  # dump to file
         json.dump([t.to_json() for t in tests], f, indent=4)
@@ -254,6 +258,11 @@ async def main():
         "--cluster",
         required=True,
         help="the cluster to use for running workers. Ex: sub-2",
+    )
+    parser.add_argument(
+        "--skyscan-docker-tag",
+        default="latest",
+        help="the skymap scanner docker tag to use",
     )
     parser.add_argument(
         "--n-workers",
@@ -332,6 +341,7 @@ async def main():
         args.cluster,
         args.n_workers,
         rescans,
+        args.skyscan_docker_tag,
     )
 
 

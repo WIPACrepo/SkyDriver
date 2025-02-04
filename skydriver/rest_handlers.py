@@ -6,6 +6,7 @@ import dataclasses as dc
 import json
 import logging
 import re
+import time
 import uuid
 from typing import Any, Type, TypeVar
 
@@ -15,6 +16,7 @@ from dacite import from_dict
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from pymongo import ReturnDocument
+from rest_tools.client import RestClient
 from rest_tools.server import (
     ArgumentHandler,
     ArgumentSource,
@@ -24,19 +26,19 @@ from rest_tools.server import (
 from tornado import web
 from wipac_dev_tools import argparse_tools
 
-from . import database, images, k8s
+from . import database, ewms, images, k8s
 from .config import (
-    DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
-    DEFAULT_WORKER_DISK_BYTES,
-    DEFAULT_WORKER_MEMORY_BYTES,
     DebugMode,
     ENV,
     KNOWN_CLUSTERS,
     is_testing,
 )
 from .database import schema
-from .k8s.scan_backlog import designate_for_startup
-from .k8s.scanner_instance import SkymapScannerK8sWrapper
+from .database.schema import PENDING_EWMS_WORKFLOW
+from .ewms import request_stop_on_ewms
+from .k8s.scan_backlog import put_on_backlog
+from .k8s.scanner_instance import SkyScanK8sJobFactory
+from .utils import does_scan_state_indicate_final_result_received, get_scan_state
 
 LOGGER = logging.getLogger(__name__)
 
@@ -111,19 +113,20 @@ def _arg_dict_strict(val: Any) -> dict:
 # handlers
 
 
-class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
+class BaseSkyDriverHandler(RestHandler):
     """BaseSkyDriverHandler is a RestHandler for all SkyDriver routes."""
 
-    def initialize(  # type: ignore  # pylint: disable=W0221
+    def initialize(  # type: ignore
         self,
         mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
         k8s_batch_api: kubernetes.client.BatchV1Api,
+        ewms_rc: RestClient,
         *args: Any,
         **kwargs: Any,
     ) -> None:
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)  # type: ignore[no-untyped-call]
-        # pylint: disable=W0201
+
         self.manifests = database.interface.ManifestClient(mongo_client)
         self.results = database.interface.ResultClient(mongo_client)
         self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
@@ -139,13 +142,20 @@ class BaseSkyDriverHandler(RestHandler):  # pylint: disable=W0223
                 database.utils._I3_EVENT_COLL_NAME,
             )
         )
+        self.skyscan_k8s_job_coll = (
+            AsyncIOMotorCollection(  # in contrast, this one is accessed directly
+                mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+                database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
+            )
+        )
         self.k8s_batch_api = k8s_batch_api
+        self.ewms_rc = ewms_rc
 
 
 # ----------------------------------------------------------------------------
 
 
-class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class MainHandler(BaseSkyDriverHandler):
     """MainHandler is a BaseSkyDriverHandler that handles the root route."""
 
     ROUTE = r"/$"
@@ -159,7 +169,7 @@ class MainHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScansFindHandler(BaseSkyDriverHandler):
     """Handles finding scans by attributes."""
 
     ROUTE = r"/scans/find$"
@@ -203,7 +213,7 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanBacklogHandler(BaseSkyDriverHandler):
     """Handles looking at backlog."""
 
     ROUTE = r"/scans/backlog$"
@@ -222,27 +232,6 @@ class ScanBacklogHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
 
 # -----------------------------------------------------------------------------
-
-
-def _cluster_lookup(name: str, n_workers: int) -> database.schema.Cluster:
-    """Grab the Cluster object known using `name`."""
-    if cluster := KNOWN_CLUSTERS.get(name):
-        if cluster["orchestrator"] == "condor":
-            return database.schema.Cluster(
-                orchestrator=cluster["orchestrator"],
-                location=database.schema.HTCondorLocation(**cluster["location"]),
-                n_workers=n_workers,
-            )
-        elif cluster["orchestrator"] == "k8s":
-            return database.schema.Cluster(
-                orchestrator=cluster["orchestrator"],
-                location=database.schema.KubernetesLocation(**cluster["location"]),
-                n_workers=n_workers,
-            )
-    raise argparse.ArgumentTypeError(
-        f"requested unknown cluster: {name} (available:"
-        f" {', '.join(KNOWN_CLUSTERS.keys())})"
-    )
 
 
 def _json_to_dict(val: Any) -> dict:
@@ -290,9 +279,13 @@ def _validate_request_clusters(
     # check all entries are 2-lists (or tuple)
     if not all(isinstance(a, list | tuple) and len(a) == 2 for a in list_tups):
         raise _error
-    # check that all locations are known (this validates sooner than ewms, if using ewms)
+    # check that all locations are known (this validates sooner than ewms)
     for name, n_workers in list_tups:
-        _cluster_lookup(name, n_workers)
+        if name not in KNOWN_CLUSTERS:
+            raise argparse.ArgumentTypeError(
+                f"requested unknown cluster: {name} (available:"
+                f" {', '.join(KNOWN_CLUSTERS.keys())})"
+            )
 
     return list_tups
 
@@ -338,7 +331,7 @@ def _data_size_parse(val: Any) -> int:
         raise argparse.ArgumentTypeError("invalid data size")
 
 
-class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanLauncherHandler(BaseSkyDriverHandler):
     """Handles starting new scans."""
 
     ROUTE = r"/scan$"
@@ -357,13 +350,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         arghand.add_argument(
             "scanner_server_memory",
             type=_data_size_parse,
-            default=DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES,
+            default=humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT),
         )
         # client worker args
         arghand.add_argument(
             "worker_memory",
             type=_data_size_parse,
-            default=DEFAULT_WORKER_MEMORY_BYTES,
+            default=humanfriendly.parse_size(ENV.EWMS_WORKER_MEMORY__DEFAULT),
         )
         arghand.add_argument(  # NOTE - DEPRECATED
             "memory",
@@ -379,7 +372,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         arghand.add_argument(
             "worker_disk",
             type=_data_size_parse,
-            default=DEFAULT_WORKER_DISK_BYTES,
+            default=humanfriendly.parse_size(ENV.EWMS_WORKER_DISK__DEFAULT),
         )
         arghand.add_argument(
             "cluster",
@@ -419,7 +412,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         arghand.add_argument(
             "max_worker_runtime",
             type=int,
-            default=4 * 60 * 60,
+            default=ENV.EWMS_MAX_WORKER_RUNTIME__DEFAULT,
         )
         arghand.add_argument(
             # TODO - remove when TMS is handling workforce-scaling
@@ -492,12 +485,17 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             rescan_ids=[],
             #
             docker_tag=args.docker_tag,
+            #
+            # skyscan server config
             scanner_server_memory_bytes=args.scanner_server_memory,  # already in bytes
             reco_algo=args.reco_algo,
             nsides=args.nsides,
             real_or_simulated_event=args.real_or_simulated_event,
             predictive_scanning_threshold=args.predictive_scanning_threshold,
+            #
             classifiers=args.classifiers,
+            #
+            # cluster (condor) config
             request_clusters=args.cluster,  # a list
             worker_memory_bytes=args.worker_memory,
             worker_disk_bytes=args.worker_disk,  # already in bytes
@@ -505,6 +503,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             max_worker_runtime=args.max_worker_runtime,
             priority=args.priority,
             debug_mode=[d.value for d in args.debug_mode],
+            #
+            # misc
             skyscan_mq_client_timeout_wait_for_first_message=(
                 args.skyscan_mq_client_timeout_wait_for_first_message
                 if args.skyscan_mq_client_timeout_wait_for_first_message != -1
@@ -520,6 +520,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
+            self.skyscan_k8s_job_coll,
             scan_request_obj,
         )
         self.write(
@@ -530,13 +531,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 async def _start_scan(
     manifests: database.interface.ManifestClient,
     scan_backlog: database.interface.ScanBacklogClient,
+    skyscan_k8s_job_coll: AsyncIOMotorCollection,  # type: ignore[valid-type]
     scan_request_obj: dict,
     new_scan_id: str = "",  # don't use scan_request_obj.scan_id--this could be a rescan
 ) -> schema.Manifest:
     scan_id = new_scan_id or scan_request_obj["scan_id"]
 
     # get the container info ready
-    scanner_wrapper = SkymapScannerK8sWrapper(
+    skyscan_k8s_job_dict, scanner_server_args = SkyScanK8sJobFactory.make(
         docker_tag=scan_request_obj["docker_tag"],
         scan_id=scan_id,
         # server
@@ -545,21 +547,6 @@ async def _start_scan(
         nsides=scan_request_obj["nsides"],
         is_real_event=scan_request_obj["real_or_simulated_event"] in REAL_CHOICES,
         predictive_scanning_threshold=scan_request_obj["predictive_scanning_threshold"],
-        # cluster starter
-        starter_exc=str(  # TODO - remove once tested in prod
-            scan_request_obj["classifiers"].get(
-                "__unstable_starter_exc", "clientmanager"
-            )
-        ),
-        request_clusters=[
-            _cluster_lookup(name, n_workers)  # values were pre-validated on user input
-            for name, n_workers in scan_request_obj["request_clusters"]
-        ],
-        worker_memory_bytes=scan_request_obj["worker_memory_bytes"],
-        worker_disk_bytes=scan_request_obj["worker_disk_bytes"],
-        max_pixel_reco_time=scan_request_obj["max_pixel_reco_time"],
-        max_worker_runtime=scan_request_obj["max_worker_runtime"],
-        priority=scan_request_obj["priority"],
         # universal
         debug_mode=_debug_mode(scan_request_obj["debug_mode"]),
         # env
@@ -571,19 +558,29 @@ async def _start_scan(
     )
 
     # put in db (do before k8s start so if k8s fail, we can debug using db's info)
-    manifest = await manifests.post(
-        scan_request_obj["i3_event_id"],
-        scan_id,
-        scanner_wrapper.scanner_server_args,
-        scanner_wrapper.cluster_starter_args_list,
-        from_dict(database.schema.EnvVars, scanner_wrapper.env_dict),
-        scan_request_obj["classifiers"],
-        scan_request_obj["priority"],
+    LOGGER.debug("creating new manifest")
+    manifest = schema.Manifest(
+        scan_id=scan_id,
+        timestamp=time.time(),
+        is_deleted=False,
+        i3_event_id=scan_request_obj["i3_event_id"],
+        scanner_server_args=scanner_server_args,
+        ewms_workflow_id=schema.PENDING_EWMS_WORKFLOW,
+        # ^^^ set once the workflow request has been sent to EWMS (see backlogger)
+        classifiers=scan_request_obj["classifiers"],
+        priority=scan_request_obj["priority"],
+    )
+    manifest = await manifests.put(manifest)
+    await skyscan_k8s_job_coll.insert_one(  # type: ignore[attr-defined]
+        {
+            "scan_id": scan_id,
+            "skyscan_k8s_job_dict": skyscan_k8s_job_dict,
+        }
     )
 
-    await designate_for_startup(
+    # place on backlog
+    await put_on_backlog(
         scan_id,
-        scanner_wrapper.job_obj,
         scan_backlog,
         scan_request_obj["priority"],
     )
@@ -594,7 +591,7 @@ async def _start_scan(
 # -----------------------------------------------------------------------------
 
 
-class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanRescanHandler(BaseSkyDriverHandler):
     """Handles actions on copying a scan's manifest and starting that."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/actions/rescan$"
@@ -613,19 +610,19 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # generate unique scan_id
         new_scan_id = uuid.uuid4().hex
 
-        # grab the original requester's 'scan_request_obj'
+        # grab the 'scan_request_obj'
         scan_request_obj = await self.scan_request_coll.find_one_and_update(
-            {"scan_id": scan_id},
+            {
+                "$or": [
+                    # grab the original requester's 'scan_request_obj'
+                    {"scan_id": scan_id},
+                    # -> backup plan: was this scan_id actually a rescan itself?
+                    {"rescan_ids": scan_id},  # one in a list
+                ]
+            },
             {"$push": {"rescan_ids": new_scan_id}},
             return_document=ReturnDocument.AFTER,
         )
-        # -> backup plan: was this scan_id actually a rescan itself?
-        if not scan_request_obj:
-            scan_request_obj = await self.scan_request_coll.find_one_and_update(
-                {"rescan_ids": scan_id},  # one in a list
-                {"$push": {"rescan_ids": new_scan_id}},
-                return_document=ReturnDocument.AFTER,
-            )
         # -> error: couldn't find it anywhere
         if not scan_request_obj:
             raise web.HTTPError(
@@ -634,7 +631,6 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             )
 
         # add to 'classifiers' so the user has provenance info
-        # NOTE: the scan request in the database will NOT be updated, only new objects
         scan_request_obj["classifiers"].update(
             {"rescan": True, "origin_scan_id": scan_id}
         )
@@ -643,6 +639,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
+            self.skyscan_k8s_job_coll,
             scan_request_obj,
             new_scan_id=new_scan_id,
         )
@@ -654,32 +651,30 @@ class ScanRescanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-async def stop_scanner_instance(
+async def stop_skyscan_workers(
     manifests: database.interface.ManifestClient,
     scan_id: str,
-    k8s_batch_api: kubernetes.client.BatchV1Api,
+    ewms_rc: RestClient,
+    abort: bool,
 ) -> database.schema.Manifest:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     manifest = await manifests.get(scan_id, True)
-    if manifest.ewms_task.complete:  # workforce is done
-        return manifest
 
-    stopper_wrapper = k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper(
-        k8s_batch_api,
-        scan_id,
-        manifest.ewms_task.clusters,
-    )
-
-    try:
-        stopper_wrapper.go()
-    except kubernetes.client.exceptions.ApiException as e:
-        LOGGER.exception(e)
+    # request to ewms
+    if manifest.ewms_workflow_id:
+        if manifest.ewms_workflow_id == schema.PENDING_EWMS_WORKFLOW:
+            LOGGER.info(
+                "OK: attempted to stop skyscan workers but scan has not been sent to EWMS"
+            )
+        else:
+            await request_stop_on_ewms(ewms_rc, manifest.ewms_workflow_id, abort=abort)
+    else:
         raise web.HTTPError(
             400,
-            log_message="Failed to stop Scanner instance",
+            log_message="Could not stop scanner workers since this is a non-EWMS scan.",
         )
 
-    return await manifests.patch(scan_id, complete=True)  # workforce is done
+    return manifest
 
 
 # -----------------------------------------------------------------------------
@@ -718,7 +713,7 @@ async def get_result_safely(
 # -----------------------------------------------------------------------------
 
 
-class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanHandler(BaseSkyDriverHandler):
     """Handles actions on scan's manifest."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)$"
@@ -743,8 +738,11 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # check DB states
         manifest = await self.manifests.get(scan_id, True)
         if (
-            manifest.ewms_task.complete and not args.delete_completed_scan
-        ):  # workforce is done
+            not args.delete_completed_scan
+            and does_scan_state_indicate_final_result_received(
+                await get_scan_state(manifest, self.ewms_rc, self.results)
+            )
+        ):
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
                 400,
@@ -755,7 +753,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # mark as deleted -> also stops backlog from starting
         manifest = await self.manifests.mark_as_deleted(scan_id)
         # abort
-        await stop_scanner_instance(self.manifests, scan_id, self.k8s_batch_api)
+        await stop_skyscan_workers(self.manifests, scan_id, self.ewms_rc, abort=True)
 
         try:
             result_dict = dc.asdict(await self.results.get(scan_id))
@@ -802,7 +800,7 @@ class ScanHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanManifestHandler(BaseSkyDriverHandler):
     """Handles actions on scan's manifest."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/manifest$"
@@ -883,11 +881,6 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             type=dict,
             default={},
         )
-        arghand.add_argument(
-            "cluster",
-            type=lambda x: from_dict_wrapper_or_none(database.schema.Cluster, x),
-            default=None,
-        )
         args = arghand.parse_args()
 
         manifest = await self.manifests.patch(
@@ -895,42 +888,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             args.progress,
             args.event_metadata,
             args.scan_metadata,
-            args.cluster,
         )
-
-        # NOTE - the following will be moved to TMS, then improved
-        # check cluster statuses & stop scan if workers are all failing
-        for db_cluster in manifest.ewms_task.clusters:
-            # Job-Status -> "Held:*"  &  Pilot-Status -> ANY
-            # -- sum the total counts of all job-statuses prefixed with "Held:"
-            n_held = sum(
-                sum(  # pilot-status counts
-                    cts for cts in db_cluster.statuses[job_status].values()
-                )
-                for job_status in db_cluster.statuses.keys()
-                if job_status.startswith("Held:")
-            )
-
-            # Job-Status -> ANY  &  Pilot-Status -> "FatalError"
-            n_fatal_error = sum(
-                db_cluster.statuses[job_status].get("FatalError", 0)  # int
-                for job_status in db_cluster.statuses.keys()
-            )
-
-            # overlap
-            n_held_and_fatal_error = sum(
-                db_cluster.statuses[job_status].get("FatalError", 0)  # int
-                for job_status in db_cluster.statuses.keys()
-                if job_status.startswith("Held:")
-            )
-
-            if n_held + n_fatal_error - n_held_and_fatal_error >= db_cluster.n_workers:
-                manifest = await stop_scanner_instance(
-                    self.manifests,
-                    scan_id,
-                    self.k8s_batch_api,
-                )
-                break
 
         self.write(dc.asdict(manifest))  # don't use a projection
 
@@ -938,7 +896,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScanI3EventHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanI3EventHandler(BaseSkyDriverHandler):
     """Handles grabbing i3 events using scan ids."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/i3-event$"
@@ -980,7 +938,7 @@ class ScanI3EventHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanResultHandler(BaseSkyDriverHandler):
     """Handles actions on persisted scan results."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/result$"
@@ -1039,13 +997,18 @@ class ScanResultHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             await asyncio.sleep(
                 WAIT_BEFORE_TEARDOWN
             )  # regular time.sleep() sleeps the entire server
-            await stop_scanner_instance(self.manifests, scan_id, self.k8s_batch_api)
+            await stop_skyscan_workers(
+                self.manifests,
+                scan_id,
+                self.ewms_rc,
+                abort=False,
+            )
 
 
 # -----------------------------------------------------------------------------
 
 
-class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanStatusHandler(BaseSkyDriverHandler):
     """Handles relying statuses for scans."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/status$"
@@ -1069,7 +1032,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
             try:
                 pods_411["pod_status"] = k8s.utils.KubeAPITools.get_pod_status(
                     self.k8s_batch_api,
-                    SkymapScannerK8sWrapper.get_job_name(scan_id),
+                    SkyScanK8sJobFactory.get_job_name(scan_id),
                     ENV.K8S_NAMESPACE,
                 )
                 pods_411["pod_message"] = "retrieved"
@@ -1082,13 +1045,27 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
                     pods_411["pod_message"] = "pod(s) not found"
                     LOGGER.exception(e)
 
+        # scan state
+        scan_state = await get_scan_state(manifest, self.ewms_rc, self.results)
+
+        # ewms
+        if (
+            manifest.ewms_workflow_id
+            and manifest.ewms_workflow_id != PENDING_EWMS_WORKFLOW
+        ):
+            clusters = await ewms.get_taskforce_phases(
+                self.ewms_rc, manifest.ewms_workflow_id
+            )
+        else:
+            clusters = []
+
         # respond
         resp = {
-            "scan_state": manifest.get_state().name,
+            "scan_state": scan_state,
             "is_deleted": manifest.is_deleted,
-            "scan_complete": manifest.ewms_task.complete,  # workforce is done
+            "scan_complete": does_scan_state_indicate_final_result_received(scan_state),
             "pods": pods_411,
-            "clusters": [dc.asdict(c) for c in manifest.ewms_task.clusters],
+            "clusters": clusters,
         }
         if not args.include_pod_statuses:
             resp.pop("pods")
@@ -1102,7 +1079,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 # -----------------------------------------------------------------------------
 
 
-class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
+class ScanLogsHandler(BaseSkyDriverHandler):
     """Handles relaying logs for scans."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/logs$"
@@ -1113,7 +1090,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         try:
             pod_container_logs = k8s.utils.KubeAPITools.get_container_logs(
                 self.k8s_batch_api,
-                SkymapScannerK8sWrapper.get_job_name(scan_id),
+                SkyScanK8sJobFactory.get_job_name(scan_id),
                 ENV.K8S_NAMESPACE,
             )
             pod_container_logs_message = "retrieved"

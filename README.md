@@ -325,8 +325,8 @@ None
 
 There are several codes for `scan_state`:
 
-- Successful state
-    * `SCAN_FINISHED_SUCCESSFULLY`
+- Successful state (completed scan)
+    * `SCAN_HAS_FINAL_RESULT`
 - Non-finished scan states (in reverse order of occurrence)
     * `IN_PROGRESS__PARTIAL_RESULT_GENERATED`
     * `IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO`
