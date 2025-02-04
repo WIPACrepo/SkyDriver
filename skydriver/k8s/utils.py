@@ -33,10 +33,12 @@ class KubeAPITools:
                 namespace=ENV.K8S_NAMESPACE,
             )
             LOGGER.info(api_response)
-        except ApiException as e:
-            LOGGER.exception(e)
+        except ApiException:
+            LOGGER.error("request to make k8s job failed using:")
+            LOGGER.error(json.dumps(job_dict, indent=4))
             raise
-        return api_response
+        else:
+            return api_response
 
     @staticmethod
     def get_pods(
