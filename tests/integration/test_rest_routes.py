@@ -252,7 +252,7 @@ async def _assert_db_skyscank8sjobs_coll(
                                     {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
                                 ]
                                 + [  # add those from 'post_scan_body'
-                                    {"name": k, "value": v}
+                                    {"name": k, "value": str(v)}
                                     for k, v in post_scan_body[
                                         "scanner_server_env"
                                     ].items()
