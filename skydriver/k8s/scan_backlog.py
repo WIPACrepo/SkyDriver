@@ -102,6 +102,10 @@ async def run(
             await _run(mongo_client, k8s_batch_api, ewms_rc, s3_client)
         except Exception as e:
             LOGGER.exception(e)
+            LOGGER.error(
+                f"above error stopped the backlogger, "
+                f"resuming in {ENV.SCAN_BACKLOG_RUNNER_DELAY} seconds..."
+            )
 
         # wait hopefully log enough that any transient errors are resolved,
         #   like a mongo pod failure and restart
