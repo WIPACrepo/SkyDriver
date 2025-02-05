@@ -157,6 +157,9 @@ class SkyScanK8sJobFactory:
                           memory: "{ENV.K8S_SCANNER_INIT_MEM_REQUEST}"
                           cpu: "{ENV.K8S_SCANNER_INIT_CPU_REQUEST}"
                           ephemeral-storage: "1M"
+                      volumeMounts:
+                        - name: common-space-volume
+                          mountPath: "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH}"
                   containers:
                     - name: skyscan-server-{scan_id}
                       image: {images.get_skyscan_docker_image(docker_tag)}
