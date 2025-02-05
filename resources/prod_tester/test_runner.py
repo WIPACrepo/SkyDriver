@@ -101,9 +101,8 @@ async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) ->
             print(
                 pformat(result_resp), file=out, flush=True
             )  # pprint doesn't have flush
-            done = result_resp["is_final"]
         except Exception as e:  # 404 (scanner not yet online)
-            print(f"ok: {repr(e)}", file=out, flush=True)
+            print(f"suppressed error: {repr(e)}", file=out, flush=True)
 
         # get progress
         try:
@@ -117,11 +116,22 @@ async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) ->
             print(json.dumps(progress, indent=4), file=out, flush=True)
         except Exception as e:
             # 404 (scanner not yet online) or KeyError (no progress yet)
-            print(f"ok: {repr(e)}", file=out, flush=True)
+            print(f"suppressed error: {repr(e)}", file=out, flush=True)
+
+        # get status
+        try:
+            result_resp = await rc.request("GET", f"/scan/{scan_id}/status")
+            print(
+                pformat(result_resp), file=out, flush=True
+            )  # pprint doesn't have flush
+            done = result_resp["scan_complete"]
+        except Exception as e:
+            print(f"suppressed error: {repr(e)}", file=out, flush=True)
 
         # done? else, wait
         print(scan_id, file=out, flush=True)
         if done:
             print("scan is done!", file=out, flush=True)
             return result_resp["skyscan_result"]
-        await asyncio.sleep(60)
+        else:
+            await asyncio.sleep(60)
