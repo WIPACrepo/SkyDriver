@@ -29,7 +29,7 @@ async def request_workflow_on_ewms(
             raise TypeError("Scan is not designated for EWMS")
 
     s3_url_get = s3.generate_s3_get_url(s3_client, manifest.scan_id)
-    image = images.get_skyscan_docker_image(scan_request_obj["docker_tag"])
+    image = images.get_skyscan_cvmfs_singularity_image(scan_request_obj["docker_tag"])
 
     body = {
         "public_queue_aliases": [QUEUE_ALIAS_TOCLIENT, QUEUE_ALIAS_FROMCLIENT],
