@@ -193,7 +193,7 @@ async def _assert_db_scanrequests_coll(
     return doc_sr["rest_address"]
 
 
-async def _assert_db_skyscank8sjobs_coll(
+async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     post_scan_body: dict,
     post_resp: dict,
