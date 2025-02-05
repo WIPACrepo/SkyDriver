@@ -56,14 +56,14 @@ def dummy_workflows_finished(workflow_id: str):
 
 @app.route("/v0/query/taskforces", methods=["POST"])
 def dummy_query_taskforces():
-    query = request.get_json("query")
-    print(f"the query: {query}")
+    req_json = request.get_json()
+    pprint.pprint(req_json)
 
     # respond with correctly-syntaxed gibberish
     resp = {
         "taskforces": [
             {
-                "taskforce_uuid": f"TF-{query['workflow_id']}",
+                "taskforce_uuid": f"TF-{req_json['query']['workflow_id']}",
                 "phase": "the-best-phase-ever",
             }
         ]
