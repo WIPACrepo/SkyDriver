@@ -94,8 +94,8 @@ async def get_ewms_attrs(workflow_id: str) -> dict[str, dict[str, str]]:
     LOGGER.info(f"mqprofiles: {mqprofiles}")
 
     # convert mqprofiles to dicts based on the queue aliases
-    toclient = next(p for p in mqprofiles if p["mqid"] == ENV.QUEUE_ALIAS_TOCLIENT)
-    fromclient = next(p for p in mqprofiles if p["mqid"] == ENV.QUEUE_ALIAS_FROMCLIENT)
+    toclient = next(p for p in mqprofiles if p["alias"] == ENV.QUEUE_ALIAS_TOCLIENT)
+    fromclient = next(p for p in mqprofiles if p["alias"] == ENV.QUEUE_ALIAS_FROMCLIENT)
 
     return {
         "toclient": {
