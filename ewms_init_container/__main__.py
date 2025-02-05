@@ -64,12 +64,12 @@ async def get_ewms_attrs(workflow_id: str) -> dict[str, dict[str, str]]:
     # loop until mqprofiles is not empty and all "is_activated" fields are true
     while True:
         LOGGER.info("requesting EWMS mqprofiles...")
-        mqprofiles = (
-            await ewms_rc.request(
-                "GET",
-                f"/v0/mqs/workflows/{workflow_id}/mq-profiles/public",
-            )
-        )["mqprofiles"]
+        resp = await ewms_rc.request(
+            "GET",
+            f"/v0/mqs/workflows/{workflow_id}/mq-profiles/public",
+        )
+        LOGGER.info(json.dumps(resp, indent=4))
+        mqprofiles = resp["mqprofiles"]
         if mqprofiles and all(m["is_activated"] for m in mqprofiles):
             break
         else:
