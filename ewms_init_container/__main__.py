@@ -133,5 +133,12 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    logging_tools.set_level(
+        "INFO",
+        first_party_loggers=LOGGER,
+        third_party_level="INFO",
+        future_third_parties=[],
+        specialty_loggers={"rest_tools": "INFO"},
+    )
     asyncio.run(main())
     LOGGER.info("Done.")

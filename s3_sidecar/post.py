@@ -1,16 +1,31 @@
 """Utilities for posting to an S3 bucket."""
 
 import argparse
+import dataclasses as dc
 import logging
-import os
 import time
 from pathlib import Path
 
 import boto3  # type: ignore[import-untyped]
 import requests
+from wipac_dev_tools import from_environment_as_dataclass, logging_tools
 from wipac_dev_tools.timing_tools import IntervalTimer
 
 LOGGER = logging.getLogger(__package__)
+
+
+@dc.dataclass(frozen=True)
+class EnvConfig:
+    """Environment variables."""
+
+    S3_URL: str
+    S3_ACCESS_KEY_ID: str
+    S3_SECRET_KEY: str
+    S3_BUCKET: str
+    S3_OBJECT_KEY: str
+
+
+ENV = from_environment_as_dataclass(EnvConfig)
 
 
 def post(fpath: Path) -> None:
@@ -25,17 +40,14 @@ def post(fpath: Path) -> None:
     s3_client = boto3.client(
         "s3",
         "us-east-1",
-        endpoint_url=os.environ["S3_URL"],
-        aws_access_key_id=os.environ["S3_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["S3_SECRET_KEY"],
+        endpoint_url=ENV.S3_URL,
+        aws_access_key_id=ENV.S3_ACCESS_KEY_ID,
+        aws_secret_access_key=ENV.S3_SECRET_KEY,
     )
 
     # POST
     LOGGER.info("generating presigned post-url...")
-    upload_details = s3_client.generate_presigned_post(
-        os.environ["S3_BUCKET"],
-        os.environ["S3_OBJECT_KEY"],
-    )
+    upload_details = s3_client.generate_presigned_post(ENV.S3_BUCKET, ENV.S3_OBJECT_KEY)
     LOGGER.info("posting file to s3...")
     with open(fpath, "rb") as f:
         response = requests.post(
@@ -66,8 +78,8 @@ def main() -> None:
         default=False,
         help="whether to wait indefinitely for the file to exist",
     )
-
     args = parser.parse_args()
+    logging_tools.log_argparse_args(args)
 
     logger_timer = IntervalTimer(5, LOGGER)
 
@@ -82,5 +94,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    logging_tools.set_level(
+        "INFO",
+        first_party_loggers=LOGGER,
+        third_party_level="INFO",
+        future_third_parties=[],
+        specialty_loggers={"rest_tools": "INFO"},
+    )
     main()
     LOGGER.info("Done.")
