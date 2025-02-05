@@ -151,7 +151,11 @@ async def get_taskforce_phases(
     resp = await ewms_rc.request(
         "POST",
         "/v0/query/taskforces",
-        {"workflow_id": workflow_id},
+        {
+            "query": {
+                "workflow_id": workflow_id,
+            }
+        },
     )
     return [
         {"taskforce": tf["taskforce_uuid"], "phase": tf["phase"]}

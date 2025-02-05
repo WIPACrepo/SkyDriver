@@ -56,7 +56,7 @@ def dummy_workflows_finished(workflow_id: str):
 
 @app.route("/v0/query/taskforces", methods=["POST"])
 def dummy_query_taskforces():
-    workflow_id = request.get_json("workflow_id")
+    workflow_id = request.get_json("query")["workflow_id"]
 
     # respond with correctly-syntaxed gibberish
     resp = {
