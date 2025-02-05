@@ -159,7 +159,7 @@ async def get_taskforce_phases(
     )
     return [
         {
-            k: tf[k]
+            k: tf.get(k)
             for k in [
                 "taskforce_uuid",
                 "phase",
