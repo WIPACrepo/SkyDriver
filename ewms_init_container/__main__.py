@@ -133,6 +133,14 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    hand = logging.StreamHandler()
+    hand.setFormatter(
+        logging.Formatter(
+            "%(asctime)s.%(msecs)03d [%(levelname)8s] %(name)s[%(process)d] %(message)s <%(filename)s:%(lineno)s/%(funcName)s()>",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    logging.getLogger().addHandler(hand)
     logging_tools.set_level(
         "INFO",
         first_party_loggers=LOGGER,
