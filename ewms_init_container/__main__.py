@@ -42,8 +42,23 @@ async def get_workflow_id(scan_id: str) -> str:
         ENV.SKYSCAN_SKYDRIVER_AUTH,
         logger=LOGGER,
     )
-    resp = await skyd_rc.request("GET", f"/scan/{scan_id}/manifest")
-    workflow_id = resp["ewms_workflow_id"]
+
+    # get the id, with retries
+    while True:
+        resp = await skyd_rc.request("GET", f"/scan/{scan_id}/manifest")
+        match workflow_id := resp["ewms_workflow_id"]:
+            case None:
+                raise ValueError(
+                    "workflow id is 'None', this indicates scan predates ewms-integration."
+                )
+            case "pending-ewms":
+                LOGGER.warning(
+                    "a workflow id has not yet been assigned for this scan. "
+                    "Waiting, then trying again..."
+                )
+                await asyncio.sleep(10)
+            case _:
+                break  # got an actual id!
 
     LOGGER.info(f"workflow id: {workflow_id}")
     return workflow_id
