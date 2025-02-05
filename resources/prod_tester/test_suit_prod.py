@@ -190,10 +190,13 @@ async def test_all(
     n_workers: int,
     rescans: list[test_getter.TestParamSet] | None,
     skyscan_docker_tag: str,
+    run_one: bool,
 ) -> None:
     """Do all the tests."""
     # setup
     tests = list(test_getter.setup_tests())
+    if run_one:
+        tests = [tests[0]]
     if rescans:
         _match_rescans_to_tests(rescans, tests)
 
@@ -282,7 +285,15 @@ async def main():
         default=config.SANDBOX_DIR,
         help="the existing (previously ran) sandbox to submit rescans for",
     )
+    parser.add_argument(
+        "--one",
+        default=False,
+        action="store_true",
+        help="just requests a single scan instead of the whole suite",
+    )
     args = parser.parse_args()
+    if args.one and args.rescan:
+        raise RuntimeError("cannot give --one and --rescan together")
 
     if args.rescan:
         # grab json map
@@ -342,6 +353,7 @@ async def main():
         args.n_workers,
         rescans,
         args.skyscan_docker_tag,
+        args.one,
     )
 
 
