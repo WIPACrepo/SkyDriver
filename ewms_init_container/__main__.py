@@ -2,15 +2,35 @@
 
 import argparse
 import asyncio
+import dataclasses as dc
 import json
 import logging
-import os
 import time
 from pathlib import Path
 
 from rest_tools.client import ClientCredentialsAuth, RestClient
+from wipac_dev_tools import from_environment_as_dataclass, logging_tools
 
 LOGGER = logging.getLogger(__package__)
+
+
+@dc.dataclass(frozen=True)
+class EnvConfig:
+    """Environment variables."""
+
+    SKYSCAN_SKYDRIVER_ADDRESS: str
+    SKYSCAN_SKYDRIVER_AUTH: str
+
+    EWMS_ADDRESS: str
+    EWMS_TOKEN_URL: str
+    EWMS_CLIENT_ID: str
+    EWMS_CLIENT_SECRET: str
+
+    QUEUE_ALIAS_TOCLIENT: str
+    QUEUE_ALIAS_FROMCLIENT: str
+
+
+ENV = from_environment_as_dataclass(EnvConfig)
 
 
 async def get_workflow_id(scan_id: str) -> str:
@@ -18,8 +38,8 @@ async def get_workflow_id(scan_id: str) -> str:
     LOGGER.info(f"getting workflow id for scan {scan_id}...")
 
     skyd_rc = RestClient(
-        os.environ["SKYSCAN_SKYDRIVER_ADDRESS"],
-        os.environ["SKYSCAN_SKYDRIVER_AUTH"],
+        ENV.SKYSCAN_SKYDRIVER_ADDRESS,
+        ENV.SKYSCAN_SKYDRIVER_AUTH,
         logger=LOGGER,
     )
     resp = await skyd_rc.request("GET", f"/scan/{scan_id}/manifest")
@@ -34,10 +54,10 @@ async def get_ewms_attrs(workflow_id: str) -> dict[str, dict[str, str]]:
     LOGGER.info(f"getting EWMS attributes for workflow {workflow_id}...")
 
     ewms_rc = ClientCredentialsAuth(
-        os.environ["EWMS_ADDRESS"],
-        os.environ["EWMS_TOKEN_URL"],
-        os.environ["EWMS_CLIENT_ID"],
-        os.environ["EWMS_CLIENT_SECRET"],
+        ENV.EWMS_ADDRESS,
+        ENV.EWMS_TOKEN_URL,
+        ENV.EWMS_CLIENT_ID,
+        ENV.EWMS_CLIENT_SECRET,
         logger=LOGGER,
     )
 
@@ -59,12 +79,8 @@ async def get_ewms_attrs(workflow_id: str) -> dict[str, dict[str, str]]:
     LOGGER.info(f"mqprofiles: {mqprofiles}")
 
     # convert mqprofiles to dicts based on the queue aliases
-    toclient = next(
-        p for p in mqprofiles if p["mqid"] == os.environ["QUEUE_ALIAS_TOCLIENT"]
-    )
-    fromclient = next(
-        p for p in mqprofiles if p["mqid"] == os.environ["QUEUE_ALIAS_FROMCLIENT"]
-    )
+    toclient = next(p for p in mqprofiles if p["mqid"] == ENV.QUEUE_ALIAS_TOCLIENT)
+    fromclient = next(p for p in mqprofiles if p["mqid"] == ENV.QUEUE_ALIAS_FROMCLIENT)
 
     return {
         "toclient": {
@@ -106,6 +122,7 @@ async def main() -> None:
         help="the json file to write the map of EWMS attributes to",
     )
     args = parser.parse_args()
+    logging_tools.log_argparse_args(args)
 
     workflow_id = await get_workflow_id(args.scan_id)
     ewms_dict = await get_ewms_attrs(workflow_id)
