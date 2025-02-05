@@ -390,6 +390,12 @@ async def _assert_db_skyscank8sjobs_coll(
                                         "memory": "10M",
                                     },
                                 },
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/common-space",
+                                        "name": "common-space-volume",
+                                    }
+                                ],
                             }
                         ],
                         "restartPolicy": "Never",
