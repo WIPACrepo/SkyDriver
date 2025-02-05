@@ -2,6 +2,7 @@
 
 import argparse
 import dataclasses as dc
+import json
 import logging
 import time
 from pathlib import Path
@@ -32,6 +33,8 @@ def post(fpath: Path) -> None:
     """Post the file to the S3 bucket."""
     if not fpath.exists():
         raise FileNotFoundError(str(fpath))
+    with open(fpath, "r") as f:
+        LOGGER.debug(json.load(f, indent=4))
 
     LOGGER.info("file exists, waiting a bit longer just in case")
     time.sleep(5)  # in case the file is currently being written (good enough logic?)
@@ -103,7 +106,7 @@ if __name__ == "__main__":
     )
     logging.getLogger().addHandler(hand)
     logging_tools.set_level(
-        "INFO",
+        "DEBUG",
         first_party_loggers=LOGGER,
         third_party_level="INFO",
         future_third_parties=[],

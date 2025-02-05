@@ -157,7 +157,7 @@ if __name__ == "__main__":
     )
     logging.getLogger().addHandler(hand)
     logging_tools.set_level(
-        "INFO",
+        "DEBUG",
         first_party_loggers=LOGGER,
         third_party_level="INFO",
         future_third_parties=[],
