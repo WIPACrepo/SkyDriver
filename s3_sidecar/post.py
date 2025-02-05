@@ -34,7 +34,7 @@ def post(fpath: Path) -> None:
     if not fpath.exists():
         raise FileNotFoundError(str(fpath))
     with open(fpath, "r") as f:
-        LOGGER.debug(json.load(f, indent=4))
+        LOGGER.debug(json.dumps(json.load(f), indent=4))
 
     LOGGER.info("file exists, waiting a bit longer just in case")
     time.sleep(5)  # in case the file is currently being written (good enough logic?)
