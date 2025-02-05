@@ -294,8 +294,12 @@ def _classifiers_validator(val: Any) -> dict[str, str | bool | float | int | Non
     # type checks
     if not isinstance(val, dict):
         raise argparse.ArgumentTypeError("must be a dict")
-    if any(v for v in val.values() if not isinstance(v, str | bool | float | int | None)):
-        raise argparse.ArgumentTypeError("entry must be 'str | bool | float | int | None'")
+    if any(
+        v for v in val.values() if not isinstance(v, str | bool | float | int | None)
+    ):
+        raise argparse.ArgumentTypeError(
+            "entry must be 'str | bool | float | int | None'"
+        )
 
     # size check
     if len(val) > MAX_CLASSIFIERS_LEN:
@@ -1064,11 +1068,11 @@ class ScanStatusHandler(BaseSkyDriverHandler):
             "scan_state": scan_state,
             "is_deleted": manifest.is_deleted,
             "scan_complete": does_scan_state_indicate_final_result_received(scan_state),
-            "pods": pods_411,
-            "clusters": clusters,
+            "k8s_pods": pods_411,
+            "ewms_workforce": clusters,
         }
         if not args.include_pod_statuses:
-            resp.pop("pods")
+            resp.pop("k8s_pods")
         self.write(resp)
 
     #

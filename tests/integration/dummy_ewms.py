@@ -65,6 +65,7 @@ def dummy_query_taskforces():
             {
                 "taskforce_uuid": f"TF-{req_json['query']['workflow_id']}",
                 "phase": "the-best-phase-ever",
+                # IRL, there are other attrs here
             }
         ]
     }
