@@ -199,7 +199,7 @@ class SkyScanK8sJobFactory:
                         - name: S3_OBJECT_KEY
                           value: "{s3.make_object_key(scan_id)}"
                         - name: K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS
-                          value: {ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS}
+                          value: "{ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS}"
                       resources:
                         limits:
                           memory: "{ENV.K8S_SCANNER_SIDECAR_S3_MEM_LIMIT}"

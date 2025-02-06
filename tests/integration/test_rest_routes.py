@@ -317,7 +317,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     },
                                     {
                                         "name": "K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
-                                        "value": 15 * 60,
+                                        "value": str(15 * 60),
                                     },
                                 ],
                                 "image": os.environ["THIS_IMAGE_WITH_TAG"],
