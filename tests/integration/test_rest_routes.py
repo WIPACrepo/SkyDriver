@@ -282,7 +282,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     "/common-space/startup.json",
                                     "--wait-indefinitely",
                                 ],
-                                "command": ["python", "-m", "s3_sidecar.post"],
+                                "command": ["python", "-m", "s3_sidecar"],
                                 "env": [
                                     {"name": "S3_URL", "value": os.environ["S3_URL"]},
                                     {

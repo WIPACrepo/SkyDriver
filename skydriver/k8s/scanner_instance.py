@@ -180,7 +180,7 @@ class SkyScanK8sJobFactory:
                     - name: sidecar-s3-{scan_id}
                       restartPolicy: OnFailure
                       image: {ENV.THIS_IMAGE_WITH_TAG}
-                      command: ["python", "-m", "s3_sidecar.post"]
+                      command: ["python", "-m", "s3_sidecar"]
                       args: ["{SkyScanK8sJobFactory._STARTUP_JSON_FPATH}", "--wait-indefinitely"]
                       env:
                         - name: S3_URL
