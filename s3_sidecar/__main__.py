@@ -103,7 +103,7 @@ def main() -> None:
                 # has it been too long?
                 if lifetime_timer.has_interval_elapsed():
                     raise RuntimeError(
-                        f"lifetime timer has expired: {lifetime_timer} seconds"
+                        f"lifetime timer has expired: {lifetime_timer.seconds} seconds"
                     )
             time.sleep(1)
 
