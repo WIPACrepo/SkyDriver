@@ -165,6 +165,7 @@ class SkyScanK8sJobFactory:
                       image: {images.get_skyscan_docker_image(docker_tag)}
                       command: []
                       args: {_to_inline_yaml_str(scanner_server_args.split())}
+                      env: {_to_inline_yaml_str(scanner_server_envvars)}
                       resources:
                         limits:
                           memory: "{scanner_server_memory_bytes}"
