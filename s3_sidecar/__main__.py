@@ -24,6 +24,7 @@ class EnvConfig:
     S3_SECRET_KEY: str
     S3_BUCKET: str
     S3_OBJECT_KEY: str
+    K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS: int
 
 
 ENV = from_environment_as_dataclass(EnvConfig)
@@ -84,13 +85,26 @@ def main() -> None:
     args = parser.parse_args()
     logging_tools.log_argparse_args(args)
 
-    logger_timer = IntervalTimer(5, LOGGER)
+    housekeeping_timer = IntervalTimer(
+        5,
+        logging.getLogger(f"{LOGGER.name}.housekeeping"),
+    )
+    lifetime_timer = IntervalTimer(
+        ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS,
+        logging.getLogger(f"{LOGGER.name}.lifetime_timer"),
+    )
 
     if args.wait_indefinitely:
         LOGGER.info("Waiting for file to exist...")
         while not args.fpath.exists():
-            if logger_timer.has_interval_elapsed():
+            if housekeeping_timer.has_interval_elapsed():
+                # log
                 LOGGER.info("still waiting...")
+                # has it been too long?
+                if lifetime_timer.has_interval_elapsed():
+                    raise RuntimeError(
+                        f"lifetime timer has expired: {lifetime_timer} seconds"
+                    )
             time.sleep(1)
 
     post(args.fpath)
