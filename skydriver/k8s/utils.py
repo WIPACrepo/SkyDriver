@@ -26,18 +26,18 @@ class KubeAPITools:
         if not job_dict:
             raise ValueError("Job object not created")
         try:
-            api_response = kubernetes.utils.create_from_dict(
+            resp = kubernetes.utils.create_from_dict(
                 k8s_batch_api.api_client,
                 job_dict,
                 namespace=ENV.K8S_NAMESPACE,
             )
-            LOGGER.info(api_response)
+            LOGGER.info(json.dumps(resp, indent=0))  # otherwise huge
         except Exception:  # broad b/c re-raising
             LOGGER.error("request to make k8s job failed using:")
             LOGGER.error(json.dumps(job_dict, indent=4))
             raise
         else:
-            return api_response
+            return resp
 
     @staticmethod
     def get_pods(

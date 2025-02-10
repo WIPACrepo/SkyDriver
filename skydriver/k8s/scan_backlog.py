@@ -166,8 +166,7 @@ async def _run(
         # 1st: start k8s job -- this could be any k8s job (pre- or post-ewms switchover)
         # ^^^ b/c this uses local resources, if something goes wrong, this limits exposure
         try:
-            resp = KubeAPITools.start_job(k8s_batch_api, skyscan_k8s_job)
-            LOGGER.info(resp)
+            KubeAPITools.start_job(k8s_batch_api, skyscan_k8s_job)
         except kubernetes.utils.FailToCreateError as e:
             # k8s job (backlog entry) will be revived & restarted in future iteration
             LOGGER.exception(e)
