@@ -47,6 +47,7 @@ class EnvConfig:
     S3_SECRET_KEY: str  # the actual value
     S3_SECRET_KEY__K8S_SECRET_KEY: str  # the key used in the k8s secrets.yml
     S3_BUCKET: str
+    S3_EXPIRES_IN: int = 7 * 24 * 60 * 60  # 7 days
 
     # misc
     AUTH_AUDIENCE: str = "skydriver"

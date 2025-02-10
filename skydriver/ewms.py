@@ -181,13 +181,15 @@ def generate_presigned_s3_get_url(
     s3_client: botocore.client.BaseClient, scan_id: str
 ) -> str:
     """Generate a pre-signed S3 url for retrieving shared files."""
-    # get GET url
+    params = {
+        "Bucket": ENV.S3_BUCKET,
+        "Key": make_s3_object_key(scan_id),
+    }
+    LOGGER.info(f"generating presigned s3-url for scan {scan_id} ({params})...")
     get_url = s3_client.generate_presigned_url(
         "get_object",
-        Params={
-            "Bucket": ENV.S3_BUCKET,
-            "Key": make_s3_object_key(scan_id),
-        },
-        ExpiresIn=24 * 60 * 60,  # seconds
+        Params=params,
+        ExpiresIn=ENV.S3_EXPIRES_IN,  # seconds
     )
+    LOGGER.info(get_url)
     return get_url

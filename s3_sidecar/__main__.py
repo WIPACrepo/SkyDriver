@@ -52,6 +52,7 @@ def post(fpath: Path) -> None:
     # POST
     LOGGER.info("generating presigned post-url...")
     upload_details = s3_client.generate_presigned_post(ENV.S3_BUCKET, ENV.S3_OBJECT_KEY)
+    LOGGER.info(json.dumps(upload_details, indent=4))
     LOGGER.info("posting file to s3...")
     with open(fpath, "rb") as f:
         response = requests.post(
