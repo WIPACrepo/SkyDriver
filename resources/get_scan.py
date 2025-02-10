@@ -54,8 +54,12 @@ async def main():
     rc = get_rest_client(args.skydriver_url)
 
     logging.info(f"getting manifest for scan {args.scan_id}")
-    manifest = await rc.request("GET", f"/scan/{args.scan_id}/manifest")
-    print(json.dumps(manifest, indent=4), flush=True)
+    resp = await rc.request("GET", f"/scan/{args.scan_id}/manifest")
+    print(json.dumps(resp, indent=4), flush=True)
+
+    logging.info(f"getting statuses for scan {args.scan_id}")
+    resp = await rc.request("GET", f"/scan/{args.scan_id}/status")
+    print(json.dumps(resp, indent=4), flush=True)
 
 
 if __name__ == "__main__":
