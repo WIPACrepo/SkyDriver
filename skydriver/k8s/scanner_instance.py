@@ -346,4 +346,6 @@ def assemble_scanner_server_logs_url(
     except Exception as e:
         LOGGER.error(f"there was an issue retrieving k8s pod(s) for {scan_id=}")
         LOGGER.exception(e)
-        return "404"  # don't return exception info for security reasons
+
+    # fall-through
+    return "404"  # don't return exception info for security reasons
