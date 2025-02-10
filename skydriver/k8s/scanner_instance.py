@@ -5,7 +5,7 @@ import logging
 import textwrap
 from pathlib import Path
 
-import kubernetes
+import kubernetes.client  # type: ignore[import-untyped]
 import yaml
 from rest_tools.client import ClientCredentialsAuth
 
