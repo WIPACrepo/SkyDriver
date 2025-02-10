@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 from rest_tools.client import ClientCredentialsAuth
 
-from .. import images, s3
+from .. import ewms, images
 from ..config import (
     DebugMode,
     ENV,
@@ -198,7 +198,7 @@ class SkyScanK8sJobFactory:
                         - name: S3_BUCKET
                           value: "{ENV.S3_BUCKET}"
                         - name: S3_OBJECT_KEY
-                          value: "{s3.make_object_key(scan_id)}"
+                          value: "{ewms.make_s3_object_key(scan_id)}"
                         - name: K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS
                           value: "{ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS}"
                       resources:

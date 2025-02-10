@@ -8,7 +8,7 @@ import botocore.client  # type: ignore[import-untyped]
 import requests
 from rest_tools.client import RestClient
 
-from . import database, images, s3
+from . import database, images
 from .config import ENV, QUEUE_ALIAS_FROMCLIENT, QUEUE_ALIAS_TOCLIENT
 from .database.schema import PENDING_EWMS_WORKFLOW
 
@@ -28,7 +28,7 @@ async def request_workflow_on_ewms(
         else:  # None
             raise TypeError("Scan is not designated for EWMS")
 
-    s3_url_get = s3.generate_s3_get_url(s3_client, manifest.scan_id)
+    s3_url_get = generate_presigned_s3_get_url(s3_client, manifest.scan_id)
     image = images.get_skyscan_cvmfs_singularity_image(scan_request_obj["docker_tag"])
 
     body = {
@@ -170,3 +170,24 @@ async def get_taskforce_phases(
         }
         for tf in resp["taskforces"]
     ]
+
+
+def make_s3_object_key(scan_id: str) -> str:
+    """Construct the object key from the scan_id (deterministic)."""
+    return f"{scan_id}-s3-object"
+
+
+def generate_presigned_s3_get_url(
+    s3_client: botocore.client.BaseClient, scan_id: str
+) -> str:
+    """Generate a pre-signed S3 url for retrieving shared files."""
+    # get GET url
+    get_url = s3_client.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": ENV.S3_BUCKET,
+            "Key": make_s3_object_key(scan_id),
+        },
+        ExpiresIn=24 * 60 * 60,  # seconds
+    )
+    return get_url
