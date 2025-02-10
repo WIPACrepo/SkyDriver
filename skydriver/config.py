@@ -94,6 +94,8 @@ class EnvConfig:
     K8S_SCANNER_SIDECAR_S3_CPU_REQUEST: float = 0.05
     K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS: int = 15 * 60  # 15 mins
 
+    GRAFANA_DASHBOARD_BASEURL: str = ""
+
     # EWMS optional config
     EWMS_WORKER_MEMORY__DEFAULT: str = "8GB"
     EWMS_WORKER_DISK__DEFAULT: str = "1GB"

@@ -44,7 +44,7 @@ class KubeAPITools:
         k8s_core_api: kubernetes.client.CoreV1Api,
         job_name: str,
         namespace: str,
-    ) -> Iterator[kubernetes.client.V1Pod]:
+    ) -> Iterator[str]:
         """Get each pod corresponding to the job.
 
         Raises `ValueError` if there are no pods for the job.
@@ -55,55 +55,4 @@ class KubeAPITools:
         if not pods.items:
             raise ValueError(f"Job {job_name} has no pods")
         for pod in pods.items:
-            yield pod
-
-    @staticmethod
-    def get_pod_status(
-        k8s_batch_api: kubernetes.client.BatchV1Api,
-        job_name: str,
-        namespace: str,
-    ) -> dict[str, dict[str, Any]]:
-        """Get the status of the k8s pod(s) and their containers.
-
-        Raises `ValueError` if there are no pods for the job.
-        """
-        LOGGER.info(f"getting pod status for {job_name=} {namespace=}")
-        status = {}
-
-        k8s_core_api = kubernetes.client.CoreV1Api(api_client=k8s_batch_api.api_client)
-
-        for pod in KubeAPITools.get_pods(k8s_core_api, job_name, namespace):
-            pod_status: kubernetes.client.V1PodStatus = pod.status
-            # pod status has non-serializable things like datetime objects
-            serializable = json.loads(json.dumps(pod_status.to_dict(), default=str))
-            status[pod.metadata.name] = serializable
-
-        return status
-
-    @staticmethod
-    def get_container_logs(
-        k8s_batch_api: kubernetes.client.BatchV1Api,
-        job_name: str,
-        namespace: str,
-    ) -> dict[str, dict[str, str]]:
-        """Grab the logs for all containers.
-
-        Raises `ValueError` if there are no pods for the job.
-        """
-        LOGGER.info(f"getting logs for {job_name=} {namespace=}")
-        logs = {}
-
-        k8s_core_api = kubernetes.client.CoreV1Api(api_client=k8s_batch_api.api_client)
-
-        for pod in KubeAPITools.get_pods(k8s_core_api, job_name, namespace):
-            these_logs = {}
-            for container in pod.spec.containers:
-                these_logs[container.name] = k8s_core_api.read_namespaced_pod_log(
-                    pod.metadata.name,
-                    namespace,
-                    container=container.name,
-                    timestamps=True,
-                )
-            logs[pod.metadata.name] = these_logs
-
-        return logs
+            yield pod.metadata.name

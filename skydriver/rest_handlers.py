@@ -26,7 +26,7 @@ from rest_tools.server import (
 from tornado import web
 from wipac_dev_tools import argparse_tools
 
-from . import database, ewms, images, k8s
+from . import database, ewms, images
 from .config import (
     DebugMode,
     ENV,
@@ -37,7 +37,7 @@ from .database import schema
 from .database.schema import PENDING_EWMS_WORKFLOW
 from .ewms import request_stop_on_ewms
 from .k8s.scan_backlog import put_on_backlog
-from .k8s.scanner_instance import SkyScanK8sJobFactory
+from .k8s.scanner_instance import SkyScanK8sJobFactory, assemble_scanner_server_logs_url
 from .utils import does_scan_state_indicate_final_result_received, get_scan_state
 
 LOGGER = logging.getLogger(__name__)
@@ -1020,34 +1020,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
-        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
-        arghand.add_argument(
-            "include_pod_statuses",
-            type=bool,
-            default=False,
-        )
-        args = arghand.parse_args()
-
         manifest = await self.manifests.get(scan_id, incl_del=True)
-
-        # get pod status
-        pods_411: dict[str, Any] = {}
-        if args.include_pod_statuses:
-            try:
-                pods_411["pod_status"] = k8s.utils.KubeAPITools.get_pod_status(
-                    self.k8s_batch_api,
-                    SkyScanK8sJobFactory.get_job_name(scan_id),
-                    ENV.K8S_NAMESPACE,
-                )
-                pods_411["pod_message"] = "retrieved"
-            except (kubernetes.client.rest.ApiException, ValueError) as e:
-                if await self.scan_backlog.is_in_backlog(scan_id):
-                    pods_411["pod_status"] = {}
-                    pods_411["pod_message"] = "in backlog"
-                else:
-                    pods_411["pod_status"] = {}
-                    pods_411["pod_message"] = "pod(s) not found"
-                    LOGGER.exception(e)
 
         # scan state
         scan_state = await get_scan_state(manifest, self.ewms_rc, self.results)
@@ -1068,11 +1041,13 @@ class ScanStatusHandler(BaseSkyDriverHandler):
             "scan_state": scan_state,
             "is_deleted": manifest.is_deleted,
             "scan_complete": does_scan_state_indicate_final_result_received(scan_state),
-            "k8s_pods": pods_411,
+            "scanner_server_logs": {
+                "url": assemble_scanner_server_logs_url(
+                    self.k8s_batch_api, manifest.scan_id
+                ),
+            },
             "ewms_workforce": clusters,
         }
-        if not args.include_pod_statuses:
-            resp.pop("k8s_pods")
         self.write(resp)
 
     #
@@ -1091,26 +1066,13 @@ class ScanLogsHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
-        try:
-            pod_container_logs = k8s.utils.KubeAPITools.get_container_logs(
-                self.k8s_batch_api,
-                SkyScanK8sJobFactory.get_job_name(scan_id),
-                ENV.K8S_NAMESPACE,
-            )
-            pod_container_logs_message = "retrieved"
-        except (kubernetes.client.rest.ApiException, ValueError) as e:
-            if await self.scan_backlog.is_in_backlog(scan_id):
-                pod_container_logs = {}
-                pod_container_logs_message = "in backlog"
-            else:
-                pod_container_logs = {}
-                pod_container_logs_message = "pod(s) not found"
-                LOGGER.exception(e)
-
         self.write(
             {
-                "pod_container_logs": pod_container_logs,
-                "pod_container_logs_message": pod_container_logs_message,
+                "scanner_server": {
+                    "url": assemble_scanner_server_logs_url(
+                        self.k8s_batch_api, scan_id
+                    ),
+                }
             }
         )
 

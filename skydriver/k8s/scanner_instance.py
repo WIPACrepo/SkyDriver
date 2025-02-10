@@ -5,9 +5,11 @@ import logging
 import textwrap
 from pathlib import Path
 
+import kubernetes
 import yaml
 from rest_tools.client import ClientCredentialsAuth
 
+from .utils import KubeAPITools
 from .. import ewms, images
 from ..config import (
     DebugMode,
@@ -18,6 +20,11 @@ from ..config import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+def get_skyscan_server_container_name(scan_id: str) -> str:
+    """Get the k8s container name for the scanner server from the scan_id (deterministic)."""
+    return f"skyscan-server-{scan_id}"
 
 
 def _to_inline_yaml_str(obj: list[str] | sdict) -> str:
@@ -161,7 +168,7 @@ class SkyScanK8sJobFactory:
                         - name: common-space-volume
                           mountPath: "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH}"
                   containers:
-                    - name: skyscan-server-{scan_id}
+                    - name: {get_skyscan_server_container_name(scan_id)}
                       image: {images.get_skyscan_docker_image(docker_tag)}
                       command: []
                       args: {_to_inline_yaml_str(scanner_server_args.split())}
@@ -317,3 +324,26 @@ class SkyScanK8sJobFactory:
         env.update(scanner_server_env_from_user)
 
         return env
+
+
+def assemble_scanner_server_logs_url(
+    k8s_batch_api: kubernetes.client.BatchV1Api,
+    scan_id: str,
+) -> str:
+    """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
+    job_name = SkyScanK8sJobFactory.get_job_name(scan_id)
+    k8s_core_api = kubernetes.client.CoreV1Api(api_client=k8s_batch_api.api_client)
+
+    try:
+        for podname in KubeAPITools.get_pods(k8s_core_api, job_name, ENV.K8S_NAMESPACE):
+            # this is an iterator, but in reality, the job should only map to 1 pod
+            return (
+                f"{ENV.GRAFANA_DASHBOARD_BASEURL}"
+                f"&var-namespace={ENV.K8S_NAMESPACE}"
+                f"&var-pod={podname}"
+                f"&var-container={get_skyscan_server_container_name(scan_id)}"
+            )
+    except Exception as e:
+        LOGGER.error(f"there was an issue retrieving k8s pod(s) for {scan_id=}")
+        LOGGER.exception(e)
+        return "404"  # don't return exception info for security reasons

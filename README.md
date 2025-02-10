@@ -1,5 +1,5 @@
 <!--- Top of README Badges (automated) --->
-[![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/WIPACrepo/SkyDriver?include_prereleases)](https://github.com/WIPACrepo/SkyDriver/) [![Lines of code](https://img.shields.io/tokei/lines/github/WIPACrepo/SkyDriver)](https://github.com/WIPACrepo/SkyDriver/) [![GitHub issues](https://img.shields.io/github/issues/WIPACrepo/SkyDriver)](https://github.com/WIPACrepo/SkyDriver/issues?q=is%3Aissue+sort%3Aupdated-desc+is%3Aopen) [![GitHub pull requests](https://img.shields.io/github/issues-pr/WIPACrepo/SkyDriver)](https://github.com/WIPACrepo/SkyDriver/pulls?q=is%3Apr+sort%3Aupdated-desc+is%3Aopen) 
+[![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/WIPACrepo/SkyDriver?include_prereleases)](https://github.com/WIPACrepo/SkyDriver/) [![Lines of code](https://img.shields.io/tokei/lines/github/WIPACrepo/SkyDriver)](https://github.com/WIPACrepo/SkyDriver/) [![GitHub issues](https://img.shields.io/github/issues/WIPACrepo/SkyDriver)](https://github.com/WIPACrepo/SkyDriver/issues?q=is%3Aissue+sort%3Aupdated-desc+is%3Aopen) [![GitHub pull requests](https://img.shields.io/github/issues-pr/WIPACrepo/SkyDriver)](https://github.com/WIPACrepo/SkyDriver/pulls?q=is%3Apr+sort%3Aupdated-desc+is%3Aopen)
 <!--- End of README Badges (automated) --->
 
 # SkyDriver v1
@@ -298,9 +298,7 @@ _Retrieve the status of a scan_
 
 #### Arguments
 
-| Argument                 | Type | Required/Default | Description                                                                                                    |
-|--------------------------|------|------------------|----------------------------------------------------------------------------------------------------------------|
-| `"include_pod_statuses"` | bool | `False`          | whether to include the k8s pod statuses for the clientmanager & central server -- expends additional resources 
+None
 
 #### SkyDriver Effects
 
@@ -313,10 +311,9 @@ None
     "scan_state": str,  # a short human-readable code
     "is_deleted": bool,
     "scan_complete": bool,  # workforce is done
-    "k8s_pods": {  # field is included only if `include_pod_statuses == True`
-        "pod_status": dict,  # a large k8s status object
-        "pod_status_message": str,  # a human-readable message explaining the pod status retrieval
-    }
+    "scanner_server_logs": {
+        "url": str,  # a url to a web dashboard for viewing dashboards 
+    },   
     "ewms_workforce": list,  # statuses on ewms' components that run scanner clients
 }
 ```
@@ -356,8 +353,9 @@ None
 
 ```
 {
-    "pod_container_logs": str | list[ dict[str,str] ],  # list
-    "pod_container_logs_message": str,  # a human-readable message explaining the log retrieval
+    "scanner_server": {
+        "url": str,  # a url to a web dashboard for viewing dashboards
+    }
 }
 ```
 
