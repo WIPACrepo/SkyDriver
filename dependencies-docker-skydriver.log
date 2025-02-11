@@ -13,7 +13,7 @@ cachetools==5.5.1
 certifi==2025.1.31
 cffi==1.17.1
 charset-normalizer==3.4.1
-cryptography==44.0.0
+cryptography==44.0.1
 dacite==1.8.1
 dnspython==2.7.0
 durationpy==0.9
@@ -48,7 +48,7 @@ wipac-rest-tools==1.8.5
 ########################################################################
 #  pipdeptree
 ########################################################################
-cryptography==44.0.0
+cryptography==44.0.1
 └── cffi [required: >=1.12, installed: 1.17.1]
     └── pycparser [required: Any, installed: 2.22]
 pipdeptree==2.25.0
