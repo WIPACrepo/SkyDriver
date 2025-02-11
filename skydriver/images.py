@@ -1,5 +1,6 @@
 """Utilities for dealing with docker/cvmfs/singularity images."""
 
+import json
 import logging
 import re
 from pathlib import Path
@@ -144,7 +145,9 @@ def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
         raise _error
 
     try:
-        resp = requests.get(f"{DOCKERHUB_API_URL}/{docker_tag}")
+        url = f"{DOCKERHUB_API_URL}/{docker_tag}"
+        LOGGER.info(f"looking at {url}...")
+        resp = requests.get(url)
     except Exception as e:
         LOGGER.exception(e)
         raise ValueError("Image tag verification failed")
@@ -152,6 +155,7 @@ def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
     if not resp.ok:
         raise _error
 
+    LOGGER.debug(json.dumps(resp.json(), indent=0))
     return resp.json(), docker_tag
 
 
