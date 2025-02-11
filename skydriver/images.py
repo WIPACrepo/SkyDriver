@@ -147,7 +147,7 @@ def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
     try:
         url = f"{DOCKERHUB_API_URL}/{docker_tag}"
         LOGGER.info(f"looking at {url}...")
-        resp = requests.get(url)
+        resp = requests.get(url, timeout=10)
     except Exception as e:
         LOGGER.exception(e)
         raise ValueError("Image tag verification failed")
