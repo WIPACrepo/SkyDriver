@@ -12,7 +12,7 @@ from tornado import web
 from wipac_dev_tools.timing_tools import IntervalTimer
 
 from .utils import KubeAPITools
-from .. import database, ewms
+from .. import database
 from ..config import ENV
 
 LOGGER = logging.getLogger(__name__)
@@ -163,8 +163,7 @@ async def _run(
         )
         # NOTE: the job_obj is enormous, so don't log it
 
-        # 1st: start k8s job -- this could be any k8s job (pre- or post-ewms switchover)
-        # ^^^ b/c this uses local resources, if something goes wrong, this limits exposure
+        # start k8s job -- this could be any k8s job (pre- or post-ewms switchover)
         try:
             LOGGER.info(f"Starting K8s job: scan_id={manifest.scan_id}")
             KubeAPITools.start_job(k8s_batch_api, skyscan_k8s_job)
@@ -174,30 +173,7 @@ async def _run(
             timer_main_loop.fastforward()  # nothing was started, so don't wait long
             continue
 
-        # 2nd: request a workflow on EWMS
-        # ^^^ do after k8s b/c now we know that that was successful
-        try:
-            LOGGER.info(f"Requesting EWMS Workflow: scan_id={manifest.scan_id}")
-            workflow_id = await ewms.request_workflow_on_ewms(
-                ewms_rc,
-                s3_client,
-                manifest,
-                scan_request_obj,
-            )
-        except Exception as e:
-            # TODO: if this fails, then the k8s have already started. so, next loop, either kill the og k8s or somehow re-use -- no timeout on ewms-init?
-            #       option 1: move this request thing to the ewms-init
-            #       option 2: add a second backlogger that only does ewms -- may have timing issues
-            LOGGER.exception(e)
-            timer_main_loop.fastforward()  # nothing was started, so don't wait long
-            continue
-        else:
-            LOGGER.info(f"-> {workflow_id=}: scan_id={manifest.scan_id}")
-            await manifest_client.collection.find_one_and_update(
-                {"scan_id": manifest.scan_id},
-                {"$set": {"ewms_workflow_id": workflow_id}},
-                return_dclass=dict,
-            )
+        # NOTE: DO NOT ADD ANYMORE ACTIONS THAT CAN POSSIBLY FAIL -- THINK STATELESSNESS
 
         # remove from backlog now that startup succeeded
         LOGGER.info(f"Scan successfully started: scan_id={manifest.scan_id}")

@@ -239,15 +239,25 @@ async def main() -> None:
         logger=LOGGER,
     )
 
+    # 0. check that a workflow has not already been requested for this scan
+    resp = await skyd_rc.request("GET", f"/scan/{args.scan_id}/ewms/workflow-id")
+    if not resp["is_pending_ewms_workflow"]:
+        raise ValueError("this scan is not pending an EWMS workflow")
+    #
     # 1. talk to ewms
     workflow_id = await request_workflow_on_ewms(
         ewms_rc, generate_presigned_s3_get_url(args.scan_id)
     )
+    #
     # 2. update skydriver
-    await send_workflow_id_to_skydriver(skyd_rc, workflow_id)
-    # 3. talk to ewms (again)
+    await skyd_rc.request(
+        "POST",
+        f"/scan/{args.scan_id}/ewms/workflow-id",
+        {"workflow_id": workflow_id},
+    )
+    #
+    # 3. talk to ewms (again) & write to file
     ewms_dict = await get_ewms_attrs(ewms_rc, workflow_id)
-
     LOGGER.info(f"dumping EWMS attributes to '{args.json_out}'...")
     with open(args.json_out, "w") as f:
         json.dump(ewms_dict, f)

@@ -51,6 +51,7 @@ async def make(
         rest_handlers.ScanRescanHandler,
         rest_handlers.ScanStatusHandler,
         rest_handlers.ScanLogsHandler,
+        rest_handlers.ScanActionEWMSWorkflowIDHandler,
     ]:
         try:
             rs.add_route(getattr(klass, "ROUTE"), klass, args)

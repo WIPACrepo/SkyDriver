@@ -34,6 +34,7 @@ from .config import (
     is_testing,
 )
 from .database import schema
+from .database.mongodc import DocumentNotFoundException
 from .database.schema import PENDING_EWMS_WORKFLOW
 from .ewms import request_stop_on_ewms
 from .k8s.scan_backlog import put_on_backlog
@@ -58,7 +59,7 @@ WAIT_BEFORE_TEARDOWN = 60
 
 
 USER_ACCT = "user"
-SKYMAP_SCANNER_ACCT = "system"
+INTERNAL_ACCT = "system"
 
 if is_testing():
 
@@ -77,7 +78,7 @@ else:
     service_account_auth = token_attribute_role_mapping_auth(  # type: ignore[no-untyped-call]
         role_attrs={
             USER_ACCT: ["groups=/institutions/IceCube.*"],
-            SKYMAP_SCANNER_ACCT: ["skydriver_role=system"],
+            INTERNAL_ACCT: ["skydriver_role=system"],
         }
     )
 
@@ -781,7 +782,7 @@ class ScanHandler(BaseSkyDriverHandler):
             }
         )
 
-    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get manifest & result."""
         arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
@@ -815,7 +816,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/manifest$"
 
-    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
         arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
@@ -839,7 +840,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         #   Include the whole event dict in the response like the 'old' manifest.
         #   This overrides the manifest's field which should be an id.
         if (
-            self.auth_roles[0] == SKYMAP_SCANNER_ACCT  # type: ignore
+            self.auth_roles[0] == INTERNAL_ACCT  # type: ignore
             and "event_i3live_json_dict" in args.projection
             and manifest.i3_event_id  # if no id, then event already in manifest
         ):
@@ -861,7 +862,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         resp = dict_projection(dc.asdict(manifest), args.projection)
         self.write(resp)
 
-    @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
+    @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
@@ -911,7 +912,7 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/i3-event$"
 
-    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
         manifest = await self.manifests.get(scan_id, True)
@@ -973,7 +974,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
 
         self.write(dc.asdict(result) if result else {})
 
-    @service_account_auth(roles=[SKYMAP_SCANNER_ACCT])  # type: ignore
+    @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's result."""
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
@@ -1023,7 +1024,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/status$"
 
-    @service_account_auth(roles=[USER_ACCT, SKYMAP_SCANNER_ACCT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
         manifest = await self.manifests.get(scan_id, incl_del=True)
@@ -1085,6 +1086,61 @@ class ScanLogsHandler(BaseSkyDriverHandler):
     #
     # NOTE - handler needs to stay user-read-only
     #
+
+
+# -----------------------------------------------------------------------------
+
+
+class ScanActionEWMSWorkflowIDHandler(BaseSkyDriverHandler):
+    """Handles actions on scan's ewms workflow id."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/ewms/workflow-id$"
+
+    @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
+        """Get the ewms workflow_id."""
+        manifest = await self.manifests.get(scan_id, incl_del=True)
+        self.write(
+            {
+                "workflow_id": manifest.ewms_workflow_id,
+                "is_pending_ewms_workflow": (
+                    manifest.ewms_workflow_id == PENDING_EWMS_WORKFLOW
+                ),
+            }
+        )
+
+    @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
+    async def post(self, scan_id: str) -> None:
+        """Update the ewms workflow_id."""
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        arghand.add_argument(
+            "workflow_id",
+            required=True,
+            type=str,
+        )
+        args = arghand.parse_args()
+
+        try:
+            manifest = await self.manifests.collection.find_one_and_update(
+                {
+                    "scan_id": scan_id,
+                    "ewms_workflow_id": PENDING_EWMS_WORKFLOW,
+                    "is_deleted": False,
+                },
+                {"$set": {"ewms_workflow_id": args.workflow_id}},
+                return_document=ReturnDocument.AFTER,
+                return_dclass=dict,
+            )
+        except DocumentNotFoundException:
+            raise web.HTTPError(
+                404,
+                log_message=(
+                    "Could not find a scan manifest to update "
+                    "(either the scan_id does not exist or its EWMS workflow_id cannot be updated)"
+                ),
+            )
+        else:
+            self.write(manifest)
 
 
 # -----------------------------------------------------------------------------
