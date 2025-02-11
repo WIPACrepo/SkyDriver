@@ -36,10 +36,8 @@ N_JOBS = 5
 
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
-@mock.patch("skydriver.ewms.generate_presigned_s3_get_url")
 async def test_00(
     kapitsj_mock: Mock,
-    gps3geturl_mock: Mock,
     server: Callable[[], RestClient],
 ) -> None:
     """Test backlog job starting."""
@@ -51,17 +49,14 @@ async def test_00(
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
 
     # call counts
-    gps3geturl_mock.assert_called_once()
     kapitsj_mock.assert_called_once()
 
     print_it(await rc.request("GET", "/scans/backlog"))
 
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
-@mock.patch("skydriver.ewms.generate_presigned_s3_get_url")
 async def test_01(
     kapitsj_mock: Mock,
-    gps3geturl_mock: Mock,
     server: Callable[[], RestClient],
 ) -> None:
     """Test backlog job starting with multiple."""
@@ -78,26 +73,21 @@ async def test_01(
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
         print_it(await rc.request("GET", "/scans/backlog"))
         # call counts
-        assert gps3geturl_mock.call_count >= i + 1  # in case runner is faster
         assert kapitsj_mock.call_count >= i + 1  # in case runner is faster
     # call counts
-    assert gps3geturl_mock.call_count == N_JOBS
     assert kapitsj_mock.call_count == N_JOBS
 
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
 
     # any extra calls?
-    assert gps3geturl_mock.call_count == N_JOBS
     assert kapitsj_mock.call_count == N_JOBS
 
     print_it(await rc.request("GET", "/scans/backlog"))
 
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
-@mock.patch("skydriver.ewms.generate_presigned_s3_get_url")
 async def test_10(
     kapitsj_mock: Mock,
-    gps3geturl_mock: Mock,
     server: Callable[[], RestClient],
 ) -> None:
     """Test backlog job starting with multiple cancels."""
@@ -123,16 +113,13 @@ async def test_10(
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
         print_it(await rc.request("GET", "/scans/backlog"))
         # call counts
-        assert gps3geturl_mock.call_count >= i + 1  # in case runner is faster
         assert kapitsj_mock.call_count >= i + 1  # in case runner is faster
     # call counts
-    assert gps3geturl_mock.call_count == N_JOBS - 2
     assert kapitsj_mock.call_count == N_JOBS - 2
 
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
 
     # any extra calls?
-    assert gps3geturl_mock.call_count == N_JOBS - 2
     assert kapitsj_mock.call_count == N_JOBS - 2
 
     print_it(await rc.request("GET", "/scans/backlog"))
