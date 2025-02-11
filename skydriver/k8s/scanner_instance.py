@@ -277,12 +277,13 @@ class EnvVarFactory:
                 "EWMS_CLIENT_ID": ENV.EWMS_CLIENT_ID,
                 "EWMS_CLIENT_SECRET": ENV.EWMS_CLIENT_SECRET,
                 #
-                "EWMS_CLUSTERS": [cname for cname, _ in request_clusters],
+                "EWMS_CLUSTERS": " ".join(cname for cname, _ in request_clusters),
                 "EWMS_N_WORKERS": request_clusters[0][1],
                 #
                 "EWMS_TASK_IMAGE": get_skyscan_cvmfs_singularity_image(docker_tag),
                 #
                 "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
+                "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
                 "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
                 #
                 "EWMS_WORKER_MAX_WORKER_RUNTIME": max_worker_runtime,

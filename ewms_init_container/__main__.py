@@ -21,6 +21,8 @@ LOGGER = logging.getLogger(__package__)
 QUEUE_ALIAS_TOCLIENT = "to-client-queue"  # ''
 QUEUE_ALIAS_FROMCLIENT = "from-client-queue"  # ''
 
+CURL_TIMEOUT = 60
+
 
 @dc.dataclass(frozen=True)
 class EnvConfig:
@@ -35,6 +37,16 @@ class EnvConfig:
     EWMS_CLIENT_SECRET: str
 
     EWMS_TASK_IMAGE: str
+    EWMS_CLUSTERS: list[str]  # auto-parsed from space-delimited string
+    EWMS_N_WORKERS: int
+
+    EWMS_PILOT_TASK_TIMEOUT: int
+    EWMS_PILOT_TIMEOUT_QUEUE_INCOMING: int
+
+    EWMS_WORKER_MAX_WORKER_RUNTIME: int
+    EWMS_WORKER_PRIORITY: int
+    EWMS_WORKER_DISK_BYTES: int
+    EWMS_WORKER_MEMORY_BYTES: int
 
     QUEUE_ALIAS_TOCLIENT: str
     QUEUE_ALIAS_FROMCLIENT: str
@@ -45,6 +57,8 @@ class EnvConfig:
     S3_BUCKET: str
     S3_OBJECT_KEY: str
     S3_EXPIRES_IN: int
+
+    EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE: int | None = None
 
 
 ENV = from_environment_as_dataclass(EnvConfig)
@@ -91,10 +105,12 @@ async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
                     "--client-startup-json {{DATA_HUB}}/startup.json"
                 ),
                 "init_image": ENV.EWMS_TASK_IMAGE,  # piggyback this image since it's already present
-                "init_args": (
+                "init_args": (  # to get the s3 object/file
                     "bash -c "
                     '"'  # quote for bash -c "..."
-                    "curl --fail-with-body --max-time 60 -o {{DATA_HUB}}/startup.json "
+                    "curl --fail-with-body "
+                    f"--max-time {CURL_TIMEOUT} "
+                    "-o {{DATA_HUB}}/startup.json "
                     f"'{s3_url_get}'"  # single-quote the url
                     '"'  # unquote for bash -c "..."
                 ),
@@ -104,10 +120,10 @@ async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
                     "environment": {
                         k: v
                         for k, v in {
-                            "EWMS_PILOT_INIT_TIMEOUT": 61,  # 1 sec more than 'curl' timeout
+                            "EWMS_PILOT_INIT_TIMEOUT": CURL_TIMEOUT + 1,
                             "EWMS_PILOT_TASK_TIMEOUT": ENV.EWMS_PILOT_TASK_TIMEOUT,
                             "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": ENV.EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE,
-                            "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
+                            "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.EWMS_PILOT_TIMEOUT_QUEUE_INCOMING,
                             "EWMS_PILOT_CONTAINER_DEBUG": "True",  # toggle?
                             "EWMS_PILOT_INFILE_EXT": ".json",
                             "EWMS_PILOT_OUTFILE_EXT": ".json",
