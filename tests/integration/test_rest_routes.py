@@ -435,10 +435,6 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                         "name": "S3_OBJECT_KEY",
                                         "value": f"{post_resp['scan_id']}-s3-object",
                                     },
-                                    {
-                                        "name": "K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
-                                        "value": str(900),
-                                    },
                                 ],
                                 "image": os.environ["THIS_IMAGE_WITH_TAG"],
                                 "name": f"init-ewms-{post_resp['scan_id']}",
