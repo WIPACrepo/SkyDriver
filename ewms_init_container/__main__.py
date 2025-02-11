@@ -9,9 +9,11 @@ import time
 from pathlib import Path
 
 from rest_tools.client import ClientCredentialsAuth, RestClient
-from wipac_dev_tools import from_environment_as_dataclass, logging_tools
+from wipac_dev_tools import from_environment_as_dataclass, logging_tools, timing_tools
 
 LOGGER = logging.getLogger(__package__)
+
+TIMEOUT = 5 * 60
 
 
 @dc.dataclass(frozen=True)
@@ -43,9 +45,19 @@ async def get_workflow_id(scan_id: str) -> str:
         logger=LOGGER,
     )
 
-    # get the id, with retries
+    timeout_timer = timing_tools.IntervalTimer(
+        TIMEOUT, logging.getLogger(f"{LOGGER.name}.timeout_timer")
+    )
+
+    # get the id, with retries -- this id should be available pretty quickly
     while True:
+        if timeout_timer.has_interval_elapsed():
+            raise TimeoutError(
+                f"EWMS workflow_id could not be retrieved within {timeout_timer.seconds} seconds"
+            )
+        # get id
         resp = await skyd_rc.request("GET", f"/scan/{scan_id}/manifest")
+        # parse
         match workflow_id := resp["ewms_workflow_id"]:
             case None:
                 raise ValueError(
