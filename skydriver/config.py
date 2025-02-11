@@ -18,10 +18,6 @@ K8S_MIN_MEM_REQUEST = "10M"
 
 SCAN_MIN_PRIORITY_TO_START_ASAP = 100
 
-# WARNING: these values must remain constant, they are cross-referenced in the db
-QUEUE_ALIAS_TOCLIENT = "to-client-queue"  # ''
-QUEUE_ALIAS_FROMCLIENT = "from-client-queue"  # ''
-
 
 @enum.unique
 class DebugMode(enum.Enum):

@@ -185,6 +185,9 @@ async def _run(
                 scan_request_obj,
             )
         except Exception as e:
+            # TODO: if this fails, then the k8s have already started. so, next loop, either kill the og k8s or somehow re-use -- no timeout on ewms-init?
+            #       option 1: move this request thing to the ewms-init
+            #       option 2: add a second backlogger that only does ewms -- may have timing issues
             LOGGER.exception(e)
             timer_main_loop.fastforward()  # nothing was started, so don't wait long
             continue

@@ -4,6 +4,7 @@ instances."""
 import logging
 import textwrap
 from pathlib import Path
+from typing import Any
 
 import kubernetes.client  # type: ignore[import-untyped]
 import yaml
@@ -14,10 +15,9 @@ from .. import ewms, images
 from ..config import (
     DebugMode,
     ENV,
-    QUEUE_ALIAS_FROMCLIENT,
-    QUEUE_ALIAS_TOCLIENT,
     sdict,
 )
+from ..images import get_skyscan_cvmfs_singularity_image
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,20 +27,12 @@ def get_skyscan_server_container_name(scan_id: str) -> str:
     return f"skyscan-server-{scan_id}"
 
 
-def _to_inline_yaml_str(obj: list[str] | sdict) -> str:
-    """Convert obj-based attrs to yaml-syntax where each value is a string."""
-    if isinstance(obj, dict):
-        return yaml.safe_dump(
-            [{"name": str(k), "value": str(v)} for k, v in obj.items()],
-            default_flow_style=True,  # inline, compact formatting, no indenting needed
-        )
-    elif isinstance(obj, list):
-        return yaml.safe_dump(
-            [str(o) for o in obj],
-            default_flow_style=True,  # inline, compact formatting, no indenting needed
-        )
-    else:
-        raise TypeError(f"unsupported type {type(obj)}")
+def _to_inline_yaml_str(obj: Any) -> str:
+    """Convert obj to one-line yaml-syntax."""
+    return yaml.safe_dump(
+        obj,
+        default_flow_style=True,  # inline, compact formatting, no indenting needed
+    )
 
 
 class SkyScanK8sJobFactory:
@@ -81,11 +73,17 @@ class SkyScanK8sJobFactory:
             is_real_event=is_real_event,
             predictive_scanning_threshold=predictive_scanning_threshold,
         )
-        scanner_server_envvars = SkyScanK8sJobFactory.make_skyscan_server_envvars(
+        scanner_server_envvars = EnvVarFactory.make_skyscan_server_envvars(
             rest_address=rest_address,
             scan_id=scan_id,
             skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
             scanner_server_env_from_user=scanner_server_env_from_user,
+        )
+
+        ewms_envvars = EnvVarFactory.make_ewms_envvars(
+            docker_tag,
+            skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
+            max_pixel_reco_time=max_pixel_reco_time,
         )
 
         # assemble the job
@@ -95,6 +93,7 @@ class SkyScanK8sJobFactory:
             scanner_server_memory_bytes,
             scanner_server_args,
             scanner_server_envvars,
+            ewms_envvars,
         )
 
         return job_dict, scanner_server_args
@@ -105,27 +104,29 @@ class SkyScanK8sJobFactory:
         docker_tag: str,
         scanner_server_memory_bytes: int,
         scanner_server_args: str,
-        scanner_server_envvars: sdict,
+        scanner_server_envvars: list[sdict],
+        ewms_envvars: list[sdict],
     ) -> sdict:
         """Create the K8s job manifest.
 
         NOTE: Let's keep definitions as straightforward as possible.
         """
-        scanner_server_envvars = {k: str(v) for k, v in scanner_server_envvars.items()}
-
-        init_ewms_envvars = {}
-        for k in ["SKYSCAN_SKYDRIVER_ADDRESS", "SKYSCAN_SKYDRIVER_AUTH"]:
-            init_ewms_envvars[k] = scanner_server_envvars[k]
-        init_ewms_envvars.update(
-            {
-                "EWMS_ADDRESS": ENV.EWMS_ADDRESS,
-                "EWMS_TOKEN_URL": ENV.EWMS_TOKEN_URL,
-                "EWMS_CLIENT_ID": ENV.EWMS_CLIENT_ID,
-                "EWMS_CLIENT_SECRET": ENV.EWMS_CLIENT_SECRET,
-                "QUEUE_ALIAS_TOCLIENT": QUEUE_ALIAS_TOCLIENT,
-                "QUEUE_ALIAS_FROMCLIENT": QUEUE_ALIAS_FROMCLIENT,
-            }
+        ewms_init_envvars = (
+            [
+                envvar
+                for envvar in scanner_server_envvars
+                if envvar["name"]
+                in ["SKYSCAN_SKYDRIVER_ADDRESS", "SKYSCAN_SKYDRIVER_AUTH"]
+            ]
+            + ewms_envvars
+            + EnvVarFactory.make_s3_envvars(scan_id)
         )
+        s3_sidecar_envvars = [
+            {
+                "name": "K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
+                "value": "ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
+            }
+        ] + EnvVarFactory.make_s3_envvars(scan_id)
 
         # now, assemble
         job_yaml = textwrap.dedent(  # fixes """-indentation
@@ -155,7 +156,7 @@ class SkyScanK8sJobFactory:
                       image: {ENV.THIS_IMAGE_WITH_TAG}
                       command: ["python", "-m", "ewms_init_container"]
                       args: ["{scan_id}", "--json-out", "{SkyScanK8sJobFactory._EWMS_JSON_FPATH}"]
-                      env: {_to_inline_yaml_str(init_ewms_envvars)}
+                      env: {_to_inline_yaml_str(ewms_init_envvars)}
                       resources:
                         limits:
                           memory: "{ENV.K8S_SCANNER_INIT_MEM_LIMIT}"
@@ -189,25 +190,7 @@ class SkyScanK8sJobFactory:
                       image: {ENV.THIS_IMAGE_WITH_TAG}
                       command: ["python", "-m", "s3_sidecar"]
                       args: ["{SkyScanK8sJobFactory._STARTUP_JSON_FPATH}", "--wait-indefinitely"]
-                      env:
-                        - name: S3_URL
-                          value: "{ENV.S3_URL}"
-                        - name: S3_ACCESS_KEY_ID
-                          valueFrom:
-                            secretKeyRef:
-                              name: {ENV.K8S_SECRET_NAME}
-                              key: {ENV.S3_ACCESS_KEY_ID__K8S_SECRET_KEY}
-                        - name: S3_SECRET_KEY
-                          valueFrom:
-                            secretKeyRef:
-                              name: {ENV.K8S_SECRET_NAME}
-                              key: {ENV.S3_SECRET_KEY__K8S_SECRET_KEY}
-                        - name: S3_BUCKET
-                          value: "{ENV.S3_BUCKET}"
-                        - name: S3_OBJECT_KEY
-                          value: "{ewms.make_s3_object_key(scan_id)}"
-                        - name: K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS
-                          value: "{ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS}"
+                      env: {_to_inline_yaml_str(s3_sidecar_envvars)}
                       resources:
                         limits:
                           memory: "{ENV.K8S_SCANNER_SIDECAR_S3_MEM_LIMIT}"
@@ -254,6 +237,63 @@ class SkyScanK8sJobFactory:
         )
         return args
 
+
+class EnvVarFactory:
+    """Factory class for assembling k8s environment-variable objects."""
+
+    @staticmethod
+    def make_ewms_envvars(
+        docker_tag: str,
+        skyscan_mq_client_timeout_wait_for_first_message: int,
+        max_pixel_reco_time: int,
+    ) -> list[sdict]:
+        return [
+            {"name": str(k), "value": str(v)}
+            for k, v in {
+                "EWMS_ADDRESS": ENV.EWMS_ADDRESS,
+                "EWMS_TOKEN_URL": ENV.EWMS_TOKEN_URL,
+                "EWMS_CLIENT_ID": ENV.EWMS_CLIENT_ID,
+                "EWMS_CLIENT_SECRET": ENV.EWMS_CLIENT_SECRET,
+                #
+                "EWMS_TASK_IMAGE": get_skyscan_cvmfs_singularity_image(docker_tag),
+                #
+                "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
+                "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
+            }.items()
+            if v is not None
+        ]
+
+    @staticmethod
+    def make_s3_envvars(scan_id: str) -> list[sdict]:
+        return [
+            {"name": "S3_URL", "value": ENV.S3_URL},
+            {
+                "name": "S3_ACCESS_KEY_ID",
+                "valueFrom": {
+                    "secretKeyRef": {
+                        "name": ENV.K8S_SECRET_NAME,
+                        "key": ENV.S3_ACCESS_KEY_ID__K8S_SECRET_KEY,
+                    }
+                },
+            },
+            {
+                "name": "S3_SECRET_KEY",
+                "valueFrom": {
+                    "secretKeyRef": {
+                        "name": ENV.K8S_SECRET_NAME,
+                        "key": ENV.S3_SECRET_KEY__K8S_SECRET_KEY,
+                    }
+                },
+            },
+            {"name": "S3_EXPIRES_IN", "value": ENV.S3_EXPIRES_IN},
+            {"name": "S3_BUCKET", "value": ENV.S3_BUCKET},
+            {"name": "S3_OBJECT_KEY", "value": ewms.make_s3_object_key(scan_id)},
+            {
+                "name": "K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
+                "value": ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS,
+            },
+        ]
+
     @staticmethod
     def _get_token_from_keycloak(
         token_url: str,
@@ -277,7 +317,7 @@ class SkyScanK8sJobFactory:
         scan_id: str,
         skyscan_mq_client_timeout_wait_for_first_message: int | None,
         scanner_server_env_from_user: dict,
-    ) -> sdict:
+    ) -> list[sdict]:
         """Get the environment variables provided to the skyscan server."""
         LOGGER.debug(f"making scanner server env vars for {scan_id=}")
         env = {}
@@ -323,7 +363,7 @@ class SkyScanK8sJobFactory:
         # 4. Add user's env
         env.update(scanner_server_env_from_user)
 
-        return env
+        return [{"name": str(k), "value": str(v)} for k, v in env.items()]
 
 
 def assemble_scanner_server_logs_url(
