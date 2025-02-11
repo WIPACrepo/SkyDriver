@@ -251,7 +251,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     },
                                     {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
                                 ]
-                                + [  # add those from 'post_scan_body'
+                                + [
                                     {"name": k, "value": str(v)}
                                     for k, v in post_scan_body[
                                         "scanner_server_env"
@@ -260,10 +260,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                 "image": f"icecube/skymap_scanner:{docker_tag_expected}",
                                 "name": f'skyscan-server-{post_resp["scan_id"]}',
                                 "resources": {
-                                    "limits": {
-                                        "cpu": "1.0",
-                                        "memory": "1024000000",
-                                    },
+                                    "limits": {"cpu": "1.0", "memory": "1024000000"},
                                     "requests": {
                                         "cpu": "0.1",
                                         "ephemeral-storage": "1M",
@@ -307,10 +304,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                             }
                                         },
                                     },
-                                    {
-                                        "name": "S3_EXPIRES_IN",
-                                        "value": str(7 * 24 * 60 * 60),
-                                    },
+                                    {"name": "S3_EXPIRES_IN", "value": str(604800)},
                                     {
                                         "name": "S3_BUCKET",
                                         "value": os.environ["S3_BUCKET"],
@@ -321,16 +315,13 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     },
                                     {
                                         "name": "K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
-                                        "value": "900",
+                                        "value": str(900),
                                     },
                                 ],
                                 "image": os.environ["THIS_IMAGE_WITH_TAG"],
                                 "name": f"sidecar-s3-{post_resp['scan_id']}",
                                 "resources": {
-                                    "limits": {
-                                        "cpu": "0.1",
-                                        "memory": "100M",
-                                    },
+                                    "limits": {"cpu": "0.1", "memory": "100M"},
                                     "requests": {
                                         "cpu": "0.05",
                                         "ephemeral-storage": "1M",
@@ -359,10 +350,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                         "name": "SKYSCAN_SKYDRIVER_ADDRESS",
                                         "value": rest_address,
                                     },
-                                    {
-                                        "name": "SKYSCAN_SKYDRIVER_AUTH",
-                                        "value": "",
-                                    },
+                                    {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
                                     {
                                         "name": "EWMS_ADDRESS",
                                         "value": os.environ["EWMS_ADDRESS"],
@@ -391,10 +379,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                             ]
                                         ),
                                     },
-                                    {
-                                        "name": "EWMS_N_WORKERS",
-                                        "value": "1",
-                                    },
+                                    {"name": "EWMS_N_WORKERS", "value": "1"},
                                     {
                                         "name": "EWMS_TASK_IMAGE",
                                         "value": "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:3.21.2",
@@ -409,10 +394,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                         "name": "EWMS_WORKER_MAX_WORKER_RUNTIME",
                                         "value": "14400",
                                     },
-                                    {
-                                        "name": "EWMS_WORKER_PRIORITY",
-                                        "value": "0",
-                                    },
+                                    {"name": "EWMS_WORKER_PRIORITY", "value": "0"},
                                     {
                                         "name": "EWMS_WORKER_DISK_BYTES",
                                         "value": "1000000000",
@@ -421,14 +403,47 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                         "name": "EWMS_WORKER_MEMORY_BYTES",
                                         "value": "8000000000",
                                     },
+                                    {"name": "S3_URL", "value": os.environ["S3_URL"]},
+                                    {
+                                        "name": "S3_ACCESS_KEY_ID",
+                                        "valueFrom": {
+                                            "secretKeyRef": {
+                                                "key": os.environ[
+                                                    "S3_ACCESS_KEY_ID__K8S_SECRET_KEY"
+                                                ],
+                                                "name": os.environ["K8S_SECRET_NAME"],
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "name": "S3_SECRET_KEY",
+                                        "valueFrom": {
+                                            "secretKeyRef": {
+                                                "key": os.environ[
+                                                    "S3_SECRET_KEY__K8S_SECRET_KEY"
+                                                ],
+                                                "name": os.environ["K8S_SECRET_NAME"],
+                                            }
+                                        },
+                                    },
+                                    {"name": "S3_EXPIRES_IN", "value": str(604800)},
+                                    {
+                                        "name": "S3_BUCKET",
+                                        "value": os.environ["S3_BUCKET"],
+                                    },
+                                    {
+                                        "name": "S3_OBJECT_KEY",
+                                        "value": f"{post_resp['scan_id']}-s3-object",
+                                    },
+                                    {
+                                        "name": "K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
+                                        "value": str(900),
+                                    },
                                 ],
                                 "image": os.environ["THIS_IMAGE_WITH_TAG"],
                                 "name": f"init-ewms-{post_resp['scan_id']}",
                                 "resources": {
-                                    "limits": {
-                                        "cpu": "0.1",
-                                        "memory": "100M",
-                                    },
+                                    "limits": {"cpu": "0.1", "memory": "100M"},
                                     "requests": {
                                         "cpu": "0.05",
                                         "ephemeral-storage": "1M",

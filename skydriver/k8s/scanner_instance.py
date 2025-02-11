@@ -316,12 +316,12 @@ class EnvVarFactory:
                     }
                 },
             },
-            {"name": "S3_EXPIRES_IN", "value": ENV.S3_EXPIRES_IN},
+            {"name": "S3_EXPIRES_IN", "value": str(ENV.S3_EXPIRES_IN)},
             {"name": "S3_BUCKET", "value": ENV.S3_BUCKET},
             {"name": "S3_OBJECT_KEY", "value": ewms.make_s3_object_key(scan_id)},
             {
                 "name": "K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
-                "value": ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS,
+                "value": str(ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS),
             },
         ]
 
