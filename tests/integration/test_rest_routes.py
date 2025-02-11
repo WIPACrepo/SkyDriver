@@ -6,6 +6,7 @@ import os
 import pprint
 import re
 import time
+import uuid
 from typing import Any, Callable
 
 import humanfriendly
@@ -908,8 +909,29 @@ async def _after_scan_start_logic(
     # wait backlogger to request to ewms
     assert int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"])
     await asyncio.sleep(int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"]) * 5)  # extra
-    manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert RE_UUID4HEX.fullmatch(manifest["ewms_workflow_id"])
+
+    # mimic the ewms-init container...
+    # -> before
+    assert (await rc.request("GET", f"/scan/{scan_id}/manifest"))[
+        "ewms_workflow_id"
+    ] == skydriver.database.schema.PENDING_EWMS_WORKFLOW
+    assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
+        "workflow_id": skydriver.database.schema.PENDING_EWMS_WORKFLOW,
+        "is_pending_ewms_workflow": True,
+    }
+    # -> update workflow_id
+    impromptu_uuid = uuid.uuid4().hex
+    await rc.request(
+        "POST", f"/scan/{scan_id}/ewms/workflow-id", {"workflow_id": impromptu_uuid}
+    )
+    # -> after
+    assert (await rc.request("GET", f"/scan/{scan_id}/manifest"))[
+        "ewms_workflow_id"
+    ] == impromptu_uuid
+    assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
+        "workflow_id": impromptu_uuid,
+        "is_pending_ewms_workflow": True,
+    }
 
     #
     # INITIAL UPDATES
