@@ -559,6 +559,12 @@ async def _start_scan(
             "skyscan_mq_client_timeout_wait_for_first_message"
         ],
         scanner_server_env_from_user=scan_request_obj["scanner_server_env_from_user"],
+        request_clusters=scan_request_obj["request_clusters"],
+        max_pixel_reco_time=scan_request_obj["max_pixel_reco_time"],
+        max_worker_runtime=scan_request_obj["max_worker_runtime"],
+        priority=scan_request_obj["priority"],
+        worker_disk_bytes=scan_request_obj["worker_disk_bytes"],
+        worker_memory_bytes=scan_request_obj["worker_memory_bytes"],
     )
 
     # put in db (do before k8s start so if k8s fail, we can debug using db's info)

@@ -8,6 +8,7 @@ import logging
 import time
 from pathlib import Path
 
+import boto3  # type: ignore[import-untyped]
 import botocore.client  # type: ignore[import-untyped]
 import requests
 from rest_tools.client import ClientCredentialsAuth, RestClient
@@ -49,10 +50,17 @@ class EnvConfig:
 ENV = from_environment_as_dataclass(EnvConfig)
 
 
-def generate_presigned_s3_get_url(
-    s3_client: botocore.client.BaseClient, scan_id: str
-) -> str:
+def generate_presigned_s3_get_url(scan_id: str) -> str:
     """Generate a pre-signed S3 url for retrieving shared files."""
+    LOGGER.info("connecting to s3...")
+    s3_client = boto3.client(
+        "s3",
+        "us-east-1",
+        endpoint_url=ENV.S3_URL,
+        aws_access_key_id=ENV.S3_ACCESS_KEY_ID,
+        aws_secret_access_key=ENV.S3_SECRET_KEY,
+    )
+
     params = {
         "Bucket": ENV.S3_BUCKET,
         "Key": ENV.S3_OBJECT_KEY,
@@ -67,28 +75,13 @@ def generate_presigned_s3_get_url(
     return get_url
 
 
-async def request_workflow_on_ewms(
-    ewms_rc: RestClient,
-    s3_client: botocore.client.BaseClient,
-    manifest: dict,
-    scan_request_obj: dict,
-) -> str:
+async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
     """Request a workflow in EWMS."""
-    if manifest["ewms_workflow_id"] != database.schema.PENDING_EWMS_WORKFLOW:
-        if manifest["ewms_workflow_id"]:
-            raise TypeError("Scan has already been sent to EWMS")
-        else:  # None
-            raise TypeError("Scan is not designated for EWMS")
-
-    s3_url_get = generate_presigned_s3_get_url(s3_client, manifest.scan_id)
-
     body = {
         "public_queue_aliases": [QUEUE_ALIAS_TOCLIENT, QUEUE_ALIAS_FROMCLIENT],
         "tasks": [
             {
-                "cluster_locations": [
-                    cname for cname, _ in scan_request_obj["request_clusters"]
-                ],
+                "cluster_locations": ENV.EWMS_CLUSTERS,
                 "input_queue_aliases": [QUEUE_ALIAS_TOCLIENT],
                 "output_queue_aliases": [QUEUE_ALIAS_FROMCLIENT],
                 "task_image": ENV.EWMS_TASK_IMAGE,
@@ -105,8 +98,7 @@ async def request_workflow_on_ewms(
                     f"'{s3_url_get}'"  # single-quote the url
                     '"'  # unquote for bash -c "..."
                 ),
-                "n_workers": scan_request_obj["request_clusters"][0][1],
-                # TODO: ^^^ pass on varying # of workers per cluster
+                "n_workers": ENV.EWMS_N_WORKERS,
                 "pilot_config": {
                     "tag": "latest",
                     "environment": {
@@ -126,11 +118,11 @@ async def request_workflow_on_ewms(
                 },
                 "worker_config": {
                     "do_transfer_worker_stdouterr": True,  # toggle?
-                    "max_worker_runtime": scan_request_obj["max_worker_runtime"],
+                    "max_worker_runtime": ENV.EWMS_WORKER_MAX_WORKER_RUNTIME,
                     "n_cores": 1,
-                    "priority": scan_request_obj["priority"],
-                    "worker_disk": scan_request_obj["worker_disk_bytes"],
-                    "worker_memory": scan_request_obj["worker_memory_bytes"],
+                    "priority": ENV.EWMS_WORKER_PRIORITY,
+                    "worker_disk": ENV.EWMS_WORKER_DISK_BYTES,
+                    "worker_memory": ENV.EWMS_WORKER_MEMORY_BYTES,
                     "condor_requirements": "HAS_CVMFS_icecube_opensciencegrid_org && has_avx && has_avx2",
                 },
             }
@@ -231,8 +223,13 @@ async def main() -> None:
         logger=LOGGER,
     )
 
-    workflow_id = await request_workflow_on_ewms(ewms_rc, args.scan_id)
+    # 1. talk to ewms
+    workflow_id = await request_workflow_on_ewms(
+        ewms_rc, generate_presigned_s3_get_url(args.scan_id)
+    )
+    # 2. update skydriver
     await send_workflow_id_to_skydriver(skyd_rc, workflow_id)
+    # 3. talk to ewms (again)
     ewms_dict = await get_ewms_attrs(ewms_rc, workflow_id)
 
     LOGGER.info(f"dumping EWMS attributes to '{args.json_out}'...")

@@ -59,6 +59,12 @@ class SkyScanK8sJobFactory:
         rest_address: str,
         skyscan_mq_client_timeout_wait_for_first_message: int | None,
         scanner_server_env_from_user: dict,
+        request_clusters: list,
+        max_pixel_reco_time: int,
+        max_worker_runtime: int,
+        priority: int,
+        worker_disk_bytes: int,
+        worker_memory_bytes: int,
     ) -> tuple[sdict, str]:
         """Make the K8s job dict.
 
@@ -82,8 +88,16 @@ class SkyScanK8sJobFactory:
 
         ewms_envvars = EnvVarFactory.make_ewms_envvars(
             docker_tag,
-            skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
-            max_pixel_reco_time=max_pixel_reco_time,
+            #
+            request_clusters,
+            #
+            skyscan_mq_client_timeout_wait_for_first_message,
+            max_pixel_reco_time,
+            #
+            max_worker_runtime,
+            priority,
+            worker_disk_bytes,
+            worker_memory_bytes,
         )
 
         # assemble the job
@@ -244,8 +258,16 @@ class EnvVarFactory:
     @staticmethod
     def make_ewms_envvars(
         docker_tag: str,
-        skyscan_mq_client_timeout_wait_for_first_message: int,
+        #
+        request_clusters: list,
+        #
+        skyscan_mq_client_timeout_wait_for_first_message: int | None,
         max_pixel_reco_time: int,
+        #
+        max_worker_runtime: int,
+        priority: int,
+        worker_disk_bytes: int,
+        worker_memory_bytes: int,
     ) -> list[sdict]:
         return [
             {"name": str(k), "value": str(v)}
@@ -255,10 +277,18 @@ class EnvVarFactory:
                 "EWMS_CLIENT_ID": ENV.EWMS_CLIENT_ID,
                 "EWMS_CLIENT_SECRET": ENV.EWMS_CLIENT_SECRET,
                 #
+                "EWMS_CLUSTERS": [cname for cname, _ in request_clusters],
+                "EWMS_N_WORKERS": request_clusters[0][1],
+                #
                 "EWMS_TASK_IMAGE": get_skyscan_cvmfs_singularity_image(docker_tag),
                 #
                 "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
                 "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
+                #
+                "EWMS_WORKER_MAX_WORKER_RUNTIME": max_worker_runtime,
+                "EWMS_WORKER_PRIORITY": priority,
+                "EWMS_WORKER_DISK_BYTES": worker_disk_bytes,
+                "EWMS_WORKER_MEMORY_BYTES": worker_memory_bytes,
             }.items()
             if v is not None
         ]
