@@ -932,7 +932,7 @@ async def _after_scan_start_logic(
     ] == impromptu_uuid
     assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
         "workflow_id": impromptu_uuid,
-        "is_pending_ewms_workflow": True,
+        "is_pending_ewms_workflow": False,
     }
 
     #
