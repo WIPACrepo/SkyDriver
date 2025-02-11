@@ -3,7 +3,6 @@
 import logging
 
 import aiocache  # type: ignore[import-untyped]
-import botocore.client  # type: ignore[import-untyped]
 import requests
 from rest_tools.client import RestClient
 

@@ -9,7 +9,6 @@ import time
 from pathlib import Path
 
 import boto3  # type: ignore[import-untyped]
-import botocore.client  # type: ignore[import-untyped]
 import requests
 from rest_tools.client import ClientCredentialsAuth, RestClient
 from wipac_dev_tools import from_environment_as_dataclass, logging_tools
