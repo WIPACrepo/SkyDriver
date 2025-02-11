@@ -166,6 +166,7 @@ async def _run(
         # 1st: start k8s job -- this could be any k8s job (pre- or post-ewms switchover)
         # ^^^ b/c this uses local resources, if something goes wrong, this limits exposure
         try:
+            LOGGER.info(f"Starting K8s job: scan_id={manifest.scan_id}")
             KubeAPITools.start_job(k8s_batch_api, skyscan_k8s_job)
         except kubernetes.utils.FailToCreateError as e:
             # k8s job (backlog entry) will be revived & restarted in future iteration
@@ -176,6 +177,7 @@ async def _run(
         # 2nd: request a workflow on EWMS
         # ^^^ do after k8s b/c now we know that that was successful
         try:
+            LOGGER.info(f"Requesting EWMS Workflow: scan_id={manifest.scan_id}")
             workflow_id = await ewms.request_workflow_on_ewms(
                 ewms_rc,
                 s3_client,
@@ -187,6 +189,7 @@ async def _run(
             timer_main_loop.fastforward()  # nothing was started, so don't wait long
             continue
         else:
+            LOGGER.info(f"-> {workflow_id=}: scan_id={manifest.scan_id}")
             await manifest_client.collection.find_one_and_update(
                 {"scan_id": manifest.scan_id},
                 {"$set": {"ewms_workflow_id": workflow_id}},
@@ -194,6 +197,7 @@ async def _run(
             )
 
         # remove from backlog now that startup succeeded
+        LOGGER.info(f"Scan successfully started: scan_id={manifest.scan_id}")
         await backlog_client.remove(entry)
         # TODO: remove k8s job doc?
 

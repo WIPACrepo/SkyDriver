@@ -91,6 +91,7 @@ async def request_workflow_on_ewms(
     }
 
     try:
+        LOGGER.info("requesting to ewms...")
         resp = await ewms_rc.request("POST", "/v0/workflows", body)
     except requests.exceptions.HTTPError:
         LOGGER.error("request to ewms failed using:")
