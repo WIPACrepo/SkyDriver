@@ -17,6 +17,8 @@ from rest_tools.client import RestClient
 
 import skydriver.images  # noqa: F401  # export
 
+PENDING_EWMS_WORKFLOW = "pending-ewms"
+
 LOGGER = logging.getLogger(__name__)
 
 skydriver.config.config_logging()
@@ -104,7 +106,7 @@ async def _launch_scan(
         progress=None,
         scanner_server_args=post_resp["scanner_server_args"],  # see below
         ewms_task="use 'ewms_workflow_id'",
-        ewms_workflow_id="pending-ewms",
+        ewms_workflow_id=PENDING_EWMS_WORKFLOW,
         classifiers=post_scan_body["classifiers"],
         last_updated=post_resp["last_updated"],  # see below
         priority=0,
@@ -914,9 +916,9 @@ async def _after_scan_start_logic(
     # -> before
     assert (await rc.request("GET", f"/scan/{scan_id}/manifest"))[
         "ewms_workflow_id"
-    ] == skydriver.database.schema.PENDING_EWMS_WORKFLOW
+    ] == PENDING_EWMS_WORKFLOW
     assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
-        "workflow_id": skydriver.database.schema.PENDING_EWMS_WORKFLOW,
+        "workflow_id": PENDING_EWMS_WORKFLOW,
         "is_pending_ewms_workflow": True,
     }
     # -> update workflow_id
