@@ -138,7 +138,7 @@ class SkyScanK8sJobFactory:
         s3_sidecar_envvars = [
             {
                 "name": "K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
-                "value": "ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
+                "value": ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS,
             }
         ] + EnvVarFactory.make_s3_envvars(scan_id)
 

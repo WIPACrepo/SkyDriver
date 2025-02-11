@@ -308,6 +308,10 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                         },
                                     },
                                     {
+                                        "name": "S3_EXPIRES_IN",
+                                        "value": str(7 * 24 * 60 * 60),
+                                    },
+                                    {
                                         "name": "S3_BUCKET",
                                         "value": os.environ["S3_BUCKET"],
                                     },
@@ -317,7 +321,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     },
                                     {
                                         "name": "K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
-                                        "value": str(15 * 60),
+                                        "value": "900",
                                     },
                                 ],
                                 "image": os.environ["THIS_IMAGE_WITH_TAG"],
@@ -355,7 +359,10 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                         "name": "SKYSCAN_SKYDRIVER_ADDRESS",
                                         "value": rest_address,
                                     },
-                                    {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
+                                    {
+                                        "name": "SKYSCAN_SKYDRIVER_AUTH",
+                                        "value": "",
+                                    },
                                     {
                                         "name": "EWMS_ADDRESS",
                                         "value": os.environ["EWMS_ADDRESS"],
@@ -373,12 +380,46 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                         "value": os.environ["EWMS_CLIENT_SECRET"],
                                     },
                                     {
-                                        "name": "QUEUE_ALIAS_TOCLIENT",
-                                        "value": "to-client-queue",
+                                        "name": "EWMS_CLUSTERS",
+                                        "value": " ".join(
+                                            list(post_scan_body["cluster"].keys())
+                                            if isinstance(
+                                                post_scan_body["cluster"], dict
+                                            )
+                                            else [
+                                                c[0] for c in post_scan_body["cluster"]
+                                            ]
+                                        ),
                                     },
                                     {
-                                        "name": "QUEUE_ALIAS_FROMCLIENT",
-                                        "value": "from-client-queue",
+                                        "name": "EWMS_N_WORKERS",
+                                        "value": "1",
+                                    },
+                                    {
+                                        "name": "EWMS_TASK_IMAGE",
+                                        "value": "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:3.21.2",
+                                    },
+                                    {
+                                        "name": "EWMS_PILOT_TASK_TIMEOUT",
+                                        "value": str(
+                                            post_scan_body["max_pixel_reco_time"]
+                                        ),
+                                    },
+                                    {
+                                        "name": "EWMS_WORKER_MAX_WORKER_RUNTIME",
+                                        "value": "14400",
+                                    },
+                                    {
+                                        "name": "EWMS_WORKER_PRIORITY",
+                                        "value": "0",
+                                    },
+                                    {
+                                        "name": "EWMS_WORKER_DISK_BYTES",
+                                        "value": "1000000000",
+                                    },
+                                    {
+                                        "name": "EWMS_WORKER_MEMORY_BYTES",
+                                        "value": "8000000000",
                                     },
                                 ],
                                 "image": os.environ["THIS_IMAGE_WITH_TAG"],
