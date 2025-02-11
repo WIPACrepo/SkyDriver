@@ -1131,6 +1131,7 @@ class ScanActionEWMSWorkflowIDHandler(BaseSkyDriverHandler):
                 return_document=ReturnDocument.AFTER,
                 return_dclass=dict,
             )
+            manifest.pop("_id")
         except DocumentNotFoundException:
             raise web.HTTPError(
                 404,
