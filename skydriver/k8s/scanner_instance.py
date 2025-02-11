@@ -383,7 +383,7 @@ class EnvVarFactory:
 
         # 3. generate & add auth tokens
         tokens = {
-            "SKYSCAN_SKYDRIVER_AUTH": SkyScanK8sJobFactory._get_token_from_keycloak(
+            "SKYSCAN_SKYDRIVER_AUTH": EnvVarFactory._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
