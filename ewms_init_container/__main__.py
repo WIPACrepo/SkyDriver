@@ -47,9 +47,6 @@ class EnvConfig:
     EWMS_WORKER_DISK_BYTES: int
     EWMS_WORKER_MEMORY_BYTES: int
 
-    QUEUE_ALIAS_TOCLIENT: str
-    QUEUE_ALIAS_FROMCLIENT: str
-
     S3_URL: str
     S3_ACCESS_KEY_ID: str
     S3_SECRET_KEY: str
