@@ -23,11 +23,13 @@ async def request_stop_on_ewms(
     """
     try:
         if abort:
+            LOGGER.info(f"sending 'abort' signal to ewms for {workflow_id=}...")
             await ewms_rc.request(
                 "POST",
                 f"/v0/workflows/{workflow_id}/actions/abort",
             )
         else:
+            LOGGER.info(f"sending 'finished' signal to ewms for {workflow_id=}...")
             await ewms_rc.request(
                 "POST",
                 f"/v0/workflows/{workflow_id}/actions/finished",

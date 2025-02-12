@@ -670,6 +670,7 @@ async def stop_skyscan_workers(
 ) -> database.schema.Manifest:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     manifest = await manifests.get(scan_id, True)
+    LOGGER.info(f"stopping (ewms) workers for {scan_id=}...")
 
     # request to ewms
     if manifest.ewms_workflow_id:
@@ -1000,7 +1001,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
         self.write(dc.asdict(result_dc))
 
         # END #
-        self.finish()
+        await self.finish()
         # AFTER RESPONSE #
 
         # when we get the final result, it's time to tear down
