@@ -81,7 +81,7 @@ async def launch_a_scan(
     return manifest  # type: ignore[no-any-return]
 
 
-async def monitor(  # noqa: MFL000
+async def monitor(  # noqa: C901
     rc: RestClient,
     scan_id: str,
     log_file: Path | None = None,
