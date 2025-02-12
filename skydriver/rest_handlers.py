@@ -1,7 +1,6 @@
 """Handlers for the SkyDriver REST API server interface."""
 
 import argparse
-import asyncio
 import dataclasses as dc
 import json
 import logging
@@ -52,7 +51,6 @@ SIM_CHOICES = ["sim", "simulated", "simulated_event"]
 
 MAX_CLASSIFIERS_LEN = 25
 
-WAIT_BEFORE_TEARDOWN = 60
 
 # -----------------------------------------------------------------------------
 # REST requestor auth
@@ -1003,23 +1001,17 @@ class ScanResultHandler(BaseSkyDriverHandler):
             args.skyscan_result,
             args.is_final,
         )
-        self.write(dc.asdict(result_dc))
-
-        # END #
-        await self.finish()
-        # AFTER RESPONSE #
 
         # when we get the final result, it's time to tear down
         if args.is_final:
-            await asyncio.sleep(
-                WAIT_BEFORE_TEARDOWN
-            )  # regular time.sleep() sleeps the entire server
             await stop_skyscan_workers(
                 self.manifests,
                 scan_id,
                 self.ewms_rc,
                 abort=False,
             )
+
+        self.write(dc.asdict(result_dc))
 
 
 # -----------------------------------------------------------------------------
