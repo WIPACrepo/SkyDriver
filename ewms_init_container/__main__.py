@@ -177,8 +177,8 @@ async def get_ewms_attrs(
     LOGGER.info(f"mqprofiles: {mqprofiles}")
 
     # convert mqprofiles to dicts based on the queue aliases
-    toclient = next(p for p in mqprofiles if p["alias"] == ENV.QUEUE_ALIAS_TOCLIENT)
-    fromclient = next(p for p in mqprofiles if p["alias"] == ENV.QUEUE_ALIAS_FROMCLIENT)
+    toclient = next(p for p in mqprofiles if p["alias"] == QUEUE_ALIAS_TOCLIENT)
+    fromclient = next(p for p in mqprofiles if p["alias"] == QUEUE_ALIAS_FROMCLIENT)
 
     return {  # NOTE: these fields are accessed by name in the skymap scanner
         "toclient": {
