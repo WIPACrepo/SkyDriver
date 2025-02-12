@@ -927,9 +927,8 @@ async def _after_scan_start_logic(
         "POST", f"/scan/{scan_id}/ewms/workflow-id", {"workflow_id": impromptu_uuid}
     )
     # -> after
-    assert (await rc.request("GET", f"/scan/{scan_id}/manifest"))[
-        "ewms_workflow_id"
-    ] == impromptu_uuid
+    manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    assert manifest["ewms_workflow_id"] == impromptu_uuid
     assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
         "workflow_id": impromptu_uuid,
         "is_pending_ewms_workflow": False,
