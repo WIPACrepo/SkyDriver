@@ -6,7 +6,6 @@ import os
 import pprint
 import re
 import time
-import uuid
 from typing import Any, Callable
 
 import humanfriendly
@@ -16,6 +15,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from rest_tools.client import RestClient
 
 import skydriver.images  # noqa: F401  # export
+from skydriver.__main__ import setup_ewms_client
 
 PENDING_EWMS_WORKFLOW = "pending-ewms"
 
@@ -921,15 +921,16 @@ async def _after_scan_start_logic(
         "is_pending_ewms_workflow": True,
     }
     # -> update workflow_id
-    impromptu_uuid = uuid.uuid4().hex
+    resp = await setup_ewms_client().request("POST", "/v0/workflows", {"foo": "bar"})
+    workflow_id = resp["workflow"]["workflow_id"]
     await rc.request(
-        "POST", f"/scan/{scan_id}/ewms/workflow-id", {"workflow_id": impromptu_uuid}
+        "POST", f"/scan/{scan_id}/ewms/workflow-id", {"workflow_id": workflow_id}
     )
     # -> after
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert manifest["ewms_workflow_id"] == impromptu_uuid
+    assert manifest["ewms_workflow_id"] == workflow_id
     assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
-        "workflow_id": impromptu_uuid,
+        "workflow_id": workflow_id,
         "is_pending_ewms_workflow": False,
     }
 
