@@ -98,7 +98,7 @@ async def monitor(  # noqa: MFL000
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
     print_now(json.dumps(resp, indent=4))
 
-    prev_result = {}
+    prev_result: dict = {}
 
     # loop w/ sleep
     while True:
