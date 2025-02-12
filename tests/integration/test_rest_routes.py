@@ -871,6 +871,7 @@ async def test_000(
     docker_tag_expected: str,
     server: Callable[[], RestClient],
     known_clusters: dict,
+    test_wait_before_teardown: float,
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> None:
     """Test normal scan creation and retrieval."""
@@ -890,12 +891,14 @@ async def test_000(
     await _after_scan_start_logic(
         rc,
         manifest,
+        test_wait_before_teardown,
     )
 
 
 async def _after_scan_start_logic(
     rc: RestClient,
     manifest: sdict,
+    test_wait_before_teardown: float,
 ):
     scan_id = manifest["scan_id"]
 
@@ -962,7 +965,7 @@ async def _after_scan_start_logic(
     assert not await _is_scan_complete(rc, manifest["scan_id"])  # workforce is not done
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
-    await asyncio.sleep(1)
+    await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert await _is_scan_complete(rc, manifest["scan_id"])  # workforce is done
 
@@ -986,6 +989,7 @@ POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 async def test_010__rescan(
     server: Callable[[], RestClient],
     known_clusters: dict,
+    test_wait_before_teardown: float,
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> None:
     rc = server()
@@ -1006,6 +1010,7 @@ async def test_010__rescan(
     await _after_scan_start_logic(
         rc,
         manifest_alpha,
+        test_wait_before_teardown,
     )
 
     # RESCAN
@@ -1028,6 +1033,7 @@ async def test_010__rescan(
     await _after_scan_start_logic(
         rc,
         manifest_beta,
+        test_wait_before_teardown,
     )
 
 
@@ -1037,6 +1043,7 @@ async def test_010__rescan(
 async def test_100__bad_data(
     server: Callable[[], RestClient],
     known_clusters: dict,
+    test_wait_before_teardown: float,
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> None:
     """Failure-test scan creation and retrieval."""
@@ -1252,7 +1259,7 @@ async def test_100__bad_data(
     # OK
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
-    await asyncio.sleep(1)
+    await asyncio.sleep(test_wait_before_teardown)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert await _is_scan_complete(rc, manifest["scan_id"])  # workforce is done
 

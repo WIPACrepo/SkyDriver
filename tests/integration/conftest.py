@@ -109,6 +109,14 @@ def known_clusters() -> dict:
     return KNOWN_CLUSTERS
 
 
+TEST_WAIT_BEFORE_TEARDOWN = 2.0
+
+
+@pytest.fixture(scope="session")
+def test_wait_before_teardown() -> float:
+    return TEST_WAIT_BEFORE_TEARDOWN
+
+
 @pytest_asyncio.fixture
 async def mongo_client() -> AsyncIOMotorClient:  # type: ignore[valid-type]
     """A fixture to keep number of mongo connections to a minimum (aka 1)."""
@@ -133,13 +141,16 @@ async def server(
 
 
 async def _server(
-    monkeypatch: Any,
-    port: int,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+        monkeypatch: Any,
+        port: int,
+        mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> AsyncIterator[Callable[[], RestClient]]:
     # patch at directly named import that happens before running the test
     monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
     monkeypatch.setattr(skydriver.config, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
+    monkeypatch.setattr(
+        skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
+    )
 
     k8s_batch_api = Mock()
     ewms_rc = setup_ewms_client()
