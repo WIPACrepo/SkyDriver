@@ -81,7 +81,11 @@ async def launch_a_scan(
     return manifest  # type: ignore[no-any-return]
 
 
-async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) -> dict:
+async def monitor(  # noqa: MFL000
+    rc: RestClient,
+    scan_id: str,
+    log_file: Path | None = None,
+) -> dict:
     """Monitor the event scan until its done.
 
     Return the result.
