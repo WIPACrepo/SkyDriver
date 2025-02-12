@@ -765,7 +765,12 @@ class ScanHandler(BaseSkyDriverHandler):
         # mark as deleted -> also stops backlog from starting
         manifest = await self.manifests.mark_as_deleted(scan_id)
         # abort
-        await stop_skyscan_workers(self.manifests, scan_id, self.ewms_rc, abort=True)
+        await stop_skyscan_workers(
+            self.manifests,
+            scan_id,
+            self.ewms_rc,
+            abort=True,
+        )
 
         try:
             result_dict = dc.asdict(await self.results.get(scan_id))
