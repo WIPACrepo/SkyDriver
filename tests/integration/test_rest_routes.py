@@ -914,9 +914,8 @@ async def _after_scan_start_logic(
 
     # mimic the ewms-init container...
     # -> before
-    assert (await rc.request("GET", f"/scan/{scan_id}/manifest"))[
-        "ewms_workflow_id"
-    ] == PENDING_EWMS_WORKFLOW
+    manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    assert manifest["ewms_workflow_id"] == PENDING_EWMS_WORKFLOW
     assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
         "workflow_id": PENDING_EWMS_WORKFLOW,
         "is_pending_ewms_workflow": True,
