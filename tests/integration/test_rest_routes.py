@@ -385,7 +385,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     {"name": "EWMS_N_WORKERS", "value": "1"},
                                     {
                                         "name": "EWMS_TASK_IMAGE",
-                                        "value": "/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:3.21.2",
+                                        "value": f"/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:{docker_tag_expected}",
                                     },
                                     {
                                         "name": "EWMS_PILOT_TASK_TIMEOUT",
