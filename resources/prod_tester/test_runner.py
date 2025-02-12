@@ -92,6 +92,7 @@ async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) ->
 
     # loop w/ sleep
     while True:
+        print("-" * 60, file=out, flush=True)
         # get result
         try:
             resp = await rc.request("GET", f"/scan/{scan_id}/status")
