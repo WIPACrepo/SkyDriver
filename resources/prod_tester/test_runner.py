@@ -122,13 +122,12 @@ async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) ->
                 prev_result = resp
             else:
                 print_now("<no change in result>")
-        except Exception as e:
-            print_now(f"suppressed error: {repr(e)}")
-        else:
             if resp["scan_complete"]:
                 print_now("scan is done!")
                 print_now(scan_id)
                 return resp["skyscan_result"]
+        except Exception as e:
+            print_now(f"suppressed error: {repr(e)}")
 
         # done? else, wait
         print_now(scan_id)
