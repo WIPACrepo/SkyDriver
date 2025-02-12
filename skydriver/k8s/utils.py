@@ -25,6 +25,7 @@ class KubeAPITools:
         if not job_dict:
             raise ValueError("Job object not created")
 
+        LOGGER.info("K8s Job:")
         LOGGER.info(job_dict)
 
         try:
