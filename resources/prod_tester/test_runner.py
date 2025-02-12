@@ -87,39 +87,49 @@ async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) ->
     Return the result.
     """
     out = open(log_file, "w") if log_file else sys.stdout
+
+    def print_now(string: str):
+        print(string, file=out, flush=True)  # fyi: pprint doesn't have flush
+
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    print(json.dumps(resp, indent=4), file=out, flush=True)
+    print_now(json.dumps(resp, indent=4))
+
+    prev_result = {}
 
     # loop w/ sleep
     while True:
-        print("-" * 60, file=out, flush=True)
+        print_now("-" * 60)
         # get result
         try:
             resp = await rc.request("GET", f"/scan/{scan_id}/status")
-            print(pformat(resp), file=out, flush=True)  # pprint doesn't have flush
+            print_now(pformat(resp))  # pprint doesn't have flush
         except Exception as e:  # 404 (scanner not yet online)
-            print(f"suppressed error: {repr(e)}", file=out, flush=True)
+            print_now(f"suppressed error: {repr(e)}")
 
         # get progress
         try:
             resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-            print(json.dumps(resp["progress"], indent=4), file=out, flush=True)
+            print_now(json.dumps(resp["progress"], indent=4))
         except Exception as e:
             # 404 (scanner not yet online) or KeyError (no progress yet)
-            print(f"suppressed error: {repr(e)}", file=out, flush=True)
+            print_now(f"suppressed error: {repr(e)}")
 
         # get status
         try:
             resp = await rc.request("GET", f"/scan/{scan_id}/result")
-            print(pformat(resp), file=out, flush=True)  # pprint doesn't have flush
+            if prev_result != resp:
+                print_now(pformat(resp))
+                prev_result = resp
+            else:
+                print_now("<no change in result>")
         except Exception as e:
-            print(f"suppressed error: {repr(e)}", file=out, flush=True)
+            print_now(f"suppressed error: {repr(e)}")
         else:
             if resp["scan_complete"]:
-                print("scan is done!", file=out, flush=True)
-                print(scan_id, file=out, flush=True)
+                print_now("scan is done!")
+                print_now(scan_id)
                 return resp["skyscan_result"]
 
         # done? else, wait
-        print(scan_id, file=out, flush=True)
+        print_now(scan_id)
         await asyncio.sleep(60)
