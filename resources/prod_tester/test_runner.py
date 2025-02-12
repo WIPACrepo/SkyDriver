@@ -100,7 +100,7 @@ async def monitor(  # noqa: MFL000
 
     prev_result: dict = {}
 
-    # loop w/ sleep
+    # loop w/ sleeps
     while True:
         print_now("-" * 60)
         # get result
