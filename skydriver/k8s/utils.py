@@ -1,6 +1,5 @@
 """An interface to the Kubernetes cluster."""
 
-import json
 import logging
 from typing import Any, Iterator
 
@@ -26,7 +25,7 @@ class KubeAPITools:
         if not job_dict:
             raise ValueError("Job object not created")
 
-        LOGGER.info(json.dumps(job_dict, indent=0))  # otherwise huge
+        LOGGER.info(job_dict)
 
         try:
             resp = kubernetes.utils.create_from_dict(
