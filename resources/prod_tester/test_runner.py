@@ -87,51 +87,38 @@ async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) ->
     Return the result.
     """
     out = open(log_file, "w") if log_file else sys.stdout
-    result_resp = {}
-
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
     print(json.dumps(resp, indent=4), file=out, flush=True)
 
     # loop w/ sleep
-    done = False
     while True:
         # get result
         try:
-            result_resp = await rc.request("GET", f"/scan/{scan_id}/result")
-            print(
-                pformat(result_resp), file=out, flush=True
-            )  # pprint doesn't have flush
+            resp = await rc.request("GET", f"/scan/{scan_id}/status")
+            print(pformat(resp), file=out, flush=True)  # pprint doesn't have flush
         except Exception as e:  # 404 (scanner not yet online)
             print(f"suppressed error: {repr(e)}", file=out, flush=True)
 
         # get progress
         try:
             resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-            progress = resp["progress"]
-            print(
-                json.dumps(progress["processing_stats"].pop("rate"), indent=4),
-                file=out,
-                flush=True,
-            )
-            print(json.dumps(progress, indent=4), file=out, flush=True)
+            print(json.dumps(resp["progress"], indent=4), file=out, flush=True)
         except Exception as e:
             # 404 (scanner not yet online) or KeyError (no progress yet)
             print(f"suppressed error: {repr(e)}", file=out, flush=True)
 
         # get status
         try:
-            result_resp = await rc.request("GET", f"/scan/{scan_id}/status")
-            print(
-                pformat(result_resp), file=out, flush=True
-            )  # pprint doesn't have flush
-            done = result_resp["scan_complete"]
+            resp = await rc.request("GET", f"/scan/{scan_id}/result")
+            print(pformat(resp), file=out, flush=True)  # pprint doesn't have flush
         except Exception as e:
             print(f"suppressed error: {repr(e)}", file=out, flush=True)
+        else:
+            if resp["scan_complete"]:
+                print("scan is done!", file=out, flush=True)
+                print(scan_id, file=out, flush=True)
+                return resp["skyscan_result"]
 
         # done? else, wait
         print(scan_id, file=out, flush=True)
-        if done:
-            print("scan is done!", file=out, flush=True)
-            return result_resp["skyscan_result"]
-        else:
-            await asyncio.sleep(60)
+        await asyncio.sleep(60)
