@@ -101,12 +101,15 @@ async def monitor(  # noqa: C901
     prev_result: dict = {}
 
     # loop w/ sleep
-    while True:
+    done = False
+    while not done:
         print_now("-" * 60)
-        # get result
+
+        # get status
         try:
             resp = await rc.request("GET", f"/scan/{scan_id}/status")
             print_now(pformat(resp))  # pprint doesn't have flush
+            done = resp["scan_complete"]  # loop control
         except Exception as e:  # 404 (scanner not yet online)
             print_now(f"suppressed error: {repr(e)}")
 
@@ -118,7 +121,7 @@ async def monitor(  # noqa: C901
             # 404 (scanner not yet online) or KeyError (no progress yet)
             print_now(f"suppressed error: {repr(e)}")
 
-        # get status
+        # get result
         try:
             resp = await rc.request("GET", f"/scan/{scan_id}/result")
             if prev_result != resp:
@@ -126,13 +129,14 @@ async def monitor(  # noqa: C901
                 prev_result = resp
             else:
                 print_now("<no change in result>")
-            if resp["scan_complete"]:
-                print_now("scan is done!")
-                print_now(scan_id)
-                return resp["skyscan_result"]
         except Exception as e:
             print_now(f"suppressed error: {repr(e)}")
 
         # done? else, wait
-        print_now(scan_id)
-        await asyncio.sleep(60)
+        if not done:
+            print_now(scan_id)
+            await asyncio.sleep(60)
+
+    print_now("scan is done!")
+    print_now(scan_id)
+    return (await rc.request("GET", f"/scan/{scan_id}/result"))["skyscan_result"]
