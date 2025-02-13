@@ -60,7 +60,7 @@ async def get_deactivated_type(ewms_rc: RestClient, workflow_id: str) -> str | N
 @aiocache.cached(ttl=1 * 60)  # don't cache too long, but avoid spamming ewms
 async def get_taskforce_infos(
     ewms_rc: RestClient,
-    workflow_id: str,
+    workflow_id: str | None,
 ) -> list[sdict]:
     """Get all info of all the taskforces associated with the workflow."""
     if workflow_id == PENDING_EWMS_WORKFLOW or (not workflow_id):
@@ -80,7 +80,7 @@ async def get_taskforce_infos(
 
 async def get_workforce_statuses(
     ewms_rc: RestClient,
-    workflow_id: str,
+    workflow_id: str | None,
 ) -> dict[str, dict[str, dict[str, int]] | int]:
     """Get the compound statuses for the entire workflow's workforce (aka its taskforces),
     along with the number of currently running workers.
@@ -96,7 +96,7 @@ async def get_workforce_statuses(
     tf_state_dicts = await get_taskforce_infos(ewms_rc, workflow_id)
 
     # merge & sum the compound statuses
-    merged = defaultdict(lambda: defaultdict(int))
+    merged: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for state in tf_state_dicts:
         d = state["compound_statuses"]
         for outer_key, inner_dict in d.items():
