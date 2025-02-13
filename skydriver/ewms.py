@@ -104,9 +104,16 @@ async def get_workforce_statuses(
             for inner_key, value in inner_dict.items():
                 merged[outer_key][inner_key] += value
 
+    # compute `n_running`, excluding 'FatalError'
+    n_running = sum(
+        count
+        for substatus, count in merged.get("RUNNING", {}).items()
+        if substatus != "FatalError"
+    )
+
     return {
         "statuses": {k: dict(v) for k, v in merged.items()},  # convert to dict
-        "n_running": sum(merged.get("RUNNING", {}).values()),
+        "n_running": n_running,
         # NOTE: it's tempting to sum other statuses' counts, but not all
         # statuses are mutually exclusive -- iow, ewms may double count for some jobs
     }
