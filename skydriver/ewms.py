@@ -98,7 +98,8 @@ async def get_workforce_statuses(
     # merge & sum the compound statuses
     merged: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for state in tf_state_dicts:
-        d = state["compound_statuses"]
+        if not (d := state.get("compound_statuses")):
+            continue
         for outer_key, inner_dict in d.items():
             for inner_key, value in inner_dict.items():
                 merged[outer_key][inner_key] += value
