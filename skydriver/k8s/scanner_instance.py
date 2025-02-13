@@ -283,7 +283,7 @@ class EnvVarFactory:
                 "EWMS_TASK_IMAGE": get_skyscan_cvmfs_singularity_image(docker_tag),
                 #
                 "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
-                "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
+                "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.EWMS_PILOT_TIMEOUT_QUEUE_INCOMING,
                 "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
                 #
                 "EWMS_WORKER_MAX_WORKER_RUNTIME": max_worker_runtime,
@@ -364,7 +364,6 @@ class EnvVarFactory:
             "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
             "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
             #
-            "SKYSCAN_MQ_TIMEOUT_TO_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
             #
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,

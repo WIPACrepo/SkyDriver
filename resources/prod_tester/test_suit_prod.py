@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import tarfile
 from datetime import datetime
 from pathlib import Path
@@ -359,4 +360,5 @@ async def main():
 
 # Run the asyncio event loop
 if __name__ == "__main__":
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "icecube-skyreader"])
     asyncio.run(main())

@@ -3,7 +3,7 @@
 import dataclasses as dc
 import enum
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from wipac_dev_tools import from_environment_as_dataclass, logging_tools
 
@@ -96,6 +96,7 @@ class EnvConfig:
     EWMS_WORKER_MEMORY__DEFAULT: str = "8GB"
     EWMS_WORKER_DISK__DEFAULT: str = "1GB"
     EWMS_MAX_WORKER_RUNTIME__DEFAULT: int = 4 * 60 * 60  # 4 hours
+    EWMS_PILOT_TIMEOUT_QUEUE_INCOMING: int | None = None
     # note: other EWMS vars at top of class
 
     # keycloak
@@ -104,12 +105,11 @@ class EnvConfig:
     KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST: str = ""
 
     # skyscan (forwarded)
-    SKYSCAN_PROGRESS_INTERVAL_SEC: Optional[int] = None
-    SKYSCAN_RESULT_INTERVAL_SEC: Optional[int] = None
-    SKYSCAN_MQ_TIMEOUT_TO_CLIENTS: Optional[int] = None
-    SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS: Optional[int] = None
-    SKYSCAN_LOG: Optional[str] = None
-    SKYSCAN_LOG_THIRD_PARTY: Optional[str] = None
+    SKYSCAN_PROGRESS_INTERVAL_SEC: int | None = None
+    SKYSCAN_RESULT_INTERVAL_SEC: int | None = None
+    SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS: int | None = None
+    SKYSCAN_LOG: str | None = None
+    SKYSCAN_LOG_THIRD_PARTY: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
