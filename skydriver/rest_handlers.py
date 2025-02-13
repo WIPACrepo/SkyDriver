@@ -1038,17 +1038,6 @@ class ScanStatusHandler(BaseSkyDriverHandler):
         # scan state
         scan_state = await get_scan_state(manifest, self.ewms_rc, self.results)
 
-        # ewms
-        if (
-            manifest.ewms_workflow_id
-            and manifest.ewms_workflow_id != PENDING_EWMS_WORKFLOW
-        ):
-            clusters = await ewms.get_taskforce_phases(
-                self.ewms_rc, manifest.ewms_workflow_id
-            )
-        else:
-            clusters = []
-
         # respond
         resp = {
             "scan_state": scan_state,
@@ -1059,7 +1048,10 @@ class ScanStatusHandler(BaseSkyDriverHandler):
                     self.k8s_batch_api, manifest.scan_id
                 ),
             },
-            "ewms_workforce": clusters,
+            "ewms_workforce": await ewms.get_workforce_statuses(
+                self.ewms_rc, manifest.ewms_workflow_id
+            ),
+            # ^^^ same as '/scan/<scan_id>/ewms/workforce'
         }
         self.write(resp)
 
@@ -1097,7 +1089,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):
 # -----------------------------------------------------------------------------
 
 
-class ScanActionEWMSWorkflowIDHandler(BaseSkyDriverHandler):
+class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     """Handles actions on scan's ewms workflow id."""
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/ewms/workflow-id$"
@@ -1151,3 +1143,50 @@ class ScanActionEWMSWorkflowIDHandler(BaseSkyDriverHandler):
 
 
 # -----------------------------------------------------------------------------
+
+
+class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
+    """Handles actions for a scan's ewms workforce (condor workers)."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/ewms/workforce$"
+
+    @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
+        """GET.
+
+        This is a high-level utility, which removes unnecessary EWMS semantics.
+        """
+        manifest = await self.manifests.get(scan_id, incl_del=True)
+
+        self.write(
+            await ewms.get_workforce_statuses(
+                self.ewms_rc,
+                manifest.ewms_workflow_id,
+            )
+        )
+
+
+# -----------------------------------------------------------------------------
+
+
+class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
+    """Handles actions for a scan's ewms taskforces (condor job submissions/clusters)."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/ewms/taskforces$"
+
+    @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
+        """GET.
+
+        This is useful for debugging by seeing what was sent to condor.
+        """
+        manifest = await self.manifests.get(scan_id, incl_del=True)
+
+        self.write(
+            {
+                "taskforces": await ewms.get_taskforce_infos(
+                    self.ewms_rc,
+                    manifest.ewms_workflow_id,
+                )
+            }
+        )
