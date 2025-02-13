@@ -1,12 +1,21 @@
 """Utility functions that don't fit anywhere else."""
 
 import enum
+import time
+import uuid
 
 from rest_tools.client import RestClient
 from tornado import web
 
 from . import database, ewms
 from .database.schema import DEPRECATED_EWMS_TASK, Manifest, PENDING_EWMS_WORKFLOW
+
+
+def make_scan_id() -> str:
+    """Make a new scan id."""
+    hex_time = str(hex(int(time.time()))).removeprefix("0x")
+    hex_uuid_less = uuid.uuid4().hex[len(hex_time) :]
+    return f"{hex_time}{hex_uuid_less}"
 
 
 class _ScanState(enum.Enum):

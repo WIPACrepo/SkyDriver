@@ -39,7 +39,11 @@ from .database.schema import PENDING_EWMS_WORKFLOW
 from .ewms import request_stop_on_ewms
 from .k8s.scan_backlog import put_on_backlog
 from .k8s.scanner_instance import SkyScanK8sJobFactory, assemble_scanner_server_logs_url
-from .utils import does_scan_state_indicate_final_result_received, get_scan_state
+from .utils import (
+    does_scan_state_indicate_final_result_received,
+    get_scan_state,
+    make_scan_id,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -473,7 +477,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                     )
 
         # generate unique scan_id
-        scan_id = uuid.uuid4().hex
+        scan_id = make_scan_id()
 
         # Before doing anything else, persist in DB
         # -> store the event in its own collection to reduce redundancy
@@ -619,7 +623,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         args = arghand.parse_args()
 
         # generate unique scan_id
-        new_scan_id = uuid.uuid4().hex
+        new_scan_id = make_scan_id()
 
         # grab the 'scan_request_obj'
         scan_request_obj = await self.scan_request_coll.find_one_and_update(
