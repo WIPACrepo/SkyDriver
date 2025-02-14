@@ -358,13 +358,3 @@ class ScanBacklogClient:
             return_dclass=dict,
         ):
             yield entry
-
-    async def is_in_backlog(self, scan_id: str) -> bool:
-        """Return whether the scan id is in the backlog."""
-        LOGGER.debug(f"looking for {scan_id} in backlog")
-        async for _ in self.collection.find(
-            {"scan_id": scan_id},
-            return_dclass=dict,
-        ):
-            return True
-        return False
