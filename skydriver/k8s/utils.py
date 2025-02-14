@@ -49,11 +49,13 @@ class KubeAPITools:
             LOGGER.info(f"K8s Job (attempt #{i+1}):")
             LOGGER.info(job_dict)
             try:
-                return kubernetes.utils.create_from_dict(
+                resp = kubernetes.utils.create_from_dict(
                     k8s_batch_api.api_client,
                     job_dict,
                     namespace=ENV.K8S_NAMESPACE,
                 )
+                LOGGER.info("k8s job successfully created!")
+                return resp
             except Exception as e:  # broad b/c re-raising
                 if inf_retry_on_transient_errors and is_known_k8s_transient_error(e):
                     LOGGER.warning(
