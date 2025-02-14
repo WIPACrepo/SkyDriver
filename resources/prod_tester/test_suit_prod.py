@@ -154,14 +154,16 @@ def display_test_status(tests: list[test_getter.TestParamSet]):
     )
     table = texttable.Texttable()
 
+    scan_id_len = 10
+
     # columns
     table.add_row(["#", "Event File", "Reco Algo", "Scan ID", "Status"])
     table.set_cols_align(["r", "l", "l", "r", "l"])
-    table.set_cols_width([2, 25, 18, 10, 10])
+    table.set_cols_width([2, 25, 18, scan_id_len, 10])
 
     # Add rows for each test
     for i, test in sorted_tests:
-        scan_id = test.scan_id[:8] if test.scan_id else "N/A"
+        scan_id = test.scan_id[:scan_id_len] if test.scan_id else "N/A"
         status = test.test_status.name
         table.add_row([i, test.event_file.name, test.reco_algo, scan_id, status])
 
