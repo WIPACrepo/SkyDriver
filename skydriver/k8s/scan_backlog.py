@@ -166,7 +166,9 @@ async def _run(
         # start k8s job -- this could be any k8s job (pre- or post-ewms switchover)
         try:
             LOGGER.info(f"Starting K8s job: scan_id={manifest.scan_id}")
-            KubeAPITools.start_job(k8s_batch_api, skyscan_k8s_job)
+            await KubeAPITools.start_job(
+                k8s_batch_api, skyscan_k8s_job, inf_retry_on_transient_errors=True
+            )
         except kubernetes.utils.FailToCreateError as e:
             # k8s job (backlog entry) will be revived & restarted in future iteration
             LOGGER.exception(e)

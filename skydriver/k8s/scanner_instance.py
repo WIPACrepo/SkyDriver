@@ -410,8 +410,9 @@ def assemble_scanner_server_logs_url(
                 f"&var-container={get_skyscan_server_container_name(scan_id)}"
             )
     except Exception as e:
-        LOGGER.error(f"there was an issue retrieving k8s pod(s) for {scan_id=}")
-        LOGGER.exception(e)
+        LOGGER.error(
+            f"there was an issue retrieving k8s pod(s) for {scan_id=}: {repr(e)}"
+        )
 
     # fall-through
     return "404"  # don't return exception info for security reasons

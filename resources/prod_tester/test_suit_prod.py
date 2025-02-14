@@ -154,12 +154,10 @@ def display_test_status(tests: list[test_getter.TestParamSet]):
     )
     table = texttable.Texttable()
 
-    # Define column alignment and widths
-    table.set_cols_align(["r", "l", "l", "r", "l"])
-    table.set_cols_width([2, 25, 20, 8, 10])
-
-    # Add the header row
+    # columns
     table.add_row(["#", "Event File", "Reco Algo", "Scan ID", "Status"])
+    table.set_cols_align(["r", "l", "l", "r", "l"])
+    table.set_cols_width([2, 25, 18, 10, 10])
 
     # Add rows for each test
     for i, test in sorted_tests:
