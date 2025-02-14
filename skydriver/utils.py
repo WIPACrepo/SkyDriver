@@ -12,10 +12,11 @@ from .database.schema import DEPRECATED_EWMS_TASK, Manifest, PENDING_EWMS_WORKFL
 
 
 def make_scan_id() -> str:
-    """Make a new scan id."""
-    hex_time = str(hex(int(time.time()))).removeprefix("0x")
-    hex_uuid_less = uuid.uuid4().hex[len(hex_time) :]
-    return f"{hex_time}{hex_uuid_less}"
+    """Make a new scan id, chronological when sorted."""
+    big_time = int(time.time() * 100)
+    hex_big_time = str(hex(big_time)).removeprefix("0x")
+    hex_uuid_short = uuid.uuid4().hex[len(hex_big_time) :]
+    return f"{hex_big_time}{hex_uuid_short}"
 
 
 class _ScanState(enum.Enum):
