@@ -59,7 +59,7 @@ class KubeAPITools:
                     LOGGER.warning(
                         f"encountered a transient error in the k8s namespace, "
                         f"trying again in {ENV.K8S_START_JOB_TRANSIENT_ERROR_RETRY_DELAY}s"
-                        ": {repr(e)}"
+                        f": {repr(e)}"
                     )
                     # maybe next time, it'll be ok
                     await asyncio.sleep(ENV.K8S_START_JOB_TRANSIENT_ERROR_RETRY_DELAY)
