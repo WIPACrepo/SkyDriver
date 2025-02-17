@@ -135,8 +135,12 @@ async def _run(
         )
     )
 
-    timer_main_loop = IntervalTimer(ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
-    timer_logging = IntervalTimer(ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
+    timer_main_loop = IntervalTimer(
+        ENV.SCAN_BACKLOG_RUNNER_DELAY, f"{LOGGER.name}.timer"
+    )
+    timer_logging = IntervalTimer(
+        ENV.SCAN_BACKLOG_RUNNER_DELAY, f"{LOGGER.name}.heartbeat_timer"
+    )
 
     # main loop
     while True:

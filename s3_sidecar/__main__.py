@@ -86,13 +86,9 @@ def main() -> None:
     args = parser.parse_args()
     logging_tools.log_argparse_args(args)
 
-    housekeeping_timer = IntervalTimer(
-        5,
-        logging.getLogger(f"{LOGGER.name}.housekeeping"),
-    )
+    housekeeping_timer = IntervalTimer(5, f"{LOGGER.name}.housekeeping")
     lifetime_timer = IntervalTimer(
-        ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS,
-        logging.getLogger(f"{LOGGER.name}.lifetime_timer"),
+        ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS, f"{LOGGER.name}.lifetime_timer"
     )
 
     if args.wait_indefinitely:
