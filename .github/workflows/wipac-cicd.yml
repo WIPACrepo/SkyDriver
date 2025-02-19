@@ -41,6 +41,7 @@ jobs:
   #############################################################################
 
   flake8:
+    needs: [ py-versions ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
