@@ -42,9 +42,15 @@ jobs:
 
   flake8:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.py3 }}
       - uses: WIPACrepo/wipac-dev-flake8-action@v1.2
         with:
           max-complexity: 10
