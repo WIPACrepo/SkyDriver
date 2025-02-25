@@ -70,6 +70,7 @@ async def launch_a_scan(
         "priority": 100,
         "scanner_server_env": {
             "SKYSCAN_MINI_TEST": True,
+            "_SKYSCAN_CI_MINI_TEST": True,  # env var changed to this in the "skydriver 2"-ready scanner
         },
         "classifiers": {
             "_TEST": True,
