@@ -160,6 +160,7 @@ def display_test_status(tests: list[test_getter.TestParamSet]):
     table.add_row(["#", "Event File", "Reco Algo", "Scan ID", "Status"])
     table.set_cols_align(["r", "l", "l", "r", "l"])
     table.set_cols_width([2, 25, 18, scan_id_len, 10])
+    table.set_cols_dtype(["i", "t", "t", "t", "t"])
 
     # Add rows for each test
     for i, test in sorted_tests:
