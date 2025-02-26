@@ -78,6 +78,19 @@ async def get_taskforce_infos(
     return resp["taskforces"]
 
 
+def _increment_counts(target: defaultdict[str, int], source: dict[str, int]):
+    """Increment the counts in `target` by the corresponding values in `source`.
+
+    Example:
+        target = {"Tasking": 24}
+        source = {"Tasking": 20, "Processing": 7}
+        _increment_counts(target, source)
+        # target becomes {"Tasking": 44, "Processing": 7}
+    """
+    for inner_key, value in source.items():
+        target[inner_key] += value
+
+
 async def get_workforce_statuses(
     ewms_rc: RestClient,
     workflow_id: str | None,
@@ -96,23 +109,24 @@ async def get_workforce_statuses(
     tf_state_dicts = await get_taskforce_infos(ewms_rc, workflow_id)
 
     # merge & sum the compound statuses
-    merged: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    merged_statuses: defaultdict[str, defaultdict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
     for state in tf_state_dicts:
         if not (d := state.get("compound_statuses")):
             continue
         for outer_key, inner_dict in d.items():
-            for inner_key, value in inner_dict.items():
-                merged[outer_key][inner_key] += value
+            _increment_counts(merged_statuses[outer_key], inner_dict)
 
     # compute `n_running`, excluding 'FatalError'
     n_running = sum(
         count
-        for substatus, count in merged.get("RUNNING", {}).items()
+        for substatus, count in merged_statuses.get("RUNNING", {}).items()
         if substatus != "FatalError"
     )
 
     return {
-        "statuses": {k: dict(v) for k, v in merged.items()},  # convert to dict
+        "statuses": {k: dict(v) for k, v in merged_statuses.items()},  # convert to dict
         "n_running": n_running,
         # NOTE: it's tempting to sum other statuses' counts, but not all
         # statuses are mutually exclusive -- iow, ewms may double count for some jobs
