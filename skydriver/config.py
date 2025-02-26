@@ -65,7 +65,7 @@ class EnvConfig:
     SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: int = 5 * 60  # entry is revived after N secs
 
     THIS_IMAGE_WITH_TAG: str = ""
-    MIN_SKYMAP_SCANNER_TAG: str = "v4.0.0"
+    MIN_SKYMAP_SCANNER_TAG: str = "v4.0.0"  # TODO: update this either in k8s or here
 
     # k8s
     K8S_NAMESPACE: str = ""
