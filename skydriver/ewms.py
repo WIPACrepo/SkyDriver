@@ -101,9 +101,10 @@ async def get_workforce_statuses(
     """Aggregate the compound statuses of all taskforces in a workflow.
 
     This function retrieves workforce information, merges taskforce statuses,
-    and computes the number of currently running workers, excluding 'FatalError'.
+    computes the number of currently running workers (excluding 'FatalError'),
+    and aggregates occurrences of top task errors.
 
-    Example:
+    Example (for "statuses" key):
         Input from ewms:
         >>> {'IDLE': {'null': 1}, 'RUNNING': {'Tasking': 24}}
         >>> {'IDLE': {'foo': 99}, 'RUNNING': {'Tasking': 20}}
@@ -111,15 +112,23 @@ async def get_workforce_statuses(
 
         Aggregated output:
         >>> {'IDLE': {'null': 1, 'foo': 99}, 'RUNNING': {'Tasking': 44, 'Processing': 7}, 'REMOVED': {'Error': 1}}
+
+    Example (for "top_errors" key):
+        Input:
+        >>> {'MemoryError': 3, 'TimeoutError': 2}
+        >>> {'MemoryError': 1, 'NetworkError': 4}
+
+        Aggregated output:
+        >>> {'MemoryError': 4, 'TimeoutError': 2, 'NetworkError': 4}
     """
-    tf_state_dicts = await get_taskforce_infos(ewms_rc, workflow_id)
+    tf_infos = await get_taskforce_infos(ewms_rc, workflow_id)
 
     # Merge & sum the compound statuses
     merged_statuses: defaultdict[str, defaultdict[str, int]] = defaultdict(
         lambda: defaultdict(int)
     )
-    for state in tf_state_dicts:
-        if not (d := state.get("compound_statuses")):
+    for tfi in tf_infos:
+        if not (d := tfi.get("compound_statuses")):
             continue
         for outer_key, inner_dict in d.items():
             _increment_counts(merged_statuses[outer_key], inner_dict)
@@ -131,11 +140,19 @@ async def get_workforce_statuses(
         if substatus != "FatalError"
     )
 
+    # Aggregate errors
+    top_errors: defaultdict[str, int] = defaultdict(int)
+    for tfi in tf_infos:
+        if not (d := tfi.get("top_task_errors")):  # dict[str, int]
+            continue
+        _increment_counts(top_errors, d)
+
     return {
-        "statuses": {k: dict(v) for k, v in merged_statuses.items()},  # to dicts
+        "statuses": {k: dict(v) for k, v in merged_statuses.items()},
         "n_running": n_running,
         # NOTE: It's tempting to sum other statuses' counts, but not all
         # statuses are mutually exclusive—some jobs may be double-counted.
+        "top_errors": dict(top_errors),
     }
 
 
