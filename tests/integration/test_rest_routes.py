@@ -394,6 +394,12 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                         ),
                                     },
                                     {
+                                        "name": "EWMS_PILOT_QUARANTINE_TIME",
+                                        "value": str(
+                                            post_scan_body["max_pixel_reco_time"]
+                                        ),
+                                    },
+                                    {
                                         "name": "EWMS_WORKER_MAX_WORKER_RUNTIME",
                                         "value": "14400",
                                     },
