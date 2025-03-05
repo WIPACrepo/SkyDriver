@@ -285,6 +285,7 @@ class EnvVarFactory:
                 "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
                 "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.EWMS_PILOT_TIMEOUT_QUEUE_INCOMING,
                 "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
+                "EWMS_PILOT_QUARANTINE_TIME": max_pixel_reco_time,  # piggy-back
                 #
                 "EWMS_WORKER_MAX_WORKER_RUNTIME": max_worker_runtime,
                 "EWMS_WORKER_PRIORITY": priority,
