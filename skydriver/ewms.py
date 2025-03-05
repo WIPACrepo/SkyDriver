@@ -97,7 +97,7 @@ def _increment_counts(target: defaultdict[str, int], source: dict[str, int]):
 async def get_workforce_statuses(
     ewms_rc: RestClient,
     workflow_id: str | None,
-) -> dict[str, str | dict[str, dict[str, int]] | int | dict[str, int]]:
+) -> dict[str, str | None | dict[str, dict[str, int]] | int | dict[str, int]]:
     """Aggregate the compound statuses of all taskforces in a workflow.
 
     This function retrieves workforce information, merges taskforce statuses,
