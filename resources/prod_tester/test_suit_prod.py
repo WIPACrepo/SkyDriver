@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import tarfile
 from datetime import datetime
 from pathlib import Path
@@ -112,6 +113,7 @@ async def launch_scans(
     rc: RestClient,
     cluster: str,
     n_workers: int,
+    skyscan_docker_tag: str,
 ) -> list[test_getter.TestParamSet]:
     for i, test in enumerate(tests):
         logging.info(
@@ -135,6 +137,7 @@ async def launch_scans(
                     cluster,
                     n_workers,
                     test.reco_algo,
+                    skyscan_docker_tag,
                 )
                 test.scan_id = manifest["scan_id"]
         except Exception as e:
@@ -151,16 +154,17 @@ def display_test_status(tests: list[test_getter.TestParamSet]):
     )
     table = texttable.Texttable()
 
-    # Define column alignment and widths
-    table.set_cols_align(["r", "l", "l", "r", "l"])
-    table.set_cols_width([2, 25, 20, 8, 10])
+    scan_id_len = 10
 
-    # Add the header row
+    # columns
     table.add_row(["#", "Event File", "Reco Algo", "Scan ID", "Status"])
+    table.set_cols_align(["r", "l", "l", "r", "l"])
+    table.set_cols_width([2, 25, 18, scan_id_len, 10])
+    table.set_cols_dtype(["i", "t", "t", "t", "t"])
 
     # Add rows for each test
     for i, test in sorted_tests:
-        scan_id = test.scan_id[:8] if test.scan_id else "N/A"
+        scan_id = test.scan_id[:scan_id_len] if test.scan_id else "N/A"
         status = test.test_status.name
         table.add_row([i, test.event_file.name, test.reco_algo, scan_id, status])
 
@@ -187,10 +191,14 @@ async def test_all(
     cluster: str,
     n_workers: int,
     rescans: list[test_getter.TestParamSet] | None,
+    skyscan_docker_tag: str,
+    run_one: bool,
 ) -> None:
     """Do all the tests."""
     # setup
     tests = list(test_getter.setup_tests())
+    if run_one:
+        tests = [tests[0]]
     if rescans:
         _match_rescans_to_tests(rescans, tests)
 
@@ -200,6 +208,7 @@ async def test_all(
         rc,
         cluster,
         n_workers,
+        skyscan_docker_tag,
     )
     with open(config.SANDBOX_MAP_FPATH, "w") as f:  # dump to file
         json.dump([t.to_json() for t in tests], f, indent=4)
@@ -256,6 +265,11 @@ async def main():
         help="the cluster to use for running workers. Ex: sub-2",
     )
     parser.add_argument(
+        "--skyscan-docker-tag",
+        default="latest",
+        help="the skymap scanner docker tag to use",
+    )
+    parser.add_argument(
         "--n-workers",
         required=True,
         type=int,
@@ -273,7 +287,15 @@ async def main():
         default=config.SANDBOX_DIR,
         help="the existing (previously ran) sandbox to submit rescans for",
     )
+    parser.add_argument(
+        "--one",
+        default=False,
+        action="store_true",
+        help="just requests a single scan instead of the whole suite",
+    )
     args = parser.parse_args()
+    if args.one and args.rescan:
+        raise RuntimeError("cannot give --one and --rescan together")
 
     if args.rescan:
         # grab json map
@@ -332,9 +354,12 @@ async def main():
         args.cluster,
         args.n_workers,
         rescans,
+        args.skyscan_docker_tag,
+        args.one,
     )
 
 
 # Run the asyncio event loop
 if __name__ == "__main__":
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "icecube-skyreader"])
     asyncio.run(main())

@@ -298,9 +298,7 @@ _Retrieve the status of a scan_
 
 #### Arguments
 
-| Argument                 | Type | Required/Default | Description                                                                                                    |
-|--------------------------|------|------------------|----------------------------------------------------------------------------------------------------------------|
-| `"include_pod_statuses"` | bool | `False`          | whether to include the k8s pod statuses for the clientmanager & central server -- expends additional resources 
+None
 
 #### SkyDriver Effects
 
@@ -313,11 +311,10 @@ None
     "scan_state": str,  # a short human-readable code
     "is_deleted": bool,
     "scan_complete": bool,  # workforce is done
-    "pods": {  # field is included only if `include_pod_statuses == True`
-        "pod_status": dict,  # a large k8s status object
-        "pod_status_message": str,  # a human-readable message explaining the pod status retrieval
-    }
-    "clusters": list,  # same as Manifest's clusters field
+    "scanner_server_logs": {
+        "url": str,  # a url to a web dashboard for viewing dashboards 
+    },   
+    "ewms_workforce": list,  # statuses on ewms' components that run scanner clients
 }
 ```
 
@@ -325,8 +322,8 @@ None
 
 There are several codes for `scan_state`:
 
-- Successful state
-    * `SCAN_FINISHED_SUCCESSFULLY`
+- Successful state (completed scan)
+    * `SCAN_HAS_FINAL_RESULT`
 - Non-finished scan states (in reverse order of occurrence)
     * `IN_PROGRESS__PARTIAL_RESULT_GENERATED`
     * `IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO`
@@ -356,8 +353,9 @@ None
 
 ```
 {
-    "pod_container_logs": str | list[ dict[str,str] ],  # list
-    "pod_container_logs_message": str,  # a human-readable message explaining the log retrieval
+    "scanner_server": {
+        "url": str,  # a url to a web dashboard for viewing dashboards
+    }
 }
 ```
 

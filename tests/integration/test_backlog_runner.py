@@ -1,7 +1,5 @@
 """Integration tests for backlog runner."""
 
-# pylint: disable=redefined-outer-name
-
 import asyncio
 import json
 from typing import Any, Callable
@@ -38,7 +36,10 @@ N_JOBS = 5
 
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
-async def test_00(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
+async def test_00(
+    kapitsj_mock: Mock,
+    server: Callable[[], RestClient],
+) -> None:
     """Test backlog job starting."""
     rc = server()
     await rc.request("POST", "/scan", POST_SCAN_BODY)
@@ -46,13 +47,18 @@ async def test_00(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     print_it(await rc.request("GET", "/scans/backlog"))
 
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
+
+    # call counts
     kapitsj_mock.assert_called_once()
 
     print_it(await rc.request("GET", "/scans/backlog"))
 
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
-async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
+async def test_01(
+    kapitsj_mock: Mock,
+    server: Callable[[], RestClient],
+) -> None:
     """Test backlog job starting with multiple."""
     rc = server()
 
@@ -66,19 +72,19 @@ async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     for i in range(N_JOBS):
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
         print_it(await rc.request("GET", "/scans/backlog"))
+        # call counts
         assert kapitsj_mock.call_count >= i + 1  # in case runner is faster
+    # call counts
     assert kapitsj_mock.call_count == N_JOBS
 
-    # any extra calls?
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
+
+    # any extra calls?
     assert kapitsj_mock.call_count == N_JOBS
+
     print_it(await rc.request("GET", "/scans/backlog"))
 
 
-# mock skydriver.k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper.go b/c it calls start_job
-@mock.patch(
-    "skydriver.k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper.go", new=Mock()
-)
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 async def test_10(
     kapitsj_mock: Mock,
@@ -106,11 +112,15 @@ async def test_10(
     for i in range(N_JOBS - 2):
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
         print_it(await rc.request("GET", "/scans/backlog"))
+        # call counts
         assert kapitsj_mock.call_count >= i + 1  # in case runner is faster
+    # call counts
     assert kapitsj_mock.call_count == N_JOBS - 2
 
-    # any extra calls?
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 2)
+
+    # any extra calls?
     assert kapitsj_mock.call_count == N_JOBS - 2
+
     print_it(await rc.request("GET", "/scans/backlog"))
     assert not (await rc.request("GET", "/scans/backlog"))["entries"]

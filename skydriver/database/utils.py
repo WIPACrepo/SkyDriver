@@ -11,6 +11,7 @@ _RESULTS_COLL_NAME = "Results"
 _SCAN_BACKLOG_COLL_NAME = "ScanBacklog"
 _SCAN_REQUEST_COLL_NAME = "ScanRequests"
 _I3_EVENT_COLL_NAME = "I3Events"
+_SKYSCAN_K8S_JOB_COLL_NAME = "SkyScanK8sJobs"
 
 
 async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
@@ -29,6 +30,13 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:  # type: ign
     await motor_client[_DB_NAME][_I3_EVENT_COLL_NAME].create_index(  # type: ignore[index]
         "i3_event_id",
         name="i3_event_id_index",
+        unique=True,
+    )
+
+    # SKYSCAN K8S JOB COLL
+    await motor_client[_DB_NAME][_SKYSCAN_K8S_JOB_COLL_NAME].create_index(  # type: ignore[index]
+        "scan_id",
+        name="scan_id_index",
         unique=True,
     )
 
@@ -71,10 +79,8 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:  # type: ign
     )
 
 
-async def drop_collections(motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
-    """Drop the "regular" collections -- most useful for testing."""
-    if not ENV.CI_TEST:
-        raise RuntimeError("Cannot drop collections if not in testing mode")
-    await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].drop()  # type: ignore[index]
-    await motor_client[_DB_NAME][_RESULTS_COLL_NAME].drop()  # type: ignore[index]
-    await motor_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].drop()  # type: ignore[index]
+async def drop_database(motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
+    """Drop the database -- only useful during CI testing."""
+    if not ENV.CI:
+        raise RuntimeError("Cannot drop database if not in testing mode")
+    await motor_client.drop_database(_DB_NAME)  # type: ignore[attr-defined]

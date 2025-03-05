@@ -54,6 +54,7 @@ async def launch_a_scan(
     cluster: str,
     n_workers: int,
     reco_algo: str,
+    skyscan_docker_tag: str,
 ) -> dict:
     """Request to SkyDriver to scan an event."""
     body = {
@@ -63,12 +64,13 @@ async def launch_a_scan(
         "real_or_simulated_event": "real",
         "predictive_scanning_threshold": 1,  # 0.3,
         "cluster": {cluster: n_workers},
-        "docker_tag": "latest",
+        "docker_tag": skyscan_docker_tag,
         "max_pixel_reco_time": 30 * 60,  # seconds
         "scanner_server_memory": "1G",
         "priority": 100,
         "scanner_server_env": {
             "SKYSCAN_MINI_TEST": True,
+            "_SKYSCAN_CI_MINI_TEST": True,  # env var changed to this in the "skydriver 2"-ready scanner
         },
         "classifiers": {
             "_TEST": True,
@@ -80,47 +82,62 @@ async def launch_a_scan(
     return manifest  # type: ignore[no-any-return]
 
 
-async def monitor(rc: RestClient, scan_id: str, log_file: Path | None = None) -> dict:
+async def monitor(  # noqa: C901
+    rc: RestClient,
+    scan_id: str,
+    log_file: Path | None = None,
+) -> dict:
     """Monitor the event scan until its done.
 
     Return the result.
     """
     out = open(log_file, "w") if log_file else sys.stdout
-    result_resp = {}
+
+    def print_now(string: str):
+        print(string, file=out, flush=True)  # fyi: pprint doesn't have flush
 
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    print(json.dumps(resp, indent=4), file=out, flush=True)
+    print_now(json.dumps(resp, indent=4))
+
+    prev_result: dict = {}
 
     # loop w/ sleep
     done = False
-    while True:
-        # get result
+    while not done:
+        print_now("-" * 60)
+
+        # get status
         try:
-            result_resp = await rc.request("GET", f"/scan/{scan_id}/result")
-            print(
-                pformat(result_resp), file=out, flush=True
-            )  # pprint doesn't have flush
-            done = result_resp["is_final"]
+            resp = await rc.request("GET", f"/scan/{scan_id}/status")
+            print_now(pformat(resp))  # pprint doesn't have flush
+            done = resp["scan_complete"]  # loop control
         except Exception as e:  # 404 (scanner not yet online)
-            print(f"ok: {repr(e)}", file=out, flush=True)
+            print_now(f"suppressed error: {repr(e)}")
 
         # get progress
         try:
             resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-            progress = resp["progress"]
-            print(
-                json.dumps(progress["processing_stats"].pop("rate"), indent=4),
-                file=out,
-                flush=True,
-            )
-            print(json.dumps(progress, indent=4), file=out, flush=True)
+            print_now(json.dumps(resp["progress"], indent=4))
         except Exception as e:
             # 404 (scanner not yet online) or KeyError (no progress yet)
-            print(f"ok: {repr(e)}", file=out, flush=True)
+            print_now(f"suppressed error: {repr(e)}")
+
+        # get result
+        try:
+            resp = await rc.request("GET", f"/scan/{scan_id}/result")
+            if prev_result != resp:
+                print_now(pformat(resp))
+                prev_result = resp
+            else:
+                print_now("<no change in result>")
+        except Exception as e:
+            print_now(f"suppressed error: {repr(e)}")
 
         # done? else, wait
-        print(scan_id, file=out, flush=True)
-        if done:
-            print("scan is done!", file=out, flush=True)
-            return result_resp["skyscan_result"]
-        await asyncio.sleep(60)
+        if not done:
+            print_now(scan_id)
+            await asyncio.sleep(60)
+
+    print_now("scan is done!")
+    print_now(scan_id)
+    return (await rc.request("GET", f"/scan/{scan_id}/result"))["skyscan_result"]
