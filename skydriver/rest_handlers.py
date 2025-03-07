@@ -678,7 +678,7 @@ async def stop_scanner_instance(
     )
 
     try:
-        stopper_wrapper.go()
+        await stopper_wrapper.go()
     except kubernetes.client.exceptions.ApiException as e:
         LOGGER.exception(e)
         raise web.HTTPError(

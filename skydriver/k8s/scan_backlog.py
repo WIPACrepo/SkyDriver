@@ -189,7 +189,7 @@ async def _run(
 
         # start job
         try:
-            resp = KubeAPITools.start_job(
+            resp = await KubeAPITools.start_job(
                 k8s_batch_api, job_obj, inf_retry_on_transient_errors=True
             )
             LOGGER.info(resp)
