@@ -72,8 +72,8 @@ class EnvConfig:
     K8S_SECRET_NAME: str = ""
     K8S_SKYSCAN_JOBS_SERVICE_ACCOUNT: str = ""
     K8S_APPLICATION_NAME: str = ""
-    K8S_TTL_SECONDS_AFTER_FINISHED: int = 10 * 60
-    K8S_ACTIVE_DEADLINE_SECONDS: int = 24 * 60 * 60
+    K8S_TTL_SECONDS_AFTER_FINISHED: int = 10 * 60  # 10 mins
+    K8S_ACTIVE_DEADLINE_SECONDS: int = 2 * 24 * 60 * 60  # 2 days
     #
     K8S_SCANNER_MEM_REQUEST__DEFAULT: str = "1024M"  # note: also used as the limit def.
     K8S_SCANNER_CPU_LIMIT: float = 1.0
