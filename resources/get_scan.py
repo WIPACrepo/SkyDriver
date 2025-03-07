@@ -63,6 +63,10 @@ async def main():
     resp = await rc.request("GET", f"/scan/{args.scan_id}/status")
     print(json.dumps(resp, indent=4), flush=True)
 
+    logging.info(f"getting logs for scan {args.scan_id}")
+    resp = await rc.request("GET", f"/scan/{args.scan_id}/logs")
+    print(json.dumps(resp, indent=4), flush=True)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
