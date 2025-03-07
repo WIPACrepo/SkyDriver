@@ -6,7 +6,6 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
-import kubernetes.client  # type: ignore[import-untyped]
 import yaml
 from rest_tools.client import ClientCredentialsAuth
 
