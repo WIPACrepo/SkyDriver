@@ -222,7 +222,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                 "namespace": None,
             },
             "spec": {
-                "activeDeadlineSeconds": 86400,
+                "activeDeadlineSeconds": 172800,
                 "backoffLimit": 0,
                 "template": {
                     "metadata": {"labels": {"app": "scanner-instance"}},
