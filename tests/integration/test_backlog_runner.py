@@ -6,7 +6,7 @@ import asyncio
 import json
 from typing import Any, Callable
 from unittest import mock
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 from rest_tools.client import RestClient
 
@@ -37,8 +37,8 @@ POST_SCAN_BODY = {
 N_JOBS = 5
 
 
-@mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
-async def test_00(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
+@mock.patch("skydriver.k8s.utils.KubeAPITools.start_job", new_callable=AsyncMock)
+async def test_00(kapitsj_mock: AsyncMock, server: Callable[[], RestClient]) -> None:
     """Test backlog job starting."""
     rc = server()
     await rc.request("POST", "/scan", POST_SCAN_BODY)
@@ -51,8 +51,8 @@ async def test_00(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
     print_it(await rc.request("GET", "/scans/backlog"))
 
 
-@mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
-async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
+@mock.patch("skydriver.k8s.utils.KubeAPITools.start_job", new_callable=AsyncMock)
+async def test_01(kapitsj_mock: AsyncMock, server: Callable[[], RestClient]) -> None:
     """Test backlog job starting with multiple."""
     rc = server()
 
@@ -79,9 +79,9 @@ async def test_01(kapitsj_mock: Mock, server: Callable[[], RestClient]) -> None:
 @mock.patch(
     "skydriver.k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper.go", new=Mock()
 )
-@mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
+@mock.patch("skydriver.k8s.utils.KubeAPITools.start_job", new_callable=AsyncMock)
 async def test_10(
-    kapitsj_mock: Mock,
+    kapitsj_mock: AsyncMock,
     server: Callable[[], RestClient],
 ) -> None:
     """Test backlog job starting with multiple cancels."""
