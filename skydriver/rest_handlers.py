@@ -36,7 +36,10 @@ from .config import (
 )
 from .database import schema
 from .k8s.scan_backlog import designate_for_startup
-from .k8s.scanner_instance import SkymapScannerK8sWrapper
+from .k8s.scanner_instance import (
+    SkymapScannerK8sWrapper,
+    assemble_scanner_server_logs_url,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -301,8 +304,12 @@ def _classifiers_validator(val: Any) -> dict[str, str | bool | float | int | Non
     # type checks
     if not isinstance(val, dict):
         raise argparse.ArgumentTypeError("must be a dict")
-    if any(v for v in val.values() if not isinstance(v, str | bool | float | int | None)):
-        raise argparse.ArgumentTypeError("entry must be 'str | bool | float | int | None'")
+    if any(
+        v for v in val.values() if not isinstance(v, str | bool | float | int | None)
+    ):
+        raise argparse.ArgumentTypeError(
+            "entry must be 'str | bool | float | int | None'"
+        )
 
     # size check
     if len(val) > MAX_CLASSIFIERS_LEN:
@@ -671,7 +678,7 @@ async def stop_scanner_instance(
     )
 
     try:
-        stopper_wrapper.go()
+        await stopper_wrapper.go()
     except kubernetes.client.exceptions.ApiException as e:
         LOGGER.exception(e)
         raise web.HTTPError(
@@ -1110,26 +1117,11 @@ class ScanLogsHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
-        try:
-            pod_container_logs = k8s.utils.KubeAPITools.get_container_logs(
-                self.k8s_batch_api,
-                SkymapScannerK8sWrapper.get_job_name(scan_id),
-                ENV.K8S_NAMESPACE,
-            )
-            pod_container_logs_message = "retrieved"
-        except (kubernetes.client.rest.ApiException, ValueError) as e:
-            if await self.scan_backlog.is_in_backlog(scan_id):
-                pod_container_logs = {}
-                pod_container_logs_message = "in backlog"
-            else:
-                pod_container_logs = {}
-                pod_container_logs_message = "pod(s) not found"
-                LOGGER.exception(e)
-
         self.write(
             {
-                "pod_container_logs": pod_container_logs,
-                "pod_container_logs_message": pod_container_logs_message,
+                "scanner_server": {
+                    "url": assemble_scanner_server_logs_url(scan_id),
+                }
             }
         )
 

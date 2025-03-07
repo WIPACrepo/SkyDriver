@@ -493,7 +493,7 @@ class SkymapScannerWorkerStopperK8sWrapper:
                 n_retries=CLUSTER_STOPPER_K8S_JOB_N_RETRIES,
             )
 
-    def go(self) -> Any:
+    async def go(self) -> Any:
         """Stop all workers of a Skymap Scanner instance."""
 
         # NOTE - we don't want to stop the first k8s job because its containers will stop themselves.
@@ -517,6 +517,19 @@ class SkymapScannerWorkerStopperK8sWrapper:
         # stop workers
         if self.worker_stopper_job_obj:
             LOGGER.info(f"starting k8s CLUSTER-STOPPER job for {self.scan_id=}")
-            KubeAPITools.start_job(self.k8s_batch_api, self.worker_stopper_job_obj)
+            await KubeAPITools.start_job(
+                self.k8s_batch_api, self.worker_stopper_job_obj
+            )
         else:
             LOGGER.info(f"no workers to stop for {self.scan_id=}")
+
+
+def assemble_scanner_server_logs_url(scan_id: str) -> str:
+    """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
+    container = f"skyscan-server-{scan_id}"
+
+    return (
+        f"{ENV.GRAFANA_DASHBOARD_BASEURL}"
+        f"&var-namespace={ENV.K8S_NAMESPACE}"
+        f"&var-container={container}"
+    )
