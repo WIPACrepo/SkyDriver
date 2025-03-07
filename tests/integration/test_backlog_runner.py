@@ -6,7 +6,7 @@ import asyncio
 import json
 from typing import Any, Callable
 from unittest import mock
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock
 
 from rest_tools.client import RestClient
 
@@ -77,7 +77,8 @@ async def test_01(kapitsj_mock: AsyncMock, server: Callable[[], RestClient]) -> 
 
 # mock skydriver.k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper.go b/c it calls start_job
 @mock.patch(
-    "skydriver.k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper.go", new=Mock()
+    "skydriver.k8s.scanner_instance.SkymapScannerWorkerStopperK8sWrapper.go",
+    new=AsyncMock(),
 )
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job", new_callable=AsyncMock)
 async def test_10(
