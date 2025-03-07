@@ -520,3 +520,14 @@ class SkymapScannerWorkerStopperK8sWrapper:
             KubeAPITools.start_job(self.k8s_batch_api, self.worker_stopper_job_obj)
         else:
             LOGGER.info(f"no workers to stop for {self.scan_id=}")
+
+
+def assemble_scanner_server_logs_url(scan_id: str) -> str:
+    """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
+    container = f"skyscan-server-{scan_id}"
+
+    return (
+        f"{ENV.GRAFANA_DASHBOARD_BASEURL}"
+        f"&var-namespace={ENV.K8S_NAMESPACE}"
+        f"&var-container={container}"
+    )

@@ -70,6 +70,8 @@ class EnvConfig:
 
     K8S_START_JOB_TRANSIENT_ERROR_RETRY_DELAY: int = 5 * 60
 
+    GRAFANA_DASHBOARD_BASEURL: str = ""
+
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""
     KEYCLOAK_CLIENT_ID_BROKER: str = ""
