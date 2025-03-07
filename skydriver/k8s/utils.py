@@ -1,5 +1,7 @@
 """An interface to the Kubernetes cluster."""
 
+import asyncio
+import itertools
 import json
 import logging
 from pathlib import Path
@@ -140,9 +142,10 @@ class KubeAPITools:
         )
 
     @staticmethod
-    def start_job(
+    async def start_job(
         k8s_batch_api: kubernetes.client.BatchV1Api,
         job_obj: kubernetes.client.V1Job,
+        inf_retry_on_transient_errors: bool = False,
     ) -> Any:
         """Start the k8s job.
 
@@ -150,15 +153,30 @@ class KubeAPITools:
         """
         if not job_obj:
             raise ValueError("Job object not created")
-        try:
-            api_response = k8s_batch_api.create_namespaced_job(
-                ENV.K8S_NAMESPACE, job_obj
-            )
-            LOGGER.info(api_response)
-        except ApiException as e:
-            LOGGER.exception(e)
-            raise
-        return api_response
+
+        for i in itertools.count():
+            LOGGER.info(f"K8s Job (attempt #{i + 1}):")
+            LOGGER.info(job_obj)
+            try:
+                resp = k8s_batch_api.create_namespaced_job(ENV.K8S_NAMESPACE, job_obj)
+                LOGGER.info("k8s job successfully created!")
+                return resp
+            except ApiException as e:
+                if inf_retry_on_transient_errors and (
+                    f"exceeded quota: {ENV.K8S_APPLICATION_NAME}-job-quota"
+                    in str(e.body)
+                ):
+                    LOGGER.warning(
+                        f"encountered a transient error in the k8s namespace, "
+                        f"trying again in {ENV.K8S_START_JOB_TRANSIENT_ERROR_RETRY_DELAY}s"
+                        f": {repr(e)}"
+                    )
+                    # maybe next time, it'll be ok
+                    await asyncio.sleep(ENV.K8S_START_JOB_TRANSIENT_ERROR_RETRY_DELAY)
+                    continue
+                else:
+                    LOGGER.error("request to make k8s job failed above")
+                    raise
 
     @staticmethod
     def get_pods(

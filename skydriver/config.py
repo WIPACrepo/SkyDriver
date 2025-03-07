@@ -68,6 +68,8 @@ class EnvConfig:
     K8S_TTL_SECONDS_AFTER_FINISHED: int = 10 * 60
     K8S_ACTIVE_DEADLINE_SECONDS: int = 36 * 60 * 60
 
+    K8S_START_JOB_TRANSIENT_ERROR_RETRY_DELAY: int = 5 * 60
+
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""
     KEYCLOAK_CLIENT_ID_BROKER: str = ""
