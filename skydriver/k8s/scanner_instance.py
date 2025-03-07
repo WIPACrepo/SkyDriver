@@ -157,6 +157,7 @@ class SkymapScannerK8sWrapper:
             [scanner_server] + tms_starters,
             ENV.K8S_NAMESPACE,
             ENV.K8S_TTL_SECONDS_AFTER_FINISHED,
+            active_deadline_seconds=ENV.K8S_ACTIVE_DEADLINE_SECONDS,
             volumes=[common_space_volume_path.name],
         )
 
@@ -490,6 +491,7 @@ class SkymapScannerWorkerStopperK8sWrapper:
                 containers,
                 ENV.K8S_NAMESPACE,
                 CLUSTER_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
+                active_deadline_seconds=CLUSTER_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,  # piggyback
                 n_retries=CLUSTER_STOPPER_K8S_JOB_N_RETRIES,
             )
 
