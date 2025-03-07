@@ -24,7 +24,6 @@ class KubeAPITools:
         containers: list[kubernetes.client.V1Container],
         namespace: str,
         ttl_seconds_after_finished: int,
-        active_deadline_seconds: int,
         volumes: list[str] | None = None,  # volume names
         n_retries: int = 0,
     ) -> kubernetes.client.V1Job:
@@ -102,7 +101,7 @@ class KubeAPITools:
             ttl_seconds_after_finished=ttl_seconds_after_finished,
             template=template.template,
             backoff_limit=n_retries,
-            active_deadline_seconds=active_deadline_seconds,
+            active_deadline_seconds=ENV.K8S_ACTIVE_DEADLINE_SECONDS,
         )
         return body
 
