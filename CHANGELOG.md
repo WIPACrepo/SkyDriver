@@ -2,6 +2,12 @@
 
 <!--next-version-placeholder-->
 
+## v1.3.1 (2025-03-13)
+
+### Other
+
+* Limit Projection for `/scans/find` ([#133](https://github.com/WIPACrepo/SkyDriver/issues/133)) ([`2174f9c`](https://github.com/WIPACrepo/SkyDriver/commit/2174f9cd301f56349b06e828beecde73560e2cdc))
+
 ## v1.3.0 (2025-03-07)
 
 ### Other
