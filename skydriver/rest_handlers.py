@@ -173,6 +173,7 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         "event_i3live_json_dict",
         "event_i3live_json_dict__hash",
     }
+    DEFAULT_FIELDS = all_dc_fields(database.schema.Manifest) - DISALLOWED_FIELDS
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self) -> None:
@@ -190,11 +191,13 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         arghand.add_argument(
             "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest) - self.DISALLOWED_FIELDS,
+            default=self.DEFAULT_FIELDS,
             type=str,
         )
         args = arghand.parse_args()
 
+        if args.manifest_projection == "*":  # can't use star here, too dangerous
+            args.manifest_projection = self.DEFAULT_FIELDS
         if (
             args.manifest_projection - self.DISALLOWED_FIELDS
             != args.manifest_projection
