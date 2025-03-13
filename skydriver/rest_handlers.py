@@ -167,6 +167,13 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
 
     ROUTE = r"/scans/find$"
 
+    DISALLOWED_FIELDS = {
+        # these can be so large that it can blow up memory
+        "ewms_task",
+        "event_i3live_json_dict",
+        "event_i3live_json_dict__hash",
+    }
+
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self) -> None:
         """Get matching scan manifest(s) for the given search."""
@@ -183,10 +190,19 @@ class ScansFindHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         # response args
         arghand.add_argument(
             "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
+            default=all_dc_fields(database.schema.Manifest) - self.DISALLOWED_FIELDS,
             type=str,
         )
         args = arghand.parse_args()
+
+        if (
+            args.manifest_projection - self.DISALLOWED_FIELDS
+            != args.manifest_projection
+        ):
+            raise web.HTTPError(
+                400,
+                log_message=f"'manifest_projection' cannot include any of the following: {self.DISALLOWED_FIELDS}",
+            )
 
         if "is_deleted" not in args.filter and not args.include_deleted:
             args.filter["is_deleted"] = False
