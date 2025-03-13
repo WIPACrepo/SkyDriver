@@ -1,4 +1,4 @@
-"""Simple script to grab a scan's manifest.
+"""Simple script to grab scan ids for a given query.
 
 Useful for quick debugging in prod.
 """
@@ -15,12 +15,13 @@ logging.getLogger().setLevel(logging.INFO)
 
 async def main():
     parser = argparse.ArgumentParser(
-        description="Get a scan's manifest",
+        description="Find scan ids for a given query",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "scan_id",
-        help="the scan's id",
+        "query",
+        type=json.loads,
+        help="the JSON query (mongo syntax)",
     )
     parser.add_argument(
         "--skydriver-url",
@@ -31,18 +32,15 @@ async def main():
 
     rc = get_rest_client(args.skydriver_url)
 
-    logging.info(f"getting manifest for scan {args.scan_id}")
+    logging.info(f"getting manifest for scans w/ {args.query}")
     resp = await rc.request(
-        "GET", f"/scan/{args.scan_id}/manifest", {"include_deleted": True}
+        "POST",
+        "/scans/find",
+        {
+            "filter": args.query,
+            "include_deleted": True,
+        },
     )
-    print(json.dumps(resp, indent=4), flush=True)
-
-    logging.info(f"getting statuses for scan {args.scan_id}")
-    resp = await rc.request("GET", f"/scan/{args.scan_id}/status")
-    print(json.dumps(resp, indent=4), flush=True)
-
-    logging.info(f"getting logs for scan {args.scan_id}")
-    resp = await rc.request("GET", f"/scan/{args.scan_id}/logs")
     print(json.dumps(resp, indent=4), flush=True)
 
 
