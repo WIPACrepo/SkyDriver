@@ -243,7 +243,7 @@ class Manifest(ScanIDDataclass):
     """Encapsulates the manifest of a unique scan entity."""
 
     timestamp: float
-    is_deleted: bool
+    # is_deleted: bool
 
     ewms_task: EWMSTaskDirective
 
@@ -255,7 +255,7 @@ class Manifest(ScanIDDataclass):
     )
 
     # open to requestor
-    classifiers: dict[str, str | bool | float | int | None] = dc.field(default_factory=dict)
+    # classifiers: dict[str, str | bool | float | int | None] = dc.field(default_factory=dict)
 
     # i3 event -- grabbed by scanner central server
     i3_event_id: str = ""  # id to i3_event coll
@@ -265,12 +265,12 @@ class Manifest(ScanIDDataclass):
 
     # found/created during first few seconds of scanning
     event_metadata: EventMetadata | None = None
-    scan_metadata: dict | None = None  # open to scanner
+    # scan_metadata: dict | None = None  # open to scanner
 
     # updated during scanning, multiple times
-    progress: Progress | None = None
+    # progress: Progress | None = None
 
-    last_updated: float = 0.0
+    # last_updated: float = 0.0
 
     def __post_init__(self) -> None:
         if (
