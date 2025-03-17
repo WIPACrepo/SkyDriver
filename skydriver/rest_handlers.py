@@ -565,11 +565,6 @@ async def _start_scan(
         scanner_server_env_from_user=scan_request_obj["scanner_server_env_from_user"],
         request_clusters=scan_request_obj["request_clusters"],
         max_pixel_reco_time=scan_request_obj["max_pixel_reco_time"],
-        max_worker_runtime=scan_request_obj.get(
-            # skydriver v2 does not allow requesters to set this value via interface
-            "max_worker_runtime",
-            ENV.EWMS_MAX_WORKER_RUNTIME__DEFAULT,
-        ),
         priority=scan_request_obj["priority"],
         worker_disk_bytes=scan_request_obj["worker_disk_bytes"],
         worker_memory_bytes=scan_request_obj["worker_memory_bytes"],

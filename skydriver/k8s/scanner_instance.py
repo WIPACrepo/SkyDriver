@@ -58,7 +58,6 @@ class SkyScanK8sJobFactory:
         scanner_server_env_from_user: dict,
         request_clusters: list,
         max_pixel_reco_time: int,
-        max_worker_runtime: int,
         priority: int,
         worker_disk_bytes: int,
         worker_memory_bytes: int,
@@ -89,7 +88,6 @@ class SkyScanK8sJobFactory:
             #
             max_pixel_reco_time,
             #
-            max_worker_runtime,
             priority,
             worker_disk_bytes,
             worker_memory_bytes,
@@ -258,7 +256,6 @@ class EnvVarFactory:
         #
         max_pixel_reco_time: int,
         #
-        max_worker_runtime: int,
         priority: int,
         worker_disk_bytes: int,
         worker_memory_bytes: int,
@@ -280,7 +277,7 @@ class EnvVarFactory:
                 "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
                 "EWMS_PILOT_QUARANTINE_TIME": max_pixel_reco_time,  # piggy-back
                 #
-                "EWMS_WORKER_MAX_WORKER_RUNTIME": max_worker_runtime,
+                "EWMS_WORKER_MAX_WORKER_RUNTIME": ENV.EWMS_MAX_WORKER_RUNTIME__DEFAULT,
                 "EWMS_WORKER_PRIORITY": priority,
                 "EWMS_WORKER_DISK_BYTES": worker_disk_bytes,
                 "EWMS_WORKER_MEMORY_BYTES": worker_memory_bytes,
