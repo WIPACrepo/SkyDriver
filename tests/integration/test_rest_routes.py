@@ -181,7 +181,7 @@ async def _assert_db_scanrequests_coll(
         worker_memory_bytes=humanfriendly.parse_size("8GB"),
         worker_disk_bytes=humanfriendly.parse_size("1GB"),
         max_pixel_reco_time=post_scan_body["max_pixel_reco_time"],
-        max_worker_runtime=4 * 60 * 60,
+        max_worker_runtime=24 * 60 * 60,
         priority=0,
         debug_mode=[post_scan_body["debug_mode"]],
         #
@@ -401,7 +401,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     },
                                     {
                                         "name": "EWMS_WORKER_MAX_WORKER_RUNTIME",
-                                        "value": "14400",
+                                        "value": str(24 * 60 * 60),
                                     },
                                     {"name": "EWMS_WORKER_PRIORITY", "value": "0"},
                                     {

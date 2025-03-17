@@ -438,11 +438,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             type=int,
         )
         arghand.add_argument(
-            "max_worker_runtime",
-            type=int,
-            default=ENV.EWMS_MAX_WORKER_RUNTIME__DEFAULT,
-        )
-        arghand.add_argument(
             # TODO - remove when TMS is handling workforce-scaling
             "skyscan_mq_client_timeout_wait_for_first_message",
             type=int,
@@ -528,7 +523,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             worker_memory_bytes=args.worker_memory,
             worker_disk_bytes=args.worker_disk,  # already in bytes
             max_pixel_reco_time=args.max_pixel_reco_time,
-            max_worker_runtime=args.max_worker_runtime,
+            max_worker_runtime=ENV.EWMS_MAX_WORKER_RUNTIME__DEFAULT,
             priority=args.priority,
             debug_mode=[d.value for d in args.debug_mode],
             #

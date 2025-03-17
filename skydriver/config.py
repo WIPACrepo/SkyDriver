@@ -97,7 +97,7 @@ class EnvConfig:
     # EWMS optional config
     EWMS_WORKER_MEMORY__DEFAULT: str = "8GB"
     EWMS_WORKER_DISK__DEFAULT: str = "1GB"
-    EWMS_MAX_WORKER_RUNTIME__DEFAULT: int = 4 * 60 * 60  # 4 hours
+    EWMS_MAX_WORKER_RUNTIME__DEFAULT: int = 24 * 60 * 60  # 24 hours
     EWMS_PILOT_TIMEOUT_QUEUE_INCOMING: int | None = None
     # note: other EWMS vars at top of class
 
