@@ -55,7 +55,6 @@ class SkyScanK8sJobFactory:
         debug_mode: list[DebugMode],
         # env
         rest_address: str,
-        skyscan_mq_client_timeout_wait_for_first_message: int | None,
         scanner_server_env_from_user: dict,
         request_clusters: list,
         max_pixel_reco_time: int,
@@ -80,7 +79,6 @@ class SkyScanK8sJobFactory:
         scanner_server_envvars = EnvVarFactory.make_skyscan_server_envvars(
             rest_address=rest_address,
             scan_id=scan_id,
-            skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
             scanner_server_env_from_user=scanner_server_env_from_user,
         )
 
@@ -89,7 +87,6 @@ class SkyScanK8sJobFactory:
             #
             request_clusters,
             #
-            skyscan_mq_client_timeout_wait_for_first_message,
             max_pixel_reco_time,
             #
             max_worker_runtime,
@@ -259,7 +256,6 @@ class EnvVarFactory:
         #
         request_clusters: list,
         #
-        skyscan_mq_client_timeout_wait_for_first_message: int | None,
         max_pixel_reco_time: int,
         #
         max_worker_runtime: int,
@@ -280,7 +276,6 @@ class EnvVarFactory:
                 #
                 "EWMS_TASK_IMAGE": get_skyscan_cvmfs_singularity_image(docker_tag),
                 #
-                "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
                 "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.EWMS_PILOT_TIMEOUT_QUEUE_INCOMING,
                 "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
                 "EWMS_PILOT_QUARANTINE_TIME": max_pixel_reco_time,  # piggy-back
@@ -341,7 +336,6 @@ class EnvVarFactory:
     def make_skyscan_server_envvars(
         rest_address: str,
         scan_id: str,
-        skyscan_mq_client_timeout_wait_for_first_message: int | None,
         scanner_server_env_from_user: dict,
     ) -> list[sdict]:
         """Get the environment variables provided to the skyscan server."""
@@ -370,8 +364,6 @@ class EnvVarFactory:
             #
             "SKYSCAN_EWMS_PILOT_LOG": "WARNING",  # default is too low
             "SKYSCAN_MQ_CLIENT_LOG": "WARNING",  # default is too low
-            #
-            "SKYSCAN_MQ_CLIENT_TIMEOUT_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
         }
         env.update({k: str(v) for k, v in prefiltered.items() if v is not None})
 

@@ -562,11 +562,6 @@ async def _start_scan(
         debug_mode=_debug_mode(scan_request_obj["debug_mode"]),
         # env
         rest_address=scan_request_obj["rest_address"],
-        skyscan_mq_client_timeout_wait_for_first_message=scan_request_obj.get(
-            # skydriver v2 does not allow requesters to set this value via interface
-            "skyscan_mq_client_timeout_wait_for_first_message",
-            None,
-        ),
         scanner_server_env_from_user=scan_request_obj["scanner_server_env_from_user"],
         request_clusters=scan_request_obj["request_clusters"],
         max_pixel_reco_time=scan_request_obj["max_pixel_reco_time"],
