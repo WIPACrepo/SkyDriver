@@ -72,6 +72,8 @@ class EnvConfig:
 
     GRAFANA_DASHBOARD_BASEURL: str = ""
 
+    EWMS_MAX_WORKER_RUNTIME__DEFAULT: int = 24 * 60 * 60  # 24 hours
+
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""
     KEYCLOAK_CLIENT_ID_BROKER: str = ""

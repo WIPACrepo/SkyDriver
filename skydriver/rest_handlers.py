@@ -445,7 +445,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):  # pylint: disable=W0223
         arghand.add_argument(
             "max_worker_runtime",
             type=int,
-            default=4 * 60 * 60,
+            default=ENV.EWMS_MAX_WORKER_RUNTIME__DEFAULT,
         )
         arghand.add_argument(
             # TODO - remove when TMS is handling workforce-scaling
