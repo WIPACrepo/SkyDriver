@@ -181,12 +181,10 @@ async def _assert_db_scanrequests_coll(
         worker_memory_bytes=humanfriendly.parse_size("8GB"),
         worker_disk_bytes=humanfriendly.parse_size("1GB"),
         max_pixel_reco_time=post_scan_body["max_pixel_reco_time"],
-        max_worker_runtime=24 * 60 * 60,
         priority=0,
         debug_mode=[post_scan_body["debug_mode"]],
         #
         # misc
-        skyscan_mq_client_timeout_wait_for_first_message=None,
         i3_event_id=post_resp["i3_event_id"],
         rest_address=doc_sr["rest_address"],  # see below
         scanner_server_env_from_user=post_scan_body["scanner_server_env"],

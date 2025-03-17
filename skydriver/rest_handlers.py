@@ -438,12 +438,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             type=int,
         )
         arghand.add_argument(
-            # TODO - remove when TMS is handling workforce-scaling
-            "skyscan_mq_client_timeout_wait_for_first_message",
-            type=int,
-            default=-1,  # elephant in Cairo, see below
-        )
-        arghand.add_argument(
             "debug_mode",
             type=_debug_mode,
             default=[],
@@ -527,11 +521,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             debug_mode=[d.value for d in args.debug_mode],
             #
             # misc
-            skyscan_mq_client_timeout_wait_for_first_message=(
-                args.skyscan_mq_client_timeout_wait_for_first_message
-                if args.skyscan_mq_client_timeout_wait_for_first_message != -1
-                else None
-            ),
             i3_event_id=i3_event_id,  # foreign key to i3_event collection
             rest_address=self.request.full_url().rstrip(self.request.uri),
             scanner_server_env_from_user=args.scanner_server_env,
@@ -573,9 +562,11 @@ async def _start_scan(
         debug_mode=_debug_mode(scan_request_obj["debug_mode"]),
         # env
         rest_address=scan_request_obj["rest_address"],
-        skyscan_mq_client_timeout_wait_for_first_message=scan_request_obj[
-            "skyscan_mq_client_timeout_wait_for_first_message"
-        ],
+        skyscan_mq_client_timeout_wait_for_first_message=scan_request_obj.get(
+            # skydriver v2 does not allow requesters to set this value via interface
+            "skyscan_mq_client_timeout_wait_for_first_message",
+            None,
+        ),
         scanner_server_env_from_user=scan_request_obj["scanner_server_env_from_user"],
         request_clusters=scan_request_obj["request_clusters"],
         max_pixel_reco_time=scan_request_obj["max_pixel_reco_time"],
