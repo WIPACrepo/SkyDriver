@@ -67,7 +67,7 @@ async def launch_a_scan(
         "docker_tag": skyscan_docker_tag,
         "max_pixel_reco_time": 30 * 60,  # seconds
         "scanner_server_memory": "1G",
-        "priority": 100,
+        "priority": -1,
         "scanner_server_env": {
             "SKYSCAN_MINI_TEST": True,
             "_SKYSCAN_CI_MINI_TEST": True,  # env var changed to this in the "skydriver 2"-ready scanner
