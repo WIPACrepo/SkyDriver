@@ -144,3 +144,6 @@ gke-cluster-config.yaml
 
 test-suit-sandbox*
 resources/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
+
+*logs*
+startup.json
