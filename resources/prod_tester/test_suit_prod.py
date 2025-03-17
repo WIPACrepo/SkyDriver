@@ -198,7 +198,7 @@ async def test_all(
     # setup
     tests = list(test_getter.setup_tests())
     if run_one:
-        tests = [tests[0]]
+        tests = [tests[-1]]  # #0 is often millipede original (slowest), so pick faster
     if rescans:
         _match_rescans_to_tests(rescans, tests)
 
