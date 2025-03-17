@@ -13,7 +13,6 @@ import json
 import logging
 import sys
 from pathlib import Path
-from pprint import pformat
 
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
@@ -93,12 +92,16 @@ async def monitor(  # noqa: C901
     """
     out = open(log_file, "w") if log_file else sys.stdout
 
-    def print_now(string: str):
-        print(string, file=out, flush=True)  # fyi: pprint doesn't have flush
+    def print_now(_what: str | list | dict | None) -> None:
+        if not isinstance(_what, str):
+            _what = json.dumps(_what, indent=4)
+        print(_what, file=out, flush=True)  # fyi: pprint doesn't have flush
 
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    print_now(json.dumps(resp, indent=4))
+    print_now(resp)
 
+    prev_status: dict = {}
+    prev_progress: dict = {}
     prev_result: dict = {}
 
     # loop w/ sleep
@@ -109,15 +112,23 @@ async def monitor(  # noqa: C901
         # get status
         try:
             resp = await rc.request("GET", f"/scan/{scan_id}/status")
-            print_now(pformat(resp))  # pprint doesn't have flush
+            if prev_status != resp:
+                print_now(resp)
+                prev_status = resp
+            else:
+                print_now("<no change in status>")
             done = resp["scan_complete"]  # loop control
         except Exception as e:  # 404 (scanner not yet online)
             print_now(f"suppressed error: {repr(e)}")
 
-        # get progress
+        # get manifest.progress
         try:
-            resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-            print_now(json.dumps(resp["progress"], indent=4))
+            resp = (await rc.request("GET", f"/scan/{scan_id}/manifest"))["progress"]
+            if prev_progress != resp:
+                print_now(resp)
+                prev_progress = resp
+            else:
+                print_now("<no change in manifest.progress>")
         except Exception as e:
             # 404 (scanner not yet online) or KeyError (no progress yet)
             print_now(f"suppressed error: {repr(e)}")
@@ -126,7 +137,7 @@ async def monitor(  # noqa: C901
         try:
             resp = await rc.request("GET", f"/scan/{scan_id}/result")
             if prev_result != resp:
-                print_now(pformat(resp))
+                print_now(resp)
                 prev_result = resp
             else:
                 print_now("<no change in result>")
