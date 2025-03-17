@@ -54,8 +54,6 @@ class EnvConfig:
     S3_OBJECT_KEY: str
     S3_EXPIRES_IN: int
 
-    EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE: int | None = None
-
 
 ENV = from_environment_as_dataclass(EnvConfig)
 
@@ -118,7 +116,6 @@ async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
                         for k, v in {
                             "EWMS_PILOT_INIT_TIMEOUT": CURL_TIMEOUT + 1,
                             "EWMS_PILOT_TASK_TIMEOUT": ENV.EWMS_PILOT_TASK_TIMEOUT,
-                            "EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE": ENV.EWMS_PILOT_TIMEOUT_QUEUE_WAIT_FOR_FIRST_MESSAGE,
                             "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.EWMS_PILOT_TIMEOUT_QUEUE_INCOMING,
                             "EWMS_PILOT_CONTAINER_DEBUG": "True",  # toggle?
                             "EWMS_PILOT_INFILE_EXT": ".json",
