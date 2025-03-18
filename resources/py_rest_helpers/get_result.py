@@ -7,7 +7,6 @@ import argparse
 import asyncio
 import json
 import logging
-from pathlib import Path
 
 from ._connect import get_rest_client
 
@@ -28,12 +27,6 @@ async def main():
         required=True,
         help="the url to connect to a SkyDriver server",
     )
-    parser.add_argument(
-        "--file",
-        required=True,
-        type=Path,
-        help="a file to write the result to",
-    )
     args = parser.parse_args()
 
     rc = get_rest_client(args.skydriver_url)
@@ -42,9 +35,9 @@ async def main():
     resp = await rc.request(
         "GET", f"/scan/{args.scan_id}/result", {"include_deleted": True}
     )
-    with open(args.file, "w") as f:
+    with open(f"{args.scan_id}.result.json", "w") as f:
         print(json.dump(resp, f, indent=4))
-    logging.info(f"result written to {args.file}")
+        logging.info(f"result written to {f.name}")
 
 
 if __name__ == "__main__":
