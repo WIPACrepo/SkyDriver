@@ -559,6 +559,8 @@ async def _patch_progress_and_scan_metadata(
             ),
             predictive_scanning_threshold=1.0,
             last_updated="now!",
+            start=123,
+            end=456,
         )
         # update progress (update `scan_metadata` sometimes--not as important)
         if i % 2:  # odd
