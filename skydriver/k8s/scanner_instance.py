@@ -3,6 +3,7 @@ instances."""
 
 import logging
 import textwrap
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
@@ -404,17 +405,28 @@ def assemble_scanner_server_logs_url(manifest: Manifest) -> str:
     """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
     search_window = 24  # hours
     start_time = get_start_time(manifest)
+    end_time = start_time + (search_window * 60 * 60)
 
-    params = {
-        "query": (
-            "last_over_time(timestamp(changes(kube_pod_container_status_running{container="
-            f'"{get_skyscan_server_container_name(manifest.scan_id)}"'
-            "}[1m])>=0)["
-            f"{str(search_window)}"
-            "h:])"
-        ),
-        "start": str(start_time),
-        "end": str(start_time + (search_window * 60 * 60)),
-        "step": "1m",
-    }
-    return f"{ENV.GRAFANA_DASHBOARD_BASEURL}?{urlencode(params)}"
+    # have we seen scan updates within the timeframe?
+    # -> then, assume it's live, and give the simple url
+    if time.time() < end_time:
+        return (
+            f"{ENV.GRAFANA_DASHBOARD_BASEURL}"
+            f"&var-namespace={ENV.K8S_NAMESPACE}"
+            f"&var-container={get_skyscan_server_container_name(manifest.scan_id)}"
+        )
+    # otherwise, give the url that will search
+    else:
+        params = {
+            "query": (
+                "last_over_time(timestamp(changes(kube_pod_container_status_running{container="
+                f'"{get_skyscan_server_container_name(manifest.scan_id)}"'
+                "}[1m])>=0)["
+                f"{str(search_window)}"
+                "h:])"
+            ),
+            "start": str(start_time),
+            "end": str(end_time),
+            "step": "1m",
+        }
+        return f"{ENV.GRAFANA_DASHBOARD_BASEURL}?{urlencode(params)}"
