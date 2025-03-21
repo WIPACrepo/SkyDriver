@@ -3,10 +3,13 @@ instances."""
 
 import logging
 import textwrap
+import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
 import yaml
+from dateutil import parser
 from rest_tools.client import ClientCredentialsAuth
 
 from .. import ewms, images
@@ -15,6 +18,7 @@ from ..config import (
     ENV,
     sdict,
 )
+from ..database.schema import Manifest
 from ..images import get_skyscan_cvmfs_singularity_image
 
 LOGGER = logging.getLogger(__name__)
@@ -380,10 +384,49 @@ class EnvVarFactory:
         return [{"name": str(k), "value": str(v)} for k, v in env.items()]
 
 
-def assemble_scanner_server_logs_url(scan_id: str) -> str:
+def get_start_time(manifest: Manifest) -> int:
+    """Get the timestamp for when the scan started."""
+    if manifest.progress:  # the scan has started
+        if ret := manifest.progress.start:
+            return ret
+        # 'ret==None' for a started scan probably indicates the scan is pre-v2
+        try:
+            dt = parser.parse(manifest.progress.processing_stats.start["scanner start"])
+            return int(dt.timestamp())
+        except Exception as e:
+            LOGGER.error(f"could not parse scan start time: {e}")
+            pass
+
+    # fall-through
+    return int(manifest.timestamp)  # when the scan was requested
+
+
+def assemble_scanner_server_logs_url(manifest: Manifest) -> str:
     """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
-    return (
-        f"{ENV.GRAFANA_DASHBOARD_BASEURL}"
-        f"&var-namespace={ENV.K8S_NAMESPACE}"
-        f"&var-container={get_skyscan_server_container_name(scan_id)}"
-    )
+    search_window = 24  # hours
+    start_time = get_start_time(manifest)
+    end_time = start_time + (search_window * 60 * 60)
+
+    # have we seen scan updates within the timeframe?
+    # -> then, assume it's live, and give the simple url
+    if time.time() < end_time:
+        return (
+            f"{ENV.GRAFANA_DASHBOARD_BASEURL}"
+            f"&var-namespace={ENV.K8S_NAMESPACE}"
+            f"&var-container={get_skyscan_server_container_name(manifest.scan_id)}"
+        )
+    # otherwise, give the url that will search
+    else:
+        params = {
+            "query": (
+                "last_over_time(timestamp(changes(kube_pod_container_status_running{container="
+                f'"{get_skyscan_server_container_name(manifest.scan_id)}"'
+                "}[1m])>=0)["
+                f"{str(search_window)}"
+                "h:])"
+            ),
+            "start": str(start_time),
+            "end": str(end_time),
+            "step": "1m",
+        }
+        return f"{ENV.GRAFANA_DASHBOARD_BASEURL}?{urlencode(params)}"

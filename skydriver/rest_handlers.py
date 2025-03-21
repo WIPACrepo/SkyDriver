@@ -1046,7 +1046,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
             "is_deleted": manifest.is_deleted,
             "scan_complete": does_scan_state_indicate_final_result_received(scan_state),
             "scanner_server_logs": {
-                "url": assemble_scanner_server_logs_url(manifest.scan_id),
+                "url": assemble_scanner_server_logs_url(manifest),
             },
             "ewms_workforce": await ewms.get_workforce_statuses(
                 self.ewms_rc, manifest.ewms_workflow_id
@@ -1071,10 +1071,12 @@ class ScanLogsHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
+        manifest = await self.manifests.get(scan_id, incl_del=True)
+
         self.write(
             {
                 "scanner_server": {
-                    "url": assemble_scanner_server_logs_url(scan_id),
+                    "url": assemble_scanner_server_logs_url(manifest),
                 }
             }
         )

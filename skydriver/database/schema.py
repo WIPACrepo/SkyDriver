@@ -62,6 +62,10 @@ class Progress:
     predictive_scanning_threshold: float
     last_updated: str
 
+    # fields new to skydriver v2
+    start: int | None = None
+    end: int | None = None
+
 
 @typechecked
 @dc.dataclass
@@ -140,7 +144,9 @@ class Manifest(ScanIDDataclass):
     )
 
     # open to requestor
-    classifiers: dict[str, str | bool | float | int | None] = dc.field(default_factory=dict)
+    classifiers: dict[str, str | bool | float | int | None] = dc.field(
+        default_factory=dict
+    )
 
     # i3 event -- grabbed by scanner central server
     i3_event_id: str = ""  # id to i3_event coll
