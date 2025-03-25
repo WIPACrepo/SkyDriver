@@ -81,9 +81,14 @@ if is_testing():
 else:
     service_account_auth = token_attribute_role_mapping_auth(  # type: ignore[no-untyped-call]
         role_attrs={
-            USER_ACCT: ["groups=/institutions/IceCube.*"],
-            INTERNAL_ACCT: ["skydriver_role=system"],
-        }
+            USER_ACCT: [
+                "groups=/institutions/IceCube.*",  # people
+                "resource_access.skydriver-external.roles=users",  # robots
+            ],
+            INTERNAL_ACCT: [
+                "resource_access.skydriver-internal.roles=system",  # robots
+            ],
+        },
     )
 
 
