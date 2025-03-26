@@ -451,9 +451,10 @@ class LogWrangler:
         }
 
         # query prometheus for timerange
+        url = f"{ENV.PROMETHEUS_URL}?{urlencode(params)}"
         try:
             rc = RestClient(
-                f"{ENV.PROMETHEUS_URL}?{urlencode(params)}",
+                url,
                 username=ENV.PROMETHEUS_AUTH_USERNAME,
                 password=ENV.PROMETHEUS_AUTH_PASSWORD,
             )

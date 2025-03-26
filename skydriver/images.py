@@ -90,7 +90,7 @@ async def _match_sha_to_majminpatch(target_sha: str) -> str | None:
             )
             return None
         else:
-            url = resp["next"]
+            rc.address = resp["next"]
 
 
 def _parse_image_ts(info: dict) -> float:
