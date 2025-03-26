@@ -5,7 +5,6 @@ import re
 from pathlib import Path
 
 import aiocache
-import requests
 from async_lru import alru_cache
 from dateutil import parser as dateutil_parser
 from rest_tools.client import RestClient
@@ -55,7 +54,7 @@ def get_skyscan_docker_image(tag: str) -> str:
 # utils
 
 
-def _match_sha_to_majminpatch(target_sha: str) -> str | None:
+async def _match_sha_to_majminpatch(target_sha: str) -> str | None:
     """Finds the image w/ same SHA and has a version tag like '#.#.#'.
 
     No error handling
@@ -64,10 +63,11 @@ def _match_sha_to_majminpatch(target_sha: str) -> str | None:
         f"finding an image that has a version tag like '#.#.#' for sha={target_sha}..."
     )
 
-    url = SKYSCAN_DOCKERHUB_API_URL
+    rc = RestClient(SKYSCAN_DOCKERHUB_API_URL)
+
     while True:  # loop for pagination
-        LOGGER.info(f"looking at {url}...")
-        resp = requests.get(url, timeout=10).json()
+        LOGGER.info(f"looking at {rc.address}...")
+        resp = await rc.request("GET", "")
 
         # look at each result on this page
         for result in resp["results"]:
@@ -140,7 +140,7 @@ async def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
         return docker_tag  # already full version
     # match sha to vX.Y.Z
     try:
-        if majminpatch := _match_sha_to_majminpatch(info["digest"]):
+        if majminpatch := await _match_sha_to_majminpatch(info["digest"]):
             return majminpatch
         else:  # no match
             return docker_tag
