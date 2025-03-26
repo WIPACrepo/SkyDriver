@@ -4,7 +4,7 @@ import logging
 import re
 from pathlib import Path
 
-import aiocache
+import aiocache  # type: ignore[import-untyped]
 from async_lru import alru_cache
 from dateutil import parser as dateutil_parser
 from rest_tools.client import RestClient

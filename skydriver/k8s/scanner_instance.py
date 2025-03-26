@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
-import aiocache
+import aiocache  # type: ignore[import-untyped]
 import yaml
 from dateutil import parser
 from rest_tools.client import ClientCredentialsAuth, RestClient
