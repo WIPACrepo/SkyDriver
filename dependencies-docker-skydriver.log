@@ -7,6 +7,7 @@
 #  pip freeze
 ########################################################################
 aiocache==0.12.3
+async-lru==2.0.5
 boto3==1.37.21
 botocore==1.37.21
 cachetools==5.5.2
@@ -56,6 +57,7 @@ pipdeptree==2.26.0
 └── pip [required: >=24.2, installed: 25.0.1]
 skydriver-s3-sidecar-ewms-init-container
 ├── aiocache [required: Any, installed: 0.12.3]
+├── async-lru [required: Any, installed: 2.0.5]
 ├── boto3 [required: Any, installed: 1.37.21]
 │   ├── botocore [required: >=1.37.21,<1.38.0, installed: 1.37.21]
 │   │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
