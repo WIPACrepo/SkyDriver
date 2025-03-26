@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
+import requests
 import yaml
 from dateutil import parser
 from rest_tools.client import ClientCredentialsAuth
@@ -16,6 +17,8 @@ from .. import ewms, images
 from ..config import (
     DebugMode,
     ENV,
+    SCANNER_LOGS_GRAFANA_WINDOW_SEC,
+    SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS,
     sdict,
 )
 from ..database.schema import Manifest
@@ -384,49 +387,84 @@ class EnvVarFactory:
         return [{"name": str(k), "value": str(v)} for k, v in env.items()]
 
 
-def get_start_time(manifest: Manifest) -> int:
-    """Get the timestamp for when the scan started."""
-    if manifest.progress:  # the scan has started
-        if ret := manifest.progress.start:
-            return ret
-        # 'ret==None' for a started scan probably indicates the scan is pre-v2
-        try:
-            dt = parser.parse(manifest.progress.processing_stats.start["scanner start"])
-            return int(dt.timestamp())
-        except Exception as e:
-            LOGGER.error(f"could not parse scan start time: {e}")
-            pass
+class LogWrangler:
+    """Tools for retrieving logs."""
 
-    # fall-through
-    return int(manifest.timestamp)  # when the scan was requested
+    @staticmethod
+    def get_scan_start_time(manifest: Manifest) -> int:
+        """Get the timestamp for when the scan started."""
+        if manifest.progress:  # the scan has started
+            if ret := manifest.progress.start:
+                return ret
+            # 'ret==None' for a started scan probably indicates the scan is pre-v2
+            try:
+                dt = parser.parse(
+                    manifest.progress.processing_stats.start["scanner start"]
+                )
+                return int(dt.timestamp())
+            except Exception as e:
+                LOGGER.error(f"could not parse scan start time: {e}")
+                pass
 
+        # fall-through
+        return int(manifest.timestamp)  # when the scan was requested
 
-def assemble_scanner_server_logs_url(manifest: Manifest) -> str:
-    """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
-    search_window = 24  # hours
-    start_time = get_start_time(manifest)
-    end_time = start_time + (search_window * 60 * 60)
-
-    # have we seen scan updates within the timeframe?
-    # -> then, assume it's live, and give the simple url
-    if time.time() < end_time:
-        return (
+    @staticmethod
+    def _get_grafana_logs_url(scan_id: str, end_timestamp: int | None) -> str:
+        url = (
             f"{ENV.GRAFANA_DASHBOARD_BASEURL}"
             f"&var-namespace={ENV.K8S_NAMESPACE}"
-            f"&var-container={get_skyscan_server_container_name(manifest.scan_id)}"
+            f"&var-container={get_skyscan_server_container_name(scan_id)}"
         )
-    # otherwise, give the url that will search
-    else:
+        if end_timestamp:
+            url += (
+                f"&from={(end_timestamp-SCANNER_LOGS_GRAFANA_WINDOW_SEC)*1000}"
+                f"&to={end_timestamp*1000}"
+            )
+        return url
+
+    @staticmethod
+    def _query_prometheus_for_timerange(
+        scan_id: str, search_start_ts: int
+    ) -> int | None:
+        search_end_ts = search_start_ts + (
+            SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS * 60 * 60
+        )
+        if time.time() < search_end_ts:
+            # this is a recent scan, no need to query
+            return None
+
+        # query prometheus for timerange
         params = {
             "query": (
                 "last_over_time(timestamp(changes(kube_pod_container_status_running{container="
-                f'"{get_skyscan_server_container_name(manifest.scan_id)}"'
+                f'"{get_skyscan_server_container_name(scan_id)}"'
                 "}[1m])>=0)["
-                f"{str(search_window)}"
+                f"{str(SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS)}"
                 "h:])"
             ),
-            "start": str(start_time),
-            "end": str(end_time),
+            "start": str(search_start_ts),
+            "end": str(search_end_ts),
             "step": "1m",
         }
-        return f"{ENV.GRAFANA_DASHBOARD_BASEURL}?{urlencode(params)}"
+        url = f"{ENV.PROMETHEUS_URL}?{urlencode(params)}"
+        response = requests.get(
+            url,
+            auth=(ENV.PROMETHEUS_AUTH_USERNAME, ENV.PROMETHEUS_AUTH_PASSWORD),
+        )
+        try:
+            return int(response.json()["data"]["result"][0]["values"][-1][-1])
+        except Exception as e:  # this is all or nothing, so except and move on
+            LOGGER.error(
+                f"could not get end time for scanner logs using prometheus query ({url}): {e}"
+            )
+            return None
+
+    @staticmethod
+    def assemble_scanner_server_logs_url(manifest: Manifest) -> str:
+        """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
+        start = LogWrangler.get_scan_start_time(manifest)
+        logs_end_ts = LogWrangler._query_prometheus_for_timerange(
+            manifest.scan_id, start
+        )
+        return LogWrangler._get_grafana_logs_url(manifest.scan_id, logs_end_ts)
