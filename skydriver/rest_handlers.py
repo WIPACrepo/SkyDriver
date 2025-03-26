@@ -487,7 +487,13 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                             f"includes '{DebugMode.CLIENT_LOGS.value}'"
                         ),
                     )
-        args.docker_tag = await images.resolve_docker_tag(args.docker_tag)
+        try:
+            args.docker_tag = await images.resolve_docker_tag(args.docker_tag)
+        except ValueError as e:
+            raise web.HTTPError(
+                400,
+                log_message=str(e),
+            )
 
         # generate unique scan_id
         scan_id = make_scan_id()
