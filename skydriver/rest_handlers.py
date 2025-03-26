@@ -376,7 +376,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         arghand.add_argument(
             # any tag on docker hub (including 'latest') -- must also be on CVMFS (but not checked here)
             "docker_tag",
-            type=images.resolve_docker_tag,
+            type=str,  # validated below
         )
         # scanner server args
         arghand.add_argument(
@@ -487,6 +487,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                             f"includes '{DebugMode.CLIENT_LOGS.value}'"
                         ),
                     )
+        args.docker_tag = await images.resolve_docker_tag(args.docker_tag)
 
         # generate unique scan_id
         scan_id = make_scan_id()

@@ -4,9 +4,11 @@ import logging
 import re
 from pathlib import Path
 
-import cachetools.func
+import aiocache
 import requests
+from async_lru import alru_cache
 from dateutil import parser as dateutil_parser
+from rest_tools.client import RestClient
 
 from skydriver.config import ENV
 
@@ -100,15 +102,15 @@ def _parse_image_ts(info: dict) -> float:
         raise e
 
 
-@cachetools.func.lru_cache()  # cache it forever
-def min_skymap_scanner_tag_ts() -> float:
+@alru_cache  # cache it forever
+async def min_skymap_scanner_tag_ts() -> float:
     """Get the timestamp for when the `MIN_SKYMAP_SCANNER_TAG` image was created."""
-    info, _ = get_info_from_docker_hub(ENV.MIN_SKYMAP_SCANNER_TAG)
+    info, _ = await get_info_from_docker_hub(ENV.MIN_SKYMAP_SCANNER_TAG)
     return _parse_image_ts(info)
 
 
-@cachetools.func.ttl_cache(ttl=5 * 60)  # don't cache too long, tags can be overwritten
-def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
+@aiocache.cached(ttl=5 * 60)  # don't cache too long, tags can be overwritten
+async def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
     """Get the '#.#.#' tag on Docker Hub w/ `docker_tag`'s SHA if possible.
 
     Return `docker_tag` if already a '#.#.#', or if there's no match.
@@ -125,9 +127,9 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
         ValueError -- if `docker_tag` doesn't exist on Docker Hub
         ValueError -- if there's an issue communicating w/ Docker Hub API
     """
-    info, docker_tag = get_info_from_docker_hub(docker_tag)
+    info, docker_tag = await get_info_from_docker_hub(docker_tag)
     # check that the image is not too old
-    if _parse_image_ts(info) < min_skymap_scanner_tag_ts():
+    if _parse_image_ts(info) < await min_skymap_scanner_tag_ts():
         raise ValueError(
             f"Image tag is older than the minimum supported tag "
             f"'{ENV.MIN_SKYMAP_SCANNER_TAG}'. Contact admins for more info"
@@ -147,7 +149,7 @@ def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
         raise ValueError("Error validating image on Docker Hub")
 
 
-def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
+async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
     """Get the json dict from GET @ Docker Hub, and the non v-prefixed tag (see below).
 
     Accepts v-prefixed tags, like 'v2.3.4', 'v4', etc.
@@ -162,9 +164,9 @@ def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
         raise _error
 
     try:
-        url = f"{SKYSCAN_DOCKERHUB_API_URL}/{docker_tag}"
-        LOGGER.info(f"looking at {url}...")
-        resp = requests.get(url, timeout=10)
+        rc = RestClient(SKYSCAN_DOCKERHUB_API_URL)
+        LOGGER.info(f"looking at {rc.address} for {docker_tag}...")
+        resp = await rc.request("GET", docker_tag)
     except Exception as e:
         LOGGER.exception(e)
         raise ValueError("Image tag verification failed")
@@ -176,7 +178,7 @@ def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
     return resp.json(), docker_tag
 
 
-def resolve_docker_tag(docker_tag: str) -> str:
+async def resolve_docker_tag(docker_tag: str) -> str:
     """Check if the docker tag exists, then resolve 'latest' if needed.
 
     NOTE: Assumes tag exists (or will soon) on CVMFS. Condor will back
@@ -184,7 +186,7 @@ def resolve_docker_tag(docker_tag: str) -> str:
     """
     LOGGER.info(f"checking docker tag: {docker_tag}")
     try:
-        out_image = _try_resolve_to_majminpatch_docker_hub(docker_tag)
+        out_image = await _try_resolve_to_majminpatch_docker_hub(docker_tag)
         LOGGER.info(f"resolved tag: {docker_tag} -> {out_image}")
         return out_image
     except Exception as e:
