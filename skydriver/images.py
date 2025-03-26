@@ -175,7 +175,7 @@ async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
         raise ValueError("Image tag verification failed")
 
     LOGGER.debug(resp)
-    return resp.json(), docker_tag
+    return resp, docker_tag
 
 
 async def resolve_docker_tag(docker_tag: str) -> str:
