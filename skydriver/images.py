@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 import aiocache  # type: ignore[import-untyped]
+import requests
 from async_lru import alru_cache
 from dateutil import parser as dateutil_parser
 from rest_tools.client import RestClient
@@ -167,12 +168,11 @@ async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
         rc = RestClient(SKYSCAN_DOCKERHUB_API_URL)
         LOGGER.info(f"looking at {rc.address} for {docker_tag}...")
         resp = await rc.request("GET", docker_tag)
+    except requests.exceptions.HTTPError:
+        raise _error
     except Exception as e:
         LOGGER.exception(e)
         raise ValueError("Image tag verification failed")
-
-    if not resp.ok:
-        raise _error
 
     LOGGER.debug(resp)
     return resp.json(), docker_tag
