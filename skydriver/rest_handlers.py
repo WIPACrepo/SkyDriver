@@ -1051,7 +1051,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
             "is_deleted": manifest.is_deleted,
             "scan_complete": does_scan_state_indicate_final_result_received(scan_state),
             "scanner_server_logs": {
-                "url": LogWrangler.assemble_scanner_server_logs_url(manifest),
+                "url": await LogWrangler.assemble_scanner_server_logs_url(manifest),
             },
             "ewms_workforce": await ewms.get_workforce_statuses(
                 self.ewms_rc, manifest.ewms_workflow_id
@@ -1081,7 +1081,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):
         self.write(
             {
                 "scanner_server": {
-                    "url": LogWrangler.assemble_scanner_server_logs_url(manifest),
+                    "url": await LogWrangler.assemble_scanner_server_logs_url(manifest),
                 }
             }
         )

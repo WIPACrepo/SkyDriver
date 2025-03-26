@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
-import requests
+import aiocache
 import yaml
 from dateutil import parser
-from rest_tools.client import ClientCredentialsAuth
+from rest_tools.client import ClientCredentialsAuth, RestClient
 
 from .. import ewms, images
 from ..config import (
@@ -424,7 +424,8 @@ class LogWrangler:
         return url
 
     @staticmethod
-    def _query_prometheus_for_timerange(
+    @aiocache.cached(ttl=15 * 60)  # don't cache too long, logs could be updated
+    async def _query_prometheus_for_timerange(
         scan_id: str, search_start_ts: int
     ) -> int | None:
         search_end_ts = search_start_ts + (
@@ -436,7 +437,6 @@ class LogWrangler:
         if ENV.CI:  # for ci testing
             return None
 
-        # query prometheus for timerange
         params = {
             "query": (
                 "last_over_time(timestamp(changes(kube_pod_container_status_running{container="
@@ -449,12 +449,15 @@ class LogWrangler:
             "end": str(search_end_ts),
             "step": "1m",
         }
-        url = f"{ENV.PROMETHEUS_URL}?{urlencode(params)}"
-        response = requests.get(
-            url,
-            auth=(ENV.PROMETHEUS_AUTH_USERNAME, ENV.PROMETHEUS_AUTH_PASSWORD),
-        )
+
+        # query prometheus for timerange
         try:
+            rc = RestClient(
+                f"{ENV.PROMETHEUS_URL}?{urlencode(params)}",
+                username=ENV.PROMETHEUS_AUTH_USERNAME,
+                password=ENV.PROMETHEUS_AUTH_PASSWORD,
+            )
+            response = await rc.request("GET", "")
             return int(response.json()["data"]["result"][0]["values"][-1][-1])
         except Exception as e:  # this is all or nothing, so except and move on
             LOGGER.error(
@@ -463,10 +466,10 @@ class LogWrangler:
             return None
 
     @staticmethod
-    def assemble_scanner_server_logs_url(manifest: Manifest) -> str:
+    async def assemble_scanner_server_logs_url(manifest: Manifest) -> str:
         """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
         start = LogWrangler.get_scan_start_time(manifest)
-        logs_end_ts = LogWrangler._query_prometheus_for_timerange(
+        logs_end_ts = await LogWrangler._query_prometheus_for_timerange(
             manifest.scan_id, start
         )
         return LogWrangler._get_grafana_logs_url(manifest.scan_id, logs_end_ts)
