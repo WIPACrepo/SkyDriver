@@ -433,6 +433,8 @@ class LogWrangler:
         if time.time() < search_end_ts:
             # this is a recent scan, no need to query
             return None
+        if ENV.CI:  # for ci testing
+            return None
 
         # query prometheus for timerange
         params = {
