@@ -8,7 +8,7 @@ import requests
 from rest_tools.client import RestClient
 
 from .config import ENV, sdict
-from .database.schema import PENDING_EWMS_WORKFLOW
+from .database.schema import NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
 
 LOGGER = logging.Logger(__name__)
 
@@ -47,7 +47,7 @@ async def get_deactivated_type(ewms_rc: RestClient, workflow_id: str) -> str | N
 
     Example: 'ABORTED', 'FINISHED
     """
-    if workflow_id == PENDING_EWMS_WORKFLOW:
+    if workflow_id == NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS:
         return None
 
     workflow = await ewms_rc.request(
@@ -63,7 +63,7 @@ async def get_taskforce_infos(
     workflow_id: str | None,
 ) -> list[sdict]:
     """Get all info of all the taskforces associated with the workflow."""
-    if workflow_id == PENDING_EWMS_WORKFLOW or (not workflow_id):
+    if workflow_id == NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS or (not workflow_id):
         return []
 
     resp = await ewms_rc.request(

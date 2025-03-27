@@ -116,7 +116,7 @@ def obfuscate_cl_args(args: str) -> str:
     return " ".join(out_args)
 
 
-PENDING_EWMS_WORKFLOW = "pending-ewms"
+NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS = "not-yet-requested"
 
 DEPRECATED_EVENT_I3LIVE_JSON_DICT = "use 'i3_event_id'"
 DEPRECATED_EWMS_TASK = "use 'ewms_workflow_id'"

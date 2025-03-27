@@ -17,7 +17,7 @@ from rest_tools.client import RestClient
 import skydriver.images  # noqa: F401  # export
 from skydriver.__main__ import setup_ewms_client
 
-PENDING_EWMS_WORKFLOW = "pending-ewms"
+NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS = "not-yet-requested"
 
 LOGGER = logging.getLogger(__name__)
 
@@ -106,7 +106,7 @@ async def _launch_scan(
         progress=None,
         scanner_server_args=post_resp["scanner_server_args"],  # see below
         ewms_task="use 'ewms_workflow_id'",
-        ewms_workflow_id=PENDING_EWMS_WORKFLOW,
+        ewms_workflow_id=NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
         classifiers=post_scan_body["classifiers"],
         last_updated=post_resp["last_updated"],  # see below
         priority=0,
@@ -921,10 +921,10 @@ async def _after_scan_start_logic(
     # mimic the ewms-init container...
     # -> before
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert manifest["ewms_workflow_id"] == PENDING_EWMS_WORKFLOW
+    assert manifest["ewms_workflow_id"] == NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
     assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
-        "workflow_id": PENDING_EWMS_WORKFLOW,
-        "is_pending_ewms_workflow": True,
+        "workflow_id": NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+        "requested_ewms_workflow": False,
     }
     # -> update workflow_id
     resp = await setup_ewms_client().request("POST", "/v0/workflows", {"foo": "bar"})
@@ -937,7 +937,7 @@ async def _after_scan_start_logic(
     assert manifest["ewms_workflow_id"] == workflow_id
     assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
         "workflow_id": workflow_id,
-        "is_pending_ewms_workflow": False,
+        "requested_ewms_workflow": True,
     }
 
     #

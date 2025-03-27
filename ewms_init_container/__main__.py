@@ -235,8 +235,8 @@ async def main() -> None:
 
     # 0. check that a workflow has not already been requested for this scan
     resp = await skyd_rc.request("GET", f"/scan/{args.scan_id}/ewms/workflow-id")
-    if not resp["is_pending_ewms_workflow"]:
-        raise ValueError("this scan is not pending an EWMS workflow")
+    if resp["requested_ewms_workflow"]:
+        raise ValueError("a workflow for this scan has already been requested to EWMS")
     #
     # 1. talk to ewms
     workflow_id = await request_workflow_on_ewms(

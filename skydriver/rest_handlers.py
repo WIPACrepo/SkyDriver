@@ -35,7 +35,7 @@ from .config import (
 )
 from .database import schema
 from .database.mongodc import DocumentNotFoundException
-from .database.schema import PENDING_EWMS_WORKFLOW
+from .database.schema import NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
 from .ewms import request_stop_on_ewms
 from .k8s.scan_backlog import put_on_backlog
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
@@ -590,7 +590,7 @@ async def _start_scan(
         is_deleted=False,
         i3_event_id=scan_request_obj["i3_event_id"],
         scanner_server_args=scanner_server_args,
-        ewms_workflow_id=schema.PENDING_EWMS_WORKFLOW,
+        ewms_workflow_id=schema.NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
         # ^^^ set once the workflow request has been sent to EWMS (see backlogger)
         classifiers=scan_request_obj["classifiers"],
         priority=scan_request_obj["priority"],
@@ -688,7 +688,7 @@ async def stop_skyscan_workers(
 
     # request to ewms
     if manifest.ewms_workflow_id:
-        if manifest.ewms_workflow_id == schema.PENDING_EWMS_WORKFLOW:
+        if manifest.ewms_workflow_id == schema.NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS:
             LOGGER.info(
                 "OK: attempted to stop skyscan workers but scan has not been sent to EWMS"
             )
@@ -1110,14 +1110,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
         manifest = await self.manifests.get(scan_id, incl_del=True)
-        self.write(
-            {
-                "workflow_id": manifest.ewms_workflow_id,
-                "is_pending_ewms_workflow": (
-                    manifest.ewms_workflow_id == PENDING_EWMS_WORKFLOW
-                ),
-            }
-        )
+        self.write({"workflow_id": manifest.ewms_workflow_id})
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     async def post(self, scan_id: str) -> None:
@@ -1134,7 +1127,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
             manifest = await self.manifests.collection.find_one_and_update(
                 {
                     "scan_id": scan_id,
-                    "ewms_workflow_id": PENDING_EWMS_WORKFLOW,
+                    "ewms_workflow_id": NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
                     "is_deleted": False,
                 },
                 {"$set": {"ewms_workflow_id": args.workflow_id}},

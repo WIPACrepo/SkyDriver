@@ -8,7 +8,11 @@ from rest_tools.client import RestClient
 from tornado import web
 
 from . import database, ewms
-from .database.schema import DEPRECATED_EWMS_TASK, Manifest, PENDING_EWMS_WORKFLOW
+from .database.schema import (
+    DEPRECATED_EWMS_TASK,
+    Manifest,
+    NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+)
 
 
 def make_scan_id() -> str:
@@ -43,7 +47,7 @@ def _has_cleared_backlog(manifest: Manifest) -> bool:
     return bool(
         (  # has a real workflow id
             manifest.ewms_workflow_id
-            and manifest.ewms_workflow_id != PENDING_EWMS_WORKFLOW
+            and manifest.ewms_workflow_id != NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
         )
         or (  # backward compatibility...
             manifest.ewms_task != DEPRECATED_EWMS_TASK

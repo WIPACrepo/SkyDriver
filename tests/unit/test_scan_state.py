@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from skydriver.database import schema
-from skydriver.database.schema import PENDING_EWMS_WORKFLOW
+from skydriver.database.schema import NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
 from skydriver.utils import get_scan_state
 
 
@@ -176,7 +176,7 @@ async def test_50__prestartup(ewms_dtype: str | None, state: str) -> None:
         scanner_server_args=MagicMock(),
         #
         # now, args that actually matter:
-        ewms_workflow_id=PENDING_EWMS_WORKFLOW,
+        ewms_workflow_id=NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
         progress=None,
     )
 
