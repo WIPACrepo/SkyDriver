@@ -74,9 +74,9 @@ async def _match_sha_to_majminpatch(target_sha: str) -> str | None:
         for result in resp["results"]:
             result_sha = result.get("digest", result["images"][0]["digest"])
             # ^^^ some old ones have their 'digest' in their 'images' list entry
-            LOGGER.debug(f"an api image: sha={result_sha} ({result})")
+            # LOGGER.debug(f"an api image: sha={result_sha} ({result})")
             if target_sha != result_sha:
-                LOGGER.debug("-> no match, looking at next...")
+                # LOGGER.debug("-> no match, looking at next...")
                 continue
             elif VERSION_REGEX_MAJMINPATCH.fullmatch(result["name"]):
                 LOGGER.debug("-> success! matches AND has a full version tag")
