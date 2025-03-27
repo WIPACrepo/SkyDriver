@@ -925,6 +925,7 @@ async def _after_scan_start_logic(
     assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
         "workflow_id": NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
         "requested_ewms_workflow": False,
+        "eligible_for_ewms": True,
     }
     # -> update workflow_id
     resp = await setup_ewms_client().request("POST", "/v0/workflows", {"foo": "bar"})
@@ -938,6 +939,7 @@ async def _after_scan_start_logic(
     assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
         "workflow_id": workflow_id,
         "requested_ewms_workflow": True,
+        "eligible_for_ewms": True,
     }
 
     #
