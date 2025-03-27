@@ -119,7 +119,7 @@ async def launch_scans(
         logging.info(
             f"Launching test {i+1}/{len(tests)}: {test.reco_algo} + {test.event_file}"
         )
-        test.test_status = test_getter.TestStatus.RUNNING
+        test.test_status = test_getter.TestStatus.REQUESTED
         try:
             # rescan?
             if test.rescan_origin_id:
