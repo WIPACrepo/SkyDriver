@@ -159,7 +159,7 @@ async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
         # v4 -> 4; v5.1 -> 5.1; v3.6.9 -> 3.6.9
         docker_tag = docker_tag.lstrip("v")
 
-    _error = ValueError(f"Image tag not on Docker Hub: {docker_tag}")
+    _error = ValueError("Image tag not on Docker Hub")
 
     if not docker_tag or not docker_tag.strip():
         raise _error

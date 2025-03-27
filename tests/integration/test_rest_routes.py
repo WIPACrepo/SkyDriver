@@ -1134,7 +1134,7 @@ async def test_100__bad_data(
     # # bad docker tag
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: argument docker_tag: invalid type for url: {rc.address}/scan",
+        match=rf"400 Client Error: argument docker_tag: Image tag not on Docker Hub for url: {rc.address}/scan",
     ) as e:
         await rc.request(
             "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "docker_tag": "foo"}
