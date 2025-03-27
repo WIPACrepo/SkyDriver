@@ -111,6 +111,7 @@ async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
                 "n_workers": ENV.EWMS_N_WORKERS,
                 "pilot_config": {
                     "tag": "latest",
+                    "image_source": "auto",
                     "environment": {
                         k: v
                         for k, v in {
