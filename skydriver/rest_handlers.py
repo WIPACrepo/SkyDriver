@@ -1110,7 +1110,16 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
         manifest = await self.manifests.get(scan_id, incl_del=True)
-        self.write({"workflow_id": manifest.ewms_workflow_id})
+        self.write(
+            {
+                "workflow_id": manifest.ewms_workflow_id,
+                "requested_ewms_workflow": bool(  # iow, is this an actual id?
+                    manifest.ewms_workflow_id
+                    not in [None, NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS]
+                ),
+                "eligible_for_ewms": manifest.ewms_workflow_id is not None,
+            }
+        )
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     async def post(self, scan_id: str) -> None:
