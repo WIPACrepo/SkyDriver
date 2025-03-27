@@ -492,6 +492,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         except ValueError as e:
             raise web.HTTPError(
                 400,
+                reason=f"argument docker_tag: {e}",
                 log_message=str(e),
             )
 
