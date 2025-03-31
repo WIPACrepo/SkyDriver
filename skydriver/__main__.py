@@ -3,8 +3,6 @@
 import asyncio
 import logging
 
-import boto3  # type: ignore[import-untyped]
-import botocore.client  # type: ignore[import-untyped]
 from rest_tools.client import ClientCredentialsAuth, RestClient
 
 from . import database, k8s, server
