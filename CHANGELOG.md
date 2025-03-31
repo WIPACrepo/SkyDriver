@@ -2,6 +2,20 @@
 
 <!--next-version-placeholder-->
 
+## v1.3.2 (2025-03-17)
+
+## v1.3.1 (2025-03-13)
+
+### Other
+
+* Limit Projection for `/scans/find` ([#133](https://github.com/WIPACrepo/SkyDriver/issues/133)) ([`2174f9c`](https://github.com/WIPACrepo/SkyDriver/commit/2174f9cd301f56349b06e828beecde73560e2cdc))
+
+## v1.3.0 (2025-03-07)
+
+### Other
+
+* Add Retry Loop When Exceeding K8s Job Quota ([#131](https://github.com/WIPACrepo/SkyDriver/issues/131)) ([`39bf2d8`](https://github.com/WIPACrepo/SkyDriver/commit/39bf2d895ff2da1d4d71feb5cbd81e1c3b03a7ca))
+
 ## v1.2.2 (2025-02-04)
 
 
