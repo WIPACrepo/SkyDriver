@@ -141,9 +141,9 @@ async def server(
 
 
 async def _server(
-        monkeypatch: Any,
-        port: int,
-        mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    monkeypatch: Any,
+    port: int,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> AsyncIterator[Callable[[], RestClient]]:
     # patch at directly named import that happens before running the test
     monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
@@ -158,8 +158,6 @@ async def _server(
         skydriver.k8s.scan_backlog.run(
             mongo_client,
             k8s_batch_api,
-            ewms_rc,
-            Mock(),  # s3_client
         )
     )
     await asyncio.sleep(0)  # start up previous task

@@ -7,7 +7,6 @@ import time
 import botocore.client  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
-from rest_tools.client import RestClient
 from tornado import web
 from wipac_dev_tools.timing_tools import IntervalTimer
 
@@ -90,8 +89,6 @@ async def get_next(
 async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
-    ewms_rc: RestClient,
-    s3_client: botocore.client.BaseClient,
 ) -> None:
     """Error-handling around the scan backlog runner loop."""
     LOGGER.info("Started scan backlog runner.")
@@ -99,7 +96,7 @@ async def run(
     while True:
         # let's go!
         try:
-            await _run(mongo_client, k8s_batch_api, ewms_rc, s3_client)
+            await _run(mongo_client, k8s_batch_api)
         except Exception as e:
             LOGGER.exception(e)
             LOGGER.error(
@@ -116,8 +113,6 @@ async def run(
 async def _run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
-    ewms_rc: RestClient,
-    s3_client: botocore.client.BaseClient,
 ) -> None:
     """The (actual) main loop."""
     manifest_client = database.interface.ManifestClient(mongo_client)
