@@ -4,7 +4,7 @@ import asyncio
 import json
 from typing import Any, Callable
 from unittest import mock
-from unittest.mock import Mock
+from unittest.mock import AsyncMock
 
 from rest_tools.client import RestClient
 
@@ -37,7 +37,7 @@ N_JOBS = 5
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 async def test_00(
-    kapitsj_mock: Mock,
+    kapitsj_mock: AsyncMock,
     server: Callable[[], RestClient],
 ) -> None:
     """Test backlog job starting."""
@@ -56,7 +56,7 @@ async def test_00(
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 async def test_01(
-    kapitsj_mock: Mock,
+    kapitsj_mock: AsyncMock,
     server: Callable[[], RestClient],
 ) -> None:
     """Test backlog job starting with multiple."""
@@ -87,7 +87,7 @@ async def test_01(
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
 async def test_10(
-    kapitsj_mock: Mock,
+    kapitsj_mock: AsyncMock,
     server: Callable[[], RestClient],
 ) -> None:
     """Test backlog job starting with multiple cancels."""

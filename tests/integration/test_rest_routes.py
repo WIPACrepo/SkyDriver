@@ -1267,7 +1267,7 @@ async def test_100__bad_data(
     # OK
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
-    await asyncio.sleep(test_wait_before_teardown)
+    await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert await _is_scan_complete(rc, manifest["scan_id"])  # workforce is done
 
