@@ -8,8 +8,8 @@
 ########################################################################
 aiocache==0.12.3
 async-lru==2.0.5
-boto3==1.37.22
-botocore==1.37.22
+boto3==1.37.23
+botocore==1.37.23
 cachetools==5.5.2
 certifi==2025.1.31
 cffi==1.17.1
@@ -26,7 +26,7 @@ kubernetes==32.0.1
 motor==3.3.2
 oauthlib==3.2.2
 pyasn1==0.6.1
-pyasn1_modules==0.4.1
+pyasn1_modules==0.4.2
 pycparser==2.22
 PyJWT==2.10.1
 pymongo==4.6.1
@@ -58,15 +58,15 @@ pipdeptree==2.26.0
 skydriver-s3-sidecar-ewms-init-container
 ├── aiocache [required: Any, installed: 0.12.3]
 ├── async-lru [required: Any, installed: 2.0.5]
-├── boto3 [required: Any, installed: 1.37.22]
-│   ├── botocore [required: >=1.37.22,<1.38.0, installed: 1.37.22]
+├── boto3 [required: Any, installed: 1.37.23]
+│   ├── botocore [required: >=1.37.23,<1.38.0, installed: 1.37.23]
 │   │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   │   ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │   │   │   └── six [required: >=1.5, installed: 1.17.0]
 │   │   └── urllib3 [required: >=1.25.4,<3,!=2.2.0, installed: 2.3.0]
 │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   └── s3transfer [required: >=0.11.0,<0.12.0, installed: 0.11.4]
-│       └── botocore [required: >=1.37.4,<2.0a.0, installed: 1.37.22]
+│       └── botocore [required: >=1.37.4,<2.0a.0, installed: 1.37.23]
 │           ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │           ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │           │   └── six [required: >=1.5, installed: 1.17.0]
@@ -81,8 +81,8 @@ skydriver-s3-sidecar-ewms-init-container
 │   ├── PyYAML [required: >=5.4.1, installed: 6.0.2]
 │   ├── google-auth [required: >=1.0.1, installed: 2.38.0]
 │   │   ├── cachetools [required: >=2.0.0,<6.0, installed: 5.5.2]
-│   │   ├── pyasn1_modules [required: >=0.2.1, installed: 0.4.1]
-│   │   │   └── pyasn1 [required: >=0.4.6,<0.7.0, installed: 0.6.1]
+│   │   ├── pyasn1_modules [required: >=0.2.1, installed: 0.4.2]
+│   │   │   └── pyasn1 [required: >=0.6.1,<0.7.0, installed: 0.6.1]
 │   │   └── rsa [required: >=3.1.4,<5, installed: 4.9]
 │   │       └── pyasn1 [required: >=0.1.3, installed: 0.6.1]
 │   ├── websocket-client [required: >=0.32.0,!=0.42.*,!=0.41.*,!=0.40.0, installed: 1.8.0]
