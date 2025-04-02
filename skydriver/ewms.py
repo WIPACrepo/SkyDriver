@@ -7,7 +7,7 @@ import aiocache  # type: ignore[import-untyped]
 import requests
 from rest_tools.client import RestClient
 
-from .config import ENV, sdict
+from .config import ENV, EWMS_URL_V_PREFIX, sdict
 from .database.schema import NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
 
 LOGGER = logging.Logger(__name__)
@@ -27,13 +27,13 @@ async def request_stop_on_ewms(
             LOGGER.info(f"sending 'abort' signal to ewms for {workflow_id=}...")
             await ewms_rc.request(
                 "POST",
-                f"/v0/workflows/{workflow_id}/actions/abort",
+                f"/{EWMS_URL_V_PREFIX}/workflows/{workflow_id}/actions/abort",
             )
         else:
             LOGGER.info(f"sending 'finished' signal to ewms for {workflow_id=}...")
             await ewms_rc.request(
                 "POST",
-                f"/v0/workflows/{workflow_id}/actions/finished",
+                f"/{EWMS_URL_V_PREFIX}/workflows/{workflow_id}/actions/finished",
             )
     except requests.exceptions.HTTPError as e:
         LOGGER.warning(repr(e))
@@ -52,7 +52,7 @@ async def get_deactivated_type(ewms_rc: RestClient, workflow_id: str) -> str | N
 
     workflow = await ewms_rc.request(
         "GET",
-        f"/v0/workflows/{workflow_id}",
+        f"/{EWMS_URL_V_PREFIX}/workflows/{workflow_id}",
     )
     return workflow["deactivated"]
 
@@ -68,7 +68,7 @@ async def get_taskforce_infos(
 
     resp = await ewms_rc.request(
         "POST",
-        "/v0/query/taskforces",
+        f"/{EWMS_URL_V_PREFIX}/query/taskforces",
         {
             "query": {
                 "workflow_id": workflow_id,

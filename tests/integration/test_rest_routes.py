@@ -31,6 +31,7 @@ sdict = dict[str, Any]
 
 RE_UUID4HEX = re.compile(r"[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}")
 
+_EWMS_URL_V_PREFIX = "v1"
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 
@@ -928,7 +929,9 @@ async def _after_scan_start_logic(
         "eligible_for_ewms": True,
     }
     # -> update workflow_id
-    resp = await setup_ewms_client().request("POST", "/v0/workflows", {"foo": "bar"})
+    resp = await setup_ewms_client().request(
+        "POST", f"/{_EWMS_URL_V_PREFIX}/workflows", {"foo": "bar"}
+    )
     workflow_id = resp["workflow"]["workflow_id"]
     await rc.request(
         "POST", f"/scan/{scan_id}/ewms/workflow-id", {"workflow_id": workflow_id}

@@ -22,6 +22,9 @@ QUEUE_ALIAS_FROMCLIENT = "from-client-queue"  # ''
 
 CURL_TIMEOUT = 60
 
+EWMS_URL_V_PREFIX = "v1"
+MQS_URL_V_PREFIX = "v1"
+
 
 @dc.dataclass(frozen=True)
 class EnvConfig:
@@ -141,7 +144,7 @@ async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
 
     try:
         LOGGER.info("requesting to ewms...")
-        resp = await ewms_rc.request("POST", "/v0/workflows", body)
+        resp = await ewms_rc.request("POST", f"/{EWMS_URL_V_PREFIX}/workflows", body)
     except requests.exceptions.HTTPError:
         LOGGER.error("request to ewms failed using:")
         LOGGER.error(json.dumps(body, indent=4))
@@ -162,7 +165,7 @@ async def get_ewms_attrs(
         LOGGER.info("requesting EWMS mqprofiles...")
         resp = await ewms_rc.request(
             "GET",
-            f"/v0/mqs/workflows/{workflow_id}/mq-profiles/public",
+            f"/{MQS_URL_V_PREFIX}/mqs/workflows/{workflow_id}/mq-profiles/public",
         )
         LOGGER.info(json.dumps(resp, indent=4))
         mqprofiles = resp["mqprofiles"]

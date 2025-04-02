@@ -9,10 +9,12 @@ from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
+_URL_V_PREFIX = "v1"
+
 DONT_CALL_IT_A_DB__WORKFLOWS: dict[str, Any] = {}
 
 
-@app.route("/v0/workflows", methods=["POST"])
+@app.route(f"/{_URL_V_PREFIX}/workflows", methods=["POST"])
 def dummy_workflows_post():
     # in the real ewms, there's a bunch of db logic, etc.
 
@@ -37,24 +39,26 @@ def dummy_workflows_post():
     )
 
 
-@app.route("/v0/workflows/<workflow_id>", methods=["GET"])
+@app.route(f"/{_URL_V_PREFIX}/workflows/<workflow_id>", methods=["GET"])
 def dummy_workflows_get(workflow_id: str):
     return jsonify(DONT_CALL_IT_A_DB__WORKFLOWS[workflow_id])
 
 
-@app.route("/v0/workflows/<workflow_id>/actions/abort", methods=["POST"])
+@app.route(f"/{_URL_V_PREFIX}/workflows/<workflow_id>/actions/abort", methods=["POST"])
 def dummy_workflows_abort(workflow_id: str):
     DONT_CALL_IT_A_DB__WORKFLOWS[workflow_id].update({"deactivated": "abort"})
     return jsonify({})
 
 
-@app.route("/v0/workflows/<workflow_id>/actions/finished", methods=["POST"])
+@app.route(
+    f"/{_URL_V_PREFIX}/workflows/<workflow_id>/actions/finished", methods=["POST"]
+)
 def dummy_workflows_finished(workflow_id: str):
     DONT_CALL_IT_A_DB__WORKFLOWS[workflow_id].update({"deactivated": "finished"})
     return jsonify({})
 
 
-@app.route("/v0/query/taskforces", methods=["POST"])
+@app.route(f"/{_URL_V_PREFIX}/query/taskforces", methods=["POST"])
 def dummy_query_taskforces():
     req_json = request.get_json()
     pprint.pprint(req_json)
