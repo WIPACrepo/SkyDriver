@@ -8,8 +8,8 @@
 ########################################################################
 aiocache==0.12.3
 async-lru==2.0.5
-boto3==1.37.23
-botocore==1.37.23
+boto3==1.37.26
+botocore==1.37.26
 cachetools==5.5.2
 certifi==2025.1.31
 cffi==1.17.1
@@ -32,7 +32,7 @@ PyJWT==2.10.1
 pymongo==4.6.1
 python-dateutil==2.9.0.post0
 PyYAML==6.0.2
-qrcode==8.0
+qrcode==8.1
 requests==2.32.3
 requests-futures==1.0.2
 requests-oauthlib==2.0.0
@@ -58,15 +58,15 @@ pipdeptree==2.26.0
 skydriver-s3-sidecar-ewms-init-container
 ├── aiocache [required: Any, installed: 0.12.3]
 ├── async-lru [required: Any, installed: 2.0.5]
-├── boto3 [required: Any, installed: 1.37.23]
-│   ├── botocore [required: >=1.37.23,<1.38.0, installed: 1.37.23]
+├── boto3 [required: Any, installed: 1.37.26]
+│   ├── botocore [required: >=1.37.26,<1.38.0, installed: 1.37.26]
 │   │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   │   ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │   │   │   └── six [required: >=1.5, installed: 1.17.0]
 │   │   └── urllib3 [required: >=1.25.4,<3,!=2.2.0, installed: 2.3.0]
 │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   └── s3transfer [required: >=0.11.0,<0.12.0, installed: 0.11.4]
-│       └── botocore [required: >=1.37.4,<2.0a.0, installed: 1.37.23]
+│       └── botocore [required: >=1.37.4,<2.0a.0, installed: 1.37.26]
 │           ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │           ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │           │   └── six [required: >=1.5, installed: 1.17.0]
@@ -125,7 +125,7 @@ skydriver-s3-sidecar-ewms-init-container
 └── wipac-rest-tools [required: Any, installed: 1.8.6]
     ├── cachetools [required: Any, installed: 5.5.2]
     ├── PyJWT [required: !=2.6.0, installed: 2.10.1]
-    ├── qrcode [required: Any, installed: 8.0]
+    ├── qrcode [required: Any, installed: 8.1]
     ├── requests [required: Any, installed: 2.32.3]
     │   ├── charset-normalizer [required: >=2,<4, installed: 3.4.1]
     │   ├── idna [required: >=2.5,<4, installed: 3.10]
