@@ -15,11 +15,9 @@ async def rescan(rc: RestClient, scan_id: str):
     """Request a single rescan."""
     try:
         manifest = await rc.request("POST", f"/scan/{scan_id}/actions/rescan")
-        logging.info(
-            f"Requested rescan: old={scan_id} | new={manifest["scan_id"]}", flush=True
-        )
+        logging.info(f"Requested rescan: old={scan_id} | new={manifest["scan_id"]}")
     except Exception as e:
-        logging.error(f"Failed to rescan {scan_id}: {e}", flush=True)
+        logging.error(f"Failed to rescan {scan_id}: {e}")
 
 
 async def main():
