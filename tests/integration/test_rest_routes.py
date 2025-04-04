@@ -29,7 +29,7 @@ sdict = dict[str, Any]
 # CONSTANTS
 ########################################################################################
 
-RE_UUID4HEX = re.compile(r"[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}")
+RE_UUID4HEX = re.compile(r"[0-9a-f]{10}x[0-9a-f]{21}")  # see make_scan_id()
 
 _EWMS_URL_V_PREFIX = "v1"
 
