@@ -20,7 +20,9 @@ LOGGER = logging.getLogger(__package__)
 QUEUE_ALIAS_TOCLIENT = "to-client-queue"  # ''
 QUEUE_ALIAS_FROMCLIENT = "from-client-queue"  # ''
 
-CURL_TIMEOUT = 60
+REST_TIMEOUT = 5 * 60  # we are highly dependant on other components, so be patient
+
+SCANNER_CURL_TIMEOUT = 60
 
 EWMS_URL_V_PREFIX = "v1"
 MQS_URL_V_PREFIX = "v1"
@@ -106,7 +108,7 @@ async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
                     "bash -c "
                     '"'  # quote for bash -c "..."
                     "curl --fail-with-body "
-                    f"--max-time {CURL_TIMEOUT} "
+                    f"--max-time {SCANNER_CURL_TIMEOUT} "
                     "-o {{DATA_HUB}}/startup.json "
                     f"'{s3_url_get}'"  # single-quote the url
                     '"'  # unquote for bash -c "..."
@@ -118,7 +120,7 @@ async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
                     "environment": {
                         k: v
                         for k, v in {
-                            "EWMS_PILOT_INIT_TIMEOUT": CURL_TIMEOUT + 1,
+                            "EWMS_PILOT_INIT_TIMEOUT": SCANNER_CURL_TIMEOUT + 1,
                             "EWMS_PILOT_TASK_TIMEOUT": ENV.EWMS_PILOT_TASK_TIMEOUT,
                             "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.EWMS_PILOT_TIMEOUT_QUEUE_INCOMING,
                             "EWMS_PILOT_CONTAINER_DEBUG": "True",  # toggle?
@@ -229,11 +231,13 @@ async def main() -> None:
         ENV.EWMS_CLIENT_ID,
         ENV.EWMS_CLIENT_SECRET,
         logger=LOGGER,
+        timeout=REST_TIMEOUT,
     )
     skyd_rc = RestClient(
         ENV.SKYSCAN_SKYDRIVER_ADDRESS,
         ENV.SKYSCAN_SKYDRIVER_AUTH,
         logger=LOGGER,
+        timeout=REST_TIMEOUT,
     )
 
     # 0. check that a workflow has not already been requested for this scan
@@ -241,19 +245,20 @@ async def main() -> None:
     if resp["requested_ewms_workflow"]:
         raise ValueError("a workflow for this scan has already been requested to EWMS")
     #
-    # 1. talk to ewms
-    workflow_id = await request_workflow_on_ewms(
-        ewms_rc, generate_presigned_s3_get_url(args.scan_id)
-    )
+    # 1. set up url to s3
+    s3_url_get = generate_presigned_s3_get_url(args.scan_id)
     #
-    # 2. update skydriver
+    # 2. talk to ewms
+    workflow_id = await request_workflow_on_ewms(ewms_rc, s3_url_get)
+    #
+    # 3. update skydriver
     await skyd_rc.request(
         "POST",
         f"/scan/{args.scan_id}/ewms/workflow-id",
         {"workflow_id": workflow_id},
     )
     #
-    # 3. talk to ewms (again) & write to file
+    # 4. talk to ewms (again) & write to file
     ewms_dict = await get_ewms_attrs(ewms_rc, workflow_id)
     LOGGER.info(f"dumping EWMS attributes to '{args.json_out}'...")
     with open(args.json_out, "w") as f:
