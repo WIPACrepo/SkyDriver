@@ -1,4 +1,4 @@
-"""Simple script to grab stop an in-progress scan.
+"""Simple script to stop one or more in-progress scans.
 
 Useful for quick debugging in prod.
 """
@@ -13,14 +13,25 @@ from ._connect import get_rest_client
 logging.getLogger().setLevel(logging.INFO)
 
 
+async def stop_scan(rc, scan_id):
+    """Request a stop for a single scan."""
+    try:
+        logging.info(f"Requesting scan to be stopped: {scan_id}")
+        resp = await rc.request("DELETE", f"/scan/{scan_id}")
+        print(f"Scan {scan_id} response:\n{json.dumps(resp, indent=4)}", flush=True)
+    except Exception as e:
+        logging.error(f"Failed to stop scan {scan_id}: {e}")
+
+
 async def main():
     parser = argparse.ArgumentParser(
-        description="Stop an in-progress scan",
+        description="Stop one or more in-progress scans",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "scan_id",
-        help="the scan's id",
+        "scan_ids",
+        nargs="+",
+        help="one or more scan IDs to stop",
     )
     parser.add_argument(
         "--skydriver-url",
@@ -31,9 +42,8 @@ async def main():
 
     rc = get_rest_client(args.skydriver_url)
 
-    logging.info(f"requesting scan to be stopped {args.scan_id}")
-    resp = await rc.request("DELETE", f"/scan/{args.scan_id}")
-    print(json.dumps(resp, indent=4), flush=True)
+    tasks = [stop_scan(rc, scan_id) for scan_id in args.scan_ids]
+    await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":
