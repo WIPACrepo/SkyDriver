@@ -29,7 +29,8 @@ sdict = dict[str, Any]
 # CONSTANTS
 ########################################################################################
 
-RE_UUID4HEX = re.compile(r"[0-9a-f]{10}x[0-9a-f]{21}")  # see make_scan_id()
+RE_SCANID = re.compile(r"[0-9a-f]{10}x[0-9a-f]{21}")  # see make_scan_id()
+RE_UUID4HEX = re.compile(r"[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}")  # normal uuid4
 
 _EWMS_URL_V_PREFIX = "v1"
 
@@ -113,7 +114,7 @@ async def _launch_scan(
         priority=0,
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
-    assert RE_UUID4HEX.fullmatch(post_resp["scan_id"])
+    assert RE_SCANID.fullmatch(post_resp["scan_id"])
     assert RE_UUID4HEX.fullmatch(post_resp["i3_event_id"])
     # check timestamps
     post_launch_ts = time.time()
