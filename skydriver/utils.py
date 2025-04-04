@@ -29,7 +29,7 @@ def make_scan_id() -> str:
     uuid_short_hex = uuid.uuid4().hex[len(now_100ths_hex) + len(middle) :]
 
     # assemble -- # ex: 28809c0407x4348a28a8554441b96bcf
-    return f"{now_100ths_hex}{uuid_short_hex}"
+    return f"{now_100ths_hex}{middle}{uuid_short_hex}"
 
 
 class _ScanState(enum.Enum):
