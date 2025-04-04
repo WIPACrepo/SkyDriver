@@ -17,10 +17,19 @@ from .database.schema import (
 
 def make_scan_id() -> str:
     """Make a new scan id, chronological when sorted."""
-    big_time = int(time.time() * 100)  # ex: 173956400135
-    hex_big_time = str(hex(big_time)).removeprefix("0x")  # ex: 28809c0407
-    hex_uuid_short = uuid.uuid4().hex[len(hex_big_time) :]  # ex: 4348a28a8554441b96bcf4
-    return f"{hex_big_time}{hex_uuid_short}"  # ex: 28809c04074348a28a8554441b96bcf4
+
+    # get time component as hex
+    now_100ths = int(time.time() * 100)  # ex: 173956400135
+    now_100ths_hex = str(hex(now_100ths)).removeprefix("0x")  # ex: 28809c0407
+
+    # middle component
+    middle = "x"
+
+    # get uuid component (but only substring at end) -- ex: 4348a28a8554441b96bcf
+    uuid_short_hex = uuid.uuid4().hex[len(now_100ths_hex) + len(middle) :]
+
+    # assemble -- # ex: 28809c0407x4348a28a8554441b96bcf
+    return f"{now_100ths_hex}{uuid_short_hex}"
 
 
 class _ScanState(enum.Enum):
