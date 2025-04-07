@@ -19,17 +19,17 @@ def make_scan_id() -> str:
     """Make a new scan id, chronological when sorted."""
 
     # get time component as hex
-    now_100ths = int(time.time() * 100)  # ex: 173956400135
-    now_100ths_hex = str(hex(now_100ths)).removeprefix("0x")  # ex: 28809c0407
+    now_millis = int(time.time() * 1000)  # ex: 1739560009352
+    now_millis_hex = str(hex(now_millis)).removeprefix("0x")  # ex: 19505db3e88
 
     # middle component
     middle = "x"
 
-    # get uuid component (but only substring at end) -- ex: 4348a28a8554441b96bcf
-    uuid_short_hex = uuid.uuid4().hex[len(now_100ths_hex) + len(middle) :]
+    # get uuid component (but only substring at end) -- ex: 4348a28a8554441b96bc
+    uuid_short_hex = uuid.uuid4().hex[len(now_millis_hex) + len(middle) :]
 
-    # assemble -- # ex: 28809c0407x4348a28a8554441b96bcf
-    return f"{now_100ths_hex}{middle}{uuid_short_hex}"
+    # assemble -- # ex: 19505db3e88x4348a28a8554441b96bc
+    return f"{now_millis_hex}{middle}{uuid_short_hex}"
 
 
 class _ScanState(enum.Enum):
