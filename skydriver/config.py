@@ -121,6 +121,11 @@ class EnvConfig:
     SKYSCAN_LOG: str | None = None
     SKYSCAN_LOG_THIRD_PARTY: str | None = None
 
+    # cache durations
+    CACHE_DURATION_EWMS: int = 1 * 60
+    CACHE_DURATION_DOCKER_HUB: int = 5 * 60
+    CACHE_DURATION_PROMETHEUS: int = 15 * 60
+
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
 

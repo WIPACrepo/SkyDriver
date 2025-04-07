@@ -41,7 +41,7 @@ async def request_stop_on_ewms(
             raise e
 
 
-@aiocache.cached(ttl=1 * 60)  # don't cache too long, but avoid spamming ewms
+@aiocache.cached(ttl=ENV.CACHE_DURATION_EWMS)  # not too long, but avoid spamming ewms
 async def get_deactivated_type(ewms_rc: RestClient, workflow_id: str) -> str | None:
     """Grab the 'deactivated' field for the workflow.
 
@@ -57,7 +57,7 @@ async def get_deactivated_type(ewms_rc: RestClient, workflow_id: str) -> str | N
     return workflow["deactivated"]
 
 
-@aiocache.cached(ttl=1 * 60)  # don't cache too long, but avoid spamming ewms
+@aiocache.cached(ttl=ENV.CACHE_DURATION_EWMS)  # not too long, but avoid spamming ewms
 async def get_taskforce_infos(
     ewms_rc: RestClient,
     workflow_id: str | None,

@@ -424,7 +424,7 @@ class LogWrangler:
         return url
 
     @staticmethod
-    @aiocache.cached(ttl=15 * 60)  # don't cache too long, logs could be updated
+    @aiocache.cached(ttl=ENV.CACHE_DURATION_PROMETHEUS)  # fyi: logs may/will be updated
     async def _query_prometheus_for_timerange(
         scan_id: str, search_start_ts: int
     ) -> int | None:

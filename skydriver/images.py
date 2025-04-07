@@ -110,7 +110,7 @@ async def min_skymap_scanner_tag_ts() -> float:
     return _parse_image_ts(info)
 
 
-@aiocache.cached(ttl=5 * 60)  # don't cache too long, tags can be overwritten
+@aiocache.cached(ttl=ENV.CACHE_DURATION_DOCKER_HUB)  # fyi: tags can be overwritten
 async def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
     """Get the '#.#.#' tag on Docker Hub w/ `docker_tag`'s SHA if possible.
 
