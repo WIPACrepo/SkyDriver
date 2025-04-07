@@ -266,7 +266,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     "limits": {"cpu": "1.0", "memory": "1024000000"},
                                     "requests": {
                                         "cpu": "0.1",
-                                        "ephemeral-storage": "1M",
+                                        "ephemeral-storage": "8G",
                                         "memory": "1024000000",
                                     },
                                 },

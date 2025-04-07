@@ -195,7 +195,7 @@ class SkyScanK8sJobFactory:
                         requests:
                           memory: "{scanner_server_memory_bytes}"
                           cpu: "{ENV.K8S_SCANNER_CPU_REQUEST}"
-                          ephemeral-storage: "1M"
+                          ephemeral-storage: "8G"
                       volumeMounts:
                         - name: common-space-volume
                           mountPath: "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH}"
