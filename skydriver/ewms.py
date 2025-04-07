@@ -133,11 +133,11 @@ async def get_workforce_statuses(
         for outer_key, inner_dict in d.items():
             _increment_counts(merged_statuses[outer_key], inner_dict)
 
-    # Compute `n_running`, excluding 'FatalError'
+    # Compute `n_running`, excluding 'FatalError' & 'Done'
     n_running = sum(
         count
         for substatus, count in merged_statuses.get("RUNNING", {}).items()
-        if substatus != "FatalError"
+        if substatus not in ["FatalError", "Done"]
     )
 
     # Aggregate errors
