@@ -263,14 +263,11 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                 "image": f"icecube/skymap_scanner:{docker_tag_expected}",
                                 "name": f'skyscan-server-{post_resp["scan_id"]}',
                                 "resources": {
-                                    "limits": {
-                                        "cpu": "1.0",
-                                        "memory": "1G",
-                                    },
+                                    "limits": {"cpu": "1.0", "memory": "1024000000"},
                                     "requests": {
                                         "cpu": "0.1",
-                                        "ephemeral-storage": "8G",  # disk (inc. logs)
-                                        "memory": "1G",
+                                        "ephemeral-storage": "1M",
+                                        "memory": "1024000000",
                                     },
                                 },
                                 "volumeMounts": [
@@ -327,13 +324,10 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                 "image": os.environ["THIS_IMAGE_WITH_TAG"],
                                 "name": f"sidecar-s3-{post_resp['scan_id']}",
                                 "resources": {
-                                    "limits": {
-                                        "cpu": "0.1",
-                                        "memory": "100M",
-                                    },
+                                    "limits": {"cpu": "0.1", "memory": "100M"},
                                     "requests": {
                                         "cpu": "0.05",
-                                        "ephemeral-storage": "1M",  # disk (inc. logs)
+                                        "ephemeral-storage": "1M",
                                         "memory": "10M",
                                     },
                                 },
@@ -454,13 +448,10 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                 "image": os.environ["THIS_IMAGE_WITH_TAG"],
                                 "name": f"init-ewms-{post_resp['scan_id']}",
                                 "resources": {
-                                    "limits": {
-                                        "cpu": "0.1",
-                                        "memory": "100M",
-                                    },
+                                    "limits": {"cpu": "0.1", "memory": "100M"},
                                     "requests": {
                                         "cpu": "0.05",
-                                        "ephemeral-storage": "1M",  # disk (inc. logs)
+                                        "ephemeral-storage": "1M",
                                         "memory": "10M",
                                     },
                                 },
