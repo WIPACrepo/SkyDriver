@@ -926,7 +926,7 @@ async def _after_scan_start_logic(
     # -> before
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest["ewms_workflow_id"] == NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
-    assert manifest["ewms_address"] == None
+    assert manifest["ewms_address"] is None
     assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
         "workflow_id": NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
         "requested_ewms_workflow": False,
