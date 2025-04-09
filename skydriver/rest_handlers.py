@@ -1118,6 +1118,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
                     not in [None, NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS]
                 ),
                 "eligible_for_ewms": manifest.ewms_workflow_id is not None,
+                "ewms_address": manifest.ewms_address,
             }
         )
 
@@ -1130,6 +1131,11 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
             required=True,
             type=str,
         )
+        arghand.add_argument(
+            "ewms_address",
+            required=True,
+            type=str,
+        )
         args = arghand.parse_args()
 
         try:
@@ -1139,7 +1145,12 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
                     "ewms_workflow_id": NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
                     "is_deleted": False,
                 },
-                {"$set": {"ewms_workflow_id": args.workflow_id}},
+                {
+                    "$set": {
+                        "ewms_workflow_id": args.workflow_id,
+                        "ewms_address": args.ewms_address,
+                    }
+                },
                 return_document=ReturnDocument.AFTER,
                 return_dclass=dict,
             )

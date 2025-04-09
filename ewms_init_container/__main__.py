@@ -255,7 +255,7 @@ async def main() -> None:
     await skyd_rc.request(
         "POST",
         f"/scan/{args.scan_id}/ewms/workflow-id",
-        {"workflow_id": workflow_id},
+        {"workflow_id": workflow_id, "ewms_address": ENV.EWMS_ADDRESS},
     )
     #
     # 4. talk to ewms (again) & write to file

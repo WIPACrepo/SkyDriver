@@ -109,6 +109,7 @@ async def _launch_scan(
         scanner_server_args=post_resp["scanner_server_args"],  # see below
         ewms_task="use 'ewms_workflow_id'",
         ewms_workflow_id=NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+        ewms_address=None,
         classifiers=post_scan_body["classifiers"],
         last_updated=post_resp["last_updated"],  # see below
         priority=0,
@@ -524,6 +525,7 @@ async def _do_patch(
         scanner_server_args=manifest["scanner_server_args"],  # should not change
         ewms_task="use 'ewms_workflow_id'",
         ewms_workflow_id=manifest["ewms_workflow_id"],  # should not change
+        ewms_address=manifest["ewms_address"],  # should not change
         classifiers=manifest["classifiers"],  # should not change
         last_updated=resp["last_updated"],  # see below
         priority=0,
@@ -924,10 +926,12 @@ async def _after_scan_start_logic(
     # -> before
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest["ewms_workflow_id"] == NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
+    assert manifest["ewms_address"] == None
     assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
         "workflow_id": NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
         "requested_ewms_workflow": False,
         "eligible_for_ewms": True,
+        "ewms_address": None,
     }
     # -> update workflow_id
     resp = await setup_ewms_client().request(
@@ -935,15 +939,19 @@ async def _after_scan_start_logic(
     )
     workflow_id = resp["workflow"]["workflow_id"]
     await rc.request(
-        "POST", f"/scan/{scan_id}/ewms/workflow-id", {"workflow_id": workflow_id}
+        "POST",
+        f"/scan/{scan_id}/ewms/workflow-id",
+        {"workflow_id": workflow_id, "ewms_address": "ewms.foo.aq"},
     )
     # -> after
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert manifest["ewms_workflow_id"] == workflow_id
+    assert manifest["ewms_address"] == "ewms.foo.aq"
     assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
         "workflow_id": workflow_id,
         "requested_ewms_workflow": True,
         "eligible_for_ewms": True,
+        "ewms_address": "ewms.foo.aq",
     }
 
     #

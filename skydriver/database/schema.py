@@ -135,6 +135,7 @@ class Manifest(ScanIDDataclass):
 
     # EWMS interface
     ewms_workflow_id: str | None = None  # id points to info in EWMS
+    ewms_address: str | None = None  # used to differentiate
     # -> deprecated fields -- see __post_init__ for backward compatibility  logic
     ewms_task: dict | str = DEPRECATED_EWMS_TASK  # **DEPRECATED**
     # ^^^ was used in skydriver 1.x to use local k8s starter/stopper
