@@ -7,6 +7,7 @@ import argparse
 import asyncio
 import json
 import logging
+from typing import Any
 
 from rest_tools.client import RestClient
 
@@ -15,7 +16,7 @@ from ._connect import get_rest_client
 logging.getLogger().setLevel(logging.INFO)
 
 
-def extract_keys(obj: dict, keys: list[str] | None) -> dict:
+def extract_keys(obj: dict[str, Any], keys: list[str] | None) -> dict[str, Any]:
     """
     Extracts a subset of keys from a nested dictionary using dot notation.
 
@@ -31,7 +32,7 @@ def extract_keys(obj: dict, keys: list[str] | None) -> dict:
     """
     if not keys:
         return obj
-    result = {}
+    result: dict[str, Any] = {}
     for key in keys:
         parts = key.split(".")
         current = obj
