@@ -8,8 +8,8 @@
 ########################################################################
 aiocache==0.12.3
 async-lru==2.0.5
-boto3==1.37.31
-botocore==1.37.31
+boto3==1.37.33
+botocore==1.37.33
 cachetools==5.5.2
 certifi==2025.1.31
 cffi==1.17.1
@@ -44,7 +44,7 @@ typeguard==4.4.2
 typing_extensions==4.13.2
 urllib3==2.4.0
 websocket-client==1.8.0
-wipac-dev-tools==1.15.9
+wipac-dev-tools==1.16.2
 wipac-rest-tools==1.8.6
 ########################################################################
 #  pipdeptree
@@ -58,15 +58,15 @@ pipdeptree==2.26.0
 skydriver-s3-sidecar-ewms-init-container
 ├── aiocache [required: Any, installed: 0.12.3]
 ├── async-lru [required: Any, installed: 2.0.5]
-├── boto3 [required: Any, installed: 1.37.31]
-│   ├── botocore [required: >=1.37.31,<1.38.0, installed: 1.37.31]
+├── boto3 [required: Any, installed: 1.37.33]
+│   ├── botocore [required: >=1.37.33,<1.38.0, installed: 1.37.33]
 │   │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   │   ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │   │   │   └── six [required: >=1.5, installed: 1.17.0]
 │   │   └── urllib3 [required: >=1.25.4,<3,!=2.2.0, installed: 2.4.0]
 │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   └── s3transfer [required: >=0.11.0,<0.12.0, installed: 0.11.4]
-│       └── botocore [required: >=1.37.4,<2.0a.0, installed: 1.37.31]
+│       └── botocore [required: >=1.37.4,<2.0a.0, installed: 1.37.33]
 │           ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │           ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │           │   └── six [required: >=1.5, installed: 1.17.0]
@@ -115,7 +115,7 @@ skydriver-s3-sidecar-ewms-init-container
 ├── tornado [required: Any, installed: 6.4.2]
 ├── typeguard [required: Any, installed: 4.4.2]
 │   └── typing_extensions [required: >=4.10.0, installed: 4.13.2]
-├── wipac-dev-tools [required: Any, installed: 1.15.9]
+├── wipac-dev-tools [required: Any, installed: 1.16.2]
 │   ├── requests [required: Any, installed: 2.32.3]
 │   │   ├── charset-normalizer [required: >=2,<4, installed: 3.4.1]
 │   │   ├── idna [required: >=2.5,<4, installed: 3.10]
@@ -139,7 +139,7 @@ skydriver-s3-sidecar-ewms-init-container
     │       └── certifi [required: >=2017.4.17, installed: 2025.1.31]
     ├── tornado [required: Any, installed: 6.4.2]
     ├── urllib3 [required: >=2.0.4, installed: 2.4.0]
-    └── wipac-dev-tools [required: Any, installed: 1.15.9]
+    └── wipac-dev-tools [required: Any, installed: 1.16.2]
         ├── requests [required: Any, installed: 2.32.3]
         │   ├── charset-normalizer [required: >=2,<4, installed: 3.4.1]
         │   ├── idna [required: >=2.5,<4, installed: 3.10]
