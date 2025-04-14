@@ -11,13 +11,15 @@ from ._connect import get_rest_client
 logging.getLogger().setLevel(logging.INFO)
 
 
-async def rescan(rc: RestClient, scan_id: str):
+async def rescan(rc: RestClient, scan_id: str) -> str:
     """Request a single rescan."""
     try:
         manifest = await rc.request("POST", f"/scan/{scan_id}/actions/rescan")
         logging.info(f"Requested rescan: old={scan_id} | new={manifest["scan_id"]}")
+        return manifest["scan_id"]
     except Exception as e:
         logging.error(f"Failed to rescan {scan_id}: {e}")
+        return "error"
 
 
 async def main():
@@ -40,7 +42,8 @@ async def main():
     rc = get_rest_client(args.skydriver_url)
 
     tasks = [rescan(rc, scan_id) for scan_id in args.scan_ids]
-    await asyncio.gather(*tasks)
+    new_ids = await asyncio.gather(*tasks)
+    logging.info(f"new ids: {" ".join(new_ids)}")
 
 
 if __name__ == "__main__":
