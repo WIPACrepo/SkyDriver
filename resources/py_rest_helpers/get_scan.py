@@ -87,8 +87,8 @@ async def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "scan_ids",
-        nargs="+",
+        "--scan-ids",
+        nargs="*",
         help="One or more scan IDs",
     )
     parser.add_argument(
@@ -121,6 +121,9 @@ async def main() -> None:
         ),
     )
     args = parser.parse_args()
+
+    if not args.scan_ids:
+        args.scan_ids = input("Scan ID(s): ").split()
 
     if all(x is None for x in (args.manifest, args.status, args.logs)):
         parser.error(
