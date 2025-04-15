@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import texttable  # type: ignore
@@ -57,7 +57,12 @@ class ResultChecker:
                 "--diff-out-dir",
                 str(diffs_dir),
                 "--assert",
-            ],
+            ]
+            + (  # see https://github.com/icecube/skymap_scanner/blob/cb422e412d1607ce1e0ea2db4402a4e3461908ed/.github/workflows/tests.yml#L539-L560
+                ["--compare-different-versions-ok"]
+                if test.reco_algo == "splinempe" and date.today() < date(2025, 9, 18)
+                else []
+            ),
             capture_output=True,
             text=True,
         )
