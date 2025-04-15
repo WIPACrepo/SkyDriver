@@ -158,12 +158,13 @@ async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
         ],
     }
 
+    LOGGER.info("requesting to ewms with...")
+    LOGGER.error(json.dumps(body, indent=4))
+
     try:
-        LOGGER.info("requesting to ewms...")
         resp = await ewms_rc.request("POST", f"/{EWMS_URL_V_PREFIX}/workflows", body)
     except requests.exceptions.HTTPError:
-        LOGGER.error("request to ewms failed using:")
-        LOGGER.error(json.dumps(body, indent=4))
+        LOGGER.error("request to ewms failed")
         raise
     else:
         return resp["workflow"]["workflow_id"]
