@@ -162,6 +162,7 @@ async def _run(
                 include_low_priority_scans=include_low_priority_scans,
             )
         except database.mongodc.DocumentNotFoundException:
+            # *** EXTREMELY COMMON SCENARIO ***
             if include_low_priority_scans:
                 # reset the timer only if this last search included any-priority scans
                 timer_for_any_priority_scans.fastforward()
@@ -179,6 +180,7 @@ async def _run(
                 k8s_batch_api, skyscan_k8s_job, inf_retry_on_transient_errors=True
             )
         except kubernetes.utils.FailToCreateError as e:
+            # *** EXTREMELY RARE SCENARIO ***
             # k8s job (backlog entry) will be revived & restarted in future iteration
             LOGGER.exception(e)
             # fastforward to avoid idling after failure -- treat as "nothing started"
