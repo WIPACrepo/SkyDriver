@@ -41,8 +41,10 @@ async def main():
 
     rc = get_rest_client(args.skydriver_url)
 
-    tasks = [rescan(rc, scan_id) for scan_id in args.scan_ids]
-    new_ids = await asyncio.gather(*tasks)
+    new_ids = []
+    for scan_id in args.scan_ids:  # do this sync b/c we want ids to be in order
+        new_ids.append(await rescan(rc, scan_id))
+
     logging.info(f"new ids: {" ".join(new_ids)}")
 
 
