@@ -181,7 +181,8 @@ async def _run(
         except kubernetes.utils.FailToCreateError as e:
             # k8s job (backlog entry) will be revived & restarted in future iteration
             LOGGER.exception(e)
-            timer_for_any_priority_scans.fastforward()  # nothing was started, so don't wait long next time
+            # fastforward to avoid idling after failure -- treat as "nothing started"
+            timer_for_any_priority_scans.fastforward()
             continue  # 'get_next()' has built-in retry logic
 
         # NOTE: DO NOT ADD ANYMORE ACTIONS THAT CAN POSSIBLY FAIL -- THINK STATELESSNESS
