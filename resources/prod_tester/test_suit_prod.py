@@ -234,7 +234,6 @@ async def test_all(
                 wait_then_check_results(rc, test, checker),
             )
         )
-    display_test_status(tests)
 
     # wait on all tests
     n_failed = 0
