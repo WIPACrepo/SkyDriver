@@ -53,7 +53,8 @@ async def get_next(
 
         if entry.next_attempt > ENV.SCAN_BACKLOG_MAX_ATTEMPTS:
             LOGGER.info(
-                f"Backlog entry was already attempted {ENV.SCAN_BACKLOG_MAX_ATTEMPTS} times ({entry.scan_id=})"
+                f"Backlog entry was already attempted {ENV.SCAN_BACKLOG_MAX_ATTEMPTS} times "
+                f"-- backlog entry will now be removed ({entry.scan_id=})"
             )
             await scan_backlog.remove(entry)
             continue
@@ -61,7 +62,10 @@ async def get_next(
         # check if scan was 'deleted'
         manifest = await manifests.get(entry.scan_id, incl_del=True)
         if manifest.is_deleted:
-            LOGGER.info(f"Backlog entry was removed ({entry.scan_id=})")
+            LOGGER.info(
+                f"Scan is designated for deletion "
+                f"-- backlog entry will now be removed ({entry.scan_id=})"
+            )
             await scan_backlog.remove(entry)
             continue
 
