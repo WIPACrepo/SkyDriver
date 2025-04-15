@@ -49,7 +49,10 @@ async def get_next(
     while True:
         # get next up -- raises DocumentNotFoundException if none
         entry = await scan_backlog.fetch_next_as_pending(include_low_priority_scans)
-        LOGGER.info(f"Got backlog entry ({entry.scan_id=})")
+        LOGGER.info(
+            f"Got backlog entry "
+            f"({entry.scan_id=}, {include_low_priority_scans=}, {entry.priority=})"
+        )
 
         if entry.next_attempt > ENV.SCAN_BACKLOG_MAX_ATTEMPTS:
             LOGGER.info(
