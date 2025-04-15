@@ -32,6 +32,17 @@ def make_scan_id() -> str:
     return f"{now_millis_hex}{middle}{uuid_short_hex}"
 
 
+def has_skydriver_requested_ewms_workflow(ewms_workflow_id: str | None) -> bool:
+    """Figure out if 'ewms_workflow_id' indicates is an actual EWMS workflow id."""
+    return bool(
+        ewms_workflow_id
+        not in [
+            None,  # old scans (v1)
+            NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,  # pending scans
+        ]
+    )
+
+
 class _ScanState(enum.Enum):
     """A non-persisted scan state."""
 
@@ -54,10 +65,7 @@ def does_scan_state_indicate_final_result_received(state: str) -> bool:
 
 def _has_cleared_backlog(manifest: Manifest) -> bool:
     return bool(
-        (  # has a real workflow id
-            manifest.ewms_workflow_id
-            and manifest.ewms_workflow_id != NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
-        )
+        has_skydriver_requested_ewms_workflow(manifest.ewms_workflow_id)
         or (  # backward compatibility...
             manifest.ewms_task != DEPRECATED_EWMS_TASK
             and isinstance(manifest.ewms_task, dict)

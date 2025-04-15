@@ -30,18 +30,22 @@ from . import database, ewms, images
 from .config import (
     DebugMode,
     ENV,
+    EWMS_URL_V_PREFIX,
     KNOWN_CLUSTERS,
     is_testing,
 )
 from .database import schema
 from .database.mongodc import DocumentNotFoundException
-from .database.schema import NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
+from .database.schema import (
+    NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+)
 from .ewms import request_stop_on_ewms
 from .k8s.scan_backlog import put_on_backlog
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
 from .utils import (
     does_scan_state_indicate_final_result_received,
     get_scan_state,
+    has_skydriver_requested_ewms_workflow,
     make_scan_id,
 )
 
@@ -676,6 +680,92 @@ class ScanRescanHandler(BaseSkyDriverHandler):
 # -----------------------------------------------------------------------------
 
 
+class ScanMoreWorkersHandler(BaseSkyDriverHandler):
+    """Handles actions on increasing the number of workers for an ongoing scan."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/actions/add-workers$"
+
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    async def post(self, scan_id: str) -> None:
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        # response args
+        arghand.add_argument(
+            "n_workers",
+            type=int,
+        )
+        arghand.add_argument(
+            "cluster_location",
+            type=str,
+        )
+        args = arghand.parse_args()
+
+        manifest = await self.manifests.get(scan_id, True)
+
+        # has it been deleted?
+        if manifest.is_deleted:
+            msg = "this scan has been deleted--cannot add workers"
+            raise web.HTTPError(
+                422,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+        # is this in EWMS?
+        if not has_skydriver_requested_ewms_workflow(manifest.ewms_workflow_id):
+            msg = "an EWMS workflow has not been assigned--cannot add workers"
+            raise web.HTTPError(
+                422,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+        # is scan done?
+        if does_scan_state_indicate_final_result_received(
+            await get_scan_state(manifest, self.ewms_rc, self.results)
+        ):
+            msg = "this scan has a final result--cannot add workers"
+            raise web.HTTPError(
+                422,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+
+        # OK -- ready to add workers...
+
+        # talk with EWMS
+        try:
+            resp = await self.ewms_rc.request(
+                "POST",
+                f"/{EWMS_URL_V_PREFIX}/query/task-directives",
+                {
+                    "query": {"workflow_id": manifest.ewms_workflow_id},
+                    "projection": ["task_id"],
+                },
+            )
+            task_id = resp[0]["task_id"]
+            new_tf = await self.ewms_rc.request(
+                "POST",
+                f"/{EWMS_URL_V_PREFIX}/task-directives/{task_id}/actions/add-workers",
+                {
+                    "cluster_location": args.cluster_location,
+                    "n_workers": args.n_workers,
+                },
+            )
+        except Exception as e:  # broad b/c ewms is abstracted from user
+            LOGGER.exception(e)
+            msg = "failed to request additional workers on EWMS--contact admins"
+            raise web.HTTPError(
+                500,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+
+        self.write(
+            {k: v for k, v in new_tf.items() if k in ["taskforce_uuid", "n_workers"]}
+        )
+
+
+# -----------------------------------------------------------------------------
+
+
 async def stop_skyscan_workers(
     manifests: database.interface.ManifestClient,
     scan_id: str,
@@ -1113,9 +1203,8 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
         self.write(
             {
                 "workflow_id": manifest.ewms_workflow_id,
-                "requested_ewms_workflow": bool(  # iow, is this an actual id?
+                "requested_ewms_workflow": has_skydriver_requested_ewms_workflow(
                     manifest.ewms_workflow_id
-                    not in [None, NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS]
                 ),
                 "eligible_for_ewms": manifest.ewms_workflow_id is not None,
                 "ewms_address": manifest.ewms_address,

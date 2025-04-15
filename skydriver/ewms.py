@@ -8,7 +8,10 @@ import requests
 from rest_tools.client import RestClient
 
 from .config import ENV, EWMS_URL_V_PREFIX, sdict
-from .database.schema import NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
+from .database.schema import (
+    NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+)
+from .utils import has_skydriver_requested_ewms_workflow
 
 LOGGER = logging.Logger(__name__)
 
@@ -63,7 +66,7 @@ async def get_taskforce_infos(
     workflow_id: str | None,
 ) -> list[sdict]:
     """Get all info of all the taskforces associated with the workflow."""
-    if workflow_id == NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS or (not workflow_id):
+    if not has_skydriver_requested_ewms_workflow(workflow_id):
         return []
 
     resp = await ewms_rc.request(
