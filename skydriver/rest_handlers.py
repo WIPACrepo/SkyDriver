@@ -740,7 +740,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
                     "projection": ["task_id"],
                 },
             )
-            task_id = resp[0]["task_id"]
+            task_id = resp["task_directives"][0]["task_id"]
             new_tf = await self.ewms_rc.request(
                 "POST",
                 f"/{EWMS_URL_V_PREFIX}/task-directives/{task_id}/actions/add-workers",
