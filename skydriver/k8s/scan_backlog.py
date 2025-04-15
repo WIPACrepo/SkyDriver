@@ -149,19 +149,22 @@ async def _run(
         if timer_for_logging.has_interval_elapsed():
             LOGGER.info("scan backlog runner is still alive")
 
+        # include low priority scans only when enough time has passed
+        include_low_priority_scans = timer_for_any_priority_scans.has_interval_elapsed()
+
         # get next entry
-        # NOTE: this queries more often than 'timer_main_loop' -- see 'include_low_priority_scans'
         try:
             entry, manifest, scan_request_obj, skyscan_k8s_job = await get_next(
                 backlog_client,
                 manifest_client,
                 scan_request_client,
                 skyscan_k8s_job_client,
-                # include low priority scans only when enough time has passed
-                include_low_priority_scans=timer_for_any_priority_scans.has_interval_elapsed(),
+                include_low_priority_scans=include_low_priority_scans,
             )
         except database.mongodc.DocumentNotFoundException:
-            timer_for_any_priority_scans.fastforward()  # nothing was started, so don't wait long next time
+            if include_low_priority_scans:
+                # reset the timer only if this last search included any-priority scans
+                timer_for_any_priority_scans.fastforward()
             continue  # there's no scan to start
 
         LOGGER.info(
