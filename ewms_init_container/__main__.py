@@ -159,7 +159,7 @@ async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
     }
 
     LOGGER.info("requesting to ewms with...")
-    LOGGER.error(json.dumps(body, indent=4))
+    LOGGER.info(json.dumps(body, indent=4))
 
     try:
         resp = await ewms_rc.request("POST", f"/{EWMS_URL_V_PREFIX}/workflows", body)
