@@ -190,3 +190,14 @@ class Manifest(ScanIDDataclass):
         dicto.pop("event_i3live_json_dict")
         rep = f"{self.__class__.__name__}{dicto}"
         return rep
+
+
+def has_skydriver_requested_ewms_workflow(ewms_workflow_id: str | None) -> bool:
+    """Figure out if 'ewms_workflow_id' indicates is an actual EWMS workflow id."""
+    return bool(
+        ewms_workflow_id
+        not in [
+            None,  # old scans (v1)
+            NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,  # pending scans
+        ]
+    )

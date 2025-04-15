@@ -10,8 +10,8 @@ from rest_tools.client import RestClient
 from .config import ENV, EWMS_URL_V_PREFIX, sdict
 from .database.schema import (
     NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+    has_skydriver_requested_ewms_workflow,
 )
-from .utils import has_skydriver_requested_ewms_workflow
 
 LOGGER = logging.Logger(__name__)
 

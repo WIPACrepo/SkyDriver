@@ -38,6 +38,7 @@ from .database import schema
 from .database.mongodc import DocumentNotFoundException
 from .database.schema import (
     NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+    has_skydriver_requested_ewms_workflow,
 )
 from .ewms import request_stop_on_ewms
 from .k8s.scan_backlog import put_on_backlog
@@ -45,7 +46,6 @@ from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
 from .utils import (
     does_scan_state_indicate_final_result_received,
     get_scan_state,
-    has_skydriver_requested_ewms_workflow,
     make_scan_id,
 )
 

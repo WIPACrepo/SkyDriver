@@ -11,7 +11,7 @@ from . import database, ewms
 from .database.schema import (
     DEPRECATED_EWMS_TASK,
     Manifest,
-    NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+    has_skydriver_requested_ewms_workflow,
 )
 
 
@@ -30,17 +30,6 @@ def make_scan_id() -> str:
 
     # assemble -- # ex: 19505db3e88x4348a28a8554441b96bc
     return f"{now_millis_hex}{middle}{uuid_short_hex}"
-
-
-def has_skydriver_requested_ewms_workflow(ewms_workflow_id: str | None) -> bool:
-    """Figure out if 'ewms_workflow_id' indicates is an actual EWMS workflow id."""
-    return bool(
-        ewms_workflow_id
-        not in [
-            None,  # old scans (v1)
-            NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,  # pending scans
-        ]
-    )
 
 
 class _ScanState(enum.Enum):
