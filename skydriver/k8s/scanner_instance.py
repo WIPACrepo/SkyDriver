@@ -94,6 +94,7 @@ class SkyScanK8sJobFactory:
             request_clusters,
             #
             max_pixel_reco_time,
+            debug_mode,
             #
             priority,
             worker_disk_bytes,
@@ -262,6 +263,7 @@ class EnvVarFactory:
         request_clusters: list,
         #
         max_pixel_reco_time: int,
+        debug_mode: list[DebugMode],
         #
         priority: int,
         worker_disk_bytes: int,
@@ -283,6 +285,9 @@ class EnvVarFactory:
                 "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.EWMS_PILOT_TIMEOUT_QUEUE_INCOMING,
                 "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
                 "EWMS_PILOT_QUARANTINE_TIME": max_pixel_reco_time,  # piggy-back
+                "EWMS_PILOT_DUMP_TASK_OUTPUT": bool(
+                    DebugMode.CLIENT_LOGS in debug_mode
+                ),
                 #
                 "EWMS_WORKER_MAX_WORKER_RUNTIME": ENV.EWMS_MAX_WORKER_RUNTIME__DEFAULT,
                 "EWMS_WORKER_PRIORITY": priority,

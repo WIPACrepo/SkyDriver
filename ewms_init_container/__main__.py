@@ -5,6 +5,7 @@ import asyncio
 import dataclasses as dc
 import json
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -90,6 +91,13 @@ def generate_presigned_s3_get_url(scan_id: str) -> str:
     return get_url
 
 
+def present_envvars(prefix: str) -> dict[str, str]:
+    """Get present env vars that start with the prefix."""
+    if not prefix:
+        raise ValueError("prefix cannot be empty")
+    return {_k: _v for _k, _v in os.environ.items() if _k.startswith(prefix)}
+
+
 async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
     """Request a workflow in EWMS."""
     body = {
@@ -122,6 +130,9 @@ async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
                     "environment": {
                         k: v
                         for k, v in {
+                            # 1st: start with any/all present env vars
+                            **present_envvars("EWMS_PILOT_"),
+                            # 2nd: add and/or override to those...
                             "EWMS_PILOT_INIT_TIMEOUT": SCANNER_CURL_TIMEOUT + 1,
                             # ^^^ '+1' guarantees any timeout will be due to curl & not this
                             "EWMS_PILOT_TASK_TIMEOUT": ENV.EWMS_PILOT_TASK_TIMEOUT,
