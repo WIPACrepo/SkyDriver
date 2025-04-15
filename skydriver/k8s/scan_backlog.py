@@ -136,7 +136,7 @@ async def _run(
         )
     )
 
-    timer_for_low_priority_scans = IntervalTimer(
+    timer_for_any_priority_scans = IntervalTimer(
         ENV.SCAN_BACKLOG_RUNNER_DELAY, f"{LOGGER.name}.timer"
     )
     timer_for_logging = IntervalTimer(
@@ -158,10 +158,10 @@ async def _run(
                 scan_request_client,
                 skyscan_k8s_job_client,
                 # include low priority scans only when enough time has passed
-                include_low_priority_scans=timer_for_low_priority_scans.has_interval_elapsed(),
+                include_low_priority_scans=timer_for_any_priority_scans.has_interval_elapsed(),
             )
         except database.mongodc.DocumentNotFoundException:
-            timer_for_low_priority_scans.fastforward()  # nothing was started, so don't wait long next time
+            timer_for_any_priority_scans.fastforward()  # nothing was started, so don't wait long next time
             continue  # there's no scan to start
 
         LOGGER.info(
@@ -178,7 +178,7 @@ async def _run(
         except kubernetes.utils.FailToCreateError as e:
             # k8s job (backlog entry) will be revived & restarted in future iteration
             LOGGER.exception(e)
-            timer_for_low_priority_scans.fastforward()  # nothing was started, so don't wait long next time
+            timer_for_any_priority_scans.fastforward()  # nothing was started, so don't wait long next time
             continue  # 'get_next()' has built-in retry logic
 
         # NOTE: DO NOT ADD ANYMORE ACTIONS THAT CAN POSSIBLY FAIL -- THINK STATELESSNESS
