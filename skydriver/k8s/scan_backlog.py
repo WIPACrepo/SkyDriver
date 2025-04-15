@@ -184,7 +184,4 @@ async def _run(
         await backlog_client.remove(entry)
         # TODO: remove k8s job doc?
 
-        # wait so to not overwhelm resources (also, see `sleep()` at top)
-        await asyncio.sleep(
-            ENV.SCAN_BACKLOG_RUNNER_DELAY - ENV.SCAN_BACKLOG_RUNNER_SHORT_DELAY
-        )
+        # NOTE: no need to sleep here (sleep at top of loop), also see `include_low_priority_scans` logic
