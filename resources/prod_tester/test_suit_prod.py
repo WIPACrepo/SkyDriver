@@ -212,6 +212,7 @@ async def test_all(
     )
     with open(config.SANDBOX_MAP_FPATH, "w") as f:  # dump to file
         json.dump([t.to_json() for t in tests], f, indent=4)
+    logging.info(f"scan ids: {" ".join(t.scan_id for t in tests)}")
     display_test_status(tests)
 
     # start test-waiters
