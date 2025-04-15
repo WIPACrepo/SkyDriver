@@ -404,7 +404,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                         "name": "EWMS_PILOT_DUMP_TASK_OUTPUT",
                                         "value": str(
                                             bool(
-                                                "reco-logs"
+                                                "client-logs"
                                                 in post_scan_body["debug_mode"]
                                             )
                                         ),

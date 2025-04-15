@@ -285,7 +285,9 @@ class EnvVarFactory:
                 "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.EWMS_PILOT_TIMEOUT_QUEUE_INCOMING,
                 "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
                 "EWMS_PILOT_QUARANTINE_TIME": max_pixel_reco_time,  # piggy-back
-                "EWMS_PILOT_DUMP_TASK_OUTPUT": bool(DebugMode.RECO_LOGS in debug_mode),
+                "EWMS_PILOT_DUMP_TASK_OUTPUT": bool(
+                    DebugMode.CLIENT_LOGS in debug_mode
+                ),
                 #
                 "EWMS_WORKER_MAX_WORKER_RUNTIME": ENV.EWMS_MAX_WORKER_RUNTIME__DEFAULT,
                 "EWMS_WORKER_PRIORITY": priority,

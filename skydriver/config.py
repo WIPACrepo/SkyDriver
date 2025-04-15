@@ -28,8 +28,7 @@ EWMS_URL_V_PREFIX = "v1"
 class DebugMode(enum.Enum):
     """Various debug modes."""
 
-    CLIENT_LOGS = "client-logs"
-    RECO_LOGS = "reco-logs"
+    CLIENT_LOGS = "client-logs"  # indicates a client/reco/task should persist/transfer its stdout and stderr
 
 
 @dc.dataclass(frozen=True)
