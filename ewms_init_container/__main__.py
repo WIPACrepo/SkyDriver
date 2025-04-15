@@ -132,7 +132,7 @@ async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
                         for k, v in {
                             # 1st: start with any/all present env vars
                             **present_envvars("EWMS_PILOT_"),
-                            # 2nd: add and/or override to those...
+                            # 2nd: add to and/or override those...
                             "EWMS_PILOT_INIT_TIMEOUT": SCANNER_CURL_TIMEOUT + 1,
                             # ^^^ '+1' guarantees any timeout will be due to curl & not this
                             "EWMS_PILOT_TASK_TIMEOUT": ENV.EWMS_PILOT_TASK_TIMEOUT,

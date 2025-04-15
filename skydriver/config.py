@@ -29,6 +29,7 @@ class DebugMode(enum.Enum):
     """Various debug modes."""
 
     CLIENT_LOGS = "client-logs"
+    RECO_LOGS = "reco-logs"
 
 
 @dc.dataclass(frozen=True)
