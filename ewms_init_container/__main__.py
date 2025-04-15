@@ -22,7 +22,9 @@ QUEUE_ALIAS_FROMCLIENT = "from-client-queue"  # ''
 
 REST_TIMEOUT = 5 * 60  # we are highly dependant on other components, so be patient
 
-SCANNER_CURL_TIMEOUT = 60
+SCANNER_CURL_TIMEOUT = 30 * 60  # be generous
+# ^^^ w/ a busy condor:     workers launch after the sidecar (no timeout needed)
+#     w/ a non-busy condor: workers (curling) need to wait for sidecar (mostly k8s start-up time)
 
 EWMS_URL_V_PREFIX = "v1"
 MQS_URL_V_PREFIX = "v1"
@@ -121,6 +123,7 @@ async def request_workflow_on_ewms(ewms_rc: RestClient, s3_url_get: str) -> str:
                         k: v
                         for k, v in {
                             "EWMS_PILOT_INIT_TIMEOUT": SCANNER_CURL_TIMEOUT + 1,
+                            # ^^^ '+1' guarantees any timeout will be due to curl & not this
                             "EWMS_PILOT_TASK_TIMEOUT": ENV.EWMS_PILOT_TASK_TIMEOUT,
                             "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.EWMS_PILOT_TIMEOUT_QUEUE_INCOMING,
                             "EWMS_PILOT_CONTAINER_DEBUG": "True",  # toggle?
