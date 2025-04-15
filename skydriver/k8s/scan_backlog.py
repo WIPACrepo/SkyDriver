@@ -139,17 +139,18 @@ async def _run(
     timer_main_loop = IntervalTimer(
         ENV.SCAN_BACKLOG_RUNNER_DELAY, f"{LOGGER.name}.timer"
     )
-    timer_logging = IntervalTimer(
+    timer_for_logging = IntervalTimer(
         ENV.SCAN_BACKLOG_RUNNER_DELAY, f"{LOGGER.name}.heartbeat_timer"
     )
 
     # main loop
     while True:
         await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_SHORT_DELAY)
-        if timer_logging.has_interval_elapsed():
+        if timer_for_logging.has_interval_elapsed():
             LOGGER.info("scan backlog runner is still alive")
 
         # get next entry
+        # NOTE: this queries more often than 'timer_main_loop' -- see 'include_low_priority_scans'
         try:
             entry, manifest, scan_request_obj, skyscan_k8s_job = await get_next(
                 backlog_client,
@@ -160,7 +161,7 @@ async def _run(
                 include_low_priority_scans=timer_main_loop.has_interval_elapsed(),
             )
         except database.mongodc.DocumentNotFoundException:
-            timer_main_loop.fastforward()
+            timer_main_loop.fastforward()  # nothing was started, so don't wait long next time
             continue  # there's no scan to start
 
         LOGGER.info(
@@ -177,8 +178,8 @@ async def _run(
         except kubernetes.utils.FailToCreateError as e:
             # k8s job (backlog entry) will be revived & restarted in future iteration
             LOGGER.exception(e)
-            timer_main_loop.fastforward()  # nothing was started, so don't wait long
-            continue
+            timer_main_loop.fastforward()  # nothing was started, so don't wait long next time
+            continue  # 'get_next()' has built-in retry logic
 
         # NOTE: DO NOT ADD ANYMORE ACTIONS THAT CAN POSSIBLY FAIL -- THINK STATELESSNESS
 
