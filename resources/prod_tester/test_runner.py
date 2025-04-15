@@ -54,6 +54,7 @@ async def launch_a_scan(
     n_workers: int,
     reco_algo: str,
     skyscan_docker_tag: str,
+    priority: int,
 ) -> dict:
     """Request to SkyDriver to scan an event."""
     body = {
@@ -66,7 +67,7 @@ async def launch_a_scan(
         "docker_tag": skyscan_docker_tag,
         "max_pixel_reco_time": 30 * 60,  # seconds
         "scanner_server_memory": "1G",
-        "priority": -1,
+        "priority": priority,
         "scanner_server_env": {
             "SKYSCAN_MINI_TEST": True,
             "_SKYSCAN_CI_MINI_TEST": True,  # env var changed to this in the "skydriver 2"-ready scanner
