@@ -59,7 +59,7 @@ async def ensure_indexes(motor_client: AsyncIOMotorClient) -> None:  # type: ign
     await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].create_index(  # type: ignore[index]
         "ewms_workflow_id",
         name="ewms_workflow_id_index",
-        unique=True,
+        unique=False,  # b/c of the 'None' and the "not-yet-requested" values
         background=True,
     )
     await motor_client[_DB_NAME][_MANIFEST_COLL_NAME].create_index(  # type: ignore[index]
