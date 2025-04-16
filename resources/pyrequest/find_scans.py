@@ -26,7 +26,7 @@ async def main():
     parser.add_argument(
         "--skydriver-url",
         required=True,
-        help="the url to connect to a SkyDriver server",
+        help="the url to connect to a SkyDriver server (ex: https://skydriver-dev.icecube.aq)",
     )
     args = parser.parse_args()
 
@@ -42,6 +42,9 @@ async def main():
         },
     )
     print(json.dumps(resp, indent=4), flush=True)
+    print(len(resp), flush=True)
+    for key in resp.keys():
+        print(f"{key}: {len(resp[key])}")
 
 
 if __name__ == "__main__":
