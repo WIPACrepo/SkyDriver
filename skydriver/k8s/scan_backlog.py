@@ -177,7 +177,10 @@ async def _run(
         try:
             LOGGER.info(f"Starting K8s job: scan_id={manifest.scan_id}")
             await KubeAPITools.start_job(
-                k8s_batch_api, skyscan_k8s_job, inf_retry_on_transient_errors=True
+                k8s_batch_api,
+                skyscan_k8s_job,
+                inf_retry_if_denied_by_job_quota=True,
+                logger=LOGGER,
             )
         except kubernetes.utils.FailToCreateError as e:
             # *** EXTREMELY RARE SCENARIO ***

@@ -12,10 +12,10 @@ from ..config import ENV, sdict
 LOGGER = logging.getLogger(__name__)
 
 
-def is_known_k8s_transient_error(e: Exception) -> bool:
-    """Is this exception a known transient error in the k8s namespace.
+def was_denied_by_job_quota(e: Exception) -> bool:
+    """Did the job fail to start because the k8s namespace job quota was exceeded.
 
-    IOW, will this error go away if we try again in a bit?
+    This stoppage will go away if we try again in a bit.
     """
 
     # did the job exceed the job quota? if so, there will be fewer jobs in the future
@@ -36,7 +36,8 @@ class KubeAPITools:
     async def start_job(
         k8s_batch_api: kubernetes.client.BatchV1Api,
         job_dict: sdict,
-        inf_retry_on_transient_errors: bool = False,
+        inf_retry_if_denied_by_job_quota: bool = False,
+        logger: logging.Logger = LOGGER,
     ) -> Any:
         """Start the k8s job.
 
@@ -46,28 +47,29 @@ class KubeAPITools:
             raise ValueError("No job object to create")
 
         for i in itertools.count():
-            LOGGER.info(f"K8s Job (attempt #{i+1}):")
-            LOGGER.info(job_dict)
+            logger.info(f"K8s Job (attempt #{i + 1}):")
+            logger.info(job_dict)
             try:
                 resp = kubernetes.utils.create_from_dict(
                     k8s_batch_api.api_client,
                     job_dict,
                     namespace=ENV.K8S_NAMESPACE,
                 )
-                LOGGER.info("k8s job successfully created!")
+                logger.info("k8s job successfully created!")
                 return resp
             except Exception as e:  # broad b/c re-raising
-                if inf_retry_on_transient_errors and is_known_k8s_transient_error(e):
-                    LOGGER.warning(
-                        f"encountered a transient error in the k8s namespace, "
-                        f"trying again in {ENV.K8S_START_JOB_TRANSIENT_ERROR_RETRY_DELAY}s"
-                        f": {repr(e)}"
+                if inf_retry_if_denied_by_job_quota and was_denied_by_job_quota(e):
+                    logger.warning(
+                        f"k8s job request was denied b/c the k8s namespace's job quota "
+                        f"is currently at max (attempt #{i+1}) -- "
+                        f"trying again in {ENV.K8S_START_JOB_RETRY_FOR_JOB_QUOTA_DELAY}s"
+                        f": {repr(e)} -> {str(e)}"
                     )
                     # maybe next time, it'll be ok
-                    await asyncio.sleep(ENV.K8S_START_JOB_TRANSIENT_ERROR_RETRY_DELAY)
+                    await asyncio.sleep(ENV.K8S_START_JOB_RETRY_FOR_JOB_QUOTA_DELAY)
                     continue
                 else:
-                    LOGGER.error("request to make k8s job failed above job_dict")
+                    logger.error("request to make k8s job failed (see above job_dict)")
                     raise
 
     @staticmethod
