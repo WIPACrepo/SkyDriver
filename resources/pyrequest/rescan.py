@@ -46,6 +46,7 @@ async def main():
         new_ids.append(await rescan(rc, scan_id))
 
     logging.info(f"new ids: {" ".join(new_ids)}")
+    logging.info(f"n={len(new_ids)}")
 
 
 if __name__ == "__main__":
