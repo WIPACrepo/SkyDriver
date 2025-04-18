@@ -1147,7 +1147,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
             #
             # the scan is in a state where it cannot proceed further -- successful or otherwise
             # -> used by the scanner to prematurely quit in case of an abort (w/ 'is_deleted')
-            "ewms_deactivated": get_deactivated_type(
+            "ewms_deactivated": await get_deactivated_type(
                 self.ewms_rc, manifest.ewms_workflow_id
             ),
             #
