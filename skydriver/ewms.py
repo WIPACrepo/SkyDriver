@@ -9,7 +9,6 @@ from rest_tools.client import RestClient
 
 from .config import ENV, EWMS_URL_V_PREFIX, sdict
 from .database.schema import (
-    NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
     has_skydriver_requested_ewms_workflow,
 )
 
@@ -45,12 +44,15 @@ async def request_stop_on_ewms(
 
 
 @aiocache.cached(ttl=ENV.CACHE_DURATION_EWMS)  # not too long, but avoid spamming ewms
-async def get_deactivated_type(ewms_rc: RestClient, workflow_id: str) -> str | None:
+async def get_deactivated_type(
+    ewms_rc: RestClient,
+    workflow_id: str | None,
+) -> str | None:
     """Grab the 'deactivated' field for the workflow.
 
-    Example: 'ABORTED', 'FINISHED
+    Returns: 'ABORTED', 'FINISHED', or None (not deactivated).
     """
-    if workflow_id == NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS:
+    if not has_skydriver_requested_ewms_workflow(workflow_id):
         return None
 
     workflow = await ewms_rc.request(

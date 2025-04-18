@@ -32,6 +32,9 @@ def make_scan_id() -> str:
     return f"{now_millis_hex}{middle}{uuid_short_hex}"
 
 
+########################################################################################
+
+
 class _ScanState(enum.Enum):
     """A non-persisted scan state."""
 
@@ -119,3 +122,6 @@ async def get_scan_state(
     else:
         # -> no, this is a non-finished scan
         return state
+
+
+########################################################################################

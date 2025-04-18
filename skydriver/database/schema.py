@@ -116,7 +116,8 @@ def obfuscate_cl_args(args: str) -> str:
     return " ".join(out_args)
 
 
-NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS = "not-yet-requested"
+_NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS = "not-yet-requested"
+# ^^^ don't use in boolean logic directly -- use 'has_skydriver_requested_ewms_workflow()'
 
 DEPRECATED_EVENT_I3LIVE_JSON_DICT = "use 'i3_event_id'"
 DEPRECATED_EWMS_TASK = "use 'ewms_workflow_id'"
@@ -198,6 +199,6 @@ def has_skydriver_requested_ewms_workflow(ewms_workflow_id: str | None) -> bool:
         ewms_workflow_id
         not in [
             None,  # old scans (v1)
-            NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,  # pending scans
+            _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,  # pending scans
         ]
     )

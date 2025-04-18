@@ -37,10 +37,10 @@ from .config import (
 from .database import schema
 from .database.mongodc import DocumentNotFoundException
 from .database.schema import (
-    NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+    _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
     has_skydriver_requested_ewms_workflow,
 )
-from .ewms import request_stop_on_ewms
+from .ewms import get_deactivated_type, request_stop_on_ewms
 from .k8s.scan_backlog import put_on_backlog
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
 from .utils import (
@@ -594,7 +594,7 @@ async def _start_scan(
         is_deleted=False,
         i3_event_id=scan_request_obj["i3_event_id"],
         scanner_server_args=scanner_server_args,
-        ewms_workflow_id=schema.NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+        ewms_workflow_id=schema._NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
         # ^^^ set once the workflow request has been sent to EWMS (see backlogger)
         classifiers=scan_request_obj["classifiers"],
         priority=scan_request_obj["priority"],
@@ -777,17 +777,11 @@ async def stop_skyscan_workers(
     LOGGER.info(f"stopping (ewms) workers for {scan_id=}...")
 
     # request to ewms
-    if manifest.ewms_workflow_id:
-        if manifest.ewms_workflow_id == schema.NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS:
-            LOGGER.info(
-                "OK: attempted to stop skyscan workers but scan has not been sent to EWMS"
-            )
-        else:
-            await request_stop_on_ewms(ewms_rc, manifest.ewms_workflow_id, abort=abort)
+    if has_skydriver_requested_ewms_workflow(manifest.ewms_workflow_id):
+        await request_stop_on_ewms(ewms_rc, manifest.ewms_workflow_id, abort=abort)
     else:
-        raise web.HTTPError(
-            400,
-            log_message="Could not stop scanner workers since this is a non-EWMS scan.",
+        LOGGER.info(
+            "OK: attempted to stop skyscan workers but scan has not been sent to EWMS"
         )
 
     return manifest
@@ -1146,14 +1140,26 @@ class ScanStatusHandler(BaseSkyDriverHandler):
         resp = {
             "scan_state": scan_state,
             "is_deleted": manifest.is_deleted,
+            #
+            # the scan is in a state where it cannot proceed further -- successful or otherwise
+            # -> used by the scanner to prematurely quit in case of an abort (w/ 'is_deleted')
+            "ewms_deactivated": get_deactivated_type(
+                self.ewms_rc, manifest.ewms_workflow_id
+            ),
+            #
+            # the scan in effectively done, the physics has been finished
+            # -> although, there may be lingering compute which will quit shortly
             "scan_complete": does_scan_state_indicate_final_result_received(scan_state),
+            #
+            # same as '/scan/<scan_id>/logs'
             "scanner_server_logs": {
                 "url": await LogWrangler.assemble_scanner_server_logs_url(manifest),
             },
+            #
+            # same as '/scan/<scan_id>/ewms/workforce'
             "ewms_workforce": await ewms.get_workforce_statuses(
                 self.ewms_rc, manifest.ewms_workflow_id
             ),
-            # ^^^ same as '/scan/<scan_id>/ewms/workforce'
         }
         self.write(resp)
 
@@ -1231,7 +1237,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
             manifest = await self.manifests.collection.find_one_and_update(
                 {
                     "scan_id": scan_id,
-                    "ewms_workflow_id": NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+                    "ewms_workflow_id": _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
                     "is_deleted": False,
                 },
                 {
