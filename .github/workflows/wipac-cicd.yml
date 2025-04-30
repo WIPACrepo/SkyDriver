@@ -32,6 +32,8 @@ jobs:
       matrix: ${{ steps.versions.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
       - id: versions
         uses: WIPACrepo/wipac-dev-py-versions-action@v2.5
 
@@ -49,6 +51,8 @@ jobs:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.py3 }}
@@ -65,6 +69,8 @@ jobs:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.py3 }}
@@ -86,7 +92,7 @@ jobs:
         #   & don't run non-branch triggers (like tags)
         #   & we don't want to trigger an update on PR's merge to main/master/default (which is a branch)
         run: |
-          set -euo pipefail
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           if [[ \
               ${{github.actor}} != 'dependabot[bot]' && \
               ${{github.ref_type}} == 'branch' && \
@@ -107,6 +113,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
       - if: needs.writable-branch-detect.outputs.OKAY == 'true'
         uses: WIPACrepo/wipac-dev-py-setup-action@v3.1
         with:
@@ -120,6 +127,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
       - if: needs.writable-branch-detect.outputs.OKAY == 'true'
         uses: docker/setup-buildx-action@v2
       - if: needs.writable-branch-detect.outputs.OKAY == 'true'
@@ -146,25 +154,27 @@ jobs:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.py3 }}
 
       - name: pip install
         run: |
-          set -euo pipefail
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           pip install --upgrade pip wheel setuptools
           pip install .[tests]
 
       - name: test
         run: |
-          set -euo pipefail
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           pytest -vvv tests/unit --exitfirst
 
       - name: Dump logs
         if: always()
         run: |
-          set -euo pipefail
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           cat pytest.logs || true
 
   integration-tests:
@@ -181,6 +191,8 @@ jobs:
           - 27017:27017
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.py3 }}
@@ -197,7 +209,7 @@ jobs:
 
       - name: test
         run: |
-          set -euo pipefail
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           
           pip install .[tests]
           python tests/integration/dummy_ewms.py &> ./dummy_ewms.out &
@@ -237,23 +249,25 @@ jobs:
       - name: dump test logs
         if: always()
         run: |
-          set -euo pipefail
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           docker logs test || true
       - name: dump dummy-ewms logs
         if: always()
         run: |
-          set -euo pipefail
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           cat ./dummy_ewms.out
       - name: dump mongo logs
         if: always()
         run: |
-          set -euo pipefail
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           docker logs "${{ job.services.mongo.id }}" || true
 
   test-build-docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
       - uses: docker/setup-buildx-action@v2
       - uses: docker/build-push-action@v3
         with:
@@ -277,6 +291,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
       - name: Python Semantic Release
         uses: python-semantic-release/python-semantic-release@v7.34.6
         with:
