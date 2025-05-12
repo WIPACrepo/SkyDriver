@@ -2,66 +2,53 @@
 instances."""
 
 import logging
-import uuid
+import textwrap
+import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
-import kubernetes.client  # type: ignore[import-untyped]
-from rest_tools.client import ClientCredentialsAuth
+import aiocache  # type: ignore[import-untyped]
+import yaml
+from dateutil import parser
+from rest_tools.client import ClientCredentialsAuth, RestClient
 
-from .utils import KubeAPITools
-from .. import images
+from .. import ewms, images
 from ..config import (
-    CLUSTER_STOPPER_K8S_JOB_N_RETRIES,
-    CLUSTER_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
     DebugMode,
     ENV,
-    K8S_CONTAINER_MEMORY_CLUSTER_STARTER_BYTES,
-    K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES,
+    SCANNER_LOGS_GRAFANA_WINDOW_SEC,
+    SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS,
+    sdict,
 )
-from ..database import schema
+from ..database.schema import Manifest
+from ..images import get_skyscan_cvmfs_singularity_image
 
 LOGGER = logging.getLogger(__name__)
 
 
-def get_cluster_auth_v1envvars(
-    cluster: schema.Cluster,
-) -> list[kubernetes.client.V1EnvVar]:
-    """Get the `V1EnvVar`s for workers' auth."""
-    LOGGER.debug(f"getting auth secret env vars for {cluster=}")
-    _, info = cluster.to_known_cluster()
-    return info["v1envvars"]  # type: ignore[no-any-return]
+def get_skyscan_server_container_name(scan_id: str) -> str:
+    """Get the k8s container name for the scanner server from the scan_id (deterministic)."""
+    return f"skyscan-server-{scan_id}"
 
 
-def get_cluster_starter_s3_v1envvars() -> list[kubernetes.client.V1EnvVar]:
-    """Get the `V1EnvVar`s for TMS's S3 auth."""
-    return [
-        kubernetes.client.V1EnvVar(
-            name="EWMS_TMS_S3_ACCESS_KEY_ID",
-            value_from=kubernetes.client.V1EnvVarSource(
-                secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                    name=ENV.K8S_SECRET_NAME,
-                    key="ewms_tms_s3_access_key_id",
-                )
-            ),
-        ),
-        kubernetes.client.V1EnvVar(
-            name="EWMS_TMS_S3_SECRET_KEY",
-            value_from=kubernetes.client.V1EnvVarSource(
-                secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                    name=ENV.K8S_SECRET_NAME,
-                    key="ewms_tms_s3_secret_key",
-                )
-            ),
-        ),
-    ]
+def _to_inline_yaml_str(obj: Any) -> str:
+    """Convert obj to one-line yaml-syntax."""
+    return yaml.safe_dump(
+        obj,
+        default_flow_style=True,  # inline, compact formatting, no indenting needed
+    )
 
 
-class SkymapScannerK8sWrapper:
-    """Wraps a Skymap Scanner Kubernetes job with tools to start and manage."""
+class SkyScanK8sJobFactory:
+    """Makes Skymap Scanner Kubernetes jobs, plus misc tools."""
 
-    def __init__(
-        self,
+    COMMON_SPACE_VOLUME_PATH = Path("/common-space")
+    _STARTUP_JSON_FPATH = COMMON_SPACE_VOLUME_PATH / "startup.json"
+    _EWMS_JSON_FPATH = COMMON_SPACE_VOLUME_PATH / "ewms.json"
+
+    @staticmethod
+    def make(
         #
         docker_tag: str,
         scan_id: str,
@@ -71,94 +58,174 @@ class SkymapScannerK8sWrapper:
         nsides: dict[int, int],
         is_real_event: bool,
         predictive_scanning_threshold: float,
-        # cluster starter
-        starter_exc: str,  # TODO - remove once tested in prod
-        worker_memory_bytes: int,
-        worker_disk_bytes: int,
-        request_clusters: list[schema.Cluster],
-        max_pixel_reco_time: int,
-        max_worker_runtime: int,
-        priority: int,
         # universal
         debug_mode: list[DebugMode],
         # env
         rest_address: str,
-        skyscan_mq_client_timeout_wait_for_first_message: int | None,
         scanner_server_env_from_user: dict,
-    ):
+        request_clusters: list,
+        max_pixel_reco_time: int,
+        priority: int,
+        worker_disk_bytes: int,
+        worker_memory_bytes: int,
+    ) -> tuple[sdict, str]:
+        """Make the K8s job dict.
+
+        Also, returns the server's args (so the user can see this later).
+        """
         LOGGER.info(f"making k8s job for {scan_id=}")
-        self.scan_id = scan_id
-        self.env_dict = {}
 
-        common_space_volume_path = Path("/common-space")
-
-        # CONTAINER: SkyScan Server
-        self.scanner_server_args = self.get_scanner_server_args(
-            common_space_volume_path=common_space_volume_path,
+        # pre-create some job components
+        scanner_server_args = SkyScanK8sJobFactory.get_scanner_server_args(
             reco_algo=reco_algo,
             nsides=nsides,
             is_real_event=is_real_event,
             predictive_scanning_threshold=predictive_scanning_threshold,
         )
-        scanner_server = KubeAPITools.create_container(
-            f"skyscan-server-{scan_id}",
-            images.get_skyscan_docker_image(docker_tag),
-            self.make_skyscan_server_v1envvars(
-                rest_address=rest_address,
-                scan_id=scan_id,
-                skyscan_mq_client_timeout_wait_for_first_message=skyscan_mq_client_timeout_wait_for_first_message,
-                scanner_server_env_from_user=scanner_server_env_from_user,
-            ),
-            self.scanner_server_args.split(),
-            cpu=1,
-            volumes={common_space_volume_path.name: common_space_volume_path},
-            memory=scanner_server_memory_bytes,
+        scanner_server_envvars = EnvVarFactory.make_skyscan_server_envvars(
+            rest_address=rest_address,
+            scan_id=scan_id,
+            scanner_server_env_from_user=scanner_server_env_from_user,
         )
-        self.env_dict["scanner_server"] = [e.to_dict() for e in scanner_server.env]
 
-        # CONTAINER(S): Cluster Starter(s)
-        tms_starters = []
-        for i, cluster in enumerate(request_clusters):
-            tms_starters.append(
-                KubeAPITools.create_container(
-                    f"{starter_exc.replace('_','-')}-{i}-{scan_id}",  # TODO - replace once tested in prod
-                    ENV.THIS_IMAGE_WITH_TAG,
-                    env=self.make_cluster_starter_v1envvars(
-                        rest_address=rest_address,
-                        scan_id=scan_id,
-                        cluster=cluster,
-                        max_pixel_reco_time=max_pixel_reco_time,
-                        debug_mode=debug_mode,
-                    ),
-                    args=self.get_cluster_starter_args(
-                        starter_exc=starter_exc,  # TODO - remove once tested in prod
-                        common_space_volume_path=common_space_volume_path,
-                        docker_tag=docker_tag,
-                        worker_memory_bytes=worker_memory_bytes,
-                        worker_disk_bytes=worker_disk_bytes,
-                        request_cluster=cluster,
-                        debug_mode=debug_mode,
-                        max_worker_runtime=max_worker_runtime,
-                        priority=priority,
-                    ),
-                    cpu=0.125,
-                    volumes={common_space_volume_path.name: common_space_volume_path},
-                    memory=K8S_CONTAINER_MEMORY_CLUSTER_STARTER_BYTES,
-                )
-            )
-        self.cluster_starter_args_list = [" ".join(c.args) for c in tms_starters]
-        self.env_dict["tms_starters"] = [
-            [e.to_dict() for e in c.env] for c in tms_starters
-        ]
-
-        # job
-        self.job_obj = KubeAPITools.kube_create_job_object(
-            self.get_job_name(scan_id),
-            [scanner_server] + tms_starters,
-            ENV.K8S_NAMESPACE,
-            ENV.K8S_TTL_SECONDS_AFTER_FINISHED,
-            volumes=[common_space_volume_path.name],
+        ewms_envvars = EnvVarFactory.make_ewms_envvars(
+            docker_tag,
+            #
+            request_clusters,
+            #
+            max_pixel_reco_time,
+            debug_mode,
+            #
+            priority,
+            worker_disk_bytes,
+            worker_memory_bytes,
         )
+
+        # assemble the job
+        job_dict = SkyScanK8sJobFactory._make_job(
+            scan_id,
+            docker_tag,
+            scanner_server_memory_bytes,
+            scanner_server_args,
+            scanner_server_envvars,
+            ewms_envvars,
+        )
+
+        return job_dict, scanner_server_args
+
+    @staticmethod
+    def _make_job(
+        scan_id: str,
+        docker_tag: str,
+        scanner_server_memory_bytes: int,
+        scanner_server_args: str,
+        scanner_server_envvars: list[sdict],
+        ewms_envvars: list[sdict],
+    ) -> sdict:
+        """Create the K8s job manifest.
+
+        NOTE: Let's keep definitions as straightforward as possible.
+        """
+        ewms_init_envvars = (
+            [
+                envvar
+                for envvar in scanner_server_envvars
+                if envvar["name"]
+                in ["SKYSCAN_SKYDRIVER_ADDRESS", "SKYSCAN_SKYDRIVER_AUTH"]
+            ]
+            + ewms_envvars
+            + EnvVarFactory.make_s3_envvars(scan_id)
+        )
+        s3_sidecar_envvars = [
+            {
+                "name": "K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
+                "value": str(ENV.K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS),
+            }
+        ] + EnvVarFactory.make_s3_envvars(scan_id)
+
+        # now, assemble
+        job_yaml = textwrap.dedent(  # fixes """-indentation
+            f"""
+            apiVersion: batch/v1
+            kind: Job
+            metadata:
+              namespace: {ENV.K8S_NAMESPACE}
+              name: {SkyScanK8sJobFactory.get_job_name(scan_id)}
+              labels:
+                app.kubernetes.io/instance: {ENV.K8S_APPLICATION_NAME}
+              annotations:
+                argocd.argoproj.io/sync-options: "Prune=false"
+            spec:
+              ttlSecondsAfterFinished: {ENV.K8S_TTL_SECONDS_AFTER_FINISHED}
+              backoffLimit: 0
+              activeDeadlineSeconds: {ENV.K8S_ACTIVE_DEADLINE_SECONDS}
+              template:
+                metadata:
+                  labels:
+                    app: scanner-instance
+                spec:
+                  serviceAccountName: {ENV.K8S_SKYSCAN_JOBS_SERVICE_ACCOUNT}
+                  restartPolicy: Never
+                  initContainers:
+                    - name: init-ewms-{scan_id}
+                      image: {ENV.THIS_IMAGE_WITH_TAG}
+                      command: ["python", "-m", "ewms_init_container"]
+                      args: ["{scan_id}", "--json-out", "{SkyScanK8sJobFactory._EWMS_JSON_FPATH}"]
+                      env: {_to_inline_yaml_str(ewms_init_envvars)}
+                      resources:
+                        limits:
+                          memory: "{ENV.K8S_SCANNER_INIT_MEM_LIMIT}"
+                          cpu: "{ENV.K8S_SCANNER_INIT_CPU_LIMIT}"
+                        requests:
+                          memory: "{ENV.K8S_SCANNER_INIT_MEM_REQUEST}"
+                          cpu: "{ENV.K8S_SCANNER_INIT_CPU_REQUEST}"
+                          ephemeral-storage: "1M"
+                      volumeMounts:
+                        - name: common-space-volume
+                          mountPath: "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH}"
+                  containers:
+                    - name: {get_skyscan_server_container_name(scan_id)}
+                      image: {images.get_skyscan_docker_image(docker_tag)}
+                      command: []
+                      args: {_to_inline_yaml_str(scanner_server_args.split())}
+                      env: {_to_inline_yaml_str(scanner_server_envvars)}
+                      resources:
+                        limits:
+                          memory: "{scanner_server_memory_bytes}"
+                          cpu: "{ENV.K8S_SCANNER_CPU_LIMIT}"
+                        requests:
+                          memory: "{scanner_server_memory_bytes}"
+                          cpu: "{ENV.K8S_SCANNER_CPU_REQUEST}"
+                          ephemeral-storage: "8G"
+                      volumeMounts:
+                        - name: common-space-volume
+                          mountPath: "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH}"
+                    - name: sidecar-s3-{scan_id}
+                      restartPolicy: OnFailure
+                      image: {ENV.THIS_IMAGE_WITH_TAG}
+                      command: ["python", "-m", "s3_sidecar"]
+                      args: ["{SkyScanK8sJobFactory._STARTUP_JSON_FPATH}", "--wait-indefinitely"]
+                      env: {_to_inline_yaml_str(s3_sidecar_envvars)}
+                      resources:
+                        limits:
+                          memory: "{ENV.K8S_SCANNER_SIDECAR_S3_MEM_LIMIT}"
+                          cpu: "{ENV.K8S_SCANNER_SIDECAR_S3_CPU_LIMIT}"
+                        requests:
+                          memory: "{ENV.K8S_SCANNER_SIDECAR_S3_MEM_REQUEST}"
+                          cpu: "{ENV.K8S_SCANNER_SIDECAR_S3_CPU_REQUEST}"
+                          ephemeral-storage: "1M"
+                      volumeMounts:
+                        - name: common-space-volume
+                          mountPath: "{SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH}"
+                  volumes:
+                    - name: common-space-volume
+                      emptyDir: {{}}
+            """
+        )
+
+        # Parse the YAML string into a Python dictionary
+        job_dict = yaml.safe_load(job_yaml)
+        return job_dict
 
     @staticmethod
     def get_job_name(scan_id: str) -> str:
@@ -167,7 +234,6 @@ class SkymapScannerK8sWrapper:
 
     @staticmethod
     def get_scanner_server_args(
-        common_space_volume_path: Path,
         reco_algo: str,
         nsides: dict[int, int],
         is_real_event: bool,
@@ -177,73 +243,86 @@ class SkymapScannerK8sWrapper:
         args = (
             f"python -m skymap_scanner.server "
             f" --reco-algo {reco_algo}"
-            f" --cache-dir {common_space_volume_path} "
+            f" --cache-dir {SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH} "
             # f" --output-dir {common_space_volume_path} "  # output is sent to skydriver
-            f" --client-startup-json {common_space_volume_path/'startup.json'} "
+            f" --client-startup-json {SkyScanK8sJobFactory._STARTUP_JSON_FPATH} "
             f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "  # k1:v1 k2:v2
             f" {'--real-event' if is_real_event else '--simulated-event'} "
             f" --predictive-scanning-threshold {predictive_scanning_threshold} "
         )
         return args
 
+
+class EnvVarFactory:
+    """Factory class for assembling k8s environment-variable objects."""
+
     @staticmethod
-    def get_cluster_starter_args(
-        starter_exc: str,  # TODO - remove once tested in prod
-        common_space_volume_path: Path,
+    def make_ewms_envvars(
         docker_tag: str,
-        worker_memory_bytes: int,
-        worker_disk_bytes: int,
-        request_cluster: schema.Cluster,
+        #
+        request_clusters: list,
+        #
+        max_pixel_reco_time: int,
         debug_mode: list[DebugMode],
-        max_worker_runtime: int,
+        #
         priority: int,
-    ) -> list[str]:
-        """Make the starter container args."""
-        args = f"python -m clientmanager --uuid {str(uuid.uuid4().hex)}"
+        worker_disk_bytes: int,
+        worker_memory_bytes: int,
+    ) -> list[sdict]:
+        return [
+            {"name": str(k), "value": str(v)}
+            for k, v in {
+                "EWMS_ADDRESS": ENV.EWMS_ADDRESS,
+                "EWMS_TOKEN_URL": ENV.EWMS_TOKEN_URL,
+                "EWMS_CLIENT_ID": ENV.EWMS_CLIENT_ID,
+                "EWMS_CLIENT_SECRET": ENV.EWMS_CLIENT_SECRET,
+                #
+                "EWMS_CLUSTERS": " ".join(cname for cname, _ in request_clusters),
+                "EWMS_N_WORKERS": request_clusters[0][1],
+                #
+                "EWMS_TASK_IMAGE": get_skyscan_cvmfs_singularity_image(docker_tag),
+                #
+                "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.EWMS_PILOT_TIMEOUT_QUEUE_INCOMING,
+                "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
+                "EWMS_PILOT_QUARANTINE_TIME": max_pixel_reco_time,  # piggy-back
+                "EWMS_PILOT_DUMP_TASK_OUTPUT": bool(
+                    DebugMode.CLIENT_LOGS in debug_mode
+                ),
+                #
+                "EWMS_WORKER_MAX_WORKER_RUNTIME": ENV.EWMS_MAX_WORKER_RUNTIME__DEFAULT,
+                "EWMS_WORKER_PRIORITY": priority,
+                "EWMS_WORKER_DISK_BYTES": worker_disk_bytes,
+                "EWMS_WORKER_MEMORY_BYTES": worker_memory_bytes,
+            }.items()
+            if v is not None
+        ]
 
-        match request_cluster.orchestrator:
-            case "condor":
-                args += (
-                    f" condor "  # type: ignore[union-attr]
-                    f" --collector {request_cluster.location.collector} "
-                    f" --schedd {request_cluster.location.schedd} "
-                )
-                worker_image = images.get_skyscan_cvmfs_singularity_image(docker_tag)
-            case "k8s":
-                args += (
-                    f" k8s "  # type: ignore[union-attr]
-                    f" --host {request_cluster.location.host} "
-                    f" --namespace {request_cluster.location.namespace} "
-                )
-                worker_image = images.get_skyscan_docker_image(docker_tag)
-            case other:
-                raise ValueError(f"Unknown cluster orchestrator: {other}")
-
-        args += (
-            f" start "
-            f" --n-workers {request_cluster.n_workers} "
-            # f" --dryrun"
-            # f" --spool "  # see below
-            f" --worker-memory-bytes {worker_memory_bytes} "
-            f" --worker-disk-bytes {worker_disk_bytes} "
-            f" --image {worker_image} "
-            f" --client-startup-json {common_space_volume_path/'startup.json'} "
-            # f" --client-args {client_args} " # only potentially relevant arg is --debug-directory
-            f" --max-worker-runtime {max_worker_runtime}"
-            f" --priority {priority}"
-        )
-
-        if DebugMode.CLIENT_LOGS in debug_mode:
-            args += " --spool "
-
-        # ADAPT args for EWMS Sidecar
-        # TODO - remove once tested in prod
-        if starter_exc == "ewms_sidecar" and request_cluster.orchestrator == "condor":
-            args = args.replace("clientmanager", "ewms_sidecar direct-remote-condor")
-            args = args.replace(" condor ", " ")
-            args = args.replace(" start ", " ")
-
-        return args.split()
+    @staticmethod
+    def make_s3_envvars(scan_id: str) -> list[sdict]:
+        return [
+            {"name": "S3_URL", "value": ENV.S3_URL},
+            {
+                "name": "S3_ACCESS_KEY_ID",
+                "valueFrom": {
+                    "secretKeyRef": {
+                        "name": ENV.K8S_SECRET_NAME,
+                        "key": ENV.S3_ACCESS_KEY_ID__K8S_SECRET_KEY,
+                    }
+                },
+            },
+            {
+                "name": "S3_SECRET_KEY",
+                "valueFrom": {
+                    "secretKeyRef": {
+                        "name": ENV.K8S_SECRET_NAME,
+                        "key": ENV.S3_SECRET_KEY__K8S_SECRET_KEY,
+                    }
+                },
+            },
+            {"name": "S3_EXPIRES_IN", "value": str(ENV.S3_EXPIRES_IN)},
+            {"name": "S3_BUCKET", "value": ENV.S3_BUCKET},
+            {"name": "S3_OBJECT_KEY", "value": ewms.make_s3_object_key(scan_id)},
+        ]
 
     @staticmethod
     def _get_token_from_keycloak(
@@ -263,44 +342,30 @@ class SkymapScannerK8sWrapper:
         return token
 
     @staticmethod
-    def make_skyscan_server_v1envvars(
+    def make_skyscan_server_envvars(
         rest_address: str,
         scan_id: str,
-        skyscan_mq_client_timeout_wait_for_first_message: int | None,
         scanner_server_env_from_user: dict,
-    ) -> list[kubernetes.client.V1EnvVar]:
-        """Get the environment variables provided to the skyscan server.
-
-        Also, get the secrets' keys & their values.
-        """
+    ) -> list[sdict]:
+        """Get the environment variables provided to the skyscan server."""
         LOGGER.debug(f"making scanner server env vars for {scan_id=}")
-        env = []
+        env = {}
 
-        # 1. start w/ secrets
-        # NOTE: the values come from an existing secret in the current namespace
-        # *none*
-
-        # 2. add required env vars
+        # 1. add required env vars
         required = {
             # broker/mq vars
-            "SKYSCAN_BROKER_ADDRESS": ENV.SKYSCAN_BROKER_ADDRESS,
+            "SKYSCAN_EWMS_JSON": str(SkyScanK8sJobFactory._EWMS_JSON_FPATH),
             # skydriver vars
             "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
             "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
         }
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(name=k, value=str(v))
-                for k, v in required.items()
-            ]
-        )
+        env.update(required)
 
-        # 3. add extra env vars, then filter out if 'None'
+        # 2. add extra env vars, then filter out if 'None'
         prefiltered = {
             "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
             "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
             #
-            "SKYSCAN_MQ_TIMEOUT_TO_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
             #
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
@@ -308,228 +373,109 @@ class SkymapScannerK8sWrapper:
             #
             "SKYSCAN_EWMS_PILOT_LOG": "WARNING",  # default is too low
             "SKYSCAN_MQ_CLIENT_LOG": "WARNING",  # default is too low
-            #
-            "SKYSCAN_MQ_CLIENT_TIMEOUT_WAIT_FOR_FIRST_MESSAGE": skyscan_mq_client_timeout_wait_for_first_message,
         }
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(name=k, value=str(v))
-                for k, v in prefiltered.items()
-                if v is not None
-            ]
-        )
+        env.update({k: str(v) for k, v in prefiltered.items() if v is not None})
 
-        # 4. generate & add auth tokens
+        # 3. generate & add auth tokens
         tokens = {
-            "SKYSCAN_BROKER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
-                ENV.KEYCLOAK_OIDC_URL,
-                ENV.KEYCLOAK_CLIENT_ID_BROKER,
-                ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
-            ),
-            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
+            "SKYSCAN_SKYDRIVER_AUTH": EnvVarFactory._get_token_from_keycloak(
                 ENV.KEYCLOAK_OIDC_URL,
                 ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
                 ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
             ),
         }
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(name=k, value=str(v))
-                for k, v in tokens.items()
-            ]
-        )
+        env.update(tokens)
 
-        # 5. Add user's env
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(name=k, value=str(v))
-                for k, v in scanner_server_env_from_user.items()
-            ]
-        )
+        # 4. Add user's env
+        env.update(scanner_server_env_from_user)
 
-        return env
+        return [{"name": str(k), "value": str(v)} for k, v in env.items()]
+
+
+class LogWrangler:
+    """Tools for retrieving logs."""
 
     @staticmethod
-    def make_cluster_starter_v1envvars(
-        rest_address: str,
-        scan_id: str,
-        cluster: schema.Cluster,
-        max_pixel_reco_time: int,
-        debug_mode: list[DebugMode],
-    ) -> list[kubernetes.client.V1EnvVar]:
-        """Get the environment variables provided to all containers.
-
-        Also, get the secrets' keys & their values.
-        """
-        LOGGER.debug(f"making cluster starter env vars for {scan_id=}")
-        env = []
-
-        # 1. start w/ secrets
-        # NOTE: the values come from an existing secret in the current namespace
-        env.extend(get_cluster_auth_v1envvars(cluster))
-        env.extend(get_cluster_starter_s3_v1envvars())
-
-        # 2. add required env vars
-        required = {
-            # broker/mq vars
-            "SKYSCAN_BROKER_ADDRESS": ENV.SKYSCAN_BROKER_ADDRESS,
-            # skydriver vars
-            "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
-            "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
-            #
-            "EWMS_TMS_S3_BUCKET": ENV.EWMS_TMS_S3_BUCKET,
-            "EWMS_TMS_S3_URL": ENV.EWMS_TMS_S3_URL,
-            #
-            "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
-            #
-            "WORKER_K8S_LOCAL_APPLICATION_NAME": ENV.K8S_APPLICATION_NAME,
-        }
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(name=k, value=str(v))
-                for k, v in required.items()
-            ]
-        )
-
-        # 3. add extra env vars, then filter out if 'None'
-        prefiltered = {
-            "SKYSCAN_MQ_TIMEOUT_TO_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_TO_CLIENTS,
-            "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
-            #
-            "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
-            "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
-            #
-            "SKYSCAN_EWMS_PILOT_LOG": "WARNING",  # default is too low
-            "SKYSCAN_MQ_CLIENT_LOG": "WARNING",  # default is too low
-            #
-            "EWMS_PILOT_QUARANTINE_TIME": ENV.EWMS_PILOT_QUARANTINE_TIME,
-            "EWMS_PILOT_DUMP_TASK_OUTPUT": (
-                True if DebugMode.CLIENT_LOGS in debug_mode else None
-            ),
-        }
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(name=k, value=str(v))
-                for k, v in prefiltered.items()
-                if v is not None
-            ]
-        )
-
-        # 4. generate & add auth tokens
-        tokens = {
-            "SKYSCAN_BROKER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
-                ENV.KEYCLOAK_OIDC_URL,
-                ENV.KEYCLOAK_CLIENT_ID_BROKER,
-                ENV.KEYCLOAK_CLIENT_SECRET_BROKER,
-            ),
-            "SKYSCAN_SKYDRIVER_AUTH": SkymapScannerK8sWrapper._get_token_from_keycloak(
-                ENV.KEYCLOAK_OIDC_URL,
-                ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
-                ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
-            ),
-        }
-        env.extend(
-            [
-                kubernetes.client.V1EnvVar(name=k, value=str(v))
-                for k, v in tokens.items()
-            ]
-        )
-
-        return env
-
-
-class SkymapScannerWorkerStopperK8sWrapper:
-    """Wraps K8s logic to stop workers of a Skymap Scanner instance."""
-
-    def __init__(
-        self,
-        k8s_batch_api: kubernetes.client.BatchV1Api,
-        scan_id: str,
-        clusters: list[schema.Cluster],
-    ):
-        self.k8s_batch_api = k8s_batch_api
-        self.scan_id = scan_id
-
-        # make a container per cluster
-        containers = []
-        for i, cluster in enumerate(clusters):
-            args = f"python -m clientmanager --uuid {cluster.uuid}"
-            match cluster.orchestrator:
-                case "condor":
-                    args += (
-                        f" condor "  # type: ignore[union-attr]
-                        f" --collector {cluster.location.collector} "
-                        f" --schedd {cluster.location.schedd} "
-                    )
-                case "k8s":
-                    args += (
-                        f" k8s "  # type: ignore[union-attr]
-                        f" --host {cluster.location.host} "
-                        f" --namespace {cluster.location.namespace} "
-                    )
-                case other:
-                    raise ValueError(f"Unknown cluster orchestrator: {other}")
-            args += f" stop --cluster-id {cluster.cluster_id} "
-
-            containers.append(
-                KubeAPITools.create_container(
-                    f"cluster-stopper-{i}-{scan_id}",
-                    ENV.THIS_IMAGE_WITH_TAG,
-                    cpu=0.125,
-                    env=get_cluster_auth_v1envvars(cluster),
-                    args=args.split(),
-                    memory=K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES,
+    def get_scan_start_time(manifest: Manifest) -> int:
+        """Get the timestamp for when the scan started."""
+        if manifest.progress:  # the scan has started
+            if ret := manifest.progress.start:
+                return ret
+            # 'ret==None' for a started scan probably indicates the scan is pre-v2
+            try:
+                dt = parser.parse(
+                    manifest.progress.processing_stats.start["scanner start"]
                 )
+                return int(dt.timestamp())
+            except Exception as e:
+                LOGGER.error(f"could not parse scan start time: {e}")
+                pass
+
+        # fall-through
+        return int(manifest.timestamp)  # when the scan was requested
+
+    @staticmethod
+    def _get_grafana_logs_url(scan_id: str, end_timestamp: int | None) -> str:
+        url = (
+            f"{ENV.GRAFANA_DASHBOARD_BASEURL}"
+            f"&var-namespace={ENV.K8S_NAMESPACE}"
+            f"&var-container={get_skyscan_server_container_name(scan_id)}"
+        )
+        if end_timestamp:
+            url += (
+                f"&from={(end_timestamp-SCANNER_LOGS_GRAFANA_WINDOW_SEC)*1000}"
+                f"&to={end_timestamp*1000}"
             )
+        return url
 
-        if not containers:
-            self.worker_stopper_job_obj = None
-        else:
-            self.worker_stopper_job_obj = KubeAPITools.kube_create_job_object(
-                f"cluster-stopper-{scan_id}",
-                containers,
-                ENV.K8S_NAMESPACE,
-                CLUSTER_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED,
-                n_retries=CLUSTER_STOPPER_K8S_JOB_N_RETRIES,
+    @staticmethod
+    @aiocache.cached(ttl=ENV.CACHE_DURATION_PROMETHEUS)  # fyi: logs may/will be updated
+    async def _query_prometheus_for_timerange(
+        scan_id: str, search_start_ts: int
+    ) -> int | None:
+        search_end_ts = search_start_ts + (
+            SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS * 60 * 60
+        )
+        if time.time() < search_end_ts:
+            # this is a recent scan, no need to query
+            return None
+        if ENV.CI:  # for ci testing
+            return None
+
+        params = {
+            "query": (
+                "last_over_time(timestamp(changes(kube_pod_container_status_running{container="
+                f'"{get_skyscan_server_container_name(scan_id)}"'
+                "}[1m])>=0)["
+                f"{str(SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS)}"
+                "h:])"
+            ),
+            "start": str(search_start_ts),
+            "end": str(search_end_ts),
+            "step": "1m",
+        }
+
+        # query prometheus for timerange
+        url = f"{ENV.PROMETHEUS_URL}?{urlencode(params)}"
+        try:
+            rc = RestClient(
+                url,
+                username=ENV.PROMETHEUS_AUTH_USERNAME,
+                password=ENV.PROMETHEUS_AUTH_PASSWORD,
             )
-
-    async def go(self) -> Any:
-        """Stop all workers of a Skymap Scanner instance."""
-
-        # NOTE - we don't want to stop the first k8s job because its containers will stop themselves.
-        #        plus, 'K8S_TTL_SECONDS_AFTER_FINISHED' will allow logs & pod status to be retrieved for some time
-        #
-        # stop first k8s job (server & cluster starters) -- may not be instantaneous
-        # LOGGER.info(
-        #     f"requesting removal of Skymap Scanner Job (server & cluster starters) -- {self.scan_id=}..."
-        # )
-        # resp = self.k8s_batch_api.delete_namespaced_job(
-        #     name=SkymapScannerK8sWrapper.get_job_name(self.scan_id),
-        #     namespace=ENV.K8S_NAMESPACE,
-        #     body=kubernetes.client.V1DeleteOptions(
-        #         propagation_policy="Foreground", grace_period_seconds=5
-        #     ),
-        # )
-        # LOGGER.info(
-        #     f"removed Skymap Scanner Job {self.scan_id=} -- with response {resp.status} "
-        # )
-
-        # stop workers
-        if self.worker_stopper_job_obj:
-            LOGGER.info(f"starting k8s CLUSTER-STOPPER job for {self.scan_id=}")
-            await KubeAPITools.start_job(
-                self.k8s_batch_api, self.worker_stopper_job_obj
+            response = await rc.request("GET", "")
+            return int(response.json()["data"]["result"][0]["values"][-1][-1])
+        except Exception as e:  # this is all or nothing, so except and move on
+            LOGGER.error(
+                f"could not get end time for scanner logs using prometheus query ({url}): {e}"
             )
-        else:
-            LOGGER.info(f"no workers to stop for {self.scan_id=}")
+            return None
 
-
-def assemble_scanner_server_logs_url(scan_id: str) -> str:
-    """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
-    container = f"skyscan-server-{scan_id}"
-
-    return (
-        f"{ENV.GRAFANA_DASHBOARD_BASEURL}"
-        f"&var-namespace={ENV.K8S_NAMESPACE}"
-        f"&var-container={container}"
-    )
+    @staticmethod
+    async def assemble_scanner_server_logs_url(manifest: Manifest) -> str:
+        """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
+        start = LogWrangler.get_scan_start_time(manifest)
+        logs_end_ts = await LogWrangler._query_prometheus_for_timerange(
+            manifest.scan_id, start
+        )
+        return LogWrangler._get_grafana_logs_url(manifest.scan_id, logs_end_ts)

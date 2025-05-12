@@ -5,8 +5,9 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import tarfile
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import texttable  # type: ignore
@@ -56,7 +57,12 @@ class ResultChecker:
                 "--diff-out-dir",
                 str(diffs_dir),
                 "--assert",
-            ],
+            ]
+            + (  # see https://github.com/icecube/skymap_scanner/blob/cb422e412d1607ce1e0ea2db4402a4e3461908ed/.github/workflows/tests.yml#L539-L560
+                ["--compare-different-versions-ok"]
+                if test.reco_algo == "splinempe" and date.today() < date(2025, 9, 18)
+                else []
+            ),
             capture_output=True,
             text=True,
         )
@@ -112,12 +118,14 @@ async def launch_scans(
     rc: RestClient,
     cluster: str,
     n_workers: int,
+    skyscan_docker_tag: str,
+    priority: int,
 ) -> list[test_getter.TestParamSet]:
     for i, test in enumerate(tests):
         logging.info(
             f"Launching test {i+1}/{len(tests)}: {test.reco_algo} + {test.event_file}"
         )
-        test.test_status = test_getter.TestStatus.RUNNING
+        test.test_status = test_getter.TestStatus.REQUESTED
         try:
             # rescan?
             if test.rescan_origin_id:
@@ -135,6 +143,8 @@ async def launch_scans(
                     cluster,
                     n_workers,
                     test.reco_algo,
+                    skyscan_docker_tag,
+                    priority,
                 )
                 test.scan_id = manifest["scan_id"]
         except Exception as e:
@@ -151,16 +161,17 @@ def display_test_status(tests: list[test_getter.TestParamSet]):
     )
     table = texttable.Texttable()
 
-    # Define column alignment and widths
-    table.set_cols_align(["r", "l", "l", "r", "l"])
-    table.set_cols_width([2, 25, 20, 8, 10])
+    scan_id_len = 10
 
-    # Add the header row
+    # columns
     table.add_row(["#", "Event File", "Reco Algo", "Scan ID", "Status"])
+    table.set_cols_align(["r", "l", "l", "r", "l"])
+    table.set_cols_width([2, 25, 18, scan_id_len, 10])
+    table.set_cols_dtype(["i", "t", "t", "t", "t"])
 
     # Add rows for each test
     for i, test in sorted_tests:
-        scan_id = test.scan_id[:8] if test.scan_id else "N/A"
+        scan_id = test.scan_id[:scan_id_len] if test.scan_id else "N/A"
         status = test.test_status.name
         table.add_row([i, test.event_file.name, test.reco_algo, scan_id, status])
 
@@ -187,10 +198,15 @@ async def test_all(
     cluster: str,
     n_workers: int,
     rescans: list[test_getter.TestParamSet] | None,
+    skyscan_docker_tag: str,
+    run_one: bool,
+    priority: int,
 ) -> None:
     """Do all the tests."""
     # setup
     tests = list(test_getter.setup_tests())
+    if run_one:
+        tests = [tests[-1]]  # #0 is often millipede original (slowest), so pick faster
     if rescans:
         _match_rescans_to_tests(rescans, tests)
 
@@ -200,9 +216,12 @@ async def test_all(
         rc,
         cluster,
         n_workers,
+        skyscan_docker_tag,
+        priority,
     )
     with open(config.SANDBOX_MAP_FPATH, "w") as f:  # dump to file
         json.dump([t.to_json() for t in tests], f, indent=4)
+    logging.info(f"scan ids: {" ".join(t.scan_id for t in tests)}")
     display_test_status(tests)
 
     # start test-waiters
@@ -215,7 +234,6 @@ async def test_all(
                 wait_then_check_results(rc, test, checker),
             )
         )
-    display_test_status(tests)
 
     # wait on all tests
     n_failed = 0
@@ -256,10 +274,21 @@ async def main():
         help="the cluster to use for running workers. Ex: sub-2",
     )
     parser.add_argument(
+        "--skyscan-docker-tag",
+        default="latest",
+        help="the skymap scanner docker tag to use",
+    )
+    parser.add_argument(
         "--n-workers",
         required=True,
         type=int,
         help="number of workers to request",
+    )
+    parser.add_argument(
+        "--priority",
+        default=-1,
+        type=int,
+        help="scan priority",
     )
     parser.add_argument(
         "--rescan",
@@ -273,7 +302,15 @@ async def main():
         default=config.SANDBOX_DIR,
         help="the existing (previously ran) sandbox to submit rescans for",
     )
+    parser.add_argument(
+        "--one",
+        default=False,
+        action="store_true",
+        help="just requests a single scan instead of the whole suite",
+    )
     args = parser.parse_args()
+    if args.one and args.rescan:
+        raise RuntimeError("cannot give --one and --rescan together")
 
     if args.rescan:
         # grab json map
@@ -332,9 +369,13 @@ async def main():
         args.cluster,
         args.n_workers,
         rescans,
+        args.skyscan_docker_tag,
+        args.one,
+        args.priority,
     )
 
 
 # Run the asyncio event loop
 if __name__ == "__main__":
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "icecube-skyreader"])
     asyncio.run(main())

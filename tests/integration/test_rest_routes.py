@@ -1,37 +1,38 @@
 """Integration tests for the REST server."""
 
 import asyncio
-import copy
 import logging
 import os
-import random
+import pprint
 import re
 import time
-import uuid
 from typing import Any, Callable
 
 import humanfriendly
 import pytest
 import requests
+from motor.motor_asyncio import AsyncIOMotorClient
 from rest_tools.client import RestClient
 
 import skydriver.images  # noqa: F401  # export
+from skydriver.__main__ import setup_ewms_client
+
+NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS = "not-yet-requested"
 
 LOGGER = logging.getLogger(__name__)
 
-
-# pylint: disable=redefined-outer-name
-
-
 skydriver.config.config_logging()
 
-StrDict = dict[str, Any]
+sdict = dict[str, Any]
 
 ########################################################################################
+# CONSTANTS
+########################################################################################
 
+RE_SCANID = re.compile(r"[0-9a-f]{11}x[0-9a-f]{20}")  # see make_scan_id()
+RE_UUID4HEX = re.compile(r"[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}")  # normal uuid4
 
-RE_UUID4HEX = re.compile(r"[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}")
-
+_EWMS_URL_V_PREFIX = "v1"
 
 IS_REAL_EVENT = True  # for simplicity, hardcode for all requests
 
@@ -65,18 +66,25 @@ REQUIRED_FIELDS = [
 
 
 ########################################################################################
+# UTILS
+########################################################################################
 
 
 async def _launch_scan(
-    rc: RestClient, post_scan_body: dict, tms_args: list[str]
+    rc: RestClient,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    post_scan_body: dict,
+    docker_tag_expected: str,
 ) -> dict:
     # launch scan
     launch_time = time.time()
-    resp = await rc.request(
+    print(f"now: {launch_time}")
+    post_resp = await rc.request(
         "POST",
         "/scan",
         {**post_scan_body, "manifest_projection": ["*"]},
     )
+    pprint.pprint(post_resp)
 
     scanner_server_args = (
         f"python -m skymap_scanner.server "
@@ -88,164 +96,402 @@ async def _launch_scan(
         f"--predictive-scanning-threshold 1.0 "  # the default
     )
 
-    assert resp == dict(
-        scan_id=resp["scan_id"],
+    assert post_resp == dict(
+        scan_id=post_resp["scan_id"],  # see below
         is_deleted=False,
-        timestamp=resp["timestamp"],  # see below
+        timestamp=post_resp["timestamp"],  # see below
         event_i3live_json_dict__hash=None,  # field has been deprecated, always 'None'
         event_i3live_json_dict="use 'i3_event_id'",  # field has been deprecated
-        i3_event_id=resp["i3_event_id"],  # see below
+        i3_event_id=post_resp["i3_event_id"],  # see below
         event_metadata=None,
         scan_metadata=None,
         progress=None,
-        scanner_server_args=resp["scanner_server_args"],  # see below
-        ewms_task=dict(
-            clusters=[],
-            tms_args=resp["ewms_task"]["tms_args"],  # see below
-            env_vars=resp["ewms_task"]["env_vars"],  # see below
-            complete=False,
-        ),
+        scanner_server_args=post_resp["scanner_server_args"],  # see below
+        ewms_task="use 'ewms_workflow_id'",
+        ewms_workflow_id=NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+        ewms_address=None,
         classifiers=post_scan_body["classifiers"],
-        last_updated=resp["last_updated"],  # see below
+        last_updated=post_resp["last_updated"],  # see below
         priority=0,
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
-    assert RE_UUID4HEX.fullmatch(resp["scan_id"])
-    assert RE_UUID4HEX.fullmatch(resp["i3_event_id"])
-    assert launch_time < resp["timestamp"] < resp["last_updated"] < time.time()
-
-    # check args (avoid whitespace headaches...)
-    assert resp["scanner_server_args"].split() == scanner_server_args.split()
-    for got_args, exp_args in zip(resp["ewms_task"]["tms_args"], tms_args):
-        print(got_args, exp_args)
-        for got, exp in zip(got_args.split(), exp_args.split()):
-            print(got, exp)
-            if exp == CLUSTER_ID_PLACEHOLDER:
-                assert RE_UUID4HEX.fullmatch(got)
-            else:
-                assert got == exp
-        assert len(got_args.split()) == len(exp_args.split())
-    assert len(resp["ewms_task"]["tms_args"]) == len(tms_args)
-
-    # check env vars
-    print(resp["ewms_task"]["env_vars"])
-    assert set(resp["ewms_task"]["env_vars"].keys()) == {
-        "scanner_server",
-        "tms_starters",
-    }
-
-    # check env vars, more closely
-    # "scanner_server"
-    assert set(  # these have `value`s
-        e["name"]
-        for e in resp["ewms_task"]["env_vars"]["scanner_server"]
-        if e["value"] is not None and e["value_from"] is None
-    ) == {
-        "SKYSCAN_BROKER_ADDRESS",
-        "SKYSCAN_BROKER_AUTH",
-        "SKYSCAN_SKYDRIVER_ADDRESS",
-        "SKYSCAN_SKYDRIVER_AUTH",
-        "SKYSCAN_SKYDRIVER_SCAN_ID",
-        "SKYSCAN_EWMS_PILOT_LOG",
-        "SKYSCAN_MQ_CLIENT_LOG",
-        *post_scan_body["scanner_server_env"].keys(),  # type: ignore[attr-defined]
-    }
+    assert RE_SCANID.fullmatch(post_resp["scan_id"])
+    assert RE_UUID4HEX.fullmatch(post_resp["i3_event_id"])
+    # check timestamps
+    post_launch_ts = time.time()
+    print(f"now: {post_launch_ts}")
     assert (
-        set(  # these have `value_from`s
-            e
-            for e in resp["ewms_task"]["env_vars"]["scanner_server"]
-            if e["value_from"] is not None and e["value"] is None
-        )
-        == set()
+        launch_time
+        < post_resp["timestamp"]
+        < post_resp["last_updated"]
+        < post_launch_ts
     )
-    # "tms_starters"
-    for env_dicts in resp["ewms_task"]["env_vars"]["tms_starters"]:
-        assert set(  # these have `value`s
-            e["name"]
-            for e in env_dicts
-            if e["value"] is not None and e["value_from"] is None
-        ) == {
-            "EWMS_PILOT_TASK_TIMEOUT",  # set by CI runner
-            "EWMS_TMS_S3_BUCKET",
-            "EWMS_TMS_S3_URL",
-            "SKYSCAN_BROKER_ADDRESS",
-            "SKYSCAN_BROKER_AUTH",
-            "SKYSCAN_SKYDRIVER_ADDRESS",
-            "SKYSCAN_SKYDRIVER_AUTH",
-            "SKYSCAN_SKYDRIVER_SCAN_ID",
-            "SKYSCAN_EWMS_PILOT_LOG",
-            "SKYSCAN_MQ_CLIENT_LOG",
-            "WORKER_K8S_LOCAL_APPLICATION_NAME",
-            "EWMS_PILOT_DUMP_TASK_OUTPUT",
-        }
-        assert (
-            next(
-                x["value"]
-                for x in env_dicts
-                if x["name"] == "EWMS_PILOT_DUMP_TASK_OUTPUT"
-            )
-            == "True"
-        )
-        assert set(  # these have `value_from`s
-            e["name"]
-            for e in env_dicts
-            if e["value_from"] is not None and e["value"] is None
-        ) == {
-            "CONDOR_TOKEN",
-            "EWMS_TMS_S3_ACCESS_KEY_ID",
-            "EWMS_TMS_S3_SECRET_KEY",
-        } or set(  # these have `value_from`s
-            e["name"]
-            for e in env_dicts
-            if e["value_from"] is not None and e["value"] is None
-        ) == {
-            "WORKER_K8S_CONFIG_FILE_BASE64",
-            "EWMS_TMS_S3_ACCESS_KEY_ID",
-            "EWMS_TMS_S3_SECRET_KEY",
-        }
 
-    # check env vars, even MORE closely
-    for env_dicts in [resp["ewms_task"]["env_vars"]["scanner_server"]] + resp[
-        "ewms_task"
-    ]["env_vars"]["tms_starters"]:
-        assert (
-            next(x["value"] for x in env_dicts if x["name"] == "SKYSCAN_BROKER_ADDRESS")
-            == "localhost"
-        )
-        assert re.match(
-            r"http://localhost:[0-9]+",
-            next(
-                x["value"]
-                for x in env_dicts
-                if x["name"] == "SKYSCAN_SKYDRIVER_ADDRESS"
-            ),
-        )
-        assert (
-            len(
-                next(
-                    x["value"]
-                    for x in env_dicts
-                    if x["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID"
-                )
-            )
-            == 32
-        )
+    # check database
+    rest_address = await _assert_db_scanrequests_coll(
+        mongo_client,
+        post_scan_body,
+        post_resp,
+        docker_tag_expected,
+    )
+    await _assert_db_skyscank8sjobs_coll(
+        mongo_client,
+        post_scan_body,
+        post_resp,
+        scanner_server_args,
+        rest_address,
+        docker_tag_expected,
+    )
 
-    # get scan_id
-    assert resp["scan_id"]
+    return post_resp  # type: ignore[no-any-return]
 
-    return resp  # type: ignore[no-any-return]
+
+async def _assert_db_scanrequests_coll(
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    post_scan_body: dict,
+    post_resp: dict,
+    docker_tag_expected: str,
+) -> str:
+    """Query the ScanRequests coll.
+
+    Return the REST address
+    """
+    doc_sr = await mongo_client["SkyDriver_DB"]["ScanRequests"].find_one(  # type: ignore[index]
+        {"scan_id": post_resp["scan_id"]}, {"_id": 0}
+    )
+    pprint.pprint(doc_sr)
+    assert doc_sr == dict(
+        scan_id=post_resp["scan_id"],
+        rescan_ids=[],
+        #
+        docker_tag=docker_tag_expected,
+        #
+        # skyscan server config
+        scanner_server_memory_bytes=humanfriendly.parse_size("1024M"),
+        reco_algo=post_scan_body["reco_algo"],
+        nsides={str(k): v for k, v in post_scan_body["nsides"].items()},
+        real_or_simulated_event=post_scan_body["real_or_simulated_event"],
+        predictive_scanning_threshold=1.0,
+        #
+        classifiers=post_scan_body["classifiers"],
+        #
+        # cluster (condor) config
+        request_clusters=(
+            list([k, v] for k, v in post_scan_body["cluster"].items())
+            if isinstance(post_scan_body["cluster"], dict)
+            else post_scan_body["cluster"]
+        ),
+        worker_memory_bytes=humanfriendly.parse_size("8GB"),
+        worker_disk_bytes=humanfriendly.parse_size("1GB"),
+        max_pixel_reco_time=post_scan_body["max_pixel_reco_time"],
+        priority=0,
+        debug_mode=[post_scan_body["debug_mode"]],
+        #
+        # misc
+        i3_event_id=post_resp["i3_event_id"],
+        rest_address=doc_sr["rest_address"],  # see below
+        scanner_server_env_from_user=post_scan_body["scanner_server_env"],
+    )
+    assert re.fullmatch(rf"{re.escape('http://localhost:')}\d+", doc_sr["rest_address"])
+
+    return doc_sr["rest_address"]
+
+
+async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    post_scan_body: dict,
+    post_resp: dict,
+    scanner_server_args: str,
+    rest_address: str,
+    docker_tag_expected: str,
+):
+    # query the SkyScanK8sJobs coll
+    # -> since the scanner-server metadata is no longer stored in the manifest
+    doc_k8s = await mongo_client["SkyDriver_DB"]["SkyScanK8sJobs"].find_one(  # type: ignore[index]
+        {"scan_id": post_resp["scan_id"]}, {"_id": 0}
+    )
+    pprint.pprint(doc_k8s)
+    assert doc_k8s == {
+        "scan_id": post_resp["scan_id"],
+        "skyscan_k8s_job_dict": {
+            "apiVersion": "batch/v1",
+            "kind": "Job",
+            "metadata": {
+                "annotations": {"argocd.argoproj.io/sync-options": "Prune=false"},
+                "labels": {"app.kubernetes.io/instance": None},
+                "name": f"skyscan-{post_resp['scan_id']}",
+                "namespace": None,
+            },
+            "spec": {
+                "activeDeadlineSeconds": 172800,
+                "backoffLimit": 0,
+                "template": {
+                    "metadata": {"labels": {"app": "scanner-instance"}},
+                    "spec": {
+                        "containers": [
+                            {
+                                "args": scanner_server_args.split(),
+                                "command": [],
+                                "env": [
+                                    {
+                                        "name": "SKYSCAN_EWMS_JSON",
+                                        "value": "/common-space/ewms.json",
+                                    },
+                                    {
+                                        "name": "SKYSCAN_SKYDRIVER_ADDRESS",
+                                        "value": rest_address,
+                                    },
+                                    {
+                                        "name": "SKYSCAN_SKYDRIVER_SCAN_ID",
+                                        "value": post_resp["scan_id"],
+                                    },
+                                    {
+                                        "name": "SKYSCAN_EWMS_PILOT_LOG",
+                                        "value": "WARNING",
+                                    },
+                                    {
+                                        "name": "SKYSCAN_MQ_CLIENT_LOG",
+                                        "value": "WARNING",
+                                    },
+                                    {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
+                                ]
+                                + [
+                                    {"name": k, "value": str(v)}
+                                    for k, v in post_scan_body[
+                                        "scanner_server_env"
+                                    ].items()
+                                ],
+                                "image": f"icecube/skymap_scanner:{docker_tag_expected}",
+                                "name": f'skyscan-server-{post_resp["scan_id"]}',
+                                "resources": {
+                                    "limits": {"cpu": "1.0", "memory": "1024000000"},
+                                    "requests": {
+                                        "cpu": "0.1",
+                                        "ephemeral-storage": "8G",
+                                        "memory": "1024000000",
+                                    },
+                                },
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/common-space",
+                                        "name": "common-space-volume",
+                                    }
+                                ],
+                            },
+                            {
+                                "args": [
+                                    "/common-space/startup.json",
+                                    "--wait-indefinitely",
+                                ],
+                                "command": ["python", "-m", "s3_sidecar"],
+                                "env": [
+                                    {
+                                        "name": "K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS",
+                                        "value": str(900),
+                                    },
+                                    {"name": "S3_URL", "value": os.environ["S3_URL"]},
+                                    {
+                                        "name": "S3_ACCESS_KEY_ID",
+                                        "valueFrom": {
+                                            "secretKeyRef": {
+                                                "key": os.environ[
+                                                    "S3_ACCESS_KEY_ID__K8S_SECRET_KEY"
+                                                ],
+                                                "name": os.environ["K8S_SECRET_NAME"],
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "name": "S3_SECRET_KEY",
+                                        "valueFrom": {
+                                            "secretKeyRef": {
+                                                "key": os.environ[
+                                                    "S3_SECRET_KEY__K8S_SECRET_KEY"
+                                                ],
+                                                "name": os.environ["K8S_SECRET_NAME"],
+                                            }
+                                        },
+                                    },
+                                    {"name": "S3_EXPIRES_IN", "value": str(604800)},
+                                    {
+                                        "name": "S3_BUCKET",
+                                        "value": os.environ["S3_BUCKET"],
+                                    },
+                                    {
+                                        "name": "S3_OBJECT_KEY",
+                                        "value": f"{post_resp['scan_id']}-s3-object",
+                                    },
+                                ],
+                                "image": os.environ["THIS_IMAGE_WITH_TAG"],
+                                "name": f"sidecar-s3-{post_resp['scan_id']}",
+                                "resources": {
+                                    "limits": {"cpu": "0.1", "memory": "100M"},
+                                    "requests": {
+                                        "cpu": "0.05",
+                                        "ephemeral-storage": "1M",
+                                        "memory": "10M",
+                                    },
+                                },
+                                "restartPolicy": "OnFailure",
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/common-space",
+                                        "name": "common-space-volume",
+                                    }
+                                ],
+                            },
+                        ],
+                        "initContainers": [
+                            {
+                                "args": [
+                                    post_resp["scan_id"],
+                                    "--json-out",
+                                    "/common-space/ewms.json",
+                                ],
+                                "command": ["python", "-m", "ewms_init_container"],
+                                "env": [
+                                    {
+                                        "name": "SKYSCAN_SKYDRIVER_ADDRESS",
+                                        "value": rest_address,
+                                    },
+                                    {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
+                                    {
+                                        "name": "EWMS_ADDRESS",
+                                        "value": os.environ["EWMS_ADDRESS"],
+                                    },
+                                    {
+                                        "name": "EWMS_TOKEN_URL",
+                                        "value": os.environ["EWMS_TOKEN_URL"],
+                                    },
+                                    {
+                                        "name": "EWMS_CLIENT_ID",
+                                        "value": os.environ["EWMS_CLIENT_ID"],
+                                    },
+                                    {
+                                        "name": "EWMS_CLIENT_SECRET",
+                                        "value": os.environ["EWMS_CLIENT_SECRET"],
+                                    },
+                                    {
+                                        "name": "EWMS_CLUSTERS",
+                                        "value": " ".join(
+                                            list(post_scan_body["cluster"].keys())
+                                            if isinstance(
+                                                post_scan_body["cluster"], dict
+                                            )
+                                            else [
+                                                c[0] for c in post_scan_body["cluster"]
+                                            ]
+                                        ),
+                                    },
+                                    {"name": "EWMS_N_WORKERS", "value": "1"},
+                                    {
+                                        "name": "EWMS_TASK_IMAGE",
+                                        "value": f"/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:{docker_tag_expected}",
+                                    },
+                                    {
+                                        "name": "EWMS_PILOT_TASK_TIMEOUT",
+                                        "value": str(
+                                            post_scan_body["max_pixel_reco_time"]
+                                        ),
+                                    },
+                                    {
+                                        "name": "EWMS_PILOT_QUARANTINE_TIME",
+                                        "value": str(
+                                            post_scan_body["max_pixel_reco_time"]
+                                        ),
+                                    },
+                                    {
+                                        "name": "EWMS_PILOT_DUMP_TASK_OUTPUT",
+                                        "value": str(
+                                            bool(
+                                                "client-logs"
+                                                in post_scan_body["debug_mode"]
+                                            )
+                                        ),
+                                    },
+                                    {
+                                        "name": "EWMS_WORKER_MAX_WORKER_RUNTIME",
+                                        "value": str(24 * 60 * 60),
+                                    },
+                                    {"name": "EWMS_WORKER_PRIORITY", "value": "0"},
+                                    {
+                                        "name": "EWMS_WORKER_DISK_BYTES",
+                                        "value": "1000000000",
+                                    },
+                                    {
+                                        "name": "EWMS_WORKER_MEMORY_BYTES",
+                                        "value": "8000000000",
+                                    },
+                                    {"name": "S3_URL", "value": os.environ["S3_URL"]},
+                                    {
+                                        "name": "S3_ACCESS_KEY_ID",
+                                        "valueFrom": {
+                                            "secretKeyRef": {
+                                                "key": os.environ[
+                                                    "S3_ACCESS_KEY_ID__K8S_SECRET_KEY"
+                                                ],
+                                                "name": os.environ["K8S_SECRET_NAME"],
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "name": "S3_SECRET_KEY",
+                                        "valueFrom": {
+                                            "secretKeyRef": {
+                                                "key": os.environ[
+                                                    "S3_SECRET_KEY__K8S_SECRET_KEY"
+                                                ],
+                                                "name": os.environ["K8S_SECRET_NAME"],
+                                            }
+                                        },
+                                    },
+                                    {"name": "S3_EXPIRES_IN", "value": str(604800)},
+                                    {
+                                        "name": "S3_BUCKET",
+                                        "value": os.environ["S3_BUCKET"],
+                                    },
+                                    {
+                                        "name": "S3_OBJECT_KEY",
+                                        "value": f"{post_resp['scan_id']}-s3-object",
+                                    },
+                                ],
+                                "image": os.environ["THIS_IMAGE_WITH_TAG"],
+                                "name": f"init-ewms-{post_resp['scan_id']}",
+                                "resources": {
+                                    "limits": {"cpu": "0.1", "memory": "100M"},
+                                    "requests": {
+                                        "cpu": "0.05",
+                                        "ephemeral-storage": "1M",
+                                        "memory": "10M",
+                                    },
+                                },
+                                "volumeMounts": [
+                                    {
+                                        "mountPath": "/common-space",
+                                        "name": "common-space-volume",
+                                    }
+                                ],
+                            }
+                        ],
+                        "restartPolicy": "Never",
+                        "serviceAccountName": None,
+                        "volumes": [{"emptyDir": {}, "name": "common-space-volume"}],
+                    },
+                },
+                "ttlSecondsAfterFinished": 600,
+            },
+        },
+    }
 
 
 async def _do_patch(
     rc: RestClient,
     scan_id: str,
-    progress: StrDict | None = None,
-    event_metadata: StrDict | None = None,
-    scan_metadata: StrDict | None = None,
-    cluster: StrDict | None = None,
-    previous_clusters: list[StrDict] | None = None,
-) -> StrDict:
+    manifest: sdict,
+    progress: sdict | None = None,
+    event_metadata: sdict | None = None,
+    scan_metadata: sdict | None = None,
+) -> sdict:
     # do PATCH @ /scan/{scan_id}/manifest, assert response
     body = {}
     if progress:
@@ -254,9 +500,6 @@ async def _do_patch(
         body["event_metadata"] = event_metadata
     if scan_metadata:
         body["scan_metadata"] = scan_metadata
-    if cluster:
-        body["cluster"] = cluster
-        assert isinstance(previous_clusters, list)  # gotta include this one too
     assert body
 
     now = time.time()
@@ -266,13 +509,15 @@ async def _do_patch(
         scan_id=scan_id,
         is_deleted=False,
         timestamp=resp["timestamp"],  # see below
-        i3_event_id=resp["i3_event_id"],  # not checking
-        event_i3live_json_dict=resp["event_i3live_json_dict"],  # not checking
-        event_i3live_json_dict__hash=resp[
+        i3_event_id=manifest["i3_event_id"],  # should not change
+        event_i3live_json_dict=manifest["event_i3live_json_dict"],  # should not change
+        event_i3live_json_dict__hash=manifest[
             "event_i3live_json_dict__hash"
-        ],  # not checking
-        event_metadata=event_metadata if event_metadata else resp["event_metadata"],
-        scan_metadata=scan_metadata if scan_metadata else resp["scan_metadata"],
+        ],  # should not change
+        event_metadata=(
+            event_metadata if event_metadata else manifest["event_metadata"]
+        ),
+        scan_metadata=(scan_metadata if scan_metadata else manifest["scan_metadata"]),
         progress=(
             {  # inject the auto-filled args
                 **progress,
@@ -284,20 +529,13 @@ async def _do_patch(
                 },
             }
             if progress
-            else resp["progress"]  # not checking
+            else manifest["progress"]  # should not change
         ),
-        scanner_server_args=resp["scanner_server_args"],  # not checking
-        ewms_task=dict(
-            tms_args=resp["ewms_task"]["tms_args"],  # not checking
-            env_vars=resp["ewms_task"]["env_vars"],  # not checking
-            complete=False,
-            clusters=(
-                previous_clusters + [cluster]  # type: ignore[operator]  # see assert ^^^^
-                if cluster
-                else resp["ewms_task"]["clusters"]  # not checking
-            ),
-        ),
-        classifiers=resp["classifiers"],  # not checking
+        scanner_server_args=manifest["scanner_server_args"],  # should not change
+        ewms_task="use 'ewms_workflow_id'",
+        ewms_workflow_id=manifest["ewms_workflow_id"],  # should not change
+        ewms_address=manifest["ewms_address"],  # should not change
+        classifiers=manifest["classifiers"],  # should not change
         last_updated=resp["last_updated"],  # see below
         priority=0,
         # TODO: check more fields in future (hint: ctrl+F this comment)
@@ -314,8 +552,9 @@ async def _do_patch(
 async def _patch_progress_and_scan_metadata(
     rc: RestClient,
     scan_id: str,
+    manifest: sdict,
     n: int,
-) -> StrDict:
+) -> sdict:
     # send progress updates
     for i in range(n):
         progress = dict(
@@ -333,21 +572,33 @@ async def _patch_progress_and_scan_metadata(
             ),
             predictive_scanning_threshold=1.0,
             last_updated="now!",
+            start=123,
+            end=456,
         )
         # update progress (update `scan_metadata` sometimes--not as important)
         if i % 2:  # odd
-            manifest = await _do_patch(rc, scan_id, progress=progress)
+            manifest = await _do_patch(
+                rc,
+                scan_id,
+                manifest,
+                progress=progress,
+            )
         else:  # even
             manifest = await _do_patch(
                 rc,
                 scan_id,
+                manifest,
                 progress=progress,
                 scan_metadata={"scan_id": scan_id, "foo": "bar"},
             )
     return manifest
 
 
-async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> StrDict:
+async def _server_reply_with_event_metadata(
+    rc: RestClient,
+    scan_id: str,
+    manifest: sdict,
+) -> sdict:
     # reply as the scanner server with the newly gathered run+event ids
     event_id = 123
     run_id = 456
@@ -360,7 +611,7 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
         is_real_event=IS_REAL_EVENT,
     )
 
-    await _do_patch(rc, scan_id, event_metadata=event_metadata)
+    manifest = await _do_patch(rc, scan_id, manifest, event_metadata=event_metadata)
 
     # query by run+event id
     resp = await rc.request(
@@ -402,43 +653,15 @@ async def _server_reply_with_event_metadata(rc: RestClient, scan_id: str) -> Str
     )
     assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
 
-    return event_metadata
-
-
-async def _clientmanager_reply(
-    rc: RestClient,
-    scan_id: str,
-    cluster_name__n_workers: tuple[str, int],
-    previous_clusters: list[StrDict],
-    known_clusters: dict,
-) -> StrDict:
-    # reply as the clientmanager with a new cluster
-    cluster = dict(
-        orchestrator=known_clusters[cluster_name__n_workers[0]]["orchestrator"],
-        location=known_clusters[cluster_name__n_workers[0]]["location"],
-        cluster_id=f"cluster-{random.randint(1, 10000)}",
-        n_workers=cluster_name__n_workers[1],
-        starter_info={},
-        statuses={},
-        top_task_errors={},
-        uuid=str(uuid.uuid4().hex),
-    )
-
-    manifest = await _do_patch(
-        rc,
-        scan_id,
-        cluster=cluster,
-        previous_clusters=previous_clusters,
-    )
     return manifest
 
 
 async def _send_result(
     rc: RestClient,
     scan_id: str,
-    last_known_manifest: StrDict,
+    manifest: sdict,
     is_final: bool,
-) -> StrDict:
+) -> sdict:
     # send finished result
     result = {"alpha": (11 + 1) ** 11, "beta": -11}
     if is_final:
@@ -457,7 +680,7 @@ async def _send_result(
 
     # query progress
     resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert resp == last_known_manifest
+    assert resp == manifest
 
     # query result
     resp = await rc.request("GET", f"/scan/{scan_id}/result")
@@ -465,7 +688,7 @@ async def _send_result(
 
     # query scan
     resp = await rc.request("GET", f"/scan/{scan_id}")
-    assert resp["manifest"] == last_known_manifest
+    assert resp["manifest"] == manifest
     assert resp["result"] == result
 
     return result
@@ -473,10 +696,10 @@ async def _send_result(
 
 async def _delete_scan(
     rc: RestClient,
-    event_metadata: StrDict,
+    event_metadata: sdict,
     scan_id: str,
-    last_known_manifest: StrDict,
-    last_known_result: StrDict,
+    manifest: sdict,
+    last_known_result: sdict,
     is_final: bool,
     delete_completed_scan: bool | None,
 ) -> None:
@@ -494,12 +717,7 @@ async def _delete_scan(
             # only checking these fields:
             "scan_id": scan_id,
             "is_deleted": True,
-            "progress": last_known_manifest["progress"],
-            "ewms_task": {
-                **resp["manifest"]["ewms_task"],
-                # whether workforce is done
-                "complete": last_known_manifest["ewms_task"]["complete"],
-            },
+            "progress": manifest["progress"],
             "last_updated": resp["manifest"]["last_updated"],  # see below
             # TODO: check more fields in future (hint: ctrl+F this comment)
         },
@@ -631,39 +849,14 @@ async def _delete_scan(
     # ^^^ not testing that this is unique b/c the event could've been re-ran (rescan)
 
 
-def get_tms_args(
-    clusters: list | dict,
-    docker_tag_expected: str,
-    known_clusters: dict,
-) -> list[str]:
-    tms_args = []
-    for cluster in clusters if isinstance(clusters, list) else list(clusters.items()):
-        orchestrator = known_clusters[cluster[0]]["orchestrator"]
-        location = known_clusters[cluster[0]]["location"]
-        image = (
-            f"/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:{docker_tag_expected}"
-            if orchestrator == "condor"
-            else f"icecube/skymap_scanner:{docker_tag_expected}"
-        )
-        tms_args += [
-            f"python -m clientmanager "
-            f" --uuid {CLUSTER_ID_PLACEHOLDER} "
-            f" {orchestrator} "
-            f" {' '.join(f'--{k} {v}' for k,v in location.items())} "
-            f" start "
-            f" --n-workers {cluster[1]} "
-            f" --worker-memory-bytes {humanfriendly.parse_size('8GB')} "
-            f" --worker-disk-bytes {humanfriendly.parse_size('1GB')} "
-            f" --image {image} "
-            f" --client-startup-json /common-space/startup.json "
-            f" --max-worker-runtime {24 * 60 * 60} "
-            f" --priority 0 "
-            f" --spool "
-        ]
-
-    return tms_args
+async def _is_scan_complete(rc: RestClient, scan_id: str) -> bool:
+    resp = await rc.request("GET", f"/scan/{scan_id}/status")
+    pprint.pprint(resp)
+    return resp["scan_complete"]
 
 
+########################################################################################
+# TESTS
 ########################################################################################
 
 
@@ -698,34 +891,32 @@ async def test_000(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
 
     manifest = await _launch_scan(
         rc,
+        mongo_client,
         {
             **POST_SCAN_BODY,
             "docker_tag": docker_tag_input,
             "cluster": clusters,
         },
-        get_tms_args(clusters, docker_tag_expected, known_clusters),
+        docker_tag_expected,
     )
 
     await _after_scan_start_logic(
         rc,
         manifest,
-        clusters,
-        known_clusters,
         test_wait_before_teardown,
     )
 
 
 async def _after_scan_start_logic(
     rc: RestClient,
-    manifest: dict,
-    clusters: list | dict,
-    known_clusters: dict,
+    manifest: sdict,
     test_wait_before_teardown: float,
 ):
     scan_id = manifest["scan_id"]
@@ -736,17 +927,46 @@ async def _after_scan_start_logic(
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
 
+    # wait backlogger to request to ewms
+    assert int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"])
+    await asyncio.sleep(int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"]) * 5)  # extra
+
+    # mimic the ewms-init container...
+    # -> before
+    manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    assert manifest["ewms_workflow_id"] == NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
+    assert manifest["ewms_address"] is None
+    assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
+        "workflow_id": NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+        "requested_ewms_workflow": False,
+        "eligible_for_ewms": True,
+        "ewms_address": None,
+    }
+    # -> update workflow_id
+    resp = await setup_ewms_client().request(
+        "POST", f"/{_EWMS_URL_V_PREFIX}/workflows", {"foo": "bar"}
+    )
+    workflow_id = resp["workflow"]["workflow_id"]
+    await rc.request(
+        "POST",
+        f"/scan/{scan_id}/ewms/workflow-id",
+        {"workflow_id": workflow_id, "ewms_address": "ewms.foo.aq"},
+    )
+    # -> after
+    manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    assert manifest["ewms_workflow_id"] == workflow_id
+    assert manifest["ewms_address"] == "ewms.foo.aq"
+    assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
+        "workflow_id": workflow_id,
+        "requested_ewms_workflow": True,
+        "eligible_for_ewms": True,
+        "ewms_address": "ewms.foo.aq",
+    }
+
     #
     # INITIAL UPDATES
     #
-    event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    manifest = await _clientmanager_reply(
-        rc,
-        scan_id,
-        clusters[0] if isinstance(clusters, list) else list(clusters.items())[0],
-        [],
-        known_clusters,
-    )
+    manifest = await _server_reply_with_event_metadata(rc, scan_id, manifest)
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -756,116 +976,50 @@ async def _after_scan_start_logic(
     #
     # ADD PROGRESS
     #
-    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
 
     #
     # SEND INTERMEDIATES (these can happen in any order, or even async)
     #
     # FIRST, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
-    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
-    # NEXT, spin up more workers in clusters
-    for cluster_name__n_workers in (
-        clusters[1:] if isinstance(clusters, list) else list(clusters.items())[1:]
-    ):
-        manifest = await _clientmanager_reply(
-            rc,
-            scan_id,
-            cluster_name__n_workers,
-            manifest["ewms_task"]["clusters"],
-            known_clusters,
-        )
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
     # THEN, clients send updates
     result = await _send_result(rc, scan_id, manifest, False)
-    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
 
     #
     # SEND RESULT(s)
     #
-    assert not manifest["ewms_task"]["complete"]  # workforce is not done
+    assert not await _is_scan_complete(rc, manifest["scan_id"])  # workforce is not done
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert manifest["ewms_task"]["complete"]  # workforce is done
+    assert await _is_scan_complete(rc, manifest["scan_id"])  # workforce is done
 
     #
     # DELETE SCAN
     #
-    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
+    await _delete_scan(
+        rc,
+        manifest["event_metadata"],
+        scan_id,
+        manifest,
+        result,
+        True,
+        True,
+    )
 
 
 POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
-
-
-def _assert_manifests_equal_with_normalization(
-    manifest_beta: dict, manifest_alpha: dict
-):
-    """
-    Asserts that specific keys in two manifests are equal after normalization.
-    Handles dynamically generated fields such as UUIDs and scan IDs.
-
-    Args:
-        manifest_beta (dict): The first manifest to compare.
-        manifest_alpha (dict): The second manifest to compare.
-
-    Raises:
-        AssertionError: If any of the specified keys are not equal after normalization.
-    """
-    keys_to_compare = [
-        "i3_event_id",
-        "ewms_task",
-        "priority",
-        "scanner_server_args",
-    ]
-
-    def normalize_ewms_task(ewms_task: dict) -> dict:
-        """
-        Normalizes the `ewms_task` dictionary by redacting specific dynamic sub-keys.
-        """
-        normalized = copy.deepcopy(ewms_task)
-
-        # Normalize `env_vars.scanner_server`
-        for dicto in normalized["env_vars"]["scanner_server"]:
-            if dicto["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID":
-                dicto["value"] = "<redacted>"
-        # Normalize `env_vars.scanner_server`
-        for listo in normalized["env_vars"]["tms_starters"]:
-            for dicto in listo:
-                if dicto["name"] == "SKYSCAN_SKYDRIVER_SCAN_ID":
-                    dicto["value"] = "<redacted>"
-
-        # Normalize `tms_args`
-        normalized["tms_args"] = [
-            re.sub(r"--uuid [a-f0-9\-]+", "--uuid <redacted>", arg)
-            for arg in normalized["tms_args"]
-        ]
-
-        return normalized
-
-    for key in keys_to_compare:
-        if key == "ewms_task":
-            normalized_beta = normalize_ewms_task(manifest_beta[key])
-            normalized_alpha = normalize_ewms_task(manifest_alpha[key])
-            assert normalized_beta == normalized_alpha, (
-                f"Mismatch in key '{key}':\n"
-                f"Beta: {normalized_beta}\n"
-                f"Alpha: {normalized_alpha}"
-            )
-        else:
-            assert manifest_beta[key] == manifest_alpha[key], (
-                f"Mismatch in key '{key}':\n"
-                f"Beta: {manifest_beta.get(key)}\n"
-                f"Alpha: {manifest_alpha.get(key)}"
-            )
-
-    assert manifest_beta["timestamp"] > manifest_alpha["timestamp"]
 
 
 async def test_010__rescan(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> None:
     rc = server()
 
@@ -874,18 +1028,17 @@ async def test_010__rescan(
     # OG SCAN
     manifest_alpha = await _launch_scan(
         rc,
+        mongo_client,
         {
             **POST_SCAN_BODY,
             "docker_tag": "3.4.0",
             "cluster": clusters,
         },
-        get_tms_args(clusters, "3.4.0", known_clusters),
+        "3.4.0",
     )
     await _after_scan_start_logic(
         rc,
         manifest_alpha,
-        clusters,
-        known_clusters,
         test_wait_before_teardown,
     )
 
@@ -899,13 +1052,16 @@ async def test_010__rescan(
         **manifest_alpha["classifiers"],
         **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
     }
-    _assert_manifests_equal_with_normalization(manifest_beta, manifest_alpha)
+    skip_keys = ["classifiers", "scan_id", "last_updated", "timestamp"]
+    assert {k: v for k, v in manifest_beta.items() if k not in skip_keys} == {
+        k: v for k, v in manifest_alpha.items() if k not in skip_keys
+    }
+    for sk in skip_keys:
+        assert manifest_beta[sk] != manifest_alpha[sk]
     # continue on...
     await _after_scan_start_logic(
         rc,
         manifest_beta,
-        clusters,
-        known_clusters,
         test_wait_before_teardown,
     )
 
@@ -917,6 +1073,7 @@ async def test_100__bad_data(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
@@ -1000,7 +1157,7 @@ async def test_100__bad_data(
     # # bad docker tag
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: argument docker_tag: invalid type for url: {rc.address}/scan",
+        match=rf"400 Client Error: argument docker_tag: Image tag not on Docker Hub for url: {rc.address}/scan",
     ) as e:
         await rc.request(
             "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "docker_tag": "foo"}
@@ -1010,12 +1167,9 @@ async def test_100__bad_data(
     # OK
     manifest = await _launch_scan(
         rc,
+        mongo_client,
         POST_SCAN_BODY_FOR_TEST_01,
-        get_tms_args(
-            POST_SCAN_BODY_FOR_TEST_01["cluster"],  # type: ignore[arg-type]
-            os.environ["LATEST_TAG"],
-            known_clusters,
-        ),
+        os.environ["LATEST_TAG"],
     )
     scan_id = manifest["scan_id"]
     # follow-up query
@@ -1027,14 +1181,7 @@ async def test_100__bad_data(
     #
     # INITIAL UPDATES
     #
-    event_metadata = await _server_reply_with_event_metadata(rc, scan_id)
-    manifest = await _clientmanager_reply(
-        rc,
-        scan_id,
-        ("foobar", random.randint(1, 10000)),
-        [],
-        known_clusters,
-    )
+    manifest = await _server_reply_with_event_metadata(rc, scan_id, manifest)
     # follow-up query
     assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
     resp = await rc.request("GET", f"/scan/{scan_id}")
@@ -1051,9 +1198,10 @@ async def test_100__bad_data(
         await _do_patch(
             rc,
             scan_id,
+            manifest,
             event_metadata=dict(
-                run_id=event_metadata["run_id"],
-                event_id=event_metadata["event_id"],
+                run_id=manifest["event_metadata"]["run_id"],
+                event_id=manifest["event_metadata"]["event_id"],
                 event_type="funky",
                 mjd=23423432.3,
                 is_real_event=IS_REAL_EVENT,
@@ -1086,7 +1234,7 @@ async def test_100__bad_data(
         print(e.value)
 
     # OK
-    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, 10)
+    manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
 
     # ATTEMPT OVERWRITE
     with pytest.raises(
@@ -1095,7 +1243,9 @@ async def test_100__bad_data(
             f"400 Client Error: Cannot change an existing scan_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ) as e:
-        await _do_patch(rc, scan_id, scan_metadata={"boo": "baz", "bot": "fox"})
+        await _do_patch(
+            rc, scan_id, manifest, scan_metadata={"boo": "baz", "bot": "fox"}
+        )
 
     #
     # SEND RESULT
@@ -1140,7 +1290,7 @@ async def test_100__bad_data(
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
-    assert manifest["ewms_task"]["complete"]  # workforce is done
+    assert await _is_scan_complete(rc, manifest["scan_id"])  # workforce is done
 
     #
     # DELETE SCAN
@@ -1168,7 +1318,23 @@ async def test_100__bad_data(
     print(e.value)
 
     # OK
-    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
+    await _delete_scan(
+        rc,
+        manifest["event_metadata"],
+        scan_id,
+        manifest,
+        result,
+        True,
+        True,
+    )
 
     # also OK
-    await _delete_scan(rc, event_metadata, scan_id, manifest, result, True, True)
+    await _delete_scan(
+        rc,
+        manifest["event_metadata"],
+        scan_id,
+        manifest,
+        result,
+        True,
+        True,
+    )

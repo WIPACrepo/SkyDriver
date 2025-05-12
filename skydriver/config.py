@@ -3,44 +3,54 @@
 import dataclasses as dc
 import enum
 import logging
-from typing import Any, Optional
+from typing import Any
 
-import humanfriendly
-import kubernetes.client  # type: ignore[import-untyped]
 from wipac_dev_tools import from_environment_as_dataclass, logging_tools
+
+sdict = dict[str, Any]
 
 # --------------------------------------------------------------------------------------
 # Constants
 
 
-DEFAULT_K8S_CONTAINER_MEMORY_SKYSCAN_SERVER_BYTES: int = humanfriendly.parse_size(
-    "1024M"
-)
-DEFAULT_WORKER_MEMORY_BYTES: int = humanfriendly.parse_size("8GB")
-DEFAULT_WORKER_DISK_BYTES: int = humanfriendly.parse_size("1GB")
-
-K8S_CONTAINER_MEMORY_DEFAULT_BYTES: int = humanfriendly.parse_size("64M")
-K8S_CONTAINER_MEMORY_CLUSTER_STOPPER_BYTES: int = humanfriendly.parse_size("256M")
-K8S_CONTAINER_MEMORY_CLUSTER_STARTER_BYTES: int = humanfriendly.parse_size("256M")
-
-CLUSTER_STOPPER_K8S_TTL_SECONDS_AFTER_FINISHED = 1 * 60 * 60
-CLUSTER_STOPPER_K8S_JOB_N_RETRIES = 6
+K8S_MIN_MEM_LIMIT = "100M"
+K8S_MIN_MEM_REQUEST = "10M"
 
 SCAN_MIN_PRIORITY_TO_START_ASAP = 100
+
+SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS = 24
+SCANNER_LOGS_GRAFANA_WINDOW_SEC = 60 * 60
+
+EWMS_URL_V_PREFIX = "v1"
 
 
 @enum.unique
 class DebugMode(enum.Enum):
     """Various debug modes."""
 
-    CLIENT_LOGS = "client-logs"
+    CLIENT_LOGS = "client-logs"  # indicates a client/reco/task should persist/transfer its stdout and stderr
 
 
 @dc.dataclass(frozen=True)
 class EnvConfig:
     """Environment variables."""
 
-    # pylint:disable=invalid-name
+    # EWMS connections
+    EWMS_ADDRESS: str
+    EWMS_TOKEN_URL: str
+    EWMS_CLIENT_ID: str
+    EWMS_CLIENT_SECRET: str
+
+    # s3
+    S3_URL: str
+    S3_ACCESS_KEY_ID: str  # the actual value
+    S3_ACCESS_KEY_ID__K8S_SECRET_KEY: str  # the key used in the k8s secrets.yml
+    S3_SECRET_KEY: str  # the actual value
+    S3_SECRET_KEY__K8S_SECRET_KEY: str  # the key used in the k8s secrets.yml
+    S3_BUCKET: str
+    S3_EXPIRES_IN: int = 7 * 24 * 60 * 60  # 7 days
+
+    # misc
     AUTH_AUDIENCE: str = "skydriver"
     AUTH_OPENID_URL: str = ""
     MONGODB_AUTH_PASS: str = ""  # empty means no authentication required
@@ -49,7 +59,8 @@ class EnvConfig:
     MONGODB_PORT: int = 27017
     REST_HOST: str = "localhost"
     REST_PORT: int = 8080
-    CI_TEST: bool = False
+
+    CI: bool = False  # github actions sets this to 'true'
     LOG_LEVEL: str = "DEBUG"
     LOG_LEVEL_THIRD_PARTY: str = "WARNING"
 
@@ -59,6 +70,7 @@ class EnvConfig:
     SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: int = 5 * 60  # entry is revived after N secs
 
     THIS_IMAGE_WITH_TAG: str = ""
+    MIN_SKYMAP_SCANNER_TAG: str = "v4.0.0"  # TODO: update this either in k8s or here
 
     # k8s
     K8S_NAMESPACE: str = ""
@@ -67,34 +79,52 @@ class EnvConfig:
     K8S_APPLICATION_NAME: str = ""
     K8S_TTL_SECONDS_AFTER_FINISHED: int = 10 * 60  # 10 mins
     K8S_ACTIVE_DEADLINE_SECONDS: int = 2 * 24 * 60 * 60  # 2 days
+    #
+    K8S_SCANNER_MEM_REQUEST__DEFAULT: str = "1024M"  # note: also used as the limit def.
+    K8S_SCANNER_CPU_LIMIT: float = 1.0
+    K8S_SCANNER_CPU_REQUEST: float = 0.10
+    #
+    K8S_SCANNER_INIT_MEM_LIMIT: str = K8S_MIN_MEM_LIMIT
+    K8S_SCANNER_INIT_CPU_LIMIT: float = 0.10
+    K8S_SCANNER_INIT_MEM_REQUEST: str = K8S_MIN_MEM_REQUEST
+    K8S_SCANNER_INIT_CPU_REQUEST: float = 0.05
+    #
+    K8S_SCANNER_SIDECAR_S3_MEM_LIMIT: str = K8S_MIN_MEM_LIMIT
+    K8S_SCANNER_SIDECAR_S3_CPU_LIMIT: float = 0.10
+    K8S_SCANNER_SIDECAR_S3_MEM_REQUEST: str = K8S_MIN_MEM_REQUEST
+    K8S_SCANNER_SIDECAR_S3_CPU_REQUEST: float = 0.05
+    K8S_SCANNER_SIDECAR_S3_LIFETIME_SECONDS: int = 15 * 60  # 15 mins
 
-    K8S_START_JOB_TRANSIENT_ERROR_RETRY_DELAY: int = 5 * 60
+    K8S_START_JOB_RETRY_FOR_JOB_QUOTA_DELAY: int = 5 * 60
 
     GRAFANA_DASHBOARD_BASEURL: str = ""
+    PROMETHEUS_URL: str = ""
+    PROMETHEUS_AUTH_USERNAME: str = ""
+    PROMETHEUS_AUTH_PASSWORD: str = ""
 
+    # EWMS optional config
+    EWMS_WORKER_MEMORY__DEFAULT: str = "8GB"
+    EWMS_WORKER_DISK__DEFAULT: str = "1GB"
     EWMS_MAX_WORKER_RUNTIME__DEFAULT: int = 24 * 60 * 60  # 24 hours
+    EWMS_PILOT_TIMEOUT_QUEUE_INCOMING: int | None = None
+    # note: other EWMS vars at top of class
 
     # keycloak
     KEYCLOAK_OIDC_URL: str = ""
-    KEYCLOAK_CLIENT_ID_BROKER: str = ""
-    KEYCLOAK_CLIENT_SECRET_BROKER: str = ""
     KEYCLOAK_CLIENT_ID_SKYDRIVER_REST: str = ""
     KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST: str = ""
 
     # skyscan (forwarded)
-    SKYSCAN_BROKER_ADDRESS: str = "localhost"
-    # TODO: see https://github.com/WIPACrepo/wipac-dev-tools/pull/69
-    SKYSCAN_PROGRESS_INTERVAL_SEC: Optional[int] = None
-    SKYSCAN_RESULT_INTERVAL_SEC: Optional[int] = None
-    SKYSCAN_MQ_TIMEOUT_TO_CLIENTS: Optional[int] = None
-    SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS: Optional[int] = None
-    SKYSCAN_LOG: Optional[str] = None
-    SKYSCAN_LOG_THIRD_PARTY: Optional[str] = None
+    SKYSCAN_PROGRESS_INTERVAL_SEC: int | None = None
+    SKYSCAN_RESULT_INTERVAL_SEC: int | None = None
+    SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS: int | None = None
+    SKYSCAN_LOG: str | None = None
+    SKYSCAN_LOG_THIRD_PARTY: str | None = None
 
-    # EWMS (forwarded)
-    EWMS_PILOT_QUARANTINE_TIME: Optional[int] = None
-    EWMS_TMS_S3_BUCKET: str = ""
-    EWMS_TMS_S3_URL: str = ""
+    # cache durations
+    CACHE_DURATION_EWMS: int = 1 * 60
+    CACHE_DURATION_DOCKER_HUB: int = 5 * 60
+    CACHE_DURATION_PROMETHEUS: int = 15 * 60
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
@@ -122,58 +152,10 @@ LOCAL_K8S_HOST = "local"
 # known cluster locations
 KNOWN_CLUSTERS: dict[str, dict[str, Any]] = {
     "sub-2": {
-        "orchestrator": "condor",
-        "location": {
-            "collector": "glidein-cm.icecube.wisc.edu",
-            "schedd": "sub-2.icecube.wisc.edu",
-        },
-        "v1envvars": [
-            kubernetes.client.V1EnvVar(
-                name="CONDOR_TOKEN",
-                value_from=kubernetes.client.V1EnvVarSource(
-                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                        name=ENV.K8S_SECRET_NAME,
-                        key="condor_token_sub2",
-                    )
-                ),
-            )
-        ],
-        "max_n_clients_during_debug_mode": 10,
+        "max_n_clients_during_debug_mode": 100,
     },
     LOCAL_K8S_HOST: {
-        "orchestrator": "k8s",
-        "location": {
-            "host": LOCAL_K8S_HOST,
-            "namespace": ENV.K8S_NAMESPACE,
-        },
-        "v1envvars": [],
-    },
-    "gke-2306": {
-        "orchestrator": "k8s",
-        "location": {
-            "host": "https://34.171.167.119:443",
-            "namespace": "icecube-skymap-scanner",
-        },
-        "v1envvars": [
-            kubernetes.client.V1EnvVar(
-                name="WORKER_K8S_CACERT",
-                value_from=kubernetes.client.V1EnvVarSource(
-                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                        name=ENV.K8S_SECRET_NAME,
-                        key="worker_k8s_cacert_gke",
-                    )
-                ),
-            ),
-            kubernetes.client.V1EnvVar(
-                name="WORKER_K8S_TOKEN",
-                value_from=kubernetes.client.V1EnvVarSource(
-                    secret_key_ref=kubernetes.client.V1SecretKeySelector(
-                        name=ENV.K8S_SECRET_NAME,
-                        key="worker_k8s_token_gke",
-                    )
-                ),
-            ),
-        ],
+        "max_n_clients_during_debug_mode": 5,
     },
 }
 
@@ -183,7 +165,7 @@ def is_testing() -> bool:
 
     Note: this needs to run on import.
     """
-    return ENV.CI_TEST
+    return ENV.CI
 
 
 def config_logging() -> None:

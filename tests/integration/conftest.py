@@ -3,17 +3,20 @@
 import asyncio
 import socket
 from typing import Any, AsyncIterator, Callable
+from unittest import mock
 from unittest.mock import Mock
 
-import kubernetes.client  # type: ignore[import]
+import kubernetes.client  # type: ignore[import-untyped]
 import pytest
 import pytest_asyncio
+from motor.motor_asyncio import AsyncIOMotorClient
 from rest_tools.client import RestClient
 
 import skydriver
 import skydriver.images  # noqa: F401  # export
+from skydriver.__main__ import setup_ewms_client
 from skydriver.database import create_mongodb_client
-from skydriver.database.utils import drop_collections
+from skydriver.database.utils import drop_database
 from skydriver.server import make
 
 
@@ -34,10 +37,10 @@ async def mongo_clear() -> Any:
     """Clear the MongoDB after test completes."""
     motor_client = await create_mongodb_client()
     try:
-        await drop_collections(motor_client)
+        await drop_database(motor_client)
         yield
     finally:
-        await drop_collections(motor_client)
+        await drop_database(motor_client)
 
 
 ########################################################################################
@@ -115,13 +118,33 @@ def test_wait_before_teardown() -> float:
 
 
 @pytest_asyncio.fixture
+async def mongo_client() -> AsyncIOMotorClient:  # type: ignore[valid-type]
+    """A fixture to keep number of mongo connections to a minimum (aka 1)."""
+    return await create_mongodb_client()
+
+
+@pytest_asyncio.fixture
 async def server(
     monkeypatch: Any,
     port: int,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     mongo_clear: Any,  # pylint:disable=unused-argument
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Startup server in this process, yield RestClient func, then clean up."""
 
+    # NOTE: cannot use @mock.patch with @pytest_asyncio.fixture
+    # NOTE: cannot use `yield from` on async iterator
+
+    with mock.patch("skydriver.k8s.utils.KubeAPITools.start_job", return_value=None):
+        async for y in _server(monkeypatch, port, mongo_client):
+            yield y
+
+
+async def _server(
+    monkeypatch: Any,
+    port: int,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+) -> AsyncIterator[Callable[[], RestClient]]:
     # patch at directly named import that happens before running the test
     monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
     monkeypatch.setattr(skydriver.config, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
@@ -129,13 +152,16 @@ async def server(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
 
-    mongo_client = await create_mongodb_client()
     k8s_batch_api = Mock()
+    ewms_rc = setup_ewms_client()
     backlog_task = asyncio.create_task(
-        skydriver.k8s.scan_backlog.run(mongo_client, k8s_batch_api)
+        skydriver.k8s.scan_backlog.run(
+            mongo_client,
+            k8s_batch_api,
+        )
     )
     await asyncio.sleep(0)  # start up previous task
-    rs = await make(mongo_client, k8s_batch_api)
+    rs = await make(mongo_client, k8s_batch_api, ewms_rc)
     rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:

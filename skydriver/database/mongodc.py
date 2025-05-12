@@ -91,7 +91,11 @@ class MotorDataclassCollection(AsyncIOMotorCollection):  # type: ignore[misc, va
             and dc.is_dataclass(return_dclass)
             and "last_updated" in [f.name for f in dc.fields(return_dclass)]
         ):
-            update["$set"].update({"last_updated": time.time()})
+            now = time.time()
+            LOGGER.info(
+                f"auto-updating 'last_updated' field to {now} ({return_dclass.__name__})"
+            )
+            update["$set"].update({"last_updated": now})
 
         doc = await super().find_one_and_update(filter, update, *args, **kwargs)
         if not doc:

@@ -23,7 +23,7 @@ class TestStatus(enum.Enum):
     """The status of test."""
 
     UNKNOWN = enum.auto()
-    RUNNING = enum.auto()
+    REQUESTED = enum.auto()
     PASSED = enum.auto()
     FAILED = enum.auto()
 
