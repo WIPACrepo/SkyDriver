@@ -2,6 +2,17 @@
 
 <!--next-version-placeholder-->
 
+## v2.0.0 (2025-05-12)
+
+### Breaking
+
+* Co-authored-by: github-actions <github-actions@github.com> ([`ce7a64e`](https://github.com/WIPACrepo/SkyDriver/commit/ce7a64ea137a39e04632f0bd6f357c43cee49da8))
+
+### Other
+
+* Interface with EWMS (fix versioning) ([`bdf9515`](https://github.com/WIPACrepo/SkyDriver/commit/bdf951519eb6568e8699243511327b4e4c046ecf))
+* Interface with EWMS (fix tests) ([`064c093`](https://github.com/WIPACrepo/SkyDriver/commit/064c093703b2a03a6e26bea015df1760a9a11ab0))
+
 ## v1.3.2 (2025-03-17)
 
 ## v1.3.1 (2025-03-13)
