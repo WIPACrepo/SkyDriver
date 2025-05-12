@@ -865,7 +865,7 @@ async def _is_scan_complete(rc: RestClient, scan_id: str) -> bool:
     [
         ("latest", os.environ["LATEST_TAG"]),
         ("3.4.0", "3.4.0"),
-        ("v3", os.environ["LATEST_TAG"]),
+        ("v4", os.environ["LATEST_TAG"]),
         ("3.1", "3.1.5"),
         ("gcd-handling-improvements-fe8ecee", "gcd-handling-improvements-fe8ecee"),
     ],
