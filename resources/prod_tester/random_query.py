@@ -23,13 +23,18 @@ async def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--skydriver-url",
+        "--skydriver",
+        dest="skydriver_type",
         required=True,
-        help="the url to connect to a SkyDriver server",
+        choices=["dev", "prod"],
+        help=(
+            "the type of the SkyDriver instance for REST API URL "
+            "(ex: prod -> https://skydriver.icecube.aq; dev -> https://skydriver-dev.icecube.aq)"
+        ),
     )
     args = parser.parse_args()
 
-    rc = test_runner.get_rest_client(args.skydriver_url)
+    rc = test_runner.get_rest_client(args.skydriver_type)
 
     # 1: get all the scan_ids (not too large)
     print("POST @ /scans/find ...")

@@ -264,9 +264,14 @@ async def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--skydriver-url",
+        "--skydriver",
+        dest="skydriver_type",
         required=True,
-        help="the url to connect to a SkyDriver server",
+        choices=["dev", "prod"],
+        help=(
+            "the type of the SkyDriver instance for REST API URL "
+            "(ex: prod -> https://skydriver.icecube.aq; dev -> https://skydriver-dev.icecube.aq)"
+        ),
     )
     parser.add_argument(
         "--cluster",
@@ -362,7 +367,7 @@ async def main():
                 entry.unlink()
     config.SANDBOX_DIR.mkdir(exist_ok=True)
 
-    rc = test_runner.get_rest_client(args.skydriver_url)
+    rc = test_runner.get_rest_client(args.skydriver_type)
 
     await test_all(
         rc,

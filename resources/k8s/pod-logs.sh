@@ -1,8 +1,9 @@
 #!/bin/bash
+set -euo pipefail
 set -x  # turn on debugging
 set -e  # exit on fail
 
-if [ -z "$1" ] ; then
+if [ -z "${1-}" ] ; then
     echo "Usage: pod-logs.sh SCAN_ID"
     exit 1
 fi

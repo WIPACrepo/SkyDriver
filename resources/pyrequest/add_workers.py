@@ -37,9 +37,14 @@ async def main():
         help="one or more scan IDs to rescan",
     )
     parser.add_argument(
-        "--skydriver-url",
+        "--skydriver",
+        dest="skydriver_type",
         required=True,
-        help="the url to connect to a SkyDriver server",
+        choices=["dev", "prod"],
+        help=(
+            "the type of the SkyDriver instance for REST API URL "
+            "(ex: prod -> https://skydriver.icecube.aq; dev -> https://skydriver-dev.icecube.aq)"
+        ),
     )
     parser.add_argument(
         "--n-workers",
@@ -54,7 +59,7 @@ async def main():
     )
     args = parser.parse_args()
 
-    rc = get_rest_client(args.skydriver_url)
+    rc = get_rest_client(args.skydriver_type)
 
     tasks = [
         add_workers(rc, scan_id, args.n_workers, args.location)

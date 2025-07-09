@@ -92,9 +92,14 @@ async def main() -> None:
         help="One or more scan IDs",
     )
     parser.add_argument(
-        "--skydriver-url",
+        "--skydriver",
+        dest="skydriver_type",
         required=True,
-        help="The URL to connect to a SkyDriver server",
+        choices=["dev", "prod"],
+        help=(
+            "the type of the SkyDriver instance for REST API URL "
+            "(ex: prod -> https://skydriver.icecube.aq; dev -> https://skydriver-dev.icecube.aq)"
+        ),
     )
     parser.add_argument(
         "--manifest",
@@ -130,7 +135,7 @@ async def main() -> None:
             "At least one of --manifest, --status, or --logs must be specified."
         )
 
-    rc = get_rest_client(args.skydriver_url)
+    rc = get_rest_client(args.skydriver_type)
 
     for scan_id in args.scan_ids:
         await fetch_scan_info(rc, scan_id, args.manifest, args.status, args.logs)

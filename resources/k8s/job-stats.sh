@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 set -x  # turn on debugging
 set -e  # exit on fail
 
