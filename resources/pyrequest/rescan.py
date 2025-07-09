@@ -6,7 +6,7 @@ import logging
 
 from rest_tools.client import RestClient
 
-from ._connect import get_rest_client
+from _connect import get_rest_client
 
 logging.getLogger().setLevel(logging.INFO)
 

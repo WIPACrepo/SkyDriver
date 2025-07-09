@@ -8,7 +8,7 @@ import asyncio
 import json
 import logging
 
-from ._connect import get_rest_client
+from _connect import get_rest_client
 
 logging.getLogger().setLevel(logging.INFO)
 

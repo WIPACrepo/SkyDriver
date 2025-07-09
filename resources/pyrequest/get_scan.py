@@ -11,7 +11,7 @@ from typing import Any
 
 from rest_tools.client import RestClient
 
-from ._connect import get_rest_client
+from _connect import get_rest_client
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -87,8 +87,8 @@ async def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--scan-ids",
-        nargs="*",
+        "scan_ids",
+        nargs="+",
         help="One or more scan IDs",
     )
     parser.add_argument(
