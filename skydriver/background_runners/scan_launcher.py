@@ -21,9 +21,9 @@ async def put_on_backlog(
     scan_backlog: database.interface.ScanBacklogClient,
     priority: int,
 ) -> None:
-    """Enqueue k8s job to be started by job-starter thread."""
+    """Enqueue k8s job to be started later by the scan launcher."""
     try:
-        LOGGER.info(f"enqueuing k8s job for {scan_id=}")
+        LOGGER.info(f"putting future scan on backlog ({scan_id=})")
         entry = database.schema.ScanBacklogEntry(
             scan_id=scan_id,
             timestamp=time.time(),
@@ -34,7 +34,7 @@ async def put_on_backlog(
         LOGGER.exception(e)
         raise web.HTTPError(
             400,
-            log_message="Failed to enqueue Kubernetes job for Scanner instance",
+            log_message="Failed to put future scan on backlog",
         )
 
 
@@ -96,8 +96,8 @@ async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
-    """Error-handling around the scan backlog runner loop."""
-    LOGGER.info("Started scan backlog runner.")
+    """Error-handling around the scan launcher loop."""
+    LOGGER.info("Started scan launcher.")
 
     while True:
         # let's go!
@@ -106,14 +106,14 @@ async def run(
         except Exception as e:
             LOGGER.exception(e)
             LOGGER.error(
-                f"above error stopped the backlogger, "
+                f"above error stopped the scan launcher, "
                 f"resuming in {ENV.SCAN_BACKLOG_RUNNER_DELAY} seconds..."
             )
 
         # wait hopefully log enough that any transient errors are resolved,
         #   like a mongo pod failure and restart
         await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
-        LOGGER.info("Restarted scan backlog runner.")
+        LOGGER.info("Restarted scan launcher.")
 
 
 async def _run(
@@ -147,7 +147,7 @@ async def _run(
     while True:
         await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_SHORT_DELAY)
         if timer_for_logging.has_interval_elapsed():
-            LOGGER.info("scan backlog runner is still alive")
+            LOGGER.info("scan launcher is still alive")
 
         # include low priority scans only when enough time has passed
         include_low_priority_scans = timer_for_any_priority_scans.has_interval_elapsed()

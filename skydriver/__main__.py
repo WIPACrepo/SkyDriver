@@ -48,8 +48,8 @@ async def main() -> None:
     ewms_rc = setup_ewms_client()
     LOGGER.info("EWMS client connected.")
 
-    # Scan Backlog Runner
-    LOGGER.info("Starting scan backlog runner...")
+    # Scan Launcher
+    LOGGER.info("Starting scan launcher...")
     backlog_task = asyncio.create_task(
         background_runners.scan_launcher.run(mongo_client, k8s_batch_api)
     )

@@ -1,4 +1,4 @@
-"""Integration tests for backlog runner."""
+"""Integration tests for backlog scan launcher."""
 
 import asyncio
 import json

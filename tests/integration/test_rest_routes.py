@@ -927,7 +927,7 @@ async def _after_scan_start_logic(
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
 
-    # wait backlogger to request to ewms
+    # wait scan launcher to request to ewms
     assert int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"])
     await asyncio.sleep(int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"]) * 5)  # extra
 

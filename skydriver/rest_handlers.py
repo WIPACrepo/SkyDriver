@@ -595,7 +595,7 @@ async def _start_scan(
         i3_event_id=scan_request_obj["i3_event_id"],
         scanner_server_args=scanner_server_args,
         ewms_workflow_id=schema._NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
-        # ^^^ set once the workflow request has been sent to EWMS (see backlogger)
+        # ^^^ set once the workflow request has been sent to EWMS (see scan launcher)
         classifiers=scan_request_obj["classifiers"],
         priority=scan_request_obj["priority"],
     )
