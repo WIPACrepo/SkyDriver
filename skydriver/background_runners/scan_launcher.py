@@ -1,4 +1,4 @@
-"""The queuing logic for launching skymap scanner instances."""
+"""The background runner responsible for launching skymap scanner instances."""
 
 import asyncio
 import logging
@@ -9,6 +9,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from tornado import web
 from wipac_dev_tools.timing_tools import IntervalTimer
 
+from . import utils
 from .. import database
 from ..config import ENV
 from ..k8s.utils import KubeAPITools
@@ -92,35 +93,12 @@ async def get_next(
         return entry, manifest, scan_request_obj, skyscan_k8s_job
 
 
+@utils.resilient_loop("scan launcher", ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
 async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
-    """Error-handling around the scan launcher loop."""
-    LOGGER.info("Started scan launcher.")
-
-    while True:
-        # let's go!
-        try:
-            await _run(mongo_client, k8s_batch_api)
-        except Exception as e:
-            LOGGER.exception(e)
-            LOGGER.error(
-                f"above error stopped the scan launcher, "
-                f"resuming in {ENV.SCAN_BACKLOG_RUNNER_DELAY} seconds..."
-            )
-
-        # wait hopefully log enough that any transient errors are resolved,
-        #   like a mongo pod failure and restart
-        await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
-        LOGGER.info("Restarted scan launcher.")
-
-
-async def _run(
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
-    k8s_batch_api: kubernetes.client.BatchV1Api,
-) -> None:
-    """The (actual) main loop."""
+    """The main loop."""
     manifest_client = database.interface.ManifestClient(mongo_client)
     backlog_client = database.interface.ScanBacklogClient(mongo_client)
     scan_request_client = (
