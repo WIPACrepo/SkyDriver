@@ -5,7 +5,7 @@ import logging
 
 from rest_tools.client import ClientCredentialsAuth, RestClient
 
-from . import database, k8s, server
+from . import background_runners, database, k8s, server
 from .config import ENV, config_logging
 
 LOGGER = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ async def main() -> None:
     # Scan Backlog Runner
     LOGGER.info("Starting scan backlog runner...")
     backlog_task = asyncio.create_task(
-        k8s.scan_backlog.run(mongo_client, k8s_batch_api)
+        background_runners.scan_launcher.run(mongo_client, k8s_batch_api)
     )
     await asyncio.sleep(0)  # start up previous task
 
