@@ -9,9 +9,9 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from tornado import web
 from wipac_dev_tools.timing_tools import IntervalTimer
 
-from .utils import KubeAPITools
 from .. import database
 from ..config import ENV
+from ..k8s.utils import KubeAPITools
 
 LOGGER = logging.getLogger(__name__)
 

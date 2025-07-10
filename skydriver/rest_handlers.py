@@ -27,6 +27,7 @@ from tornado import web
 from wipac_dev_tools import argparse_tools
 
 from . import database, ewms, images
+from .background_runners.scan_launcher import put_on_backlog
 from .config import (
     DebugMode,
     ENV,
@@ -41,7 +42,6 @@ from .database.schema import (
     has_skydriver_requested_ewms_workflow,
 )
 from .ewms import get_deactivated_type, request_stop_on_ewms
-from .k8s.scan_launcher import put_on_backlog
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
 from .utils import (
     does_scan_state_indicate_final_result_received,
