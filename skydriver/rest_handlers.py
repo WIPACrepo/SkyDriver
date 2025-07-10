@@ -604,6 +604,7 @@ async def _start_scan(
         {
             "scan_id": scan_id,
             "skyscan_k8s_job_dict": skyscan_k8s_job_dict,
+            "k8s_started_ts": None,
         }
     )
 

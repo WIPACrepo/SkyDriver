@@ -173,6 +173,10 @@ async def run(
         # remove from backlog now that startup succeeded
         LOGGER.info(f"Scan successfully started: scan_id={manifest.scan_id}")
         await backlog_client.remove(entry)
-        # TODO: remove k8s job doc?
+        # and mark time on k8s job doc -- used by the scan pod watchdog
+        await skyscan_k8s_job_client.find_one_and_update(
+            {"scan_id": manifest.scan_id},
+            {"$set": {"k8s_started_ts": int(time.time())}},
+        )
 
         # NOTE: no need to sleep here (sleep at top of loop), also see `include_low_priority_scans` logic
