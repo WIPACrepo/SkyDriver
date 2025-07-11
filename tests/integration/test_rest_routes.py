@@ -213,6 +213,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
     pprint.pprint(doc_k8s)
     assert doc_k8s == {
         "scan_id": post_resp["scan_id"],
+        "k8s_started_ts": None,
         "skyscan_k8s_job_dict": {
             "apiVersion": "batch/v1",
             "kind": "Job",
