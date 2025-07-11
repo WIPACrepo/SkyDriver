@@ -46,6 +46,7 @@ from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
 from .utils import (
     does_scan_state_indicate_final_result_received,
     get_scan_state,
+    get_scan_state_if_final_result_received,
     make_scan_id,
 )
 
@@ -719,9 +720,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
         # is scan done?
-        if does_scan_state_indicate_final_result_received(
-            await get_scan_state(manifest, self.ewms_rc, self.results)
-        ):
+        if await get_scan_state_if_final_result_received(manifest.scan_id, self.results):
             msg = "this scan has a final result--cannot add workers"
             raise web.HTTPError(
                 422,
@@ -851,12 +850,8 @@ class ScanHandler(BaseSkyDriverHandler):
         args = arghand.parse_args()
 
         # check DB states
-        manifest = await self.manifests.get(scan_id, True)
-        if (
-            not args.delete_completed_scan
-            and does_scan_state_indicate_final_result_received(
-                await get_scan_state(manifest, self.ewms_rc, self.results)
-            )
+        if (not args.delete_completed_scan) and (
+            await get_scan_state_if_final_result_received(scan_id, self.results)
         ):
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(

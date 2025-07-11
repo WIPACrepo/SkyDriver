@@ -55,6 +55,24 @@ def does_scan_state_indicate_final_result_received(state: str) -> bool:
     return state == _ScanState.SCAN_HAS_FINAL_RESULT.name
 
 
+async def get_scan_state_if_final_result_received(
+    scan_id: str,
+    results: database.interface.ResultClient,
+) -> str | None:
+    """Return the state string if the scan ended with a final result, else None."""
+    try:
+        if (await results.get(scan_id)).is_final:
+            # NOTE: see note on 'SCAN_HAS_FINAL_RESULT' above
+            return _ScanState.SCAN_HAS_FINAL_RESULT.name
+    except web.HTTPError as e:
+        # get() raises 404 when no result found
+        if e.status_code != 404:
+            raise
+
+    # fall-through
+    return None
+
+
 def _has_cleared_backlog(manifest: Manifest) -> bool:
     return bool(
         has_skydriver_requested_ewms_workflow(manifest.ewms_workflow_id)
@@ -96,14 +114,8 @@ async def get_scan_state(
 
     Returns the state as a human-readable string
     """
-    try:
-        if (await results.get(manifest.scan_id)).is_final:
-            # NOTE: see note on 'SCAN_HAS_FINAL_RESULT' above
-            return _ScanState.SCAN_HAS_FINAL_RESULT.name
-    except web.HTTPError as e:
-        # get() raises 404 when no result found
-        if e.status_code != 404:
-            raise
+    if s := (await get_scan_state_if_final_result_received(manifest.scan_id, results)):
+        return s
 
     state = _get_nonfinished_state(manifest).name  # start here, augment if needed
 

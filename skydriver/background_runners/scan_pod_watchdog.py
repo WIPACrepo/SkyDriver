@@ -1,13 +1,19 @@
 """The background runner responsible for checking/restarting scanner k8s pods."""
 
 import asyncio
+import copy
 import logging
+import time
 
 import kubernetes.client  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+from rest_tools.client import RestClient
 from wipac_dev_tools.timing_tools import IntervalTimer
 
+from skydriver.utils import (
+    get_scan_state_if_final_result_received,
+)
 from . import utils
 from .. import database
 from ..config import ENV
@@ -19,9 +25,11 @@ LOGGER = logging.getLogger(__name__)
 async def _run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
+    ewms_rc: RestClient,
 ) -> None:
     """The (actual) main loop."""
     manifest_client = database.interface.ManifestClient(mongo_client)
+    results_client = database.interface.ResultClient(mongo_client)
     backlog_client = database.interface.ScanBacklogClient(mongo_client)
     scan_request_client = (
         AsyncIOMotorCollection(  # in contrast, this one is accessed directly
@@ -47,8 +55,19 @@ async def _run(
             LOGGER.info("scan pod watchdog is still alive")
 
         # get list of backlog entries (that were deleted) in the last hour (more?)
+        k8s_docs = await skyscan_k8s_job_client.find(
+            {
+                "k8s_started_ts": {
+                    "$gte": time.time() - (60 * 60),  # 1 hour ago
+                    "$lt": time.time() - (10 * 60),  # 10 mins ago
+                }
+            }
+        )
 
         # remove any of those that have finished -- app logic
+        for doc in copy.deepcopy(k8s_docs):
+            if await get_scan_state_if_final_result_received(doc["scan_id"], results_client):
+                k8s_docs.remove(doc)
 
         # compare list to what's actually running
 
