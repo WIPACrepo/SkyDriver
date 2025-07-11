@@ -18,7 +18,7 @@ from skydriver.utils import (
 from . import utils
 from .. import database
 from ..config import ENV
-from ..k8s.scanner_instance import SkyScanK8sJobFactory
+from ..k8s.scanner_instance import EnvVarFactory, SkyScanK8sJobFactory
 from ..k8s.utils import KubeAPITools
 
 LOGGER = logging.getLogger(__name__)
@@ -88,6 +88,7 @@ async def _run(
             doc = await scan_request_client.find_one(
                 get_scan_request_obj_filter(scan_id)
             )
+            here_rest_address = doc["rest_address"]  # a good argument for a env var :/
             if not doc["rescan_ids"]:
                 # scan has never been rescanned -> OK to restart (new rescan)
                 continue
@@ -99,6 +100,15 @@ async def _run(
                 scan_ids.remove(scan_id)
 
         # restart!
+        skyd_rc = RestClient(
+            here_rest_address,
+            EnvVarFactory.get_skydriver_rest_auth(),
+            logger=LOGGER,
+            retries=0,
+            timeout=60,
+        )
+        # submit rescans w/ "abort_first" (also stops ewms)
         for scan_id in scan_ids:
-            # submit rescans w/ "stop old" (also removes ewms)
-            pass
+            await skyd_rc.request(
+                "POST", f"/scan/{scan_id}/actions/rescan", {"abort_first": True}
+            )
