@@ -720,7 +720,9 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
         # is scan done?
-        if await get_scan_state_if_final_result_received(manifest.scan_id, self.results):
+        if await get_scan_state_if_final_result_received(
+            manifest.scan_id, self.results
+        ):
             msg = "this scan has a final result--cannot add workers"
             raise web.HTTPError(
                 422,
