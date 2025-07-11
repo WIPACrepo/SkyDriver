@@ -931,6 +931,8 @@ async def _after_scan_start_logic(
     # wait scan launcher to request to ewms
     assert int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"])
     await asyncio.sleep(int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"]) * 5)  # extra
+    resp = await rc.request("GET", "/scans/backlog")
+    assert not any(x["scan_id"] == manifest["scan_id"] for x in resp["entries"])
 
     # mimic the ewms-init container...
     # -> before
