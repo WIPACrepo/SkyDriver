@@ -631,6 +631,11 @@ class ScanRescanHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self, scan_id: str) -> None:
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        arghand.add_argument(
+            "abort_first",
+            default=False,
+            type=bool,
+        )
         # response args
         arghand.add_argument(
             "manifest_projection",
@@ -638,6 +643,9 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             type=str,
         )
         args = arghand.parse_args()
+
+        if args.abort_first:
+            await abort_scan(self.manifests, scan_id, self.ewms_rc)
 
         # generate unique scan_id
         new_scan_id = make_scan_id()
@@ -765,13 +773,31 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
 # -----------------------------------------------------------------------------
 
 
+async def abort_scan(
+    manifests: database.interface.ManifestClient,
+    scan_id: str,
+    ewms_rc: RestClient,
+) -> database.schema.Manifest:
+    """Stop all parts of the Scanner instance (if running) and mark in DB."""
+    # mark as deleted -> also stops backlog from starting
+    manifest = await manifests.mark_as_deleted(scan_id)
+    # stop ewms
+    await stop_skyscan_workers(
+        manifests,
+        scan_id,
+        ewms_rc,
+        abort=True,
+    )
+    return manifest
+
+
 async def stop_skyscan_workers(
     manifests: database.interface.ManifestClient,
     scan_id: str,
     ewms_rc: RestClient,
     abort: bool,
 ) -> database.schema.Manifest:
-    """Stop all parts of the Scanner instance (if running) and mark in DB."""
+    """Stop the scanner instance's workers on EWMS."""
     manifest = await manifests.get(scan_id, True)
     LOGGER.info(f"stopping (ewms) workers for {scan_id=}...")
 
@@ -859,15 +885,7 @@ class ScanHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
 
-        # mark as deleted -> also stops backlog from starting
-        manifest = await self.manifests.mark_as_deleted(scan_id)
-        # abort
-        await stop_skyscan_workers(
-            self.manifests,
-            scan_id,
-            self.ewms_rc,
-            abort=True,
-        )
+        manifest = await abort_scan(self.manifests, scan_id, self.ewms_rc)
 
         try:
             result_dict = dc.asdict(await self.results.get(scan_id))
