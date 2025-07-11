@@ -12,6 +12,7 @@ from rest_tools.client import RestClient
 from wipac_dev_tools.timing_tools import IntervalTimer
 
 from skydriver.utils import (
+    get_scan_request_obj_filter,
     get_scan_state_if_final_result_received,
 )
 from . import utils
@@ -72,13 +73,32 @@ async def _run(
             if await get_scan_state_if_final_result_received(scan_id, results_client):
                 scan_ids.remove(scan_id)
 
-        # compare list to what's actually running
+        # only keep those that had transiently killed pod(s)
         for scan_id in copy.deepcopy(scan_ids):
-            pods = KubeAPITools.get_pods(
-                k8s_core_api, SkyScanK8sJobFactory.get_job_name(scan_id)
-            )
-            # TODO
-            if False:
+            if not any(
+                KubeAPITools.pod_transiently_killed(pod)
+                for pod in KubeAPITools.get_pods(
+                    k8s_core_api, SkyScanK8sJobFactory.get_job_name(scan_id)
+                )
+            ):
                 scan_ids.remove(scan_id)
 
-        # put those back on the backlog (highest priority) -- what about ewms?
+        # remove any that have rescans (already been replaced)
+        for scan_id in copy.deepcopy(scan_ids):
+            doc = await scan_request_client.find_one(
+                get_scan_request_obj_filter(scan_id)
+            )
+            if not doc["rescan_ids"]:
+                # scan has never been rescanned -> OK to restart (new rescan)
+                continue
+            elif doc["rescan_ids"][-1] == scan_id:
+                # this scan is the most recent rescan -> OK to restart (new rescan)
+                continue
+            else:
+                # this scan already has a new rescan
+                scan_ids.remove(scan_id)
+
+        # restart!
+        for scan_id in scan_ids:
+            # submit rescans w/ "stop old" (also removes ewms)
+            pass

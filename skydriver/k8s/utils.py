@@ -87,3 +87,26 @@ class KubeAPITools:
             namespace=namespace, label_selector=f"job-name={job_name}"
         )
         return pods.items
+
+    @staticmethod
+    def pod_transiently_killed(pod: V1Pod) -> bool:
+        """Return True if the pod failed due to a transient, system-level issue that justifies a retry."""
+        if not pod.status.container_statuses:
+            return False
+
+        for cs in pod.status.container_statuses:
+            state = cs.state
+
+            if state.terminated:
+                t = state.terminated
+                if t.reason in {"OOMKilled", "Evicted", "DeadlineExceeded"}:
+                    return True
+                if t.exit_code in {137, 143}:  # SIGKILL or SIGTERM
+                    return True
+
+            elif state.waiting:
+                w = state.waiting
+                if w.reason in {"ImagePullBackOff", "CrashLoopBackOff"}:
+                    return True
+
+        return False

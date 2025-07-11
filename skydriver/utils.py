@@ -137,3 +137,15 @@ async def get_scan_state(
 
 
 ########################################################################################
+
+
+def get_scan_request_obj_filter(scan_id: str) -> dict:
+    """Get the mongo filter for finding a scan request object."""
+    return {
+        "$or": [
+            # grab the original requester's 'scan_request_obj'
+            {"scan_id": scan_id},
+            # -> backup plan: was this scan_id actually a rescan itself?
+            {"rescan_ids": scan_id},  # one in a list
+        ]
+    }

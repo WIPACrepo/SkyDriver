@@ -45,6 +45,7 @@ from .ewms import get_deactivated_type, request_stop_on_ewms
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
 from .utils import (
     does_scan_state_indicate_final_result_received,
+    get_scan_request_obj_filter,
     get_scan_state,
     get_scan_state_if_final_result_received,
     make_scan_id,
@@ -643,15 +644,11 @@ class ScanRescanHandler(BaseSkyDriverHandler):
 
         # grab the 'scan_request_obj'
         scan_request_obj = await self.scan_request_coll.find_one_and_update(
+            get_scan_request_obj_filter(scan_id),
             {
-                "$or": [
-                    # grab the original requester's 'scan_request_obj'
-                    {"scan_id": scan_id},
-                    # -> backup plan: was this scan_id actually a rescan itself?
-                    {"rescan_ids": scan_id},  # one in a list
-                ]
+                # NOTE: must preserve order here -- so push
+                "$push": {"rescan_ids": new_scan_id},
             },
-            {"$push": {"rescan_ids": new_scan_id}},
             return_document=ReturnDocument.AFTER,
         )
         # -> error: couldn't find it anywhere
