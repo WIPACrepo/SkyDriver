@@ -213,6 +213,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
     pprint.pprint(doc_k8s)
     assert doc_k8s == {
         "scan_id": post_resp["scan_id"],
+        "k8s_started_ts": None,
         "skyscan_k8s_job_dict": {
             "apiVersion": "batch/v1",
             "kind": "Job",
@@ -927,9 +928,11 @@ async def _after_scan_start_logic(
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
 
-    # wait backlogger to request to ewms
+    # wait scan launcher to request to ewms
     assert int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"])
     await asyncio.sleep(int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"]) * 5)  # extra
+    resp = await rc.request("GET", "/scans/backlog")
+    assert not any(x["scan_id"] == manifest["scan_id"] for x in resp["entries"])
 
     # mimic the ewms-init container...
     # -> before

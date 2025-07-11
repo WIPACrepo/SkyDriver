@@ -155,7 +155,7 @@ async def _server(
     k8s_batch_api = Mock()
     ewms_rc = setup_ewms_client()
     backlog_task = asyncio.create_task(
-        skydriver.k8s.scan_backlog.run(
+        skydriver.background_runners.scan_launcher.run(
             mongo_client,
             k8s_batch_api,
         )

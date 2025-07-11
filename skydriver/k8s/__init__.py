@@ -6,7 +6,7 @@ import kubernetes.client  # type: ignore[import-untyped]
 from kubernetes import config
 from kubernetes.client.rest import ApiException  # type: ignore[import-untyped]
 
-from . import scan_backlog, scanner_instance, utils  # noqa: F401  # export
+from . import scanner_instance, utils  # noqa: F401  # export
 
 LOGGER = logging.getLogger(__name__)
 

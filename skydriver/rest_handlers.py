@@ -27,6 +27,7 @@ from tornado import web
 from wipac_dev_tools import argparse_tools
 
 from . import database, ewms, images
+from .background_runners.scan_launcher import put_on_backlog
 from .config import (
     DebugMode,
     ENV,
@@ -41,11 +42,12 @@ from .database.schema import (
     has_skydriver_requested_ewms_workflow,
 )
 from .ewms import get_deactivated_type, request_stop_on_ewms
-from .k8s.scan_launcher import put_on_backlog
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
 from .utils import (
     does_scan_state_indicate_final_result_received,
+    get_scan_request_obj_filter,
     get_scan_state,
+    get_scan_state_if_final_result_received,
     make_scan_id,
 )
 
@@ -595,7 +597,7 @@ async def _start_scan(
         i3_event_id=scan_request_obj["i3_event_id"],
         scanner_server_args=scanner_server_args,
         ewms_workflow_id=schema._NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
-        # ^^^ set once the workflow request has been sent to EWMS (see backlogger)
+        # ^^^ set once the workflow request has been sent to EWMS (see scan launcher)
         classifiers=scan_request_obj["classifiers"],
         priority=scan_request_obj["priority"],
     )
@@ -604,6 +606,7 @@ async def _start_scan(
         {
             "scan_id": scan_id,
             "skyscan_k8s_job_dict": skyscan_k8s_job_dict,
+            "k8s_started_ts": None,
         }
     )
 
@@ -628,6 +631,11 @@ class ScanRescanHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self, scan_id: str) -> None:
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        arghand.add_argument(
+            "abort_first",
+            default=False,
+            type=bool,
+        )
         # response args
         arghand.add_argument(
             "manifest_projection",
@@ -636,20 +644,19 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         )
         args = arghand.parse_args()
 
+        if args.abort_first:
+            await abort_scan(self.manifests, scan_id, self.ewms_rc)
+
         # generate unique scan_id
         new_scan_id = make_scan_id()
 
         # grab the 'scan_request_obj'
         scan_request_obj = await self.scan_request_coll.find_one_and_update(
+            get_scan_request_obj_filter(scan_id),
             {
-                "$or": [
-                    # grab the original requester's 'scan_request_obj'
-                    {"scan_id": scan_id},
-                    # -> backup plan: was this scan_id actually a rescan itself?
-                    {"rescan_ids": scan_id},  # one in a list
-                ]
+                # NOTE: must preserve order here -- so push
+                "$push": {"rescan_ids": new_scan_id},
             },
-            {"$push": {"rescan_ids": new_scan_id}},
             return_document=ReturnDocument.AFTER,
         )
         # -> error: couldn't find it anywhere
@@ -718,8 +725,8 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
         # is scan done?
-        if does_scan_state_indicate_final_result_received(
-            await get_scan_state(manifest, self.ewms_rc, self.results)
+        if await get_scan_state_if_final_result_received(
+            manifest.scan_id, self.results
         ):
             msg = "this scan has a final result--cannot add workers"
             raise web.HTTPError(
@@ -766,13 +773,31 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
 # -----------------------------------------------------------------------------
 
 
+async def abort_scan(
+    manifests: database.interface.ManifestClient,
+    scan_id: str,
+    ewms_rc: RestClient,
+) -> database.schema.Manifest:
+    """Stop all parts of the Scanner instance (if running) and mark in DB."""
+    # mark as deleted -> also stops backlog from starting
+    manifest = await manifests.mark_as_deleted(scan_id)
+    # stop ewms
+    await stop_skyscan_workers(
+        manifests,
+        scan_id,
+        ewms_rc,
+        abort=True,
+    )
+    return manifest
+
+
 async def stop_skyscan_workers(
     manifests: database.interface.ManifestClient,
     scan_id: str,
     ewms_rc: RestClient,
     abort: bool,
 ) -> database.schema.Manifest:
-    """Stop all parts of the Scanner instance (if running) and mark in DB."""
+    """Stop the scanner instance's workers on EWMS."""
     manifest = await manifests.get(scan_id, True)
     LOGGER.info(f"stopping (ewms) workers for {scan_id=}...")
 
@@ -850,12 +875,8 @@ class ScanHandler(BaseSkyDriverHandler):
         args = arghand.parse_args()
 
         # check DB states
-        manifest = await self.manifests.get(scan_id, True)
-        if (
-            not args.delete_completed_scan
-            and does_scan_state_indicate_final_result_received(
-                await get_scan_state(manifest, self.ewms_rc, self.results)
-            )
+        if (not args.delete_completed_scan) and (
+            await get_scan_state_if_final_result_received(scan_id, self.results)
         ):
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
@@ -864,15 +885,7 @@ class ScanHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
 
-        # mark as deleted -> also stops backlog from starting
-        manifest = await self.manifests.mark_as_deleted(scan_id)
-        # abort
-        await stop_skyscan_workers(
-            self.manifests,
-            scan_id,
-            self.ewms_rc,
-            abort=True,
-        )
+        manifest = await abort_scan(self.manifests, scan_id, self.ewms_rc)
 
         try:
             result_dict = dc.asdict(await self.results.get(scan_id))

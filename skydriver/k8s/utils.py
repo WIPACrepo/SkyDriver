@@ -3,9 +3,10 @@
 import asyncio
 import itertools
 import logging
-from typing import Any, Iterator
+from typing import Any
 
 import kubernetes.client  # type: ignore[import-untyped]
+from kubernetes.client import V1Pod
 
 from ..config import ENV, sdict
 
@@ -76,8 +77,8 @@ class KubeAPITools:
     def get_pods(
         k8s_core_api: kubernetes.client.CoreV1Api,
         job_name: str,
-        namespace: str,
-    ) -> Iterator[str]:
+        namespace: str = ENV.K8S_NAMESPACE,
+    ) -> list[V1Pod]:
         """Get each pod corresponding to the job.
 
         Raises `ValueError` if there are no pods for the job.
@@ -85,7 +86,27 @@ class KubeAPITools:
         pods: kubernetes.client.V1PodList = k8s_core_api.list_namespaced_pod(
             namespace=namespace, label_selector=f"job-name={job_name}"
         )
-        if not pods.items:
-            raise ValueError(f"Job {job_name} has no pods")
-        for pod in pods.items:
-            yield pod.metadata.name
+        return pods.items
+
+    @staticmethod
+    def pod_transiently_killed(pod: V1Pod) -> bool:
+        """Return True if the pod failed due to a transient, system-level issue that justifies a retry."""
+        if not pod.status.container_statuses:
+            return False
+
+        for cs in pod.status.container_statuses:
+            state = cs.state
+
+            if state.terminated:
+                t = state.terminated
+                if t.reason in {"OOMKilled", "Evicted", "DeadlineExceeded"}:
+                    return True
+                if t.exit_code in {137, 143}:  # SIGKILL or SIGTERM
+                    return True
+
+            elif state.waiting:
+                w = state.waiting
+                if w.reason in {"ImagePullBackOff", "CrashLoopBackOff"}:
+                    return True
+
+        return False
