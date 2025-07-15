@@ -6,7 +6,6 @@ import logging
 import time
 
 import kubernetes.client  # type: ignore[import-untyped]
-import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from rest_tools.client import RestClient
 from wipac_dev_tools.timing_tools import IntervalTimer
@@ -28,12 +27,9 @@ LOGGER = logging.getLogger(__name__)
 async def _run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_core_api: kubernetes.client.CoreV1Api,  # CoreV1Api(k8s_batch_api.api_client)
-    ewms_rc: RestClient,
 ) -> None:
     """The (actual) main loop."""
-    manifest_client = database.interface.ManifestClient(mongo_client)
     results_client = database.interface.ResultClient(mongo_client)
-    backlog_client = database.interface.ScanBacklogClient(mongo_client)
     scan_request_client = (
         AsyncIOMotorCollection(  # in contrast, this one is accessed directly
             mongo_client[database.interface._DB_NAME],  # type: ignore[index]
@@ -45,6 +41,13 @@ async def _run(
             mongo_client[database.interface._DB_NAME],  # type: ignore[index]
             database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
         )
+    )
+    skyd_rc = RestClient(  # -- talk to self
+        ENV.HERE_URL,
+        EnvVarFactory.get_skydriver_rest_auth(),
+        logger=LOGGER,
+        retries=0,
+        timeout=60,
     )
 
     timer_for_logging = IntervalTimer(
@@ -67,11 +70,17 @@ async def _run(
             }
         )
         scan_ids = [d["scan_id"] for d in docs]
+        if not scan_ids:
+            continue
+
+        LOGGER.debug(f"round I: candidates = {len(scan_ids)} {scan_ids}")
 
         # remove any of those that have finished -- app logic
         for scan_id in copy.deepcopy(scan_ids):
             if await get_scan_state_if_final_result_received(scan_id, results_client):
                 scan_ids.remove(scan_id)
+
+        LOGGER.debug(f"round II: candidates = {len(scan_ids)} {scan_ids}")
 
         # only keep those that had transiently killed pod(s)
         for scan_id in copy.deepcopy(scan_ids):
@@ -81,6 +90,8 @@ async def _run(
             )
             if not any(KubeAPITools.pod_transiently_killed(p) for p in pods):
                 scan_ids.remove(scan_id)
+
+        LOGGER.debug(f"round III: candidates = {len(scan_ids)} {scan_ids}")
 
         # remove any that have rescans (these have already been replaced)
         for scan_id in copy.deepcopy(scan_ids):
@@ -95,22 +106,18 @@ async def _run(
                 # scan has never been rescanned -> OK to restart (new rescan)
                 continue
             elif doc["rescan_ids"][-1] == scan_id:
-                # this scan is the most recent rescan -> OK to restart (new rescan)
+                # this scan is the most recent -> OK to restart (new rescan)
                 continue
             else:
                 # this scan already has a new rescan
                 scan_ids.remove(scan_id)
 
+        LOGGER.debug(f"watchdog finalists = {len(scan_ids)} {scan_ids}")
+
         # restart!
-        skyd_rc = RestClient(
-            ENV.HERE_URL,
-            EnvVarFactory.get_skydriver_rest_auth(),
-            logger=LOGGER,
-            retries=0,
-            timeout=60,
-        )
         # submit rescans w/ "abort_first" (also stops ewms workers) -- talk to self
         for scan_id in scan_ids:
+            LOGGER.info(f"requesting rescan for {scan_id=}")
             await skyd_rc.request(
                 "POST", f"/scan/{scan_id}/actions/rescan", {"abort_first": True}
             )
