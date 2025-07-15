@@ -26,7 +26,7 @@ async def _get_recent_scans(
     skyscan_k8s_job_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
 ) -> list[str]:
     scan_ids = []
-    async for d in skyscan_k8s_job_client.find(
+    async for d in skyscan_k8s_job_client.find(  # type: ignore[attr-defined]
         {
             "k8s_started_ts": {
                 "$gte": time.time() - (60 * 60),  # 1 hour ago
@@ -42,7 +42,9 @@ async def _has_scan_been_rescanned(
     scan_id: str,
     scan_request_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
 ) -> bool:
-    doc = await scan_request_client.find_one(get_scan_request_obj_filter(scan_id))
+    doc = await scan_request_client.find_one(  # type: ignore[attr-defined]
+        get_scan_request_obj_filter(scan_id)
+    )
 
     if not doc:
         # condition should never be met -- vacuously true
