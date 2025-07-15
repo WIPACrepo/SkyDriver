@@ -61,15 +61,16 @@ async def _run(
             LOGGER.info("scan pod watchdog is still alive")
 
         # get list of backlog entries (that were deleted) in the last hour (more?)
-        docs = await skyscan_k8s_job_client.find(
+        scan_ids = []
+        async for d in skyscan_k8s_job_client.find(
             {
                 "k8s_started_ts": {
                     "$gte": time.time() - (60 * 60),  # 1 hour ago
                     "$lt": time.time() - (10 * 60),  # 10 mins ago
                 }
             }
-        )
-        scan_ids = [d["scan_id"] for d in docs]
+        ):
+            scan_ids.append(d["scan_id"])
         if not scan_ids:
             continue
 
