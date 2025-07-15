@@ -231,7 +231,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     },
                                     {
                                         "name": "SKYSCAN_SKYDRIVER_ADDRESS",
-                                        "value": os.environ["HERE_URL"],
+                                        "value": "https://" + os.environ["HERE_URL"],
                                     },
                                     {
                                         "name": "SKYSCAN_SKYDRIVER_SCAN_ID",
@@ -344,7 +344,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                 "env": [
                                     {
                                         "name": "SKYSCAN_SKYDRIVER_ADDRESS",
-                                        "value": os.environ["HERE_URL"],
+                                        "value": "https://" + os.environ["HERE_URL"],
                                     },
                                     {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
                                     {
