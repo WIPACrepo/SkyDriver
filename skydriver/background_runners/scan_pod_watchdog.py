@@ -23,7 +23,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 async def _get_recent_scans(
-    skyscan_k8s_job_client: AsyncIOMotorCollection,
+    skyscan_k8s_job_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
 ) -> list[str]:
     scan_ids = []
     async for d in skyscan_k8s_job_client.find(
@@ -40,7 +40,7 @@ async def _get_recent_scans(
 
 async def _has_scan_been_rescanned(
     scan_id: str,
-    scan_request_client: AsyncIOMotorCollection,
+    scan_request_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
 ) -> bool:
     doc = await scan_request_client.find_one(get_scan_request_obj_filter(scan_id))
 
