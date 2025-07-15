@@ -77,14 +77,13 @@ class KubeAPITools:
     def get_pods(
         k8s_core_api: kubernetes.client.CoreV1Api,
         job_name: str,
-        namespace: str = ENV.K8S_NAMESPACE,
     ) -> list[V1Pod]:
         """Get each pod corresponding to the job.
 
         Raises `ValueError` if there are no pods for the job.
         """
         pods: kubernetes.client.V1PodList = k8s_core_api.list_namespaced_pod(
-            namespace=namespace, label_selector=f"job-name={job_name}"
+            namespace=ENV.K8S_NAMESPACE, label_selector=f"job-name={job_name}"
         )
         return pods.items
 
@@ -108,3 +107,12 @@ class KubeAPITools:
                     return w.reason
 
         return None
+
+    @staticmethod
+    def has_transiently_killed_pod(
+        k8s_core_api: kubernetes.client.CoreV1Api,
+        job_name: str,
+    ) -> bool:
+        """Does this job have any transiently killed pods?"""
+        pods = KubeAPITools.get_pods(k8s_core_api, job_name)
+        return any(KubeAPITools.pod_transiently_killed(p) for p in pods)

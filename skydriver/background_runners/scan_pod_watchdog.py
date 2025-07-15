@@ -112,11 +112,10 @@ async def _run(
 
         # only keep those that had transiently killed pod(s)
         for scan_id in copy.deepcopy(scan_ids):
-            pods = KubeAPITools.get_pods(
+            if not KubeAPITools.has_transiently_killed_pod(
                 k8s_core_api,
                 SkyScanK8sJobFactory.get_job_name(scan_id),
-            )
-            if not any(KubeAPITools.pod_transiently_killed(p) for p in pods):
+            ):
                 scan_ids.remove(scan_id)
 
         LOGGER.debug(f"round III: candidates = {len(scan_ids)} {scan_ids}")
