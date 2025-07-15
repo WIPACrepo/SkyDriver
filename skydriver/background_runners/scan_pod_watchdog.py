@@ -23,6 +23,27 @@ from ..k8s.utils import KubeAPITools
 LOGGER = logging.getLogger(__name__)
 
 
+async def _has_scan_been_rescanned(
+    scan_id: str,
+    scan_request_client: AsyncIOMotorCollection,
+) -> bool:
+    doc = await scan_request_client.find_one(get_scan_request_obj_filter(scan_id))
+
+    if not doc:
+        # condition should never be met -- vacuously true
+        LOGGER.error(f"could not find scan request object for {scan_id=}")
+        return True
+    elif not doc["rescan_ids"]:
+        # scan has never been rescanned -> OK to restart (new rescan)
+        return False
+    elif doc["rescan_ids"][-1] == scan_id:
+        # this scan is the most recent -> OK to restart (new rescan)
+        return False
+    else:
+        # this scan already has a new rescan
+        return True
+
+
 @utils.resilient_loop("scan pod watchdog", ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
 async def _run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
@@ -96,21 +117,7 @@ async def _run(
 
         # remove any that have rescans (these have already been replaced)
         for scan_id in copy.deepcopy(scan_ids):
-            doc = await scan_request_client.find_one(
-                get_scan_request_obj_filter(scan_id)
-            )
-            if not doc:
-                # condition should never be met
-                LOGGER.error(f"could not find scan request object for {scan_id=}")
-                scan_ids.remove(scan_id)  # scan id will come up again in next loop
-            elif not doc["rescan_ids"]:
-                # scan has never been rescanned -> OK to restart (new rescan)
-                continue
-            elif doc["rescan_ids"][-1] == scan_id:
-                # this scan is the most recent -> OK to restart (new rescan)
-                continue
-            else:
-                # this scan already has a new rescan
+            if await _has_scan_been_rescanned(scan_id, scan_request_client):
                 scan_ids.remove(scan_id)
 
         LOGGER.debug(f"watchdog finalists = {len(scan_ids)} {scan_ids}")
