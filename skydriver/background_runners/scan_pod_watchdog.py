@@ -23,6 +23,22 @@ from ..k8s.utils import KubeAPITools
 LOGGER = logging.getLogger(__name__)
 
 
+async def _get_recent_scans(
+    skyscan_k8s_job_client: AsyncIOMotorCollection,
+) -> list[str]:
+    scan_ids = []
+    async for d in skyscan_k8s_job_client.find(
+        {
+            "k8s_started_ts": {
+                "$gte": time.time() - (60 * 60),  # 1 hour ago
+                "$lt": time.time() - (10 * 60),  # 10 mins ago
+            }
+        }
+    ):
+        scan_ids.append(d["scan_id"])
+    return scan_ids
+
+
 async def _has_scan_been_rescanned(
     scan_id: str,
     scan_request_client: AsyncIOMotorCollection,
@@ -81,18 +97,8 @@ async def _run(
         if timer_for_logging.has_interval_elapsed():
             LOGGER.info("scan pod watchdog is still alive")
 
-        # get list of backlog entries (that were deleted) in the last hour (more?)
-        scan_ids = []
-        async for d in skyscan_k8s_job_client.find(
-            {
-                "k8s_started_ts": {
-                    "$gte": time.time() - (60 * 60),  # 1 hour ago
-                    "$lt": time.time() - (10 * 60),  # 10 mins ago
-                }
-            }
-        ):
-            scan_ids.append(d["scan_id"])
-        if not scan_ids:
+        # get list of scans that were k8s started recently
+        if not (scan_ids := await _get_recent_scans(skyscan_k8s_job_client)):
             continue
 
         LOGGER.debug(f"round I: candidates = {len(scan_ids)} {scan_ids}")
