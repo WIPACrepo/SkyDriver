@@ -1,7 +1,6 @@
 """The background runner responsible for checking/restarting scanner k8s pods."""
 
 import asyncio
-import copy
 import logging
 import time
 
@@ -104,26 +103,32 @@ async def _run(
         LOGGER.debug(f"round I: candidates = {len(scan_ids)} {scan_ids}")
 
         # remove any of those that have finished -- app logic
-        for scan_id in copy.deepcopy(scan_ids):
-            if await get_scan_state_if_final_result_received(scan_id, results_client):
-                scan_ids.remove(scan_id)
+        scan_ids = [
+            s
+            for s in scan_ids
+            if not await get_scan_state_if_final_result_received(s, results_client)
+        ]
 
         LOGGER.debug(f"round II: candidates = {len(scan_ids)} {scan_ids}")
 
         # only keep those that had transiently killed pod(s)
-        for scan_id in copy.deepcopy(scan_ids):
-            if not KubeAPITools.has_transiently_killed_pod(
+        scan_ids = [
+            s
+            for s in scan_ids
+            if KubeAPITools.has_transiently_killed_pod(
                 k8s_core_api,
-                SkyScanK8sJobFactory.get_job_name(scan_id),
-            ):
-                scan_ids.remove(scan_id)
+                SkyScanK8sJobFactory.get_job_name(s),
+            )
+        ]
 
         LOGGER.debug(f"round III: candidates = {len(scan_ids)} {scan_ids}")
 
         # remove any that have rescans (these have already been replaced)
-        for scan_id in copy.deepcopy(scan_ids):
-            if await _has_scan_been_rescanned(scan_id, scan_request_client):
-                scan_ids.remove(scan_id)
+        scan_ids = [
+            s
+            for s in scan_ids
+            if not await _has_scan_been_rescanned(s, scan_request_client)
+        ]
 
         LOGGER.debug(f"watchdog finalists = {len(scan_ids)} {scan_ids}")
 
