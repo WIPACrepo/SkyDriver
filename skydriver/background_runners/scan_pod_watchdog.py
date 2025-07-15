@@ -87,7 +87,11 @@ async def _run(
             doc = await scan_request_client.find_one(
                 get_scan_request_obj_filter(scan_id)
             )
-            if not doc["rescan_ids"]:
+            if not doc:
+                # condition should never be met
+                LOGGER.error(f"could not find scan request object for {scan_id=}")
+                scan_ids.remove(scan_id)  # scan id will come up again in next loop
+            elif not doc["rescan_ids"]:
                 # scan has never been rescanned -> OK to restart (new rescan)
                 continue
             elif doc["rescan_ids"][-1] == scan_id:
