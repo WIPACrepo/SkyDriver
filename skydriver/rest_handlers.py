@@ -540,7 +540,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             #
             # misc
             i3_event_id=i3_event_id,  # foreign key to i3_event collection
-            rest_address=self.request.full_url().rstrip(self.request.uri),
             scanner_server_env_from_user=args.scanner_server_env,
         )
         await self.scan_request_coll.insert_one(scan_request_obj)
@@ -579,7 +578,6 @@ async def _start_scan(
         # universal
         debug_mode=_debug_mode(scan_request_obj["debug_mode"]),
         # env
-        rest_address=scan_request_obj["rest_address"],
         scanner_server_env_from_user=scan_request_obj["scanner_server_env_from_user"],
         request_clusters=scan_request_obj["request_clusters"],
         max_pixel_reco_time=scan_request_obj["max_pixel_reco_time"],

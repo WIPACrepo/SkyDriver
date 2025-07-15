@@ -131,6 +131,9 @@ class EnvConfig:
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
 
+        if "://" not in self.HERE_URL:
+            object.__setattr__(self, "HERE_URL", "https://" + self.HERE_URL)
+
         # check missing env var(s)
         if not self.THIS_IMAGE_WITH_TAG:
             raise RuntimeError(

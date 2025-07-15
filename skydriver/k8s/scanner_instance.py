@@ -61,7 +61,6 @@ class SkyScanK8sJobFactory:
         # universal
         debug_mode: list[DebugMode],
         # env
-        rest_address: str,
         scanner_server_env_from_user: dict,
         request_clusters: list,
         max_pixel_reco_time: int,
@@ -83,7 +82,6 @@ class SkyScanK8sJobFactory:
             predictive_scanning_threshold=predictive_scanning_threshold,
         )
         scanner_server_envvars = EnvVarFactory.make_skyscan_server_envvars(
-            rest_address=rest_address,
             scan_id=scan_id,
             scanner_server_env_from_user=scanner_server_env_from_user,
         )
@@ -339,7 +337,6 @@ class EnvVarFactory:
 
     @staticmethod
     def make_skyscan_server_envvars(
-        rest_address: str,
         scan_id: str,
         scanner_server_env_from_user: dict,
     ) -> list[sdict]:
@@ -352,7 +349,7 @@ class EnvVarFactory:
             # broker/mq vars
             "SKYSCAN_EWMS_JSON": str(SkyScanK8sJobFactory._EWMS_JSON_FPATH),
             # skydriver vars
-            "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
+            "SKYSCAN_SKYDRIVER_ADDRESS": ENV.HERE_URL,
             "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
         }
         env.update(required)

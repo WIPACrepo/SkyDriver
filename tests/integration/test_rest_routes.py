@@ -128,7 +128,7 @@ async def _launch_scan(
     )
 
     # check database
-    rest_address = await _assert_db_scanrequests_coll(
+    await _assert_db_scanrequests_coll(
         mongo_client,
         post_scan_body,
         post_resp,
@@ -139,7 +139,6 @@ async def _launch_scan(
         post_scan_body,
         post_resp,
         scanner_server_args,
-        rest_address,
         docker_tag_expected,
     )
 
@@ -151,11 +150,8 @@ async def _assert_db_scanrequests_coll(
     post_scan_body: dict,
     post_resp: dict,
     docker_tag_expected: str,
-) -> str:
-    """Query the ScanRequests coll.
-
-    Return the REST address
-    """
+) -> None:
+    """Query the ScanRequests coll."""
     doc_sr = await mongo_client["SkyDriver_DB"]["ScanRequests"].find_one(  # type: ignore[index]
         {"scan_id": post_resp["scan_id"]}, {"_id": 0}
     )
@@ -189,12 +185,8 @@ async def _assert_db_scanrequests_coll(
         #
         # misc
         i3_event_id=post_resp["i3_event_id"],
-        rest_address=doc_sr["rest_address"],  # see below
         scanner_server_env_from_user=post_scan_body["scanner_server_env"],
     )
-    assert re.fullmatch(rf"{re.escape('http://localhost:')}\d+", doc_sr["rest_address"])
-
-    return doc_sr["rest_address"]
 
 
 async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
@@ -202,7 +194,6 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
     post_scan_body: dict,
     post_resp: dict,
     scanner_server_args: str,
-    rest_address: str,
     docker_tag_expected: str,
 ):
     # query the SkyScanK8sJobs coll
@@ -240,7 +231,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     },
                                     {
                                         "name": "SKYSCAN_SKYDRIVER_ADDRESS",
-                                        "value": rest_address,
+                                        "value": os.environ["HERE_URL"],
                                     },
                                     {
                                         "name": "SKYSCAN_SKYDRIVER_SCAN_ID",
@@ -353,7 +344,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                 "env": [
                                     {
                                         "name": "SKYSCAN_SKYDRIVER_ADDRESS",
-                                        "value": rest_address,
+                                        "value": os.environ["HERE_URL"],
                                     },
                                     {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
                                     {
