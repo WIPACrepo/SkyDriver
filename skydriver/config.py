@@ -35,6 +35,8 @@ class DebugMode(enum.Enum):
 class EnvConfig:
     """Environment variables."""
 
+    HERE_URL: str
+
     # EWMS connections
     EWMS_ADDRESS: str
     EWMS_TOKEN_URL: str

@@ -75,20 +75,18 @@ async def _run(
 
         # only keep those that had transiently killed pod(s)
         for scan_id in copy.deepcopy(scan_ids):
-            if not any(
-                KubeAPITools.pod_transiently_killed(pod)
-                for pod in KubeAPITools.get_pods(
-                    k8s_core_api, SkyScanK8sJobFactory.get_job_name(scan_id)
-                )
-            ):
+            pods = KubeAPITools.get_pods(
+                k8s_core_api,
+                SkyScanK8sJobFactory.get_job_name(scan_id),
+            )
+            if not any(KubeAPITools.pod_transiently_killed(p) for p in pods):
                 scan_ids.remove(scan_id)
 
-        # remove any that have rescans (already been replaced)
+        # remove any that have rescans (these have already been replaced)
         for scan_id in copy.deepcopy(scan_ids):
             doc = await scan_request_client.find_one(
                 get_scan_request_obj_filter(scan_id)
             )
-            here_rest_address = doc["rest_address"]  # a good argument for a env var :/
             if not doc["rescan_ids"]:
                 # scan has never been rescanned -> OK to restart (new rescan)
                 continue
@@ -101,13 +99,13 @@ async def _run(
 
         # restart!
         skyd_rc = RestClient(
-            here_rest_address,
+            ENV.HERE_URL,
             EnvVarFactory.get_skydriver_rest_auth(),
             logger=LOGGER,
             retries=0,
             timeout=60,
         )
-        # submit rescans w/ "abort_first" (also stops ewms)
+        # submit rescans w/ "abort_first" (also stops ewms workers) -- talk to self
         for scan_id in scan_ids:
             await skyd_rc.request(
                 "POST", f"/scan/{scan_id}/actions/rescan", {"abort_first": True}

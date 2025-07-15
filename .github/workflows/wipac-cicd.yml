@@ -3,6 +3,7 @@ name: wipac ci/cd
 on: [ push ]
 
 env:
+  HERE_URL: skydriver.ci-test.aq
   THIS_IMAGE_WITH_TAG: 'ghcr.io/wipacrepo/skydriver:vX.Y.Z'
   EWMS_PILOT_TASK_TIMEOUT: 999
   SCAN_BACKLOG_RUNNER_SHORT_DELAY: 1
