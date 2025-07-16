@@ -634,6 +634,11 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             default=False,
             type=bool,
         )
+        arghand.add_argument(  # TODO
+            "redirect",
+            default=False,
+            type=bool,
+        )
         # response args
         arghand.add_argument(
             "manifest_projection",

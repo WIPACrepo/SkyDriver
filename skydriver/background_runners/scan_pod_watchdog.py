@@ -139,5 +139,7 @@ async def _run(
         for scan_id in scan_ids:
             LOGGER.info(f"requesting rescan for {scan_id=}")
             await skyd_rc.request(
-                "POST", f"/scan/{scan_id}/actions/rescan", {"abort_first": True}
+                "POST",
+                f"/scan/{scan_id}/actions/rescan",
+                {"abort_first": True, "redirect": True},
             )
