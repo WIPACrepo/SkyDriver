@@ -635,7 +635,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             type=bool,
         )
         arghand.add_argument(  # TODO
-            "redirect",
+            "create_redirect",
             default=False,
             type=bool,
         )

@@ -141,5 +141,5 @@ async def _run(
             await skyd_rc.request(
                 "POST",
                 f"/scan/{scan_id}/actions/rescan",
-                {"abort_first": True, "redirect": True},
+                {"abort_first": True, "create_redirect": True},
             )
