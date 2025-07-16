@@ -113,6 +113,7 @@ async def _launch_scan(
         classifiers=post_scan_body["classifiers"],
         last_updated=post_resp["last_updated"],  # see below
         priority=0,
+        replaced_by_scan_id=None,
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
     assert RE_SCANID.fullmatch(post_resp["scan_id"])
@@ -530,6 +531,7 @@ async def _do_patch(
         classifiers=manifest["classifiers"],  # should not change
         last_updated=resp["last_updated"],  # see below
         priority=0,
+        replaced_by_scan_id=None,
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
     assert 0.0 < resp["timestamp"] < now < resp["last_updated"] < time.time()
