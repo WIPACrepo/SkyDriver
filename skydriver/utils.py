@@ -1,6 +1,7 @@
 """Utility functions that don't fit anywhere else."""
 
 import enum
+import logging
 import time
 import uuid
 
@@ -13,6 +14,8 @@ from .database.schema import (
     Manifest,
     has_skydriver_requested_ewms_workflow,
 )
+
+LOGGER = logging.getLogger(__name__)
 
 
 def make_scan_id() -> str:
@@ -149,3 +152,6 @@ def get_scan_request_obj_filter(scan_id: str) -> dict:
             {"rescan_ids": scan_id},  # one in a list
         ]
     }
+
+
+########################################################################################

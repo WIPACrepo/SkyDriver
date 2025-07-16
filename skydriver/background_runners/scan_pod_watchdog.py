@@ -9,15 +9,15 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from rest_tools.client import RestClient
 from wipac_dev_tools.timing_tools import IntervalTimer
 
-from skydriver.utils import (
-    get_scan_request_obj_filter,
-    get_scan_state_if_final_result_received,
-)
 from . import utils
 from .. import database
 from ..config import ENV
 from ..k8s.scanner_instance import EnvVarFactory, SkyScanK8sJobFactory
 from ..k8s.utils import KubeAPITools
+from ..utils import (
+    get_scan_request_obj_filter,
+    get_scan_state_if_final_result_received,
+)
 
 LOGGER = logging.getLogger(__name__)
 

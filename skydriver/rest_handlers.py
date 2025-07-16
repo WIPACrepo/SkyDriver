@@ -21,7 +21,6 @@ from rest_tools.server import (
     ArgumentHandler,
     ArgumentSource,
     RestHandler,
-    token_attribute_role_mapping_auth,
 )
 from tornado import web
 from wipac_dev_tools import argparse_tools
@@ -35,7 +34,6 @@ from .config import (
     INTERNAL_ACCT,
     KNOWN_CLUSTERS,
     USER_ACCT,
-    is_testing,
 )
 from .database import schema
 from .database.mongodc import DocumentNotFoundException
@@ -45,6 +43,7 @@ from .database.schema import (
 )
 from .ewms import get_deactivated_type, request_stop_on_ewms
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
+from .rest_decorators import maybe_redirect_scan_id, service_account_auth
 from .utils import (
     does_scan_state_indicate_final_result_received,
     get_scan_request_obj_filter,
@@ -65,35 +64,6 @@ SIM_CHOICES = ["sim", "simulated", "simulated_event"]
 MAX_CLASSIFIERS_LEN = 25
 
 WAIT_BEFORE_TEARDOWN = 60
-
-# -----------------------------------------------------------------------------
-# REST requestor auth
-
-
-if is_testing():
-
-    def service_account_auth(roles: list[str], **kwargs):  # type: ignore
-        def make_wrapper(method):  # type: ignore[no-untyped-def]
-            async def wrapper(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-                LOGGER.warning("TESTING: auth disabled")
-                self.auth_roles = [roles[0]]  # make as a list containing just 1st role
-                return await method(self, *args, **kwargs)
-
-            return wrapper
-
-        return make_wrapper
-
-else:
-    service_account_auth = token_attribute_role_mapping_auth(  # type: ignore[no-untyped-call]
-        role_attrs={
-            USER_ACCT: [
-                "resource_access.skydriver-external.roles=users",
-            ],
-            INTERNAL_ACCT: [
-                "resource_access.skydriver-internal.roles=system",  # scanner & friends
-            ],
-        },
-    )
 
 
 # -----------------------------------------------------------------------------
@@ -625,7 +595,8 @@ class ScanRescanHandler(BaseSkyDriverHandler):
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/actions/rescan$"
 
-    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def post(self, scan_id: str) -> None:
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
         arghand.add_argument(
@@ -702,6 +673,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/actions/add-workers$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def post(self, scan_id: str) -> None:
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
         # response args
@@ -867,6 +839,7 @@ class ScanHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def delete(self, scan_id: str) -> None:
         """Abort a scan and/or mark manifest & result as "deleted"."""
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
@@ -913,6 +886,7 @@ class ScanHandler(BaseSkyDriverHandler):
         )
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get manifest & result."""
         arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
@@ -947,6 +921,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/manifest$"
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
         arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
@@ -1043,6 +1018,7 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/i3-event$"
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
         manifest = await self.manifests.get(scan_id, True)
@@ -1085,6 +1061,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/result$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted result."""
         arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
@@ -1155,6 +1132,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/status$"
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
         manifest = await self.manifests.get(scan_id, incl_del=True)
@@ -1203,6 +1181,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/logs$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
         manifest = await self.manifests.get(scan_id, incl_del=True)
@@ -1229,6 +1208,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/ewms/workflow-id$"
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
         manifest = await self.manifests.get(scan_id, incl_del=True)
@@ -1297,6 +1277,7 @@ class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/ewms/workforce$"
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """GET.
 
@@ -1321,6 +1302,7 @@ class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/ewms/taskforces$"
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """GET.
 
