@@ -3,6 +3,8 @@
 import functools
 import logging
 
+from rest_tools.server import token_attribute_role_mapping_auth
+
 from .config import INTERNAL_ACCT, USER_ACCT, is_testing
 
 LOGGER = logging.getLogger(__name__)
