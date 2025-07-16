@@ -23,6 +23,9 @@ SCANNER_LOGS_GRAFANA_WINDOW_SEC = 60 * 60
 
 EWMS_URL_V_PREFIX = "v1"
 
+USER_ACCT = "user"
+INTERNAL_ACCT = "system"
+
 
 @enum.unique
 class DebugMode(enum.Enum):

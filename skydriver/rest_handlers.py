@@ -32,7 +32,9 @@ from .config import (
     DebugMode,
     ENV,
     EWMS_URL_V_PREFIX,
+    INTERNAL_ACCT,
     KNOWN_CLUSTERS,
+    USER_ACCT,
     is_testing,
 )
 from .database import schema
@@ -67,9 +69,6 @@ WAIT_BEFORE_TEARDOWN = 60
 # -----------------------------------------------------------------------------
 # REST requestor auth
 
-
-USER_ACCT = "user"
-INTERNAL_ACCT = "system"
 
 if is_testing():
 
@@ -634,8 +633,8 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             default=False,
             type=bool,
         )
-        arghand.add_argument(  # TODO
-            "create_redirect",
+        arghand.add_argument(
+            "replace_scan",
             default=False,
             type=bool,
         )
@@ -682,6 +681,13 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             scan_request_obj,
             new_scan_id=new_scan_id,
         )
+
+        if args.replace_scan:
+            await self.manifests.collection.find_one_and_update(
+                {"scan_id": scan_id},
+                {"replaced_by_scan_id": new_scan_id},
+            )
+
         self.write(
             dict_projection(dc.asdict(manifest), args.manifest_projection),
         )
