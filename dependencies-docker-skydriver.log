@@ -8,8 +8,8 @@
 ########################################################################
 aiocache==0.12.3
 async-lru==2.0.5
-boto3==1.39.4
-botocore==1.39.4
+boto3==1.39.7
+botocore==1.39.7
 cachetools==5.5.2
 certifi==2025.7.14
 cffi==1.17.1
@@ -45,7 +45,7 @@ typing_extensions==4.14.1
 urllib3==2.5.0
 websocket-client==1.8.0
 wipac-dev-tools==1.16.11
-wipac-rest-tools==1.9.0
+wipac-rest-tools==1.10.0
 ########################################################################
 #  pipdeptree
 ########################################################################
@@ -58,15 +58,15 @@ pipdeptree==2.27.0
 skydriver-s3-sidecar-ewms-init-container
 ├── aiocache [required: Any, installed: 0.12.3]
 ├── async-lru [required: Any, installed: 2.0.5]
-├── boto3 [required: Any, installed: 1.39.4]
-│   ├── botocore [required: >=1.39.4,<1.40.0, installed: 1.39.4]
+├── boto3 [required: Any, installed: 1.39.7]
+│   ├── botocore [required: >=1.39.7,<1.40.0, installed: 1.39.7]
 │   │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   │   ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │   │   │   └── six [required: >=1.5, installed: 1.17.0]
 │   │   └── urllib3 [required: >=1.25.4,<3,!=2.2.0, installed: 2.5.0]
 │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   └── s3transfer [required: >=0.13.0,<0.14.0, installed: 0.13.0]
-│       └── botocore [required: >=1.37.4,<2.0a.0, installed: 1.39.4]
+│       └── botocore [required: >=1.37.4,<2.0a.0, installed: 1.39.7]
 │           ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │           ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │           │   └── six [required: >=1.5, installed: 1.17.0]
@@ -124,7 +124,7 @@ skydriver-s3-sidecar-ewms-init-container
 │   │   ├── urllib3 [required: >=1.21.1,<3, installed: 2.5.0]
 │   │   └── certifi [required: >=2017.4.17, installed: 2025.7.14]
 │   └── typing_extensions [required: Any, installed: 4.14.1]
-└── wipac-rest-tools [required: Any, installed: 1.9.0]
+└── wipac-rest-tools [required: Any, installed: 1.10.0]
     ├── cachetools [required: Any, installed: 5.5.2]
     ├── PyJWT [required: !=2.6.0, installed: 2.10.1]
     ├── qrcode [required: Any, installed: 8.2]
