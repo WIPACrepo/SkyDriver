@@ -3,6 +3,7 @@
 import asyncio
 import logging
 
+from kubernetes.client import CoreV1Api
 from rest_tools.client import ClientCredentialsAuth, RestClient
 
 from . import background_runners, database, k8s, server
@@ -50,8 +51,17 @@ async def main() -> None:
 
     # Scan Launcher
     LOGGER.info("Starting scan launcher...")
-    backlog_task = asyncio.create_task(
+    launcher_task = asyncio.create_task(
         background_runners.scan_launcher.run(mongo_client, k8s_batch_api)
+    )
+    await asyncio.sleep(0)  # start up previous task
+
+    # Scan Pod Watchdog
+    LOGGER.info("Starting scan pod watchdog...")
+    watchdog_task = asyncio.create_task(
+        background_runners.scan_pod_watchdog.run(
+            mongo_client, CoreV1Api(k8s_batch_api.api_client)
+        )
     )
     await asyncio.sleep(0)  # start up previous task
 
@@ -64,7 +74,8 @@ async def main() -> None:
     finally:
         await rs.stop()  # type: ignore[no-untyped-call]
         indexing_task.cancel()
-        backlog_task.cancel()
+        launcher_task.cancel()
+        watchdog_task.cancel()
 
 
 if __name__ == "__main__":
