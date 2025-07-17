@@ -23,11 +23,11 @@ skydriver.config.config_logging()
     #            A      D x   E
 )
 @mock.patch(
-    "skydriver.k8s.utils.KubeAPITools.has_transiently_killed_pod",
+    "skydriver.background_runners.scan_pod_watchdog.KubeAPITools.has_transiently_killed_pod",
     side_effect=[True, False, True, True],
 )  #             A     C x    D     E               # noqa
 @mock.patch(
-    "skydriver.utils.get_scan_state_if_final_result_received",
+    "skydriver.background_runners.scan_pod_watchdog.get_scan_state_if_final_result_received",
     side_effect=[False, True, False, False, False],
 )  #             A      B x   C      D      E       # noqa
 @mock.patch(
