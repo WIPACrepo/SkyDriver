@@ -139,7 +139,6 @@ async def server(
             yield y
 
 
-@mock.patch("skydriver.k8s.setup_k8s_batch_api", return_value=Mock)
 async def _server(
     monkeypatch: Any,
     port: int,
@@ -167,7 +166,8 @@ async def _server(
     def client() -> RestClient:
         return RestClient(f"http://localhost:{port}", retries=0)
 
-    main_task = asyncio.create_task(main(address="localhost", port=port))
+    with mock.patch("skydriver.k8s.setup_k8s_batch_api", return_value=Mock):
+        main_task = asyncio.create_task(main(address="localhost", port=port))
     await asyncio.sleep(0)  # start up previous task
 
     try:
