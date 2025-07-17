@@ -14,10 +14,9 @@ from rest_tools.client import RestClient
 
 import skydriver
 import skydriver.images  # noqa: F401  # export
-from skydriver.__main__ import setup_ewms_client
+from skydriver.__main__ import main
 from skydriver.database import create_mongodb_client
 from skydriver.database.utils import drop_database
-from skydriver.server import make
 
 
 @pytest.fixture
@@ -140,6 +139,7 @@ async def server(
             yield y
 
 
+@mock.patch("skydriver.k8s.setup_k8s_batch_api", return_value=Mock)
 async def _server(
     monkeypatch: Any,
     port: int,
@@ -152,23 +152,25 @@ async def _server(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
 
-    k8s_batch_api = Mock()
-    ewms_rc = setup_ewms_client()
-    backlog_task = asyncio.create_task(
-        skydriver.background_runners.scan_launcher.run(
-            mongo_client,
-            k8s_batch_api,
-        )
-    )
-    await asyncio.sleep(0)  # start up previous task
-    rs = await make(mongo_client, k8s_batch_api, ewms_rc)
-    rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
+    # k8s_batch_api = Mock()
+    # ewms_rc = setup_ewms_client()
+    # backlog_task = asyncio.create_task(
+    #     skydriver.background_runners.scan_launcher.run(
+    #         mongo_client,
+    #         k8s_batch_api,
+    #     )
+    # )
+    # await asyncio.sleep(0)  # start up previous task
+    # rs = await make(mongo_client, k8s_batch_api, ewms_rc)
+    # rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
 
     def client() -> RestClient:
         return RestClient(f"http://localhost:{port}", retries=0)
 
+    main_task = asyncio.create_task(main(address="localhost", port=port))
+    await asyncio.sleep(0)  # start up previous task
+
     try:
         yield client
     finally:
-        await rs.stop()  # type: ignore[no-untyped-call]
-        backlog_task.cancel()
+        main_task.cancel()

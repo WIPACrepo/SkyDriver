@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from kubernetes.client import CoreV1Api
+from kubernetes.client import CoreV1Api  # type: ignore[import-untyped]
 from rest_tools.client import ClientCredentialsAuth, RestClient
 
 from . import background_runners, database, k8s, server
@@ -29,7 +29,7 @@ def setup_ewms_client() -> RestClient:
         )
 
 
-async def main() -> None:
+async def main(address: str = ENV.REST_HOST, port: int = ENV.REST_PORT) -> None:
     """Establish connections and start components."""
 
     # Mongo client
@@ -68,7 +68,7 @@ async def main() -> None:
     # REST Server
     LOGGER.info("Setting up REST server...")
     rs = await server.make(mongo_client, k8s_batch_api, ewms_rc)
-    rs.startup(address=ENV.REST_HOST, port=ENV.REST_PORT)  # type: ignore[no-untyped-call]
+    rs.startup(address=address, port=port)  # type: ignore[no-untyped-call]
     try:
         await asyncio.Event().wait()
     finally:
