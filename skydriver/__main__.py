@@ -74,6 +74,8 @@ async def main(address: str = ENV.REST_HOST, port: int = ENV.REST_PORT) -> None:
     rs.startup(address=address, port=port)  # type: ignore[no-untyped-call]
     try:
         await asyncio.Event().wait()
+    except asyncio.CancelledError:  # relevant during testing -- ensures proper shutdown
+        LOGGER.info("Main task was cancelled — shutting down...")
     finally:
         await rs.stop()  # type: ignore[no-untyped-call]
         indexing_task.cancel()
