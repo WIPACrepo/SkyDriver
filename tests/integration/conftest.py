@@ -174,7 +174,7 @@ async def _server(
         "skydriver.__main__.create_mongodb_client",
         return_value=mongo_client,
     ), mock.patch(  # patch at directly named import that happens before running the test
-        "kubernetes.client.CoreV1Api",
+        "skydriver.__main__.CoreV1Api",
         return_value=Mock(),
     ):
         main_task = asyncio.create_task(main(address="localhost", port=port))
