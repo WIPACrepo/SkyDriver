@@ -8,6 +8,7 @@ from rest_tools.client import ClientCredentialsAuth, RestClient
 
 from . import background_runners, database, server
 from .config import ENV, config_logging
+from .database import create_mongodb_client
 from .k8s import setup_k8s_batch_api
 
 LOGGER = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ async def main(address: str = ENV.REST_HOST, port: int = ENV.REST_PORT) -> None:
 
     # Mongo client
     LOGGER.info("Setting up Mongo client...")
-    mongo_client = await database.create_mongodb_client()
+    mongo_client = await create_mongodb_client()
     indexing_task = asyncio.create_task(database.utils.ensure_indexes(mongo_client))
     await asyncio.sleep(0)  # start up previous task
     LOGGER.info("Mongo client connected.")

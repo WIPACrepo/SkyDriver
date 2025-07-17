@@ -166,9 +166,13 @@ async def _server(
     def client() -> RestClient:
         return RestClient(f"http://localhost:{port}", retries=0)
 
+    # run main w/ patches
     with mock.patch(  # patch at directly named import that happens before running the test
         "skydriver.__main__.setup_k8s_batch_api",
         return_value=Mock(),
+    ), mock.patch(  # patch at directly named import that happens before running the test
+        "skydriver.__main__.create_mongodb_client",
+        return_value=mongo_client,
     ), mock.patch(  # patch at directly named import that happens before running the test
         "kubernetes.client.CoreV1Api",
         return_value=Mock(),
