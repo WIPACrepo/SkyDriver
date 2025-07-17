@@ -31,6 +31,7 @@ def setup_ewms_client() -> RestClient:
 
 async def main(address: str = ENV.REST_HOST, port: int = ENV.REST_PORT) -> None:
     """Establish connections and start components."""
+    config_logging()
 
     # Mongo client
     LOGGER.info("Setting up Mongo client...")
@@ -79,5 +80,4 @@ async def main(address: str = ENV.REST_HOST, port: int = ENV.REST_PORT) -> None:
 
 
 if __name__ == "__main__":
-    config_logging()
     asyncio.run(main())

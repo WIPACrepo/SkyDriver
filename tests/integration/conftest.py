@@ -32,7 +32,7 @@ def port() -> int:
 
 
 @pytest_asyncio.fixture
-async def mongo_clear() -> Any:
+async def mongo_clear() -> AsyncIterator[None]:
     """Clear the MongoDB after test completes."""
     motor_client = await create_mongodb_client()
     try:
@@ -166,11 +166,16 @@ async def _server(
     def client() -> RestClient:
         return RestClient(f"http://localhost:{port}", retries=0)
 
-    with mock.patch("skydriver.k8s.setup_k8s_batch_api", return_value=Mock):
+    with mock.patch("skydriver.k8s.setup_k8s_batch_api", return_value=Mock()):
         main_task = asyncio.create_task(main(address="localhost", port=port))
     await asyncio.sleep(0)  # start up previous task
 
     try:
+        await asyncio.sleep(0.5)  # wait for server startup
         yield client
     finally:
         main_task.cancel()
+        try:
+            await main_task
+        except asyncio.CancelledError:
+            pass
