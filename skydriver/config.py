@@ -189,7 +189,13 @@ def config_logging() -> None:
             datefmt="%Y-%m-%d %H:%M:%S",
         )
     )
-    logging.getLogger().addHandler(hand)
+
+    root_logger = logging.getLogger()
+
+    if root_logger.hasHandlers():
+        return  # already configured
+
+    root_logger.addHandler(hand)
     logging_tools.set_level(
         ENV.LOG_LEVEL,  # type: ignore[arg-type]
         first_party_loggers=__name__.split(".", maxsplit=1)[0],
