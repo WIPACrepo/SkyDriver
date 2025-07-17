@@ -61,12 +61,22 @@ async def _has_scan_been_rescanned(
         return True
 
 
+async def _request_replacement_rescan(skyd_rc: RestClient, scan_id: str) -> None:
+    # submit rescans w/ "abort_first" (also stops ewms workers) -- talk to self
+    LOGGER.info(f"requesting rescan for {scan_id=}")
+    await skyd_rc.request(
+        "POST",
+        f"/scan/{scan_id}/actions/rescan",
+        {"abort_first": True, "replace_scan": True},
+    )
+
+
 @utils.resilient_loop("scan pod watchdog", ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
-async def _run(
+async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_core_api: kubernetes.client.CoreV1Api,  # CoreV1Api(k8s_batch_api.api_client)
 ) -> None:
-    """The (actual) main loop."""
+    """The main loop."""
     results_client = database.interface.ResultClient(mongo_client)
     scan_request_client = (
         AsyncIOMotorCollection(  # in contrast, this one is accessed directly
@@ -135,11 +145,5 @@ async def _run(
         LOGGER.debug(f"watchdog finalists = {len(scan_ids)} {scan_ids}")
 
         # restart!
-        # submit rescans w/ "abort_first" (also stops ewms workers) -- talk to self
         for scan_id in scan_ids:
-            LOGGER.info(f"requesting rescan for {scan_id=}")
-            await skyd_rc.request(
-                "POST",
-                f"/scan/{scan_id}/actions/rescan",
-                {"abort_first": True, "replace_scan": True},
-            )
+            await _request_replacement_rescan(skyd_rc, scan_id)
