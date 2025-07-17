@@ -14,11 +14,11 @@ skydriver.config.config_logging()
 
 
 @mock.patch(
-    "skydriver.daemons.scan_pod_watchdog._request_replacement_rescan",
+    "skydriver.background_runners.scan_pod_watchdog._request_replacement_rescan",
     new_callable=AsyncMock,
 )
 @mock.patch(
-    "skydriver.daemons.scan_pod_watchdog._has_scan_been_rescanned",
+    "skydriver.background_runners.scan_pod_watchdog._has_scan_been_rescanned",
     side_effect=[False, True, False],
     #            A      D x   E
 )
@@ -31,7 +31,7 @@ skydriver.config.config_logging()
     side_effect=[False, True, False, False, False],
 )  #             A      B x   C      D      E       # noqa
 @mock.patch(
-    "skydriver.daemons.scan_pod_watchdog._get_recent_scans",
+    "skydriver.background_runners.scan_pod_watchdog._get_recent_scans",
     return_value=["scan_A", "scan_B", "scan_C", "scan_D", "scan_E"],
 )
 async def test_watchdog_filtering_per_stage(
