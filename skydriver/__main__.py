@@ -6,8 +6,9 @@ import logging
 from kubernetes.client import CoreV1Api  # type: ignore[import-untyped]
 from rest_tools.client import ClientCredentialsAuth, RestClient
 
-from . import background_runners, database, k8s, server
+from . import background_runners, database, server
 from .config import ENV, config_logging
+from .k8s import setup_k8s_batch_api
 
 LOGGER = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ async def main(address: str = ENV.REST_HOST, port: int = ENV.REST_PORT) -> None:
 
     # K8s client
     LOGGER.info("Setting up k8s client...")
-    k8s_batch_api = k8s.setup_k8s_batch_api()
+    k8s_batch_api = setup_k8s_batch_api()
     LOGGER.info("K8s client connected.")
 
     # EWMS rest client
