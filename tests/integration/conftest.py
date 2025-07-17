@@ -12,7 +12,6 @@ import pytest_asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 from rest_tools.client import RestClient
 
-import skydriver
 import skydriver.images  # noqa: F401  # export
 from skydriver.__main__ import main
 from skydriver.database import create_mongodb_client
@@ -127,23 +126,10 @@ async def server(
     monkeypatch: Any,
     port: int,
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
-    mongo_clear: Any,  # pylint:disable=unused-argument
+    mongo_clear: Any,  # just to ensure DB is cleared
 ) -> AsyncIterator[Callable[[], RestClient]]:
-    """Startup server in this process, yield RestClient func, then clean up."""
+    """Start the Skydriver server with all necessary patches and yield a REST client."""
 
-    # NOTE: cannot use @mock.patch with @pytest_asyncio.fixture
-    # NOTE: cannot use `yield from` on async iterator
-
-    with mock.patch("skydriver.k8s.utils.KubeAPITools.start_job", return_value=None):
-        async for y in _server(monkeypatch, port, mongo_client):
-            yield y
-
-
-async def _server(
-    monkeypatch: Any,
-    port: int,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
-) -> AsyncIterator[Callable[[], RestClient]]:
     # patch at directly named import that happens before running the test
     monkeypatch.setattr(skydriver.rest_handlers, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
     monkeypatch.setattr(skydriver.config, "KNOWN_CLUSTERS", KNOWN_CLUSTERS)
@@ -151,36 +137,23 @@ async def _server(
         skydriver.rest_handlers, "WAIT_BEFORE_TEARDOWN", TEST_WAIT_BEFORE_TEARDOWN
     )
 
-    # k8s_batch_api = Mock()
-    # ewms_rc = setup_ewms_client()
-    # backlog_task = asyncio.create_task(
-    #     skydriver.background_runners.scan_launcher.run(
-    #         mongo_client,
-    #         k8s_batch_api,
-    #     )
-    # )
-    # await asyncio.sleep(0)  # start up previous task
-    # rs = await make(mongo_client, k8s_batch_api, ewms_rc)
-    # rs.startup(address="localhost", port=port)  # type: ignore[no-untyped-call]
-
-    def client() -> RestClient:
-        return RestClient(f"http://localhost:{port}", retries=0)
-
     # run main w/ patches
-    with mock.patch(  # patch at directly named import that happens before running the test
-        "skydriver.__main__.setup_k8s_batch_api",
-        return_value=Mock(),
-    ), mock.patch(  # patch at directly named import that happens before running the test
-        "skydriver.__main__.create_mongodb_client",
-        return_value=mongo_client,
-    ), mock.patch(  # patch at directly named import that happens before running the test
-        "skydriver.__main__.CoreV1Api",
-        return_value=Mock(),
+    with mock.patch(
+        "skydriver.k8s.utils.KubeAPITools.start_job", return_value=None
+    ), mock.patch(
+        "skydriver.__main__.setup_k8s_batch_api", return_value=Mock()
+    ), mock.patch(
+        "skydriver.__main__.create_mongodb_client", return_value=mongo_client
+    ), mock.patch(
+        "skydriver.__main__.CoreV1Api", return_value=Mock()
     ):
+
         main_task = asyncio.create_task(main(address="localhost", port=port))
         await asyncio.sleep(0)  # start up previous task
 
-        # yield back to test function, clean up when done
+        def client() -> RestClient:
+            return RestClient(f"http://localhost:{port}", retries=0)
+
         try:
             await asyncio.sleep(0.5)  # wait for server startup
             yield client
