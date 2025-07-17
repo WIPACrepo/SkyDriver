@@ -180,12 +180,13 @@ async def _server(
         main_task = asyncio.create_task(main(address="localhost", port=port))
         await asyncio.sleep(0)  # start up previous task
 
-    try:
-        await asyncio.sleep(0.5)  # wait for server startup
-        yield client
-    finally:
-        main_task.cancel()
+        # yield back to test function, clean up when done
         try:
-            await main_task
-        except asyncio.CancelledError:
-            pass
+            await asyncio.sleep(0.5)  # wait for server startup
+            yield client
+        finally:
+            main_task.cancel()
+            try:
+                await main_task
+            except asyncio.CancelledError:
+                pass
