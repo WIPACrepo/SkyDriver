@@ -59,3 +59,5 @@ async def test_watchdog_filtering_per_stage(
         [call(mock.ANY, scan_id) for scan_id in expected_rescans],
     )
     assert rescan_request_mock.await_count == len(expected_rescans)
+
+    assert 0
