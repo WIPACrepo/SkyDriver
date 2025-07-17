@@ -8,8 +8,8 @@
 ########################################################################
 aiocache==0.12.3
 async-lru==2.0.5
-boto3==1.39.7
-botocore==1.39.7
+boto3==1.39.8
+botocore==1.39.8
 cachetools==5.5.2
 certifi==2025.7.14
 cffi==1.17.1
@@ -58,15 +58,15 @@ pipdeptree==2.27.0
 skydriver-s3-sidecar-ewms-init-container
 ├── aiocache [required: Any, installed: 0.12.3]
 ├── async-lru [required: Any, installed: 2.0.5]
-├── boto3 [required: Any, installed: 1.39.7]
-│   ├── botocore [required: >=1.39.7,<1.40.0, installed: 1.39.7]
+├── boto3 [required: Any, installed: 1.39.8]
+│   ├── botocore [required: >=1.39.8,<1.40.0, installed: 1.39.8]
 │   │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   │   ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │   │   │   └── six [required: >=1.5, installed: 1.17.0]
 │   │   └── urllib3 [required: >=1.25.4,<3,!=2.2.0, installed: 2.5.0]
 │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   └── s3transfer [required: >=0.13.0,<0.14.0, installed: 0.13.0]
-│       └── botocore [required: >=1.37.4,<2.0a.0, installed: 1.39.7]
+│       └── botocore [required: >=1.37.4,<2.0a.0, installed: 1.39.8]
 │           ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │           ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │           │   └── six [required: >=1.5, installed: 1.17.0]
