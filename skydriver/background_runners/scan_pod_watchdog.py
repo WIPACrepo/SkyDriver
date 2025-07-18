@@ -1,4 +1,4 @@
-"""The background runner responsible for checking/restarting scanner k8s pods."""
+"""The backgfilter runner responsible for checking/restarting scanner k8s pods."""
 
 import asyncio
 import logging
@@ -145,8 +145,7 @@ async def run(
             )
         ):
             continue
-
-        LOGGER.debug(f"round I: candidates = {len(scan_ids)} {scan_ids}")
+        LOGGER.debug(f"filter I   - recent scans    - {len(scan_ids)} {scan_ids}")
 
         # remove any of those that have finished -- app logic
         scan_ids = [
@@ -154,8 +153,7 @@ async def run(
             for s in scan_ids
             if not await get_scan_state_if_final_result_received(s, results_client)
         ]
-
-        LOGGER.debug(f"round II: candidates = {len(scan_ids)} {scan_ids}")
+        LOGGER.debug(f"filter II  - non-finished    - {len(scan_ids)} {scan_ids}")
 
         # remove any that have rescans (these have already been replaced)
         scan_ids = [
@@ -163,8 +161,7 @@ async def run(
             for s in scan_ids
             if not await _has_scan_been_rescanned(s, scan_request_client)
         ]
-
-        LOGGER.debug(f"round III: candidates = {len(scan_ids)} {scan_ids}")
+        LOGGER.debug(f"filter III - new to watchdog - {len(scan_ids)} {scan_ids}")
 
         # only keep those that have not been rescanned too many times to recently
         scan_ids = [
@@ -174,8 +171,7 @@ async def run(
                 s, scan_request_client, manifest_client
             )
         ]
-
-        LOGGER.debug(f"round IV: candidates = {len(scan_ids)} {scan_ids}")
+        LOGGER.debug(f"filter IV  - not throttled   - {len(scan_ids)} {scan_ids}")
 
         # only keep those that had transiently killed pod(s)
         scan_ids = [
@@ -186,8 +182,7 @@ async def run(
                 SkyScanK8sJobFactory.get_job_name(s),
             )
         ]
-
-        LOGGER.debug(f"watchdog finalists = {len(scan_ids)} {scan_ids}")
+        LOGGER.debug(f"filter V   - k8s restartable - {len(scan_ids)} {scan_ids}")
 
         # restart!
         for scan_id in scan_ids:
