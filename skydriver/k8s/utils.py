@@ -96,22 +96,29 @@ class KubeAPITools:
             return None
 
         for cs in pod.status.container_statuses:
-            state = cs.state
 
-            if t := state.terminated:
+            if t := cs.state.terminated:
                 LOGGER.debug(
                     f"pod container 'terminated' with {t.reason=} {t.exit_code=} {t=}"
                 )  # TODO - trim
-                if t.reason in {"OOMKilled", "Evicted", "DeadlineExceeded"}:
+                if t.reason in {
+                    "OOMKilled",
+                    "Evicted",
+                    "DeadlineExceeded",
+                    "StartError",
+                }:
                     return t.reason
                 if t.exit_code in {137, 143}:  # SIGKILL or SIGTERM
                     return t.exit_code
 
-            elif w := state.waiting:
+            elif w := cs.state.waiting:
                 LOGGER.debug(
                     f"pod container 'waiting' with {w.reason=} {w=}"
                 )  # TODO - trim
-                if w.reason in {"ImagePullBackOff", "CrashLoopBackOff"}:
+                if w.reason in {
+                    "ImagePullBackOff",
+                    "CrashLoopBackOff",
+                }:
                     return w.reason
 
         return None
