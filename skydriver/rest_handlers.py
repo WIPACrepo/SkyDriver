@@ -656,7 +656,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         if args.replace_scan:
             await self.manifests.collection.find_one_and_update(
                 {"scan_id": scan_id},
-                {"replaced_by_scan_id": new_scan_id},
+                {"$set": {"replaced_by_scan_id": new_scan_id}},
                 return_dclass=dict,
             )
 
