@@ -1133,6 +1133,17 @@ async def test_110__rescan_replacement_redirect(
         if p == "/scan/{scan_id}":
             assert manifest_beta == resp_a["manifest"] == resp_b["manifest"]  # 100%
 
+        print("now no redirect")
+        resp_a2 = await rc.request(
+            "GET", p.format(scan_id=manifest_alpha["scan_id"]), {"no_redirect": True}
+        )
+        resp_b2 = await rc.request(
+            "GET", p.format(scan_id=manifest_beta["scan_id"]), {"no_redirect": True}
+        )
+        assert resp_a2 != resp_b2  # no longer the same scan
+        assert resp_a != resp_a2  # a was not redirected this time (and it was replaced)
+        assert resp_b == resp_b2  # b is the same scan (has not been replaced)
+
 
 ########################################################################################
 
