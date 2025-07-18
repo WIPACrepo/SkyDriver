@@ -44,23 +44,48 @@ async def _has_scan_been_rescanned(
     scan_id: str,
     scan_request_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
 ) -> bool:
-    doc = await scan_request_client.find_one(  # type: ignore[attr-defined]
+    sro = await scan_request_client.find_one(  # type: ignore[attr-defined]
         get_scan_request_obj_filter(scan_id)
     )
 
-    if not doc:
+    if not sro:
         # condition should never be met -- vacuously true
         LOGGER.error(f"could not find scan request object for {scan_id=}")
         return True
-    elif not doc["rescan_ids"]:
+    elif not sro["rescan_ids"]:
         # scan has never been rescanned -> OK to restart (new rescan)
         return False
-    elif doc["rescan_ids"][-1] == scan_id:
+    elif sro["rescan_ids"][-1] == scan_id:
         # this scan is the most recent -> OK to restart (new rescan)
         return False
     else:
         # this scan already has a new rescan
         return True
+
+
+async def _has_scan_been_rescanned_too_many_times_too_recently(
+    scan_id: str,
+    scan_request_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
+    manifest_client: database.interface.ManifestClient,
+) -> bool:
+    sro = await scan_request_client.find_one(  # type: ignore[attr-defined]
+        get_scan_request_obj_filter(scan_id)
+    )
+    if not sro:
+        # condition should never be met -- vacuously true
+        LOGGER.error(f"could not find scan request object for {scan_id=}")
+        return True
+
+    all_scan_ids = [sro["scan_id"]] + sro["rescan_ids"]
+
+    # count how many in last x mins
+    result = await manifest_client.collection.count_documents(
+        {
+            "scan_id": {"$in": all_scan_ids},
+            "timestamp": {"$gt": time.time() - (60 * 60)},  # last 60 mins
+        }
+    )
+    return result > 3
 
 
 async def _request_replacement_rescan(skyd_rc: RestClient, scan_id: str) -> None:
@@ -80,6 +105,7 @@ async def run(
 ) -> None:
     """The main loop."""
     results_client = database.interface.ResultClient(mongo_client)
+    manifest_client = database.interface.ManifestClient(mongo_client)
     scan_request_client = (
         AsyncIOMotorCollection(  # in contrast, this one is accessed directly
             mongo_client[database.interface._DB_NAME],  # type: ignore[index]
@@ -139,6 +165,17 @@ async def run(
         ]
 
         LOGGER.debug(f"round III: candidates = {len(scan_ids)} {scan_ids}")
+
+        # only keep those that have not been rescanned too many times to recently
+        scan_ids = [
+            s
+            for s in scan_ids
+            if not await _has_scan_been_rescanned_too_many_times_too_recently(
+                s, scan_request_client, manifest_client
+            )
+        ]
+
+        LOGGER.debug(f"round IV: candidates = {len(scan_ids)} {scan_ids}")
 
         # only keep those that had transiently killed pod(s)
         scan_ids = [
