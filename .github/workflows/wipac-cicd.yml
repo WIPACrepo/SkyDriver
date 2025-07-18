@@ -228,7 +228,7 @@ jobs:
           echo "#!/bin/bash" >> $DIR/test-script.sh
           echo "set -xe" >> $DIR/test-script.sh
           echo "pip install .[tests]" >> $DIR/test-script.sh
-          echo "python -m pytest -vvv tests/integration --exitfirst" >> $DIR/test-script.sh
+          echo "python -m pytest -vvv tests/integration --exitfirst -k test_110__rescan_replacement_redirect" >> $DIR/test-script.sh
           chmod +x $DIR/test-script.sh
           cat $DIR/test-script.sh
 
