@@ -1087,6 +1087,7 @@ async def test_110__rescan_replacement_redirect(
         rc,
         manifest_alpha,
         test_wait_before_teardown,
+        do_delete_when_done=False,
     )
 
     # RESCAN
