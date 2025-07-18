@@ -70,6 +70,11 @@ WAIT_BEFORE_TEARDOWN = 60
 # utils
 
 
+def _add_no_redirect_arg(arghand) -> None:
+    # used only by @maybe_redirect_scan_id
+    arghand.add_argument("no_redirect", default=False, type=bool)
+
+
 def all_dc_fields(class_or_instance: Any) -> set[str]:
     """Get all the field names for a dataclass (instance or class)."""
     return set(f.name for f in dc.fields(class_or_instance))
@@ -599,6 +604,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def post(self, scan_id: str) -> None:
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
         arghand.add_argument(
             "abort_first",
             default=False,
@@ -677,6 +683,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def post(self, scan_id: str) -> None:
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
         # response args
         arghand.add_argument(
             "n_workers",
@@ -844,6 +851,7 @@ class ScanHandler(BaseSkyDriverHandler):
     async def delete(self, scan_id: str) -> None:
         """Abort a scan and/or mark manifest & result as "deleted"."""
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
         arghand.add_argument(
             "delete_completed_scan",
             default=False,
@@ -891,6 +899,7 @@ class ScanHandler(BaseSkyDriverHandler):
     async def get(self, scan_id: str) -> None:
         """Get manifest & result."""
         arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
         arghand.add_argument(
             "include_deleted",
             default=False,
@@ -926,6 +935,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
         arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
         arghand.add_argument(
             "include_deleted",
             default=False,
@@ -1022,6 +1032,8 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
+        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+
         manifest = await self.manifests.get(scan_id, True)
 
         # look up event in collection
@@ -1066,6 +1078,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted result."""
         arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
         arghand.add_argument(
             "include_deleted",
             default=False,
@@ -1136,6 +1149,8 @@ class ScanStatusHandler(BaseSkyDriverHandler):
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
+        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         # scan state
@@ -1185,6 +1200,8 @@ class ScanLogsHandler(BaseSkyDriverHandler):
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
+        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         self.write(
@@ -1212,6 +1229,8 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
+        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+
         manifest = await self.manifests.get(scan_id, incl_del=True)
         self.write(
             {
@@ -1284,6 +1303,8 @@ class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
 
         This is a high-level utility, which removes unnecessary EWMS semantics.
         """
+        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         self.write(
@@ -1309,6 +1330,8 @@ class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
 
         This is useful for debugging by seeing what was sent to condor.
         """
+        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         self.write(
