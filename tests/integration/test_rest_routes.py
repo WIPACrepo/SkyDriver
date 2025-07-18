@@ -912,7 +912,6 @@ async def _after_scan_start_logic(
     rc: RestClient,
     manifest: sdict,
     test_wait_before_teardown: float,
-    do_delete_when_done: bool = True,
 ):
     scan_id = manifest["scan_id"]
 
@@ -998,16 +997,15 @@ async def _after_scan_start_logic(
     #
     # DELETE SCAN
     #
-    if do_delete_when_done:
-        await _delete_scan(
-            rc,
-            manifest["event_metadata"],
-            scan_id,
-            manifest,
-            result,
-            True,
-            True,
-        )
+    await _delete_scan(
+        rc,
+        manifest["event_metadata"],
+        scan_id,
+        manifest,
+        result,
+        True,
+        True,
+    )
 
 
 ########################################################################################
@@ -1132,7 +1130,7 @@ async def test_110__rescan_replacement_redirect(
         print(p)
         resp_a = await rc.request("GET", p.format(scan_id=manifest_alpha["scan_id"]))
         resp_b = await rc.request("GET", p.format(scan_id=manifest_beta["scan_id"]))
-        assert resp_a == resp_b  # 100% -- both point to the same scan
+        assert str(resp_a) == str(resp_b)  # 100% -- both point to the same scan
 
         if p == "/scan/{scan_id}/manifest":
             assert manifest_beta["scan_id"] == resp_a["scan_id"] == resp_b["scan_id"]
@@ -1144,9 +1142,13 @@ async def test_110__rescan_replacement_redirect(
         resp_b2 = await rc.request(
             "GET", p.format(scan_id=manifest_beta["scan_id"]), {"no_redirect": True}
         )
-        assert resp_a2 != resp_b2  # these point to different scans
-        assert resp_a != resp_a2  # a was not redirected -- points to actual alpha scan
-        assert resp_b == resp_b2  # b is the same scan -- beta has never been replaced
+        assert str(resp_a2) != str(resp_b2)  # these point to different scans
+        assert str(resp_a) != str(
+            resp_a2
+        )  # a was not redirected -- points to actual alpha scan
+        assert str(resp_b) == str(
+            resp_b2
+        )  # b is the same scan -- beta has never been replaced
 
         if p == "/scan/{scan_id}/manifest":
             assert (
