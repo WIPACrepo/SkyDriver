@@ -90,6 +90,8 @@ class KubeAPITools:
     @staticmethod
     def pod_transiently_killed(pod: V1Pod) -> str | None:
         """Return True if the pod failed due to a transient, system-level issue that justifies a retry."""
+        LOGGER.debug(f"looking at pod: {pod}")  # TODO - trim
+
         if not pod.status.container_statuses:
             return None
 
