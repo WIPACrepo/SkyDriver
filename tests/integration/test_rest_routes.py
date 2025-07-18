@@ -1111,13 +1111,13 @@ async def test_110__rescan_replacement_redirect(
     }
     for sk in skip_keys:
         assert manifest_beta[sk] != manifest_alpha[sk]
-    # continue on...
-    await _after_scan_start_logic(
-        rc,
-        manifest_beta,
-        test_wait_before_teardown,
-        do_delete_when_done=False,
-    )
+    # NOTE -- don't continue scan b/c _after_scan_start_logic() assumes event uniqueness
+    # await _after_scan_start_logic(
+    #     rc,
+    #     manifest_beta,
+    #     test_wait_before_teardown,
+    #     do_delete_when_done=False,
+    # )
 
     # test redirects
     # only GETS
