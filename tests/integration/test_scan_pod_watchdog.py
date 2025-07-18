@@ -1,11 +1,8 @@
 """Test the scan pod watchdog runner."""
 
 import asyncio
-from typing import Callable
 from unittest import mock
 from unittest.mock import AsyncMock, call
-
-from rest_tools.client import RestClient
 
 import skydriver
 from skydriver.config import ENV
@@ -20,21 +17,23 @@ skydriver.config.config_logging()
 @mock.patch(
     "skydriver.background_runners.scan_pod_watchdog.KubeAPITools.has_transiently_killed_pod",
     side_effect=[True, False],
-    #            A     E x
+    # A = pass, E = fail
 )
 @mock.patch(
     "skydriver.background_runners.scan_pod_watchdog._has_scan_been_rescanned_too_many_times_too_recently",
     side_effect=[False, True, False],
-    #            A      D x   E
+    # A = pass, D = fail, E = pass
 )
 @mock.patch(
     "skydriver.background_runners.scan_pod_watchdog._has_scan_been_rescanned",
-    side_effect=[True, False, True, True],
-)  #             A     C x    D     E               # noqa
+    side_effect=[False, True, False, False],
+    # A = pass, C = fail, D = pass, E = pass
+)
 @mock.patch(
     "skydriver.background_runners.scan_pod_watchdog.get_scan_state_if_final_result_received",
     side_effect=[False, True, False, False, False],
-)  #             A      B x   C      D      E       # noqa
+    # B = fail
+)
 @mock.patch(
     "skydriver.background_runners.scan_pod_watchdog._get_recent_scans",
     return_value=["scan_A", "scan_B", "scan_C", "scan_D", "scan_E"],
@@ -46,23 +45,18 @@ async def test_watchdog_filtering_per_stage(
     too_many_mock: AsyncMock,
     pod_killed_mock: AsyncMock,
     rescan_request_mock: AsyncMock,
-    server: Callable[[], RestClient],
+    server,
 ) -> None:
-    """Test that watchdog filters scans at each filtering stage individually."""
+    """Test that each scan is filtered out by a unique stage."""
 
-    # Wait for one watchdog loop
-    await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.1)
+    await asyncio.sleep(ENV.SCAN_POD_WATCHDOG_DELAY * 1.1)
 
-    # Assert calls per filtering stage
+    # Assert filter stage counts
     assert recent_mock.call_count == 1
     assert final_result_mock.await_count == 5
     assert rescanned_mock.await_count == 4
     assert too_many_mock.await_count == 3
     assert pod_killed_mock.call_count == 2
 
-    # Rescans
-    expected_rescans = ["scan_A"]
-    rescan_request_mock.assert_has_awaits(
-        [call(mock.ANY, scan_id) for scan_id in expected_rescans],
-    )
-    assert rescan_request_mock.await_count == len(expected_rescans)
+    rescan_request_mock.assert_has_awaits([call(mock.ANY, "scan_A")])
+    assert rescan_request_mock.await_count == 1
