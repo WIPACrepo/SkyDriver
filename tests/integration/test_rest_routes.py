@@ -1144,6 +1144,9 @@ async def test_110__rescan_replacement_redirect(
         assert resp_a != resp_a2  # a was not redirected this time (and it was replaced)
         assert resp_b == resp_b2  # b is the same scan (has not been replaced)
 
+        if p == "/scan/{scan_id}/manifest":
+            assert resp_a2["replaced_by_scan_id"] == manifest_beta["scan_id"]
+
 
 ########################################################################################
 
