@@ -1130,6 +1130,11 @@ async def test_110__rescan_replacement_redirect(
     ]
     for p in paths:
         print(p)
+
+        #
+        # w/ redirect
+        #
+
         resp_a = await rc.request("GET", p.format(scan_id=manifest_alpha["scan_id"]))
         resp_b = await rc.request("GET", p.format(scan_id=manifest_beta["scan_id"]))
         assert resp_a == resp_b  # 100% -- both point to the same scan
@@ -1137,9 +1142,16 @@ async def test_110__rescan_replacement_redirect(
         if p == "/scan/{scan_id}/manifest":
             assert manifest_beta["scan_id"] == resp_a["scan_id"] == resp_b["scan_id"]
 
+        #
+        # w/ 'no_redirect' arg
+        #
+
         print("now no redirect")
-        if p == "/scan/{scan_id}/i3-event":
-            continue  # the i3 event will be the same since that comes from the initial request
+
+        if p in ["/scan/{scan_id}/i3-event", "/scan/{scan_id}/result"]:
+            # - i3 event will be the same since that comes from the initial request
+            # - result will be the same b/c the scan didn't actualy update "run"
+            continue
 
         resp_a2 = await rc.request(
             "GET",
