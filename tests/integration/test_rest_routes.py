@@ -1008,18 +1008,17 @@ async def _after_scan_start_logic(
     )
 
 
-POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
+########################################################################################
 
 
-async def test_010__rescan(
+async def test_100__rescan(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> None:
+    """Test rescan request w/o scan replacement."""
     rc = server()
-
-    clusters = {"foobar": 1, "a-schedd": 999, "cloud": 4568}
 
     # OG SCAN
     manifest_alpha = await _launch_scan(
@@ -1028,7 +1027,7 @@ async def test_010__rescan(
         {
             **POST_SCAN_BODY,
             "docker_tag": "3.4.0",
-            "cluster": clusters,
+            "cluster": {"foobar": 1, "a-schedd": 999, "cloud": 4568},
         },
         "3.4.0",
     )
@@ -1054,6 +1053,64 @@ async def test_010__rescan(
     }
     for sk in skip_keys:
         assert manifest_beta[sk] != manifest_alpha[sk]
+
+    # continue on...
+    await _after_scan_start_logic(
+        rc,
+        manifest_beta,
+        test_wait_before_teardown,
+    )
+
+
+async def test_110__rescan_replacement_redirect(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+) -> None:
+    """Test rescan request w/ scan replacement -- and redirects."""
+    rc = server()
+
+    # OG SCAN
+    manifest_alpha = await _launch_scan(
+        rc,
+        mongo_client,
+        {
+            **POST_SCAN_BODY,
+            "docker_tag": "3.4.0",
+            "cluster": {"foobar": 1, "a-schedd": 999, "cloud": 4568},
+        },
+        "3.4.0",
+    )
+    await _after_scan_start_logic(
+        rc,
+        manifest_alpha,
+        test_wait_before_teardown,
+    )
+
+    # RESCAN
+    manifest_beta = await rc.request(
+        "POST",
+        f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
+        {"replace_scan": True},
+    )
+    # compare manifests
+    assert manifest_beta["classifiers"] == {
+        **manifest_alpha["classifiers"],
+        **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
+    }
+    skip_keys = ["classifiers", "scan_id", "last_updated", "timestamp"]
+    assert {k: v for k, v in manifest_beta.items() if k not in skip_keys} == {
+        k: v for k, v in manifest_alpha.items() if k not in skip_keys
+    }
+    for sk in skip_keys:
+        assert manifest_beta[sk] != manifest_alpha[sk]
+
+    # test redirects
+    resp_a = await rc.request("GET", f"/scan/{manifest_alpha['scan_id']}")
+    resp_b = await rc.request("GET", f"/scan/{manifest_beta['scan_id']}")
+    assert resp_a == resp_b  # exactly the same
+
     # continue on...
     await _after_scan_start_logic(
         rc,
@@ -1065,7 +1122,10 @@ async def test_010__rescan(
 ########################################################################################
 
 
-async def test_100__bad_data(
+POST_SCAN_BODY_FOR_TEST_300 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
+
+
+async def test_300__bad_data(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
@@ -1100,12 +1160,12 @@ async def test_100__bad_data(
         await rc.request("POST", "/scan", {})
     print(e.value)
     # # bad-type body-arg
-    for arg in POST_SCAN_BODY_FOR_TEST_01:
+    for arg in POST_SCAN_BODY_FOR_TEST_300:
         for bad_val in [
             "",
             "  ",
             "\t",
-            "string" if not isinstance(POST_SCAN_BODY_FOR_TEST_01[arg], str) else None,
+            "string" if not isinstance(POST_SCAN_BODY_FOR_TEST_300[arg], str) else None,
         ]:
             print(f"{arg}: [{bad_val}]")
             with pytest.raises(
@@ -1113,7 +1173,7 @@ async def test_100__bad_data(
                 match=rf"400 Client Error: argument {arg}: .+ for url: {rc.address}/scan",
             ) as e:
                 await rc.request(
-                    "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, arg: bad_val}
+                    "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, arg: bad_val}
                 )
             print(e.value)
     for bad_val in [  # type: ignore[assignment]
@@ -1129,11 +1189,11 @@ async def test_100__bad_data(
             match=rf"400 Client Error: argument cluster: .+ for url: {rc.address}/scan",
         ) as e:
             await rc.request(
-                "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "cluster": bad_val}
+                "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "cluster": bad_val}
             )
     print(e.value)
     # # missing arg
-    for arg in POST_SCAN_BODY_FOR_TEST_01:
+    for arg in POST_SCAN_BODY_FOR_TEST_300:
         if arg in REQUIRED_FIELDS:
             print(arg)
             with pytest.raises(
@@ -1147,7 +1207,7 @@ async def test_100__bad_data(
                 await rc.request(
                     "POST",
                     "/scan",
-                    {k: v for k, v in POST_SCAN_BODY_FOR_TEST_01.items() if k != arg},
+                    {k: v for k, v in POST_SCAN_BODY_FOR_TEST_300.items() if k != arg},
                 )
         print(e.value)
     # # bad docker tag
@@ -1156,7 +1216,7 @@ async def test_100__bad_data(
         match=rf"400 Client Error: argument docker_tag: Image tag not on Docker Hub for url: {rc.address}/scan",
     ) as e:
         await rc.request(
-            "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "docker_tag": "foo"}
+            "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "docker_tag": "foo"}
         )
     print(e.value)
 
@@ -1164,7 +1224,7 @@ async def test_100__bad_data(
     manifest = await _launch_scan(
         rc,
         mongo_client,
-        POST_SCAN_BODY_FOR_TEST_01,
+        POST_SCAN_BODY_FOR_TEST_300,
         os.environ["LATEST_TAG"],
     )
     scan_id = manifest["scan_id"]
@@ -1334,3 +1394,6 @@ async def test_100__bad_data(
         True,
         True,
     )
+
+
+########################################################################################
