@@ -114,7 +114,7 @@ async def run(
         if not (
             scan_ids := await _get_recent_scans(
                 skyscan_k8s_job_client,
-                min(ENV.SCAN_POD_WATCHDOG_DELAY - 1, 10 * 60),  # at most 10 mins ago
+                ENV.SCAN_POD_WATCHDOG_DELAY - 1,  # at most 1 loop ago (1 sec cushion)
                 (60 * 60),  # 1 hour ago
             )
         ):
