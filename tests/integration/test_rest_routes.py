@@ -1109,7 +1109,8 @@ async def test_110__rescan_replacement_redirect(
     # test redirects
     resp_a = await rc.request("GET", f"/scan/{manifest_alpha['scan_id']}")
     resp_b = await rc.request("GET", f"/scan/{manifest_beta['scan_id']}")
-    assert manifest_beta == resp_a == resp_b  # exactly the same
+    assert resp_a == resp_b  # 100%
+    assert manifest_beta == resp_a["manifest"] == resp_b["manifest"]  # 100%
 
     # continue on...
     await _after_scan_start_logic(
