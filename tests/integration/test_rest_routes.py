@@ -1017,6 +1017,20 @@ async def _after_scan_start_logic(
 ########################################################################################
 
 
+def _assert_rescan_response(manifest_alpha: dict, manifest_beta: dict) -> None:
+    # compare manifests
+    assert manifest_beta["classifiers"] == {
+        **manifest_alpha["classifiers"],
+        **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
+    }
+    skip_keys = ["classifiers", "scan_id", "last_updated", "timestamp"]
+    assert {k: v for k, v in manifest_beta.items() if k not in skip_keys} == {
+        k: v for k, v in manifest_alpha.items() if k not in skip_keys
+    }
+    for sk in skip_keys:
+        assert manifest_beta[sk] != manifest_alpha[sk]
+
+
 async def test_100__rescan(
     server: Callable[[], RestClient],
     known_clusters: dict,
@@ -1048,17 +1062,7 @@ async def test_100__rescan(
         "POST",
         f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
     )
-    # compare manifests
-    assert manifest_beta["classifiers"] == {
-        **manifest_alpha["classifiers"],
-        **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
-    }
-    skip_keys = ["classifiers", "scan_id", "last_updated", "timestamp"]
-    assert {k: v for k, v in manifest_beta.items() if k not in skip_keys} == {
-        k: v for k, v in manifest_alpha.items() if k not in skip_keys
-    }
-    for sk in skip_keys:
-        assert manifest_beta[sk] != manifest_alpha[sk]
+    _assert_rescan_response(manifest_alpha, manifest_beta)
     # continue on...
     await _after_scan_start_logic(
         rc,
@@ -1100,17 +1104,7 @@ async def test_110__rescan_replacement_redirect(
         f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
         {"replace_scan": True},
     )
-    # compare manifests
-    assert manifest_beta["classifiers"] == {
-        **manifest_alpha["classifiers"],
-        **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
-    }
-    skip_keys = ["classifiers", "scan_id", "last_updated", "timestamp"]
-    assert {k: v for k, v in manifest_beta.items() if k not in skip_keys} == {
-        k: v for k, v in manifest_alpha.items() if k not in skip_keys
-    }
-    for sk in skip_keys:
-        assert manifest_beta[sk] != manifest_alpha[sk]
+    _assert_rescan_response(manifest_alpha, manifest_beta)
     # NOTE -- don't continue scan b/c _after_scan_start_logic() assumes event uniqueness
     # await _after_scan_start_logic(
     #     rc,
