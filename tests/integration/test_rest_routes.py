@@ -912,6 +912,7 @@ async def _after_scan_start_logic(
     rc: RestClient,
     manifest: sdict,
     test_wait_before_teardown: float,
+    do_delete_when_done: bool = True,
 ):
     scan_id = manifest["scan_id"]
 
@@ -997,15 +998,16 @@ async def _after_scan_start_logic(
     #
     # DELETE SCAN
     #
-    await _delete_scan(
-        rc,
-        manifest["event_metadata"],
-        scan_id,
-        manifest,
-        result,
-        True,
-        True,
-    )
+    if do_delete_when_done:
+        await _delete_scan(
+            rc,
+            manifest["event_metadata"],
+            scan_id,
+            manifest,
+            result,
+            True,
+            True,
+        )
 
 
 ########################################################################################
@@ -1109,6 +1111,7 @@ async def test_110__rescan_replacement_redirect(
         rc,
         manifest_beta,
         test_wait_before_teardown,
+        do_delete_when_done=False,
     )
 
     # test redirects
