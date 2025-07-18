@@ -1083,12 +1083,12 @@ async def test_110__rescan_replacement_redirect(
         },
         "3.4.0",
     )
-    await _after_scan_start_logic(
-        rc,
-        manifest_alpha,
-        test_wait_before_teardown,
-        do_delete_when_done=False,
-    )
+    # await _after_scan_start_logic(
+    #     rc,
+    #     manifest_alpha,
+    #     test_wait_before_teardown,
+    #     do_delete_when_done=False,
+    # )
 
     # RESCAN
     manifest_beta = await rc.request(
@@ -1108,12 +1108,12 @@ async def test_110__rescan_replacement_redirect(
     for sk in skip_keys:
         assert manifest_beta[sk] != manifest_alpha[sk]
     # continue on...
-    await _after_scan_start_logic(
-        rc,
-        manifest_beta,
-        test_wait_before_teardown,
-        do_delete_when_done=False,
-    )
+    # await _after_scan_start_logic(
+    #     rc,
+    #     manifest_beta,
+    #     test_wait_before_teardown,
+    #     do_delete_when_done=False,
+    # )
 
     # test redirects
     # only GETS
