@@ -131,6 +131,15 @@ async def run(
 
         LOGGER.debug(f"round II: candidates = {len(scan_ids)} {scan_ids}")
 
+        # remove any that have rescans (these have already been replaced)
+        scan_ids = [
+            s
+            for s in scan_ids
+            if not await _has_scan_been_rescanned(s, scan_request_client)
+        ]
+
+        LOGGER.debug(f"round III: candidates = {len(scan_ids)} {scan_ids}")
+
         # only keep those that had transiently killed pod(s)
         scan_ids = [
             s
@@ -139,15 +148,6 @@ async def run(
                 k8s_core_api,
                 SkyScanK8sJobFactory.get_job_name(s),
             )
-        ]
-
-        LOGGER.debug(f"round III: candidates = {len(scan_ids)} {scan_ids}")
-
-        # remove any that have rescans (these have already been replaced)
-        scan_ids = [
-            s
-            for s in scan_ids
-            if not await _has_scan_been_rescanned(s, scan_request_client)
         ]
 
         LOGGER.debug(f"watchdog finalists = {len(scan_ids)} {scan_ids}")

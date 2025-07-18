@@ -18,12 +18,12 @@ skydriver.config.config_logging()
     new_callable=AsyncMock,
 )
 @mock.patch(
-    "skydriver.background_runners.scan_pod_watchdog._has_scan_been_rescanned",
+    "skydriver.background_runners.scan_pod_watchdog.KubeAPITools.has_transiently_killed_pod",
     side_effect=[False, True, False],
     #            A      D x   E
 )
 @mock.patch(
-    "skydriver.background_runners.scan_pod_watchdog.KubeAPITools.has_transiently_killed_pod",
+    "skydriver.background_runners.scan_pod_watchdog._has_scan_been_rescanned",
     side_effect=[True, False, True, True],
 )  #             A     C x    D     E               # noqa
 @mock.patch(
@@ -49,9 +49,9 @@ async def test_watchdog_filtering_per_stage(
 
     # Assert calls per filtering stage
     assert recent_mock.call_count == 1
-    assert final_result_mock.await_count == 5  # called for each scan
-    assert pod_killed_mock.call_count == 4  # only for those that passed final result
-    assert rescanned_mock.await_count == 3  # only for those that passed pod check
+    assert final_result_mock.await_count == 5
+    assert rescanned_mock.await_count == 4
+    assert pod_killed_mock.call_count == 3
 
     # Rescans
     expected_rescans = ["scan_A", "scan_E"]
