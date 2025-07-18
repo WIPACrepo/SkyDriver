@@ -153,7 +153,7 @@ async def run(
             )
         ):
             continue
-        LOGGER.debug(f"filter #0 - recent scans    - {len(scan_ids)} {scan_ids}")
+        LOGGER.debug(f"filter #0 - recent scans     - {len(scan_ids)} {scan_ids}")
 
         # remove any of those that have finished -- app logic
         scan_ids = [
@@ -161,7 +161,7 @@ async def run(
             for s in scan_ids
             if not await get_scan_state_if_final_result_received(s, results_client)
         ]
-        LOGGER.debug(f"filter #1 - non-finished    - {len(scan_ids)} {scan_ids}")
+        LOGGER.debug(f"filter #1 - non-finished     - {len(scan_ids)} {scan_ids}")
 
         # remove any that have rescans (these have already been replaced)
         scan_ids = [
@@ -169,7 +169,7 @@ async def run(
             for s in scan_ids
             if not await _has_scan_been_rescanned(s, scan_request_client)
         ]
-        LOGGER.debug(f"filter #2 - new to watchdog - {len(scan_ids)} {scan_ids}")
+        LOGGER.debug(f"filter #2 - not rescanned yet - {len(scan_ids)} {scan_ids}")
 
         # only keep those that have not been rescanned too many times to recently
         scan_ids = [
@@ -179,7 +179,7 @@ async def run(
                 s, scan_request_client, manifest_client
             )
         ]
-        LOGGER.debug(f"filter #3 - not throttled   - {len(scan_ids)} {scan_ids}")
+        LOGGER.debug(f"filter #3 - not throttled    - {len(scan_ids)} {scan_ids}")
 
         # only keep those that had transiently killed pod(s)
         scan_ids = [
