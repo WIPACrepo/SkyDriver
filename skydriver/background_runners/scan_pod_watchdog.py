@@ -24,13 +24,15 @@ LOGGER = logging.getLogger(__name__)
 
 async def _get_recent_scans(
     skyscan_k8s_job_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
+    min_ago: int,
+    max_ago: int,
 ) -> list[str]:
     scan_ids = []
     async for d in skyscan_k8s_job_client.find(  # type: ignore[attr-defined]
         {
             "k8s_started_ts": {
-                "$gte": time.time() - (60 * 60),  # 1 hour ago
-                "$lt": time.time() - (10 * 60),  # 10 mins ago
+                "$gte": time.time() - max_ago,
+                "$lt": time.time() - min_ago,
             }
         }
     ):
@@ -109,7 +111,13 @@ async def run(
             LOGGER.info("scan pod watchdog is still alive")
 
         # get list of scans that were k8s started recently
-        if not (scan_ids := await _get_recent_scans(skyscan_k8s_job_client)):
+        if not (
+            scan_ids := await _get_recent_scans(
+                skyscan_k8s_job_client,
+                min(ENV.SCAN_BACKLOG_RUNNER_DELAY - 1, 10 * 60),  # at most 10 mins ago
+                (60 * 60),  # 1 hour ago
+            )
+        ):
             continue
 
         LOGGER.debug(f"round I: candidates = {len(scan_ids)} {scan_ids}")
