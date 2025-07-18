@@ -90,17 +90,13 @@ class KubeAPITools:
     @staticmethod
     def pod_transiently_killed(pod: V1Pod) -> str | None:
         """Return True if the pod failed due to a transient, system-level issue that justifies a retry."""
-        LOGGER.debug(f"looking at pod: {pod}")  # TODO - trim
-
         if not pod.status.container_statuses:
             return None
 
         for cs in pod.status.container_statuses:
 
             if t := cs.state.terminated:
-                LOGGER.debug(
-                    f"pod container 'terminated' with {t.reason=} {t.exit_code=} {t=}"
-                )  # TODO - trim
+                LOGGER.debug(f"pod container 'terminated' {t.reason=} {t.exit_code=}")
                 if t.reason in {
                     "OOMKilled",
                     "Evicted",
@@ -112,9 +108,7 @@ class KubeAPITools:
                     return t.exit_code
 
             elif w := cs.state.waiting:
-                LOGGER.debug(
-                    f"pod container 'waiting' with {w.reason=} {w=}"
-                )  # TODO - trim
+                LOGGER.debug(f"pod container 'waiting' {w.reason=}")
                 if w.reason in {
                     "ImagePullBackOff",
                     "CrashLoopBackOff",
