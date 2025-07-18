@@ -117,4 +117,5 @@ class KubeAPITools:
     ) -> bool:
         """Does this job have any transiently killed pods?"""
         pods = KubeAPITools.get_pods(k8s_core_api, job_name)
+        LOGGER.debug(f"pods: {len(pods)=}")
         return any(KubeAPITools.pod_transiently_killed(p) for p in pods)
