@@ -73,7 +73,7 @@ async def _request_replacement_rescan(skyd_rc: RestClient, scan_id: str) -> None
     )
 
 
-@utils.resilient_loop("scan pod watchdog", ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
+@utils.resilient_loop("scan pod watchdog", ENV.SCAN_POD_WATCHDOG_DELAY, LOGGER)
 async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_core_api: kubernetes.client.CoreV1Api,  # CoreV1Api(k8s_batch_api.api_client)
@@ -101,12 +101,12 @@ async def run(
     )
 
     timer_for_logging = IntervalTimer(
-        ENV.SCAN_BACKLOG_RUNNER_DELAY, f"{LOGGER.name}.heartbeat_timer"
+        max(ENV.SCAN_POD_WATCHDOG_DELAY, 10 * 60), f"{LOGGER.name}.heartbeat_timer"
     )
 
     # main loop
     while True:
-        await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_SHORT_DELAY)
+        await asyncio.sleep(ENV.SCAN_POD_WATCHDOG_DELAY)
         if timer_for_logging.has_interval_elapsed():
             LOGGER.info("scan pod watchdog is still alive")
 
@@ -114,7 +114,7 @@ async def run(
         if not (
             scan_ids := await _get_recent_scans(
                 skyscan_k8s_job_client,
-                min(ENV.SCAN_BACKLOG_RUNNER_DELAY - 1, 10 * 60),  # at most 10 mins ago
+                min(ENV.SCAN_POD_WATCHDOG_DELAY - 1, 10 * 60),  # at most 10 mins ago
                 (60 * 60),  # 1 hour ago
             )
         ):

@@ -74,6 +74,8 @@ class EnvConfig:
     SCAN_BACKLOG_RUNNER_DELAY: int = 5 * 60
     SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: int = 5 * 60  # entry is revived after N secs
 
+    SCAN_POD_WATCHDOG_DELAY: int = 1 * 60  # 1 min
+
     THIS_IMAGE_WITH_TAG: str = ""
     MIN_SKYMAP_SCANNER_TAG: str = "v4.0.0"  # TODO: update this either in k8s or here
 
@@ -143,6 +145,7 @@ class EnvConfig:
                 "Missing required environment variable: 'THIS_IMAGE_WITH_TAG'"
             )
 
+        # skyscan launcher / backlog runner
         if self.SCAN_BACKLOG_RUNNER_SHORT_DELAY > self.SCAN_BACKLOG_RUNNER_DELAY:
             raise RuntimeError(
                 "'SCAN_BACKLOG_RUNNER_SHORT_DELAY' cannot be greater than 'SCAN_BACKLOG_RUNNER_DELAY'"
@@ -150,6 +153,12 @@ class EnvConfig:
         if self.SCAN_BACKLOG_RUNNER_DELAY > self.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE:
             raise RuntimeError(
                 "'SCAN_BACKLOG_RUNNER_DELAY' cannot be greater than 'SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE'"
+            )
+
+        # watchdog runner
+        if self.K8S_TTL_SECONDS_AFTER_FINISHED < 3 * self.SCAN_POD_WATCHDOG_DELAY:
+            raise RuntimeError(
+                "'K8S_TTL_SECONDS_AFTER_FINISHED' must be at least 3x 'SCAN_POD_WATCHDOG_DELAY'"
             )
 
 
