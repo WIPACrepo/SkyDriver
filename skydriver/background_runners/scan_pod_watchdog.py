@@ -21,6 +21,12 @@ from ..utils import (
 
 LOGGER = logging.getLogger(__name__)
 
+SCAN_POD_WATCHDOG_RECENCY_WINDOW = 60 * 60  # 1 hour ago
+
+# we want to limit the number of rescan replacements (revivals)
+SCAN_POD_WATCHDOG_TOO_MANY_TOO_RECENT_SECS = SCAN_POD_WATCHDOG_RECENCY_WINDOW * 10
+SCAN_POD_WATCHDOG_TOO_MANY_TOO_RECENT_N = 3
+
 
 async def _get_recent_scans(
     skyscan_k8s_job_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
@@ -82,10 +88,12 @@ async def _has_scan_been_rescanned_too_many_times_too_recently(
     result = await manifest_client.collection.count_documents(
         {
             "scan_id": {"$in": all_scan_ids},
-            "timestamp": {"$gt": time.time() - (60 * 60)},  # last 60 mins
+            "timestamp": {
+                "$gt": time.time() - SCAN_POD_WATCHDOG_TOO_MANY_TOO_RECENT_SECS
+            },
         }
     )
-    return result > 3
+    return result > SCAN_POD_WATCHDOG_TOO_MANY_TOO_RECENT_N
 
 
 async def _request_replacement_rescan(skyd_rc: RestClient, scan_id: str) -> None:
@@ -141,7 +149,7 @@ async def run(
             scan_ids := await _get_recent_scans(
                 skyscan_k8s_job_client,
                 ENV.SCAN_POD_WATCHDOG_DELAY - 1,  # at most 1 loop ago (1 sec cushion)
-                (60 * 60),  # 1 hour ago
+                SCAN_POD_WATCHDOG_RECENCY_WINDOW,
             )
         ):
             continue
