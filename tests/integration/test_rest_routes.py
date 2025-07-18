@@ -1071,48 +1071,9 @@ async def test_100__rescan(
     )
 
 
-async def test_110__rescan_replacement_redirect(
-    server: Callable[[], RestClient],
-    known_clusters: dict,
-    test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+async def _assert_scan_id_redirects(
+    rc: RestClient, manifest_alpha: dict, manifest_beta: dict
 ) -> None:
-    """Test rescan request w/ scan replacement -- and redirects."""
-    rc = server()
-
-    # OG SCAN
-    manifest_alpha = await _launch_scan(
-        rc,
-        mongo_client,
-        {
-            **POST_SCAN_BODY,
-            "docker_tag": "3.4.0",
-            "cluster": {"foobar": 1, "a-schedd": 999, "cloud": 4568},
-        },
-        "3.4.0",
-    )
-    await _after_scan_start_logic(
-        rc,
-        manifest_alpha,
-        test_wait_before_teardown,
-        do_delete_when_done=False,
-    )
-
-    # RESCAN
-    manifest_beta = await rc.request(
-        "POST",
-        f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
-        {"replace_scan": True},
-    )
-    _assert_rescan_response(manifest_alpha, manifest_beta)
-    # NOTE -- don't continue scan b/c _after_scan_start_logic() assumes event uniqueness
-    # await _after_scan_start_logic(
-    #     rc,
-    #     manifest_beta,
-    #     test_wait_before_teardown,
-    #     do_delete_when_done=False,
-    # )
-
     # test redirects
     # only GETS
     paths = [
@@ -1172,6 +1133,51 @@ async def test_110__rescan_replacement_redirect(
                 == resp_a2["replaced_by_scan_id"]
                 == resp_b2["scan_id"]
             )
+
+
+async def test_110__rescan_replacement_redirect(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+) -> None:
+    """Test rescan request w/ scan replacement -- and redirects."""
+    rc = server()
+
+    # OG SCAN
+    manifest_alpha = await _launch_scan(
+        rc,
+        mongo_client,
+        {
+            **POST_SCAN_BODY,
+            "docker_tag": "3.4.0",
+            "cluster": {"foobar": 1, "a-schedd": 999, "cloud": 4568},
+        },
+        "3.4.0",
+    )
+    await _after_scan_start_logic(
+        rc,
+        manifest_alpha,
+        test_wait_before_teardown,
+        do_delete_when_done=False,
+    )
+
+    # RESCAN
+    manifest_beta = await rc.request(
+        "POST",
+        f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
+        {"replace_scan": True},
+    )
+    _assert_rescan_response(manifest_alpha, manifest_beta)
+    # NOTE -- don't continue scan b/c _after_scan_start_logic() assumes event uniqueness
+    # await _after_scan_start_logic(
+    #     rc,
+    #     manifest_beta,
+    #     test_wait_before_teardown,
+    #     do_delete_when_done=False,
+    # )
+
+    await _assert_scan_id_redirects(rc, manifest_alpha, manifest_beta)
 
 
 ########################################################################################
