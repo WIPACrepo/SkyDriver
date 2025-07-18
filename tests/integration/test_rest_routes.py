@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import pprint
+import random
 import re
 import time
 from typing import Any, Callable
@@ -657,7 +658,10 @@ async def _send_result(
     is_final: bool,
 ) -> sdict:
     # send finished result
-    result = {"alpha": (11 + 1) ** 11, "beta": -11}
+    result = {
+        "alpha": random.randint(0, 100),
+        "beta": -1 * random.randint(0, 100),
+    }
     if is_final:
         result["gamma"] = 5
     resp = await rc.request(
@@ -1083,12 +1087,12 @@ async def test_110__rescan_replacement_redirect(
         },
         "3.4.0",
     )
-    # await _after_scan_start_logic(
-    #     rc,
-    #     manifest_alpha,
-    #     test_wait_before_teardown,
-    #     do_delete_when_done=False,
-    # )
+    await _after_scan_start_logic(
+        rc,
+        manifest_alpha,
+        test_wait_before_teardown,
+        do_delete_when_done=False,
+    )
 
     # RESCAN
     manifest_beta = await rc.request(
@@ -1108,12 +1112,12 @@ async def test_110__rescan_replacement_redirect(
     for sk in skip_keys:
         assert manifest_beta[sk] != manifest_alpha[sk]
     # continue on...
-    # await _after_scan_start_logic(
-    #     rc,
-    #     manifest_beta,
-    #     test_wait_before_teardown,
-    #     do_delete_when_done=False,
-    # )
+    await _after_scan_start_logic(
+        rc,
+        manifest_beta,
+        test_wait_before_teardown,
+        do_delete_when_done=False,
+    )
 
     # test redirects
     # only GETS
@@ -1148,9 +1152,8 @@ async def test_110__rescan_replacement_redirect(
 
         print("now no redirect")
 
-        if p in ["/scan/{scan_id}/i3-event", "/scan/{scan_id}/result"]:
+        if p in ["/scan/{scan_id}/i3-event"]:
             # - i3 event will be the same since that comes from the initial request
-            # - result will be the same b/c the scan didn't actualy update "run"
             continue
 
         resp_a2 = await rc.request(
