@@ -41,7 +41,7 @@ def get_rest_client(skydriver_type: str) -> RestClient:
         skydriver_url,
         token_url="https://keycloak.icecube.wisc.edu/auth/realms/IceCube",
         filename=str(Path(f"~/device-refresh-token-{name}").expanduser().resolve()),
-        client_id=f"{name}-external",
+        client_id="skydriver-external",
         retries=0,
     )
 
