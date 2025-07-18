@@ -1053,7 +1053,6 @@ async def test_100__rescan(
     }
     for sk in skip_keys:
         assert manifest_beta[sk] != manifest_alpha[sk]
-
     # continue on...
     await _after_scan_start_logic(
         rc,
@@ -1105,19 +1104,34 @@ async def test_110__rescan_replacement_redirect(
     }
     for sk in skip_keys:
         assert manifest_beta[sk] != manifest_alpha[sk]
-
-    # test redirects
-    resp_a = await rc.request("GET", f"/scan/{manifest_alpha['scan_id']}")
-    resp_b = await rc.request("GET", f"/scan/{manifest_beta['scan_id']}")
-    assert resp_a == resp_b  # 100%
-    assert manifest_beta == resp_a["manifest"] == resp_b["manifest"]  # 100%
-
     # continue on...
     await _after_scan_start_logic(
         rc,
         manifest_beta,
         test_wait_before_teardown,
     )
+
+    # test redirects
+    # only GETS
+    paths = [
+        "/scan/{scan_id}",
+        "/scan/{scan_id}/manifest",
+        "/scan/{scan_id}/i3-event",
+        "/scan/{scan_id}/result",
+        "/scan/{scan_id}/status",
+        "/scan/{scan_id}/logs",
+        "/scan/{scan_id}/ewms/workflow-id",
+        "/scan/{scan_id}/ewms/workforce",
+        "/scan/{scan_id}/ewms/taskforces",
+    ]
+    for p in paths:
+        print(p)
+        resp_a = await rc.request("GET", p.format(scan_id=manifest_alpha["scan_id"]))
+        resp_b = await rc.request("GET", p.format(scan_id=manifest_beta["scan_id"]))
+        assert resp_a == resp_b  # 100%
+
+        if p == "/scan/{scan_id}":
+            assert manifest_beta == resp_a["manifest"] == resp_b["manifest"]  # 100%
 
 
 ########################################################################################
