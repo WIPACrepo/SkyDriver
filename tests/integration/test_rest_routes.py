@@ -1152,10 +1152,6 @@ async def test_110__rescan_replacement_redirect(
 
         print("now no redirect")
 
-        if p in ["/scan/{scan_id}/i3-event"]:
-            # - i3 event will be the same since that comes from the initial request
-            continue
-
         resp_a2 = await rc.request(
             "GET",
             p.format(scan_id=manifest_alpha["scan_id"]),
@@ -1166,9 +1162,15 @@ async def test_110__rescan_replacement_redirect(
             p.format(scan_id=manifest_beta["scan_id"]),
             {"no_redirect": True},
         )
-        assert resp_a2 != resp_b2  # these point to different scans
-        assert resp_a != resp_a2  # a was not redirected -- points to actual alpha scan
-        assert resp_b == resp_b2  # b is the same scan -- beta has never been replaced
+
+        if p in ["/scan/{scan_id}/i3-event"]:
+            # - i3 event will be the same since that comes from the initial request
+            assert resp_a2 == resp_b2
+            continue
+        else:
+            assert resp_a2 != resp_b2  # these point to different scans
+            assert resp_a != resp_a2  # a not redirected -- points to actual alpha scan
+            assert resp_b == resp_b2  # b is same scan -- beta has never been replaced
 
         if p == "/scan/{scan_id}/manifest":
             assert (
