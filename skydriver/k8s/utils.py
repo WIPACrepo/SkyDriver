@@ -102,6 +102,7 @@ class KubeAPITools:
                     "Evicted",
                     "DeadlineExceeded",
                     "StartError",
+                    # future: add more as encountered
                 }:
                     return t.reason
                 if t.exit_code in {137, 143}:  # SIGKILL or SIGTERM
@@ -110,8 +111,8 @@ class KubeAPITools:
             elif w := cs.state.waiting:
                 LOGGER.debug(f"pod container 'waiting' {w.reason=}")
                 if w.reason in {
-                    "ImagePullBackOff",
                     "CrashLoopBackOff",
+                    # future: add more as encountered
                 }:
                     return w.reason
 
