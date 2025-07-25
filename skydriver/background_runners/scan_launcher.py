@@ -6,10 +6,10 @@ import time
 
 import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+from tenacity import retry, stop_never, wait_fixed
 from tornado import web
 from wipac_dev_tools.timing_tools import IntervalTimer
 
-from . import utils
 from .. import database
 from ..config import ENV
 from ..k8s.utils import KubeAPITools
@@ -93,7 +93,13 @@ async def get_next(
         return entry, manifest, scan_request_obj, skyscan_k8s_job
 
 
-@utils.resilient_loop("scan launcher", ENV.SCAN_BACKLOG_RUNNER_DELAY, LOGGER)
+@retry(
+    wait=wait_fixed(ENV.SCAN_BACKLOG_RUNNER_DELAY),
+    stop=stop_never,
+    before=lambda x: LOGGER.info(f"Started {__name__}."),
+    before_sleep=lambda x: LOGGER.info(f"Restarting {__name__} soon..."),
+    after=lambda x: LOGGER.info(f"Restarted {__name__}."),
+)
 async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,

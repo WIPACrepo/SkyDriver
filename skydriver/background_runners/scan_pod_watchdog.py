@@ -7,9 +7,9 @@ import time
 import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from rest_tools.client import RestClient
+from tenacity import retry, stop_never, wait_fixed
 from wipac_dev_tools.timing_tools import IntervalTimer
 
-from . import utils
 from .. import database
 from ..config import ENV
 from ..k8s.scanner_instance import EnvVarFactory, SkyScanK8sJobFactory
@@ -106,7 +106,13 @@ async def _request_replacement_rescan(skyd_rc: RestClient, scan_id: str) -> None
     )
 
 
-@utils.resilient_loop("scan pod watchdog", ENV.SCAN_POD_WATCHDOG_DELAY, LOGGER)
+@retry(
+    wait=wait_fixed(ENV.SCAN_POD_WATCHDOG_DELAY),
+    stop=stop_never,
+    before=lambda x: LOGGER.info(f"Started {__name__}."),
+    before_sleep=lambda x: LOGGER.info(f"Restarting {__name__} soon..."),
+    after=lambda x: LOGGER.info(f"Restarted {__name__}."),
+)
 async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_core_api: kubernetes.client.CoreV1Api,  # CoreV1Api(k8s_batch_api.api_client)
