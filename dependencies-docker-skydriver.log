@@ -8,8 +8,8 @@
 ########################################################################
 aiocache==0.12.3
 async-lru==2.0.5
-boto3==1.39.13
-botocore==1.39.13
+boto3==1.39.14
+botocore==1.39.14
 cachetools==5.5.2
 certifi==2025.7.14
 cffi==1.17.1
@@ -39,6 +39,7 @@ requests-oauthlib==2.0.0
 rsa==4.9.1
 s3transfer==0.13.1
 six==1.17.0
+tenacity==9.1.2
 tornado==6.5.1
 typeguard==4.4.4
 typing_extensions==4.14.1
@@ -58,15 +59,15 @@ pipdeptree==2.28.0
 skydriver-s3-sidecar-ewms-init-container
 ├── aiocache [required: Any, installed: 0.12.3]
 ├── async-lru [required: Any, installed: 2.0.5]
-├── boto3 [required: Any, installed: 1.39.13]
-│   ├── botocore [required: >=1.39.13,<1.40.0, installed: 1.39.13]
+├── boto3 [required: Any, installed: 1.39.14]
+│   ├── botocore [required: >=1.39.14,<1.40.0, installed: 1.39.14]
 │   │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   │   ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │   │   │   └── six [required: >=1.5, installed: 1.17.0]
 │   │   └── urllib3 [required: >=1.25.4,<3,!=2.2.0, installed: 2.5.0]
 │   ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │   └── s3transfer [required: >=0.13.0,<0.14.0, installed: 0.13.1]
-│       └── botocore [required: >=1.37.4,<2.0a.0, installed: 1.39.13]
+│       └── botocore [required: >=1.37.4,<2.0a.0, installed: 1.39.14]
 │           ├── jmespath [required: >=0.7.1,<2.0.0, installed: 1.0.1]
 │           ├── python-dateutil [required: >=2.1,<3.0.0, installed: 2.9.0.post0]
 │           │   └── six [required: >=1.5, installed: 1.17.0]
@@ -112,6 +113,7 @@ skydriver-s3-sidecar-ewms-init-container
 │   ├── idna [required: >=2.5,<4, installed: 3.10]
 │   ├── urllib3 [required: >=1.21.1,<3, installed: 2.5.0]
 │   └── certifi [required: >=2017.4.17, installed: 2025.7.14]
+├── tenacity [required: Any, installed: 9.1.2]
 ├── tornado [required: Any, installed: 6.5.1]
 ├── typeguard [required: Any, installed: 4.4.4]
 │   └── typing_extensions [required: >=4.14.0, installed: 4.14.1]
