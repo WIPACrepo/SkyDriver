@@ -114,17 +114,13 @@ async def run(
     """The main loop."""
     results_client = database.interface.ResultClient(mongo_client)
     manifest_client = database.interface.ManifestClient(mongo_client)
-    scan_request_client = (
-        AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-            mongo_client[database.interface._DB_NAME],  # type: ignore[index]
-            database.utils._SCAN_REQUEST_COLL_NAME,
-        )
+    scan_request_client = AsyncIOMotorCollection(
+        mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+        database.utils._SCAN_REQUEST_COLL_NAME,
     )
-    skyscan_k8s_job_client = (
-        AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-            mongo_client[database.interface._DB_NAME],  # type: ignore[index]
-            database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
-        )
+    skyscan_k8s_job_client = AsyncIOMotorCollection(
+        mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+        database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
     )
     skyd_rc = RestClient(  # -- talk to self
         ENV.HERE_URL,
