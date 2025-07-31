@@ -152,7 +152,7 @@ async def server(
         await asyncio.sleep(0)  # start up previous task
 
         def client() -> RestClient:
-            return RestClient(f"http://localhost:{port}", retries=0)
+            return RestClient(f"http://localhost:{port}", retries=0, timeout=120)
 
         try:
             await asyncio.sleep(0.5)  # wait for server startup
