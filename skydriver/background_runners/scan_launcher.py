@@ -1,4 +1,4 @@
-"""The queuing logic for launching skymap scanner instances."""
+"""The background runner responsible for launching skymap scanner instances."""
 
 import asyncio
 import logging
@@ -6,12 +6,13 @@ import time
 
 import kubernetes.client  # type: ignore[import-untyped]
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+from tenacity import retry, stop_never, wait_fixed
 from tornado import web
 from wipac_dev_tools.timing_tools import IntervalTimer
 
-from .utils import KubeAPITools
 from .. import database
 from ..config import ENV
+from ..k8s.utils import KubeAPITools
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,9 +22,9 @@ async def put_on_backlog(
     scan_backlog: database.interface.ScanBacklogClient,
     priority: int,
 ) -> None:
-    """Enqueue k8s job to be started by job-starter thread."""
+    """Enqueue k8s job to be started later by the scan launcher."""
     try:
-        LOGGER.info(f"enqueuing k8s job for {scan_id=}")
+        LOGGER.info(f"putting future scan on backlog ({scan_id=})")
         entry = database.schema.ScanBacklogEntry(
             scan_id=scan_id,
             timestamp=time.time(),
@@ -34,7 +35,7 @@ async def put_on_backlog(
         LOGGER.exception(e)
         raise web.HTTPError(
             400,
-            log_message="Failed to enqueue Kubernetes job for Scanner instance",
+            log_message="Failed to put future scan on backlog",
         )
 
 
@@ -92,35 +93,18 @@ async def get_next(
         return entry, manifest, scan_request_obj, skyscan_k8s_job
 
 
+@retry(
+    wait=wait_fixed(ENV.SCAN_BACKLOG_RUNNER_DELAY),
+    stop=stop_never,
+    before=lambda x: LOGGER.info(f"Started {__name__}."),
+    before_sleep=lambda x: LOGGER.info(f"Restarting {__name__} soon..."),
+    after=lambda x: LOGGER.info(f"Restarted {__name__}."),
+)
 async def run(
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
-    """Error-handling around the scan backlog runner loop."""
-    LOGGER.info("Started scan backlog runner.")
-
-    while True:
-        # let's go!
-        try:
-            await _run(mongo_client, k8s_batch_api)
-        except Exception as e:
-            LOGGER.exception(e)
-            LOGGER.error(
-                f"above error stopped the backlogger, "
-                f"resuming in {ENV.SCAN_BACKLOG_RUNNER_DELAY} seconds..."
-            )
-
-        # wait hopefully log enough that any transient errors are resolved,
-        #   like a mongo pod failure and restart
-        await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_DELAY)
-        LOGGER.info("Restarted scan backlog runner.")
-
-
-async def _run(
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
-    k8s_batch_api: kubernetes.client.BatchV1Api,
-) -> None:
-    """The (actual) main loop."""
+    """The main loop."""
     manifest_client = database.interface.ManifestClient(mongo_client)
     backlog_client = database.interface.ScanBacklogClient(mongo_client)
     scan_request_client = (
@@ -147,7 +131,7 @@ async def _run(
     while True:
         await asyncio.sleep(ENV.SCAN_BACKLOG_RUNNER_SHORT_DELAY)
         if timer_for_logging.has_interval_elapsed():
-            LOGGER.info("scan backlog runner is still alive")
+            LOGGER.info("scan launcher is still alive")
 
         # include low priority scans only when enough time has passed
         include_low_priority_scans = timer_for_any_priority_scans.has_interval_elapsed()
@@ -195,6 +179,10 @@ async def _run(
         # remove from backlog now that startup succeeded
         LOGGER.info(f"Scan successfully started: scan_id={manifest.scan_id}")
         await backlog_client.remove(entry)
-        # TODO: remove k8s job doc?
+        # and mark time on k8s job doc -- used by the scan pod watchdog
+        await skyscan_k8s_job_client.find_one_and_update(
+            {"scan_id": manifest.scan_id},
+            {"$set": {"k8s_started_ts": int(time.time())}},
+        )
 
         # NOTE: no need to sleep here (sleep at top of loop), also see `include_low_priority_scans` logic

@@ -1,6 +1,7 @@
 """Utility functions that don't fit anywhere else."""
 
 import enum
+import logging
 import time
 import uuid
 
@@ -13,6 +14,8 @@ from .database.schema import (
     Manifest,
     has_skydriver_requested_ewms_workflow,
 )
+
+LOGGER = logging.getLogger(__name__)
 
 
 def make_scan_id() -> str:
@@ -53,6 +56,24 @@ class _ScanState(enum.Enum):
 def does_scan_state_indicate_final_result_received(state: str) -> bool:
     """Has the scan ended with a final result?"""
     return state == _ScanState.SCAN_HAS_FINAL_RESULT.name
+
+
+async def get_scan_state_if_final_result_received(
+    scan_id: str,
+    results: database.interface.ResultClient,
+) -> str | None:
+    """Return the state string if the scan ended with a final result, else None."""
+    try:
+        if (await results.get(scan_id)).is_final:
+            # NOTE: see note on 'SCAN_HAS_FINAL_RESULT' above
+            return _ScanState.SCAN_HAS_FINAL_RESULT.name
+    except web.HTTPError as e:
+        # get() raises 404 when no result found
+        if e.status_code != 404:
+            raise
+
+    # fall-through
+    return None
 
 
 def _has_cleared_backlog(manifest: Manifest) -> bool:
@@ -96,14 +117,8 @@ async def get_scan_state(
 
     Returns the state as a human-readable string
     """
-    try:
-        if (await results.get(manifest.scan_id)).is_final:
-            # NOTE: see note on 'SCAN_HAS_FINAL_RESULT' above
-            return _ScanState.SCAN_HAS_FINAL_RESULT.name
-    except web.HTTPError as e:
-        # get() raises 404 when no result found
-        if e.status_code != 404:
-            raise
+    if s := (await get_scan_state_if_final_result_received(manifest.scan_id, results)):
+        return s
 
     state = _get_nonfinished_state(manifest).name  # start here, augment if needed
 
@@ -122,6 +137,21 @@ async def get_scan_state(
     else:
         # -> no, this is a non-finished scan
         return state
+
+
+########################################################################################
+
+
+def get_scan_request_obj_filter(scan_id: str) -> dict:
+    """Get the mongo filter for finding a scan request object."""
+    return {
+        "$or": [
+            # grab the original requester's 'scan_request_obj'
+            {"scan_id": scan_id},
+            # -> backup plan: was this scan_id actually a rescan itself?
+            {"rescan_ids": scan_id},  # one in a list
+        ]
+    }
 
 
 ########################################################################################

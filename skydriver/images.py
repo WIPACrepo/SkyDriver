@@ -10,7 +10,7 @@ from async_lru import alru_cache
 from dateutil import parser as dateutil_parser
 from rest_tools.client import RestClient
 
-from skydriver.config import ENV
+from .config import ENV
 
 LOGGER = logging.getLogger(__name__)
 

@@ -21,18 +21,19 @@ from rest_tools.server import (
     ArgumentHandler,
     ArgumentSource,
     RestHandler,
-    token_attribute_role_mapping_auth,
 )
 from tornado import web
 from wipac_dev_tools import argparse_tools
 
 from . import database, ewms, images
+from .background_runners.scan_launcher import put_on_backlog
 from .config import (
     DebugMode,
     ENV,
     EWMS_URL_V_PREFIX,
+    INTERNAL_ACCT,
     KNOWN_CLUSTERS,
-    is_testing,
+    USER_ACCT,
 )
 from .database import schema
 from .database.mongodc import DocumentNotFoundException
@@ -41,11 +42,13 @@ from .database.schema import (
     has_skydriver_requested_ewms_workflow,
 )
 from .ewms import get_deactivated_type, request_stop_on_ewms
-from .k8s.scan_launcher import put_on_backlog
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
+from .rest_decorators import maybe_redirect_scan_id, service_account_auth
 from .utils import (
     does_scan_state_indicate_final_result_received,
+    get_scan_request_obj_filter,
     get_scan_state,
+    get_scan_state_if_final_result_received,
     make_scan_id,
 )
 
@@ -62,41 +65,14 @@ MAX_CLASSIFIERS_LEN = 25
 
 WAIT_BEFORE_TEARDOWN = 60
 
-# -----------------------------------------------------------------------------
-# REST requestor auth
-
-
-USER_ACCT = "user"
-INTERNAL_ACCT = "system"
-
-if is_testing():
-
-    def service_account_auth(roles: list[str], **kwargs):  # type: ignore
-        def make_wrapper(method):  # type: ignore[no-untyped-def]
-            async def wrapper(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-                LOGGER.warning("TESTING: auth disabled")
-                self.auth_roles = [roles[0]]  # make as a list containing just 1st role
-                return await method(self, *args, **kwargs)
-
-            return wrapper
-
-        return make_wrapper
-
-else:
-    service_account_auth = token_attribute_role_mapping_auth(  # type: ignore[no-untyped-call]
-        role_attrs={
-            USER_ACCT: [
-                "resource_access.skydriver-external.roles=users",
-            ],
-            INTERNAL_ACCT: [
-                "resource_access.skydriver-internal.roles=system",  # scanner & friends
-            ],
-        },
-    )
-
 
 # -----------------------------------------------------------------------------
 # utils
+
+
+def _add_no_redirect_arg(arghand) -> None:
+    # used only by @maybe_redirect_scan_id
+    arghand.add_argument("no_redirect", default=False, type=bool)
 
 
 def all_dc_fields(class_or_instance: Any) -> set[str]:
@@ -538,7 +514,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             #
             # misc
             i3_event_id=i3_event_id,  # foreign key to i3_event collection
-            rest_address=self.request.full_url().rstrip(self.request.uri),
             scanner_server_env_from_user=args.scanner_server_env,
         )
         await self.scan_request_coll.insert_one(scan_request_obj)
@@ -577,7 +552,6 @@ async def _start_scan(
         # universal
         debug_mode=_debug_mode(scan_request_obj["debug_mode"]),
         # env
-        rest_address=scan_request_obj["rest_address"],
         scanner_server_env_from_user=scan_request_obj["scanner_server_env_from_user"],
         request_clusters=scan_request_obj["request_clusters"],
         max_pixel_reco_time=scan_request_obj["max_pixel_reco_time"],
@@ -595,7 +569,7 @@ async def _start_scan(
         i3_event_id=scan_request_obj["i3_event_id"],
         scanner_server_args=scanner_server_args,
         ewms_workflow_id=schema._NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
-        # ^^^ set once the workflow request has been sent to EWMS (see backlogger)
+        # ^^^ set once the workflow request has been sent to EWMS (see scan launcher)
         classifiers=scan_request_obj["classifiers"],
         priority=scan_request_obj["priority"],
     )
@@ -604,6 +578,7 @@ async def _start_scan(
         {
             "scan_id": scan_id,
             "skyscan_k8s_job_dict": skyscan_k8s_job_dict,
+            "k8s_started_ts": None,
         }
     )
 
@@ -625,9 +600,21 @@ class ScanRescanHandler(BaseSkyDriverHandler):
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/actions/rescan$"
 
-    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def post(self, scan_id: str) -> None:
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+        arghand.add_argument(
+            "abort_first",
+            default=False,
+            type=bool,
+        )
+        arghand.add_argument(
+            "replace_scan",
+            default=False,
+            type=bool,
+        )
         # response args
         arghand.add_argument(
             "manifest_projection",
@@ -636,20 +623,19 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         )
         args = arghand.parse_args()
 
+        if args.abort_first:
+            await abort_scan(self.manifests, scan_id, self.ewms_rc)
+
         # generate unique scan_id
         new_scan_id = make_scan_id()
 
         # grab the 'scan_request_obj'
         scan_request_obj = await self.scan_request_coll.find_one_and_update(
+            get_scan_request_obj_filter(scan_id),
             {
-                "$or": [
-                    # grab the original requester's 'scan_request_obj'
-                    {"scan_id": scan_id},
-                    # -> backup plan: was this scan_id actually a rescan itself?
-                    {"rescan_ids": scan_id},  # one in a list
-                ]
+                # NOTE: must preserve order here -- so push
+                "$push": {"rescan_ids": new_scan_id},
             },
-            {"$push": {"rescan_ids": new_scan_id}},
             return_document=ReturnDocument.AFTER,
         )
         # -> error: couldn't find it anywhere
@@ -672,6 +658,14 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             scan_request_obj,
             new_scan_id=new_scan_id,
         )
+
+        if args.replace_scan:
+            await self.manifests.collection.find_one_and_update(
+                {"scan_id": scan_id},
+                {"$set": {"replaced_by_scan_id": new_scan_id}},
+                return_dclass=dict,
+            )
+
         self.write(
             dict_projection(dc.asdict(manifest), args.manifest_projection),
         )
@@ -686,8 +680,10 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/actions/add-workers$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def post(self, scan_id: str) -> None:
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
         # response args
         arghand.add_argument(
             "n_workers",
@@ -718,8 +714,8 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
         # is scan done?
-        if does_scan_state_indicate_final_result_received(
-            await get_scan_state(manifest, self.ewms_rc, self.results)
+        if await get_scan_state_if_final_result_received(
+            manifest.scan_id, self.results
         ):
             msg = "this scan has a final result--cannot add workers"
             raise web.HTTPError(
@@ -766,13 +762,31 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
 # -----------------------------------------------------------------------------
 
 
+async def abort_scan(
+    manifests: database.interface.ManifestClient,
+    scan_id: str,
+    ewms_rc: RestClient,
+) -> database.schema.Manifest:
+    """Stop all parts of the Scanner instance (if running) and mark in DB."""
+    # mark as deleted -> also stops backlog from starting
+    manifest = await manifests.mark_as_deleted(scan_id)
+    # stop ewms
+    await stop_skyscan_workers(
+        manifests,
+        scan_id,
+        ewms_rc,
+        abort=True,
+    )
+    return manifest
+
+
 async def stop_skyscan_workers(
     manifests: database.interface.ManifestClient,
     scan_id: str,
     ewms_rc: RestClient,
     abort: bool,
 ) -> database.schema.Manifest:
-    """Stop all parts of the Scanner instance (if running) and mark in DB."""
+    """Stop the scanner instance's workers on EWMS."""
     manifest = await manifests.get(scan_id, True)
     LOGGER.info(f"stopping (ewms) workers for {scan_id=}...")
 
@@ -833,9 +847,11 @@ class ScanHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def delete(self, scan_id: str) -> None:
         """Abort a scan and/or mark manifest & result as "deleted"."""
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
         arghand.add_argument(
             "delete_completed_scan",
             default=False,
@@ -850,12 +866,8 @@ class ScanHandler(BaseSkyDriverHandler):
         args = arghand.parse_args()
 
         # check DB states
-        manifest = await self.manifests.get(scan_id, True)
-        if (
-            not args.delete_completed_scan
-            and does_scan_state_indicate_final_result_received(
-                await get_scan_state(manifest, self.ewms_rc, self.results)
-            )
+        if (not args.delete_completed_scan) and (
+            await get_scan_state_if_final_result_received(scan_id, self.results)
         ):
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
@@ -864,15 +876,7 @@ class ScanHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
 
-        # mark as deleted -> also stops backlog from starting
-        manifest = await self.manifests.mark_as_deleted(scan_id)
-        # abort
-        await stop_skyscan_workers(
-            self.manifests,
-            scan_id,
-            self.ewms_rc,
-            abort=True,
-        )
+        manifest = await abort_scan(self.manifests, scan_id, self.ewms_rc)
 
         try:
             result_dict = dc.asdict(await self.results.get(scan_id))
@@ -891,9 +895,11 @@ class ScanHandler(BaseSkyDriverHandler):
         )
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get manifest & result."""
         arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
         arghand.add_argument(
             "include_deleted",
             default=False,
@@ -925,9 +931,11 @@ class ScanManifestHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/manifest$"
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
         arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
         arghand.add_argument(
             "include_deleted",
             default=False,
@@ -1021,8 +1029,11 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/i3-event$"
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
+        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+
         manifest = await self.manifests.get(scan_id, True)
 
         # look up event in collection
@@ -1063,9 +1074,11 @@ class ScanResultHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/result$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted result."""
         arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
         arghand.add_argument(
             "include_deleted",
             default=False,
@@ -1133,8 +1146,11 @@ class ScanStatusHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/status$"
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
+        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         # scan state
@@ -1181,8 +1197,11 @@ class ScanLogsHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/logs$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
+        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         self.write(
@@ -1207,8 +1226,11 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/ewms/workflow-id$"
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
+        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+
         manifest = await self.manifests.get(scan_id, incl_del=True)
         self.write(
             {
@@ -1275,11 +1297,14 @@ class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/ewms/workforce$"
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """GET.
 
         This is a high-level utility, which removes unnecessary EWMS semantics.
         """
+        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         self.write(
@@ -1299,11 +1324,14 @@ class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan/(?P<scan_id>\w+)/ewms/taskforces$"
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def get(self, scan_id: str) -> None:
         """GET.
 
         This is useful for debugging by seeing what was sent to condor.
         """
+        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         self.write(

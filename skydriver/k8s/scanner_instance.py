@@ -61,7 +61,6 @@ class SkyScanK8sJobFactory:
         # universal
         debug_mode: list[DebugMode],
         # env
-        rest_address: str,
         scanner_server_env_from_user: dict,
         request_clusters: list,
         max_pixel_reco_time: int,
@@ -83,7 +82,6 @@ class SkyScanK8sJobFactory:
             predictive_scanning_threshold=predictive_scanning_threshold,
         )
         scanner_server_envvars = EnvVarFactory.make_skyscan_server_envvars(
-            rest_address=rest_address,
             scan_id=scan_id,
             scanner_server_env_from_user=scanner_server_env_from_user,
         )
@@ -325,25 +323,20 @@ class EnvVarFactory:
         ]
 
     @staticmethod
-    def _get_token_from_keycloak(
-        token_url: str,
-        client_id: str,
-        client_secret: str,
-    ) -> str:
-        if not token_url:  # would only be falsy in test
+    def get_skydriver_rest_auth() -> str:
+        if ENV.CI:
             return ""
         cca = ClientCredentialsAuth(
             "",
-            token_url=token_url,
-            client_id=client_id,
-            client_secret=client_secret,
+            token_url=ENV.KEYCLOAK_OIDC_URL,
+            client_id=ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
+            client_secret=ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
         )
         token = cca.make_access_token()
         return token
 
     @staticmethod
     def make_skyscan_server_envvars(
-        rest_address: str,
         scan_id: str,
         scanner_server_env_from_user: dict,
     ) -> list[sdict]:
@@ -356,7 +349,7 @@ class EnvVarFactory:
             # broker/mq vars
             "SKYSCAN_EWMS_JSON": str(SkyScanK8sJobFactory._EWMS_JSON_FPATH),
             # skydriver vars
-            "SKYSCAN_SKYDRIVER_ADDRESS": rest_address,
+            "SKYSCAN_SKYDRIVER_ADDRESS": ENV.HERE_URL,
             "SKYSCAN_SKYDRIVER_SCAN_ID": scan_id,
         }
         env.update(required)
@@ -378,11 +371,7 @@ class EnvVarFactory:
 
         # 3. generate & add auth tokens
         tokens = {
-            "SKYSCAN_SKYDRIVER_AUTH": EnvVarFactory._get_token_from_keycloak(
-                ENV.KEYCLOAK_OIDC_URL,
-                ENV.KEYCLOAK_CLIENT_ID_SKYDRIVER_REST,
-                ENV.KEYCLOAK_CLIENT_SECRET_SKYDRIVER_REST,
-            ),
+            "SKYSCAN_SKYDRIVER_AUTH": EnvVarFactory.get_skydriver_rest_auth(),
         }
         env.update(tokens)
 

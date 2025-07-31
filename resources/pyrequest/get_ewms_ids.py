@@ -13,7 +13,7 @@ from typing import AsyncIterable
 import requests
 from rest_tools.client import RestClient
 
-from _connect import get_rest_client
+from _connect import get_rest_client  # type: ignore[import-not-found]
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)

@@ -23,6 +23,9 @@ SCANNER_LOGS_GRAFANA_WINDOW_SEC = 60 * 60
 
 EWMS_URL_V_PREFIX = "v1"
 
+USER_ACCT = "user"
+INTERNAL_ACCT = "system"
+
 
 @enum.unique
 class DebugMode(enum.Enum):
@@ -34,6 +37,8 @@ class DebugMode(enum.Enum):
 @dc.dataclass(frozen=True)
 class EnvConfig:
     """Environment variables."""
+
+    HERE_URL: str
 
     # EWMS connections
     EWMS_ADDRESS: str
@@ -68,6 +73,8 @@ class EnvConfig:
     SCAN_BACKLOG_RUNNER_SHORT_DELAY: int = 15
     SCAN_BACKLOG_RUNNER_DELAY: int = 5 * 60
     SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: int = 5 * 60  # entry is revived after N secs
+
+    SCAN_POD_WATCHDOG_DELAY: int = 1 * 60  # 1 min
 
     THIS_IMAGE_WITH_TAG: str = ""
     MIN_SKYMAP_SCANNER_TAG: str = "v4.0.0"  # TODO: update this either in k8s or here
@@ -129,12 +136,16 @@ class EnvConfig:
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
 
+        if "://" not in self.HERE_URL:
+            object.__setattr__(self, "HERE_URL", "https://" + self.HERE_URL)
+
         # check missing env var(s)
         if not self.THIS_IMAGE_WITH_TAG:
             raise RuntimeError(
                 "Missing required environment variable: 'THIS_IMAGE_WITH_TAG'"
             )
 
+        # skyscan launcher / backlog runner
         if self.SCAN_BACKLOG_RUNNER_SHORT_DELAY > self.SCAN_BACKLOG_RUNNER_DELAY:
             raise RuntimeError(
                 "'SCAN_BACKLOG_RUNNER_SHORT_DELAY' cannot be greater than 'SCAN_BACKLOG_RUNNER_DELAY'"
@@ -142,6 +153,12 @@ class EnvConfig:
         if self.SCAN_BACKLOG_RUNNER_DELAY > self.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE:
             raise RuntimeError(
                 "'SCAN_BACKLOG_RUNNER_DELAY' cannot be greater than 'SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE'"
+            )
+
+        # watchdog runner
+        if self.K8S_TTL_SECONDS_AFTER_FINISHED < 3 * self.SCAN_POD_WATCHDOG_DELAY:
+            raise RuntimeError(
+                "'K8S_TTL_SECONDS_AFTER_FINISHED' must be at least 3x 'SCAN_POD_WATCHDOG_DELAY'"
             )
 
 
@@ -181,7 +198,13 @@ def config_logging() -> None:
             datefmt="%Y-%m-%d %H:%M:%S",
         )
     )
-    logging.getLogger().addHandler(hand)
+
+    root_logger = logging.getLogger()
+
+    if root_logger.hasHandlers():
+        return  # already configured
+
+    root_logger.addHandler(hand)
     logging_tools.set_level(
         ENV.LOG_LEVEL,  # type: ignore[arg-type]
         first_party_loggers=__name__.split(".", maxsplit=1)[0],

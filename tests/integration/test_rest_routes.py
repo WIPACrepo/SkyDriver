@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import pprint
+import random
 import re
 import time
 from typing import Any, Callable
@@ -113,6 +114,7 @@ async def _launch_scan(
         classifiers=post_scan_body["classifiers"],
         last_updated=post_resp["last_updated"],  # see below
         priority=0,
+        replaced_by_scan_id=None,
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
     assert RE_SCANID.fullmatch(post_resp["scan_id"])
@@ -128,7 +130,7 @@ async def _launch_scan(
     )
 
     # check database
-    rest_address = await _assert_db_scanrequests_coll(
+    await _assert_db_scanrequests_coll(
         mongo_client,
         post_scan_body,
         post_resp,
@@ -139,7 +141,6 @@ async def _launch_scan(
         post_scan_body,
         post_resp,
         scanner_server_args,
-        rest_address,
         docker_tag_expected,
     )
 
@@ -151,11 +152,8 @@ async def _assert_db_scanrequests_coll(
     post_scan_body: dict,
     post_resp: dict,
     docker_tag_expected: str,
-) -> str:
-    """Query the ScanRequests coll.
-
-    Return the REST address
-    """
+) -> None:
+    """Query the ScanRequests coll."""
     doc_sr = await mongo_client["SkyDriver_DB"]["ScanRequests"].find_one(  # type: ignore[index]
         {"scan_id": post_resp["scan_id"]}, {"_id": 0}
     )
@@ -189,12 +187,8 @@ async def _assert_db_scanrequests_coll(
         #
         # misc
         i3_event_id=post_resp["i3_event_id"],
-        rest_address=doc_sr["rest_address"],  # see below
         scanner_server_env_from_user=post_scan_body["scanner_server_env"],
     )
-    assert re.fullmatch(rf"{re.escape('http://localhost:')}\d+", doc_sr["rest_address"])
-
-    return doc_sr["rest_address"]
 
 
 async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
@@ -202,7 +196,6 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
     post_scan_body: dict,
     post_resp: dict,
     scanner_server_args: str,
-    rest_address: str,
     docker_tag_expected: str,
 ):
     # query the SkyScanK8sJobs coll
@@ -213,6 +206,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
     pprint.pprint(doc_k8s)
     assert doc_k8s == {
         "scan_id": post_resp["scan_id"],
+        "k8s_started_ts": None,
         "skyscan_k8s_job_dict": {
             "apiVersion": "batch/v1",
             "kind": "Job",
@@ -239,7 +233,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     },
                                     {
                                         "name": "SKYSCAN_SKYDRIVER_ADDRESS",
-                                        "value": rest_address,
+                                        "value": "https://" + os.environ["HERE_URL"],
                                     },
                                     {
                                         "name": "SKYSCAN_SKYDRIVER_SCAN_ID",
@@ -352,7 +346,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                 "env": [
                                     {
                                         "name": "SKYSCAN_SKYDRIVER_ADDRESS",
-                                        "value": rest_address,
+                                        "value": "https://" + os.environ["HERE_URL"],
                                     },
                                     {"name": "SKYSCAN_SKYDRIVER_AUTH", "value": ""},
                                     {
@@ -538,6 +532,7 @@ async def _do_patch(
         classifiers=manifest["classifiers"],  # should not change
         last_updated=resp["last_updated"],  # see below
         priority=0,
+        replaced_by_scan_id=None,
         # TODO: check more fields in future (hint: ctrl+F this comment)
     )
     assert 0.0 < resp["timestamp"] < now < resp["last_updated"] < time.time()
@@ -663,7 +658,10 @@ async def _send_result(
     is_final: bool,
 ) -> sdict:
     # send finished result
-    result = {"alpha": (11 + 1) ** 11, "beta": -11}
+    result = {
+        "alpha": random.randint(0, 100),
+        "beta": -1 * random.randint(0, 100),
+    }
     if is_final:
         result["gamma"] = 5
     resp = await rc.request(
@@ -918,6 +916,7 @@ async def _after_scan_start_logic(
     rc: RestClient,
     manifest: sdict,
     test_wait_before_teardown: float,
+    do_delete_when_done: bool = True,
 ):
     scan_id = manifest["scan_id"]
 
@@ -927,9 +926,11 @@ async def _after_scan_start_logic(
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
 
-    # wait backlogger to request to ewms
+    # wait scan launcher to request to ewms
     assert int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"])
     await asyncio.sleep(int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"]) * 5)  # extra
+    resp = await rc.request("GET", "/scans/backlog")
+    assert not any(x["scan_id"] == manifest["scan_id"] for x in resp["entries"])
 
     # mimic the ewms-init container...
     # -> before
@@ -1001,29 +1002,43 @@ async def _after_scan_start_logic(
     #
     # DELETE SCAN
     #
-    await _delete_scan(
-        rc,
-        manifest["event_metadata"],
-        scan_id,
-        manifest,
-        result,
-        True,
-        True,
-    )
+    if do_delete_when_done:
+        await _delete_scan(
+            rc,
+            manifest["event_metadata"],
+            scan_id,
+            manifest,
+            result,
+            True,
+            True,
+        )
 
 
-POST_SCAN_BODY_FOR_TEST_01 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
+########################################################################################
 
 
-async def test_010__rescan(
+def _assert_rescan_response(manifest_alpha: dict, manifest_beta: dict) -> None:
+    # compare manifests
+    assert manifest_beta["classifiers"] == {
+        **manifest_alpha["classifiers"],
+        **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
+    }
+    skip_keys = ["classifiers", "scan_id", "last_updated", "timestamp"]
+    assert {k: v for k, v in manifest_beta.items() if k not in skip_keys} == {
+        k: v for k, v in manifest_alpha.items() if k not in skip_keys
+    }
+    for sk in skip_keys:
+        assert manifest_beta[sk] != manifest_alpha[sk]
+
+
+async def test_100__rescan(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
 ) -> None:
+    """Test rescan request w/o scan replacement."""
     rc = server()
-
-    clusters = {"foobar": 1, "a-schedd": 999, "cloud": 4568}
 
     # OG SCAN
     manifest_alpha = await _launch_scan(
@@ -1032,7 +1047,7 @@ async def test_010__rescan(
         {
             **POST_SCAN_BODY,
             "docker_tag": "3.4.0",
-            "cluster": clusters,
+            "cluster": {"foobar": 1, "a-schedd": 999, "cloud": 4568},
         },
         "3.4.0",
     )
@@ -1047,17 +1062,7 @@ async def test_010__rescan(
         "POST",
         f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
     )
-    # compare manifests
-    assert manifest_beta["classifiers"] == {
-        **manifest_alpha["classifiers"],
-        **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
-    }
-    skip_keys = ["classifiers", "scan_id", "last_updated", "timestamp"]
-    assert {k: v for k, v in manifest_beta.items() if k not in skip_keys} == {
-        k: v for k, v in manifest_alpha.items() if k not in skip_keys
-    }
-    for sk in skip_keys:
-        assert manifest_beta[sk] != manifest_alpha[sk]
+    _assert_rescan_response(manifest_alpha, manifest_beta)
     # continue on...
     await _after_scan_start_logic(
         rc,
@@ -1066,10 +1071,122 @@ async def test_010__rescan(
     )
 
 
+async def _assert_scan_id_redirects(
+    rc: RestClient, manifest_alpha: dict, manifest_beta: dict
+) -> None:
+    # test redirects
+    # only GETS
+    paths = [
+        "/scan/{scan_id}",
+        "/scan/{scan_id}/manifest",
+        "/scan/{scan_id}/i3-event",
+        "/scan/{scan_id}/result",
+        "/scan/{scan_id}/status",
+        "/scan/{scan_id}/logs",
+        "/scan/{scan_id}/ewms/workflow-id",
+        "/scan/{scan_id}/ewms/workforce",
+        "/scan/{scan_id}/ewms/taskforces",
+    ]
+    for p in paths:
+        print(p)
+
+        #
+        # w/ redirect
+        #
+
+        resp_a = await rc.request("GET", p.format(scan_id=manifest_alpha["scan_id"]))
+        resp_b = await rc.request("GET", p.format(scan_id=manifest_beta["scan_id"]))
+        assert resp_a == resp_b  # 100% -- both point to the same scan
+
+        if p == "/scan/{scan_id}/manifest":
+            assert manifest_beta["scan_id"] == resp_a["scan_id"] == resp_b["scan_id"]
+
+        #
+        # w/ 'no_redirect' arg
+        #
+
+        print("now no redirect")
+
+        resp_a2 = await rc.request(
+            "GET",
+            p.format(scan_id=manifest_alpha["scan_id"]),
+            {"no_redirect": True},
+        )
+        resp_b2 = await rc.request(
+            "GET",
+            p.format(scan_id=manifest_beta["scan_id"]),
+            {"no_redirect": True},
+        )
+
+        if p in ["/scan/{scan_id}/i3-event"]:
+            # - i3 event will be the same since that comes from the initial request
+            assert resp_a2 == resp_b2
+            continue
+        else:
+            assert resp_a2 != resp_b2  # these point to different scans
+            assert resp_a != resp_a2  # a not redirected -- points to actual alpha scan
+            assert resp_b == resp_b2  # b is same scan -- beta has never been replaced
+
+        if p == "/scan/{scan_id}/manifest":
+            assert (
+                manifest_beta["scan_id"]
+                == resp_a2["replaced_by_scan_id"]
+                == resp_b2["scan_id"]
+            )
+
+
+async def test_110__rescan_replacement_redirect(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+) -> None:
+    """Test rescan request w/ scan replacement -- and redirects."""
+    rc = server()
+
+    # OG SCAN
+    manifest_alpha = await _launch_scan(
+        rc,
+        mongo_client,
+        {
+            **POST_SCAN_BODY,
+            "docker_tag": "3.4.0",
+            "cluster": {"foobar": 1, "a-schedd": 999, "cloud": 4568},
+        },
+        "3.4.0",
+    )
+    await _after_scan_start_logic(
+        rc,
+        manifest_alpha,
+        test_wait_before_teardown,
+        do_delete_when_done=False,
+    )
+
+    # RESCAN
+    manifest_beta = await rc.request(
+        "POST",
+        f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
+        {"replace_scan": True},
+    )
+    _assert_rescan_response(manifest_alpha, manifest_beta)
+    # NOTE -- don't continue scan b/c _after_scan_start_logic() assumes event uniqueness
+    # await _after_scan_start_logic(
+    #     rc,
+    #     manifest_beta,
+    #     test_wait_before_teardown,
+    #     do_delete_when_done=False,
+    # )
+
+    await _assert_scan_id_redirects(rc, manifest_alpha, manifest_beta)
+
+
 ########################################################################################
 
 
-async def test_100__bad_data(
+POST_SCAN_BODY_FOR_TEST_300 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
+
+
+async def test_300__bad_data(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
@@ -1104,12 +1221,12 @@ async def test_100__bad_data(
         await rc.request("POST", "/scan", {})
     print(e.value)
     # # bad-type body-arg
-    for arg in POST_SCAN_BODY_FOR_TEST_01:
+    for arg in POST_SCAN_BODY_FOR_TEST_300:
         for bad_val in [
             "",
             "  ",
             "\t",
-            "string" if not isinstance(POST_SCAN_BODY_FOR_TEST_01[arg], str) else None,
+            "string" if not isinstance(POST_SCAN_BODY_FOR_TEST_300[arg], str) else None,
         ]:
             print(f"{arg}: [{bad_val}]")
             with pytest.raises(
@@ -1117,7 +1234,7 @@ async def test_100__bad_data(
                 match=rf"400 Client Error: argument {arg}: .+ for url: {rc.address}/scan",
             ) as e:
                 await rc.request(
-                    "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, arg: bad_val}
+                    "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, arg: bad_val}
                 )
             print(e.value)
     for bad_val in [  # type: ignore[assignment]
@@ -1133,11 +1250,11 @@ async def test_100__bad_data(
             match=rf"400 Client Error: argument cluster: .+ for url: {rc.address}/scan",
         ) as e:
             await rc.request(
-                "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "cluster": bad_val}
+                "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "cluster": bad_val}
             )
     print(e.value)
     # # missing arg
-    for arg in POST_SCAN_BODY_FOR_TEST_01:
+    for arg in POST_SCAN_BODY_FOR_TEST_300:
         if arg in REQUIRED_FIELDS:
             print(arg)
             with pytest.raises(
@@ -1151,7 +1268,7 @@ async def test_100__bad_data(
                 await rc.request(
                     "POST",
                     "/scan",
-                    {k: v for k, v in POST_SCAN_BODY_FOR_TEST_01.items() if k != arg},
+                    {k: v for k, v in POST_SCAN_BODY_FOR_TEST_300.items() if k != arg},
                 )
         print(e.value)
     # # bad docker tag
@@ -1160,7 +1277,7 @@ async def test_100__bad_data(
         match=rf"400 Client Error: argument docker_tag: Image tag not on Docker Hub for url: {rc.address}/scan",
     ) as e:
         await rc.request(
-            "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_01, "docker_tag": "foo"}
+            "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "docker_tag": "foo"}
         )
     print(e.value)
 
@@ -1168,7 +1285,7 @@ async def test_100__bad_data(
     manifest = await _launch_scan(
         rc,
         mongo_client,
-        POST_SCAN_BODY_FOR_TEST_01,
+        POST_SCAN_BODY_FOR_TEST_300,
         os.environ["LATEST_TAG"],
     )
     scan_id = manifest["scan_id"]
@@ -1338,3 +1455,6 @@ async def test_100__bad_data(
         True,
         True,
     )
+
+
+########################################################################################

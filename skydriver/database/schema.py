@@ -163,6 +163,10 @@ class Manifest(ScanIDDataclass):
     # updated during scanning, multiple times
     progress: Progress | None = None
 
+    # misc / meta
+    replaced_by_scan_id: str | None = (
+        None  # scan has been replaced by a different scan  -- used by REST redirects
+    )
     last_updated: float = 0.0
 
     def __post_init__(self) -> None:
