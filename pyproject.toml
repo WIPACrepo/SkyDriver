@@ -1,10 +1,32 @@
-# WIPACrepo/wipac-dev-py-setup-action@v4+ Migration Helper:
+# pyproject.toml
 
 [project]
-dependencies = []  # leave empty if there are no dependencies
+dependencies = [
+  "aiocache",
+  "async-lru",
+  "boto3",
+  "dacite<1.9",
+  "humanfriendly",
+  "kubernetes",
+  "motor==3.3.2",
+  "pymongo==4.6.1",
+  "pyyaml",
+  "requests",
+  "tenacity",
+  "tornado",
+  "typeguard",
+  "wipac-dev-tools",
+  "wipac-rest-tools",
+]
 
-# optional sections:
-
-# [project.optional-dependencies]
-# foo = []
-# bar = []
+[project.optional-dependencies]
+tests = [
+  "pytest",
+  "pytest-asyncio",
+  "pytest-mock",
+  "nest-asyncio",
+  "flask",
+]
+prod-test = [
+  "texttable",
+]
