@@ -1,32 +1,79 @@
 # pyproject.toml
 
+[build-system]
+requires = ["setuptools>=78.1", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
 [project]
 dependencies = [
-  "aiocache",
-  "async-lru",
-  "boto3",
-  "dacite<1.9",
-  "humanfriendly",
-  "kubernetes",
-  "motor==3.3.2",
-  "pymongo==4.6.1",
-  "pyyaml",
-  "requests",
-  "tenacity",
-  "tornado",
-  "typeguard",
-  "wipac-dev-tools",
-  "wipac-rest-tools",
+  'aiocache',
+  'async-lru',
+  'boto3',
+  'dacite<1.9',
+  'humanfriendly',
+  'kubernetes',
+  'motor==3.3.2',
+  'pymongo==4.6.1',
+  'pyyaml',
+  'requests',
+  'tenacity',
+  'tornado',
+  'typeguard',
+  'wipac-dev-tools',
+  'wipac-rest-tools'
 ]
+dynamic = ["version"]
+name = "wipac-dev-actions-testbed"
+description = "A SaaS Solution for Neutrino Event Reconstruction using the Skymap Scanner"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = [
+  'WIPAC',
+  'IceCube',
+  'Skymap Scanner',
+  'Reconstruction',
+  'IceTray',
+  'EWMS'
+]
+classifiers = [
+  'Programming Language :: Python :: 3.13'
+]
+requires-python = ">=3.13, <3.14"
+
+[[project.authors]]
+name = "WIPAC Developers"
+email = "developers@icecube.wisc.edu"
 
 [project.optional-dependencies]
 tests = [
-  "pytest",
-  "pytest-asyncio",
-  "pytest-mock",
-  "nest-asyncio",
-  "flask",
+  'flask',
+  'nest-asyncio',
+  'pytest',
+  'pytest-asyncio',
+  'pytest-mock'
 ]
 prod-test = [
-  "texttable",
+  'texttable'
 ]
+mypy = [
+  'flask',
+  'nest-asyncio',
+  'pytest',
+  'pytest-asyncio',
+  'pytest-mock',
+  'texttable'
+]
+
+[project.urls]
+Homepage = "https://pypi.org/project/wipac-dev-actions-testbed/"
+Tracker = "https://github.com/WIPACrepo/SkyDriver/issues"
+Source = "https://github.com/WIPACrepo/SkyDriver"
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
+
+[tool.setuptools.packages.find]
+include = ["skydriver", "s3_sidecar", "ewms_init_container", "skydriver.*", "s3_sidecar.*", "ewms_init_container.*"]
+
+[tool.setuptools_scm]
