@@ -98,6 +98,7 @@ jobs:
           author_email: developers@icecube.wisc.edu
           keywords_comma: "WIPAC, IceCube, Skymap Scanner, Reconstruction, IceTray, EWMS"
           auto_mypy_option: True
+          package_dirs: skydriver s3_sidecar ewms_init_container
 
   py-dependencies:
     runs-on: ubuntu-latest
