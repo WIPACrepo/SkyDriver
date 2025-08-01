@@ -113,7 +113,7 @@ jobs:
           file: Dockerfile
           tags: skydriver:py-dep-this
           load: true
-      - uses: WIPACrepo/wipac-dev-py-dependencies-action@main
+      - uses: WIPACrepo/wipac-dev-py-dependencies-action@v3.0
 
 
   #############################################################################
