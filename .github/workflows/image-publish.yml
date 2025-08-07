@@ -2,10 +2,9 @@ name: image publish
 
 on:
   push:
-    branches-ignore:
-      - '**'
-    tags:
-      - '**'
+    # only tag pushes
+    branches-ignore: [ '**' ]
+    tags: [ '**' ]
   workflow_dispatch:
     inputs:
       tag:
@@ -13,41 +12,13 @@ on:
         default: 'dev'
         required: false
 
-env:
-  DOCKER_IMAGE_NAME: ghcr.io/WIPACRepo/SkyDriver
-
 jobs:
-  docker:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Project
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
-      - name: Docker meta
-        id: docker_meta
-        uses: docker/metadata-action@v3
-        with:
-          images: |
-            ${{ env.DOCKER_IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            # branches (PRs)
-            type=raw,value=${{ github.event.inputs.tag || '\{\{sha\}\}' }},enable=${{ github.ref_type == 'branch' }}
-            # release tags
-            type=semver,pattern={{major}},enable=${{ github.ref_type == 'tag' }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ github.ref_type == 'tag' }}
-            type=semver,pattern={{major}}.{{minor}}.{{patch}},enable=${{ github.ref_type == 'tag' }}
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Push Docker Image
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.docker_meta.outputs.tags }}
-          labels: ${{ steps.docker_meta.outputs.labels }}
+  image-publish:
+    uses: WIPACrepo/wipac-dev-workflows/.github/workflows/image-publish.yml@v1.4
+    permissions: # for GITHUB_TOKEN
+      packages: write
+    with:
+      image_namespace: wipacrepo
+      image_name: skydriver
+      mode: BUILD
+      extra_build_tag: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}
