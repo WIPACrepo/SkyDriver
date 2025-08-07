@@ -23,7 +23,7 @@ dependencies = [
   'wipac-rest-tools'
 ]
 dynamic = ["version"]
-name = "wipac-dev-actions-testbed"
+name = "skydriver-s3-sidecar-ewms-init-container"
 description = "A SaaS Solution for Neutrino Event Reconstruction using the Skymap Scanner"
 readme = "README.md"
 license = "MIT"
