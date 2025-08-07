@@ -271,6 +271,7 @@ jobs:
     permissions: # for GITHUB_TOKEN
       contents: write
     with:
+      project-type: python
       python-version: "${{ fromJSON(needs.py-versions.outputs.matrix)[0] }}"
       release-artifacts: |
         py-dependencies-logs
