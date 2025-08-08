@@ -275,4 +275,4 @@ jobs:
       release-artifacts: |
         py-dependencies-logs
     secrets:
-      REPO_PAT: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # trigger image-publish.yml
+      TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # trigger image-publish.yml
