@@ -1,6 +1,10 @@
 name: wipac ci/cd
 
-on: [ push ]
+on:
+  push:
+    # only branch pushes
+    branches: [ '**' ]
+    tags-ignore: [ '**' ]
 
 env:
   HERE_URL: skydriver.ci-test.aq
