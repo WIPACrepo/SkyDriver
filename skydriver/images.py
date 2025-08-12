@@ -55,6 +55,31 @@ def get_skyscan_docker_image(tag: str) -> str:
 # utils
 
 
+def _extract_digest(result: dict) -> str | None:
+    """Return the digest for a Docker Hub tag result.
+
+    Prefers the top-level 'digest'. If missing, falls back to the first image
+    digest in 'images' (if any). Returns None if no digest is found.
+    """
+
+    # Docker Hub tag results may provide 'digest' at the top level
+    # (common in current API responses) or inside the 'images' list
+    # (older API responses). Some tags may have an empty 'images' list.
+    # This function handles all cases gracefully.
+
+    if digest := result.get("digest"):
+        return digest
+
+    if not (imgs := result.get("images")):
+        return None
+
+    for img in imgs:
+        if d := img.get("digest"):
+            return d
+
+    return None
+
+
 async def _match_sha_to_majminpatch(target_sha: str) -> str | None:
     """Finds the image w/ same SHA and has a version tag like '#.#.#'.
 
@@ -71,27 +96,32 @@ async def _match_sha_to_majminpatch(target_sha: str) -> str | None:
         resp = await rc.request("GET", "")
 
         # look at each result on this page
-        for result in resp["results"]:
-            result_sha = result.get("digest", result["images"][0]["digest"])
-            # ^^^ some old ones have their 'digest' in their 'images' list entry
-            # LOGGER.debug(f"an api image: sha={result_sha} ({result})")
-            if target_sha != result_sha:
-                # LOGGER.debug("-> no match, looking at next...")
+        for result in resp.get("results") or []:
+
+            # does the image digest (sha) match?
+            result_sha = _extract_digest(result)
+            if not result_sha:
+                LOGGER.debug(f"-> skipping tag={result.get('name')} (no digest found)")
                 continue
-            elif VERSION_REGEX_MAJMINPATCH.fullmatch(result["name"]):
+            if target_sha != result_sha:
+                continue
+
+            # is this a full version ('#.#.#') tag?
+            name = result.get("name", "")
+            if VERSION_REGEX_MAJMINPATCH.fullmatch(name):
                 LOGGER.debug("-> success! matches AND has a full version tag")
-                return result["name"]  # type: ignore[no-any-return]
+                return name  # type: ignore[no-any-return]
             else:
                 LOGGER.debug("-> matches, but not a full version tag")
 
-        # what now? get url for the next page
-        if not resp["next"]:  # no more -> no match!
+        # looping logic
+        if not (next_url := resp.get("next")):  # no more -> no match!
             LOGGER.debug(
                 f"-> could not find a full version tag matching sha={target_sha}"
             )
             return None
         else:
-            rc.address = resp["next"]
+            rc.address = next_url
 
 
 def _parse_image_ts(info: dict) -> float:
