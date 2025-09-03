@@ -632,7 +632,8 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         scan_request_obj = await self.scan_request_coll.find_one_and_update(
             get_scan_request_obj_filter(scan_id),
             {
-                # NOTE: must preserve order here -- so push
+                # record linkage (discoverability)
+                # NOTE: must preserve order here for redirects -- so push
                 "$push": {"rescan_ids": new_scan_id},
             },
             return_document=ReturnDocument.AFTER,
@@ -683,6 +684,8 @@ class ScanRemixHandler(BaseSkyDriverHandler):
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/actions/remix$"
 
+    ILLEGAL_REMIX_FIELDS = ["scan_id", "rescan_ids", "i3_event_id"]
+
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def post(self, scan_id: str) -> None:
@@ -710,38 +713,77 @@ class ScanRemixHandler(BaseSkyDriverHandler):
         if args.abort_first:
             await abort_scan(self.manifests, scan_id, self.ewms_rc)
 
+        # ensure we actually have changes (avoid accidental identical remix)
+        if not args.changes:
+            raise web.HTTPError(
+                400,
+                log_message="Remix requires a non-empty 'changes' object",
+                reason="empty changes",
+            )
+
         # generate unique scan_id
         new_scan_id = make_scan_id()
 
         # grab the 'scan_request_obj'
-        scan_request_obj = await self.scan_request_coll.find_one(
+        scan_request_obj = await self.scan_request_coll.find_one_and_update(
             get_scan_request_obj_filter(scan_id),
+            # record linkage (discoverability)
+            {"$push": {"remix_ids": new_scan_id}},
+            return_document=ReturnDocument.AFTER,
         )
         # -> error: couldn't find it anywhere
         if not scan_request_obj:
             raise web.HTTPError(
                 404,
-                log_message="Could not find original scan-request information to start a rescan",
+                log_message="Could not find original scan-request information to remix",
             )
 
-        # edit
-        scan_request_obj["scan_id"] = new_scan_id
-        scan_request_obj["classifiers"].update(
-            {
-                "remix_from_scan_id": scan_id,
-                "remix_changes": list(args.changes.keys()),
-            }
-        )
-        # add changed fields from user
-        for k, v in args.changes:
-            if k not in scan_request_obj:
-                msg = f"scan cannot be remixed with non-existent field {k}"
+        # apply changes
+        scan_request_obj.pop("_id", None)  # strip Mongo id if present
+        # -- check no illegal changes
+        for k in self.ILLEGAL_REMIX_FIELDS:
+            if k in args.changes:
+                msg = f"scan cannot be remixed with changed field {k}"
                 raise web.HTTPError(
                     422,
                     log_message=msg + f" for {scan_id=}",
                     reason=msg,
                 )
-            scan_request_obj[k] = v
+        # -- add changed fields from user
+        for k, v in args.changes:  # NOTE: remove once openapi validation is enabled
+            if k not in scan_request_obj:
+                msg = f"scan cannot be remixed with non-existent changed field {k}"
+                raise web.HTTPError(
+                    422,
+                    log_message=msg + f" for {scan_id=}",
+                    reason=msg,
+                )
+            else:
+                scan_request_obj[k] = v
+        # -- provenance (add after user's changes so our keys win)
+        scan_request_obj.setdefault("classifiers", {})
+        scan_request_obj["classifiers"].update(
+            {
+                "remix_from_scan_id": scan_id,
+                "remix_changes": sorted(list(args.changes.keys())),
+            }
+        )
+        # -- add generated fields
+        scan_request_obj["scan_id"] = new_scan_id
+        scan_request_obj["rescan_ids"] = []
+        if "docker_tag" in args.changes:
+            try:
+                scan_request_obj["docker_tag"] = await images.resolve_docker_tag(
+                    args.changes["docker_tag"]
+                )
+            except ValueError as e:
+                raise web.HTTPError(
+                    400,
+                    reason=f"invalid remix field 'docker_tag': {e}",
+                    log_message=str(e),
+                )
+        # -- persist
+        await self.scan_request_coll.insert_one(scan_request_obj)
 
         # go!
         manifest = await _start_scan(
