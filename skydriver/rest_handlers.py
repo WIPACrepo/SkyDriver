@@ -715,10 +715,11 @@ class ScanRemixHandler(BaseSkyDriverHandler):
 
         # ensure we actually have changes (avoid accidental identical remix)
         if not args.changes:
+            msg = "Remix requires a non-empty 'changes' object -- to duplicate, request a rescan"
             raise web.HTTPError(
                 400,
-                log_message="Remix requires a non-empty 'changes' object",
-                reason="empty changes",
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
             )
 
         # generate unique scan_id
