@@ -535,9 +535,8 @@ async def _start_scan(
     scan_backlog: database.interface.ScanBacklogClient,
     skyscan_k8s_job_coll: AsyncIOMotorCollection,  # type: ignore[valid-type]
     scan_request_obj: dict,
-    new_scan_id: str = "",  # don't use scan_request_obj.scan_id--this could be a rescan
 ) -> schema.Manifest:
-    scan_id = new_scan_id or scan_request_obj["scan_id"]
+    scan_id = scan_request_obj["scan_id"]
 
     # get the container info ready
     skyscan_k8s_job_dict, scanner_server_args = SkyScanK8sJobFactory.make(
@@ -645,6 +644,8 @@ class ScanRescanHandler(BaseSkyDriverHandler):
                 log_message="Could not find original scan-request information to start a rescan",
             )
 
+        # set id
+        scan_request_obj["scan_id"] = new_scan_id
         # add to 'classifiers' so the user has provenance info
         scan_request_obj["classifiers"].update(
             {"rescan": True, "origin_scan_id": scan_id}
@@ -656,7 +657,6 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             self.scan_backlog,
             self.skyscan_k8s_job_coll,
             scan_request_obj,
-            new_scan_id=new_scan_id,
         )
 
         if args.replace_scan:
@@ -665,6 +665,87 @@ class ScanRescanHandler(BaseSkyDriverHandler):
                 {"$set": {"replaced_by_scan_id": new_scan_id}},
                 return_dclass=dict,
             )
+
+        self.write(
+            dict_projection(dc.asdict(manifest), args.manifest_projection),
+        )
+
+
+# -----------------------------------------------------------------------------
+
+
+class ScanRemixHandler(BaseSkyDriverHandler):
+    """Handles actions on copying a scan's request obj, tweaking it, then starting that."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/actions/remix$"
+
+    @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
+    async def post(self, scan_id: str) -> None:
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+        arghand.add_argument(
+            "abort_first",
+            default=False,
+            type=bool,
+        )
+        # NOTE: unlike a rescan, when remixing a scan, you cannot also set up a replacement redirect
+        arghand.add_argument(
+            "changes",
+            type=dict,  # each changed field will be replaced wholesale
+            required=True,
+        )
+        # response args
+        arghand.add_argument(
+            "manifest_projection",
+            default=all_dc_fields(database.schema.Manifest),
+            type=str,
+        )
+        args = arghand.parse_args()
+
+        if args.abort_first:
+            await abort_scan(self.manifests, scan_id, self.ewms_rc)
+
+        # generate unique scan_id
+        new_scan_id = make_scan_id()
+
+        # grab the 'scan_request_obj'
+        scan_request_obj = await self.scan_request_coll.find_one(
+            get_scan_request_obj_filter(scan_id),
+        )
+        # -> error: couldn't find it anywhere
+        if not scan_request_obj:
+            raise web.HTTPError(
+                404,
+                log_message="Could not find original scan-request information to start a rescan",
+            )
+
+        # edit
+        scan_request_obj["scan_id"] = new_scan_id
+        scan_request_obj["classifiers"].update(
+            {
+                "remix_from_scan_id": scan_id,
+                "remix_changes": list(args.changes.keys()),
+            }
+        )
+        # add changed fields from user
+        for k, v in args.changes:
+            if k not in scan_request_obj:
+                msg = f"scan cannot be remixed with non-existent field {k}"
+                raise web.HTTPError(
+                    422,
+                    log_message=msg + f" for {scan_id=}",
+                    reason=msg,
+                )
+            scan_request_obj[k] = v
+
+        # go!
+        manifest = await _start_scan(
+            self.manifests,
+            self.scan_backlog,
+            self.skyscan_k8s_job_coll,
+            scan_request_obj,
+        )
 
         self.write(
             dict_projection(dc.asdict(manifest), args.manifest_projection),
