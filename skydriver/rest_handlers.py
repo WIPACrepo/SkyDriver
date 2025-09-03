@@ -644,19 +644,23 @@ class ScanRescanHandler(BaseSkyDriverHandler):
                 log_message="Could not find original scan-request information to start a rescan",
             )
 
-        # set id
-        scan_request_obj["scan_id"] = new_scan_id
-        # add to 'classifiers' so the user has provenance info
-        scan_request_obj["classifiers"].update(
-            {"rescan": True, "origin_scan_id": scan_id}
-        )
-
         # go!
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
             self.skyscan_k8s_job_coll,
-            scan_request_obj,
+            {
+                **scan_request_obj,
+                **{
+                    # set id
+                    "scan_id": new_scan_id,
+                    # add to 'classifiers' so the user has provenance info
+                    "classifiers": {
+                        **scan_request_obj["classifiers"],
+                        **{"rescan": True, "origin_scan_id": scan_id},
+                    },
+                },
+            },
         )
 
         if args.replace_scan:
