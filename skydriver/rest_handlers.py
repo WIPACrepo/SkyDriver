@@ -649,7 +649,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             get_scan_request_obj_filter(scan_id),
             {
                 # record linkage (discoverability)
-                # NOTE: must preserve order here for redirects -- so push
+                # NOTE: must preserve order here for history -- so push
                 "$push": {"rescan_ids": new_scan_id},
             },
             return_document=ReturnDocument.AFTER,
@@ -717,7 +717,7 @@ class ScanRemixHandler(BaseSkyDriverHandler):
         # NOTE: unlike a rescan, when remixing a scan, you cannot also set up a replacement redirect
         arghand.add_argument(
             "changes",
-            type=dict,  # each changed field will be replaced wholesale
+            type=dict,  # each changed field will be replaced wholesale (aka no sub-field specific updates)
             required=True,
         )
         # response args
