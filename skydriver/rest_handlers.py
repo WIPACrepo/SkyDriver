@@ -358,6 +358,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             "docker_tag",
             type=str,  # validated below
         )
+        # FUTURE DEV: several of these attrs map to attrs with similar but slightly different names
+        #             so, when migrating to OpenAPI, use the names in scan-request-obj / manifest.
+        #             then, set the old attrs as deprecated/aliases (aka backward compatibility).
+        #             NOTE: the remix endpoint uses the scan-request-obj field names
         # scanner server args
         arghand.add_argument(
             "scanner_server_memory",
@@ -800,7 +804,7 @@ class ScanRemixHandler(BaseSkyDriverHandler):
         for k in changes:
             if k not in doc:
                 msg = (
-                    f"scan cannot be remixed with non-existent changed field {k} "
+                    f"scan cannot be remixed with non-existent changed field '{k}' "
                     f"(available fields: {set(doc.keys()) - ScanRemixHandler.ILLEGAL_REMIX_FIELDS})"
                 )
                 raise web.HTTPError(
@@ -811,7 +815,7 @@ class ScanRemixHandler(BaseSkyDriverHandler):
             elif type(doc[k]) is not type(changes[k]):
                 # gerry-rigged type checker -- remove once we have openapi
                 msg = (
-                    f"scan cannot be remixed with mistyped changed field: {k} "
+                    f"scan cannot be remixed with mistyped changed field: '{k}' "
                     f"(should be {type(doc[k])} not {type(changes[k])})"
                 )
                 raise web.HTTPError(
