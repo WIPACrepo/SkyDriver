@@ -1359,7 +1359,7 @@ async def test_220__remix_empty_or_unknown_changes(
     # Unknown field -> 422
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=r"422 Client Error: scan cannot be remixed with non-existent changed field not_a_field",
+        match=r"422 Client Error: scan cannot be remixed with non-existent changed field 'not_a_field'.*",
     ) as e:
         await rc.request(
             "POST",
