@@ -358,9 +358,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             "docker_tag",
             type=str,  # validated below
         )
-        # FUTURE DEV: several of these attrs map to attrs with similar but slightly different names
-        #             so, when migrating to OpenAPI, use the names in scan-request-obj / manifest.
-        #             then, set the old attrs as deprecated/aliases (aka backward compatibility).
+        # FUTURE DEV: Several of these args map to fields with similar but slightly different names
+        #             so, when migrating to OpenAPI, use the field names in scan-request-obj / manifest.
+        #             Then, set the old args as deprecated/aliases (aka backward compatibility).
         #             NOTE: the remix endpoint uses the scan-request-obj field names
         # scanner server args
         arghand.add_argument(
