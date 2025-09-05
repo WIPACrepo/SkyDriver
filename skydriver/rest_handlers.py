@@ -516,7 +516,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             i3_event_id=i3_event_id,  # foreign key to i3_event collection
             scanner_server_env_from_user=args.scanner_server_env,
         )
-        await self.scan_request_coll.insert_one(scan_request_obj)
 
         # go!
         manifest = await _start_scan(
@@ -524,6 +523,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             self.scan_backlog,
             self.skyscan_k8s_job_coll,
             scan_request_obj,
+            insert_scan_request_obj=True,
+            scan_request_coll=self.scan_request_coll,
         )
         self.write(
             dict_projection(dc.asdict(manifest), args.manifest_projection),
@@ -535,8 +536,19 @@ async def _start_scan(
     scan_backlog: database.interface.ScanBacklogClient,
     skyscan_k8s_job_coll: AsyncIOMotorCollection,  # type: ignore[valid-type]
     scan_request_obj: dict,
+    /,
+    insert_scan_request_obj: bool,  # False for rescans
+    scan_request_coll: AsyncIOMotorCollection | None = None,
 ) -> schema.Manifest:
     scan_id = scan_request_obj["scan_id"]
+
+    # persist the scan request obj in db?
+    if insert_scan_request_obj:
+        if not scan_request_coll:
+            raise RuntimeError(
+                "'scan_request_coll' instance must be provided for 'insert_scan_request_obj=True'"
+            )
+        await scan_request_coll.insert_one(scan_request_obj)
 
     # get the container info ready
     skyscan_k8s_job_dict, scanner_server_args = SkyScanK8sJobFactory.make(
@@ -662,6 +674,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
                     },
                 },
             },
+            insert_scan_request_obj=False,
         )
 
         if args.replace_scan:
@@ -746,15 +759,14 @@ class ScanRemixHandler(BaseSkyDriverHandler):
             new_scan_id=new_scan_id,
         )
 
-        # persist the new scan-request
-        await self.scan_request_coll.insert_one(new_scan_req_obj)
-
         # start the remix scan
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
             self.skyscan_k8s_job_coll,
             new_scan_req_obj,
+            insert_scan_request_obj=True,  # persist the new scan-request
+            scan_request_coll=self.scan_request_coll,
         )
 
         self.write(
