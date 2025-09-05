@@ -751,7 +751,7 @@ class ScanRemixHandler(BaseSkyDriverHandler):
                     reason=msg,
                 )
         # -- add changed fields from user
-        for k, v in args.changes:  # NOTE: remove once openapi validation is enabled
+        for k, v in args.changes.items():  # NOTE: remove once openapi is enabled
             if k not in scan_request_obj:
                 msg = f"scan cannot be remixed with non-existent changed field {k}"
                 raise web.HTTPError(
