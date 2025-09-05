@@ -689,6 +689,7 @@ class ScanRemixHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     async def post(self, scan_id: str) -> None:
+        """POST."""
         arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
         _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
         arghand.add_argument(
@@ -725,57 +726,95 @@ class ScanRemixHandler(BaseSkyDriverHandler):
         # generate unique scan_id
         new_scan_id = make_scan_id()
 
-        # grab the 'scan_request_obj'
-        scan_request_obj = await self.scan_request_coll.find_one_and_update(
+        # fetch original request and record linkage (discoverability)
+        orig_scan_req_obj = await self.scan_request_coll.find_one_and_update(
             get_scan_request_obj_filter(scan_id),
-            # record linkage (discoverability)
             {"$push": {"remix_ids": new_scan_id}},
             return_document=ReturnDocument.AFTER,
         )
-        # -> error: couldn't find it anywhere
-        if not scan_request_obj:
+        if not orig_scan_req_obj:
             raise web.HTTPError(
                 404,
                 log_message="Could not find original scan-request information to remix",
             )
 
-        # apply changes
-        scan_request_obj.pop("_id", None)  # strip Mongo id if present
-        # -- check no illegal changes
-        for k in self.ILLEGAL_REMIX_FIELDS:
-            if k in args.changes:
+        # build the new remix doc (validation + application in one place)
+        new_scan_req_obj = await self._build_remix_doc(
+            orig_doc=orig_scan_req_obj,
+            changes=args.changes,
+            origin_scan_id=scan_id,
+            new_scan_id=new_scan_id,
+        )
+
+        # persist the new scan-request
+        await self.scan_request_coll.insert_one(new_scan_req_obj)
+
+        # start the remix scan
+        manifest = await _start_scan(
+            self.manifests,
+            self.scan_backlog,
+            self.skyscan_k8s_job_coll,
+            new_scan_req_obj,
+        )
+
+        self.write(
+            dict_projection(dc.asdict(manifest), args.manifest_projection),
+        )
+
+    @staticmethod
+    async def _build_remix_doc(
+        orig_doc: dict,
+        changes: dict,
+        origin_scan_id: str,
+        new_scan_id: str,
+    ) -> dict:
+        """Return a new scan-request document with `changes` applied and provenance set."""
+
+        # sanitize fields copied from the source doc
+        doc = dict(orig_doc)
+        doc.pop("_id", None)
+        doc.pop("remix_ids", None)
+        doc.pop("replaced_by_scan_id", None)
+
+        # validate requested changes
+        for k in ScanRemixHandler.ILLEGAL_REMIX_FIELDS:
+            if k in changes:
                 msg = f"scan cannot be remixed with changed field {k}"
                 raise web.HTTPError(
                     422,
-                    log_message=msg + f" for {scan_id=}",
+                    log_message=msg + f" for origin_scan_id={origin_scan_id!r}",
                     reason=msg,
                 )
-        # -- add changed fields from user
-        for k, v in args.changes.items():  # NOTE: remove once openapi is enabled
-            if k not in scan_request_obj:
+        for k in changes:
+            if k not in doc:
                 msg = f"scan cannot be remixed with non-existent changed field {k}"
                 raise web.HTTPError(
                     422,
-                    log_message=msg + f" for {scan_id=}",
+                    log_message=msg + f" for origin_scan_id={origin_scan_id!r}",
                     reason=msg,
                 )
-            else:
-                scan_request_obj[k] = v
-        # -- provenance (add after user's changes so our keys win)
-        scan_request_obj.setdefault("classifiers", {})
-        scan_request_obj["classifiers"].update(
+
+        # apply changes (wholesale replace per key)
+        doc.update(changes)
+
+        # provenance (kept inside existing classifiers; no new top-level attrs)
+        doc.setdefault("classifiers", {})
+        doc["classifiers"].update(
             {
-                "remix_from_scan_id": scan_id,
-                "remix_changes": sorted(list(args.changes.keys())),
+                "remix_from_scan_id": origin_scan_id,
+                "remix_changes": sorted(list(changes.keys())),
             }
         )
-        # -- add generated fields
-        scan_request_obj["scan_id"] = new_scan_id
-        scan_request_obj["rescan_ids"] = []
-        if "docker_tag" in args.changes:
+
+        # generated fields
+        doc["scan_id"] = new_scan_id
+        doc["rescan_ids"] = []
+
+        # resolve docker_tag (if provided)
+        if "docker_tag" in changes:
             try:
-                scan_request_obj["docker_tag"] = await images.resolve_docker_tag(
-                    args.changes["docker_tag"]
+                doc["docker_tag"] = await images.resolve_docker_tag(
+                    changes["docker_tag"]
                 )
             except ValueError as e:
                 raise web.HTTPError(
@@ -783,20 +822,8 @@ class ScanRemixHandler(BaseSkyDriverHandler):
                     reason=f"invalid remix field 'docker_tag': {e}",
                     log_message=str(e),
                 )
-        # -- persist
-        await self.scan_request_coll.insert_one(scan_request_obj)
 
-        # go!
-        manifest = await _start_scan(
-            self.manifests,
-            self.scan_backlog,
-            self.skyscan_k8s_job_coll,
-            scan_request_obj,
-        )
-
-        self.write(
-            dict_projection(dc.asdict(manifest), args.manifest_projection),
-        )
+        return doc
 
 
 # -----------------------------------------------------------------------------
