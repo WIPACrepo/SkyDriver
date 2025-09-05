@@ -538,7 +538,7 @@ async def _start_scan(
     scan_request_obj: dict,
     /,
     insert_scan_request_obj: bool,  # False for rescans
-    scan_request_coll: AsyncIOMotorCollection | None = None,
+    scan_request_coll: AsyncIOMotorCollection | None = None,  # type: ignore[valid-type]
 ) -> schema.Manifest:
     scan_id = scan_request_obj["scan_id"]
 
