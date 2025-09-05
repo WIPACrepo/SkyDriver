@@ -544,7 +544,7 @@ async def _start_scan(
 
     # persist the scan request obj in db?
     if insert_scan_request_obj:
-        if not scan_request_coll:
+        if scan_request_coll is None:
             raise RuntimeError(
                 "'scan_request_coll' instance must be provided for 'insert_scan_request_obj=True'"
             )
