@@ -358,6 +358,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             "docker_tag",
             type=str,  # validated below
         )
+        # FUTURE DEV: Several of these args map to fields with similar but slightly different names
+        #             so, when migrating to OpenAPI, use the field names in scan-request-obj / manifest.
+        #             Then, set the old args as deprecated/aliases (aka backward compatibility).
+        #             NOTE: the remix endpoint uses the scan-request-obj field names
         # scanner server args
         arghand.add_argument(
             "scanner_server_memory",
@@ -496,7 +500,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             docker_tag=args.docker_tag,
             #
             # skyscan server config
-            scanner_server_memory_bytes=args.scanner_server_memory,  # already in bytes
+            scanner_server_memory_bytes=args.scanner_server_memory,  # already in bytes # (note: name change)
             reco_algo=args.reco_algo,
             nsides=args.nsides,
             real_or_simulated_event=args.real_or_simulated_event,
@@ -505,18 +509,17 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             classifiers=args.classifiers,
             #
             # cluster (condor) config
-            request_clusters=args.cluster,  # a list
-            worker_memory_bytes=args.worker_memory,
-            worker_disk_bytes=args.worker_disk,  # already in bytes
+            request_clusters=args.cluster,  # a list # (note: name change)
+            worker_memory_bytes=args.worker_memory,  # (note: name change)
+            worker_disk_bytes=args.worker_disk,  # already in bytes # (note: name change)
             max_pixel_reco_time=args.max_pixel_reco_time,
             priority=args.priority,
             debug_mode=[d.value for d in args.debug_mode],
             #
             # misc
             i3_event_id=i3_event_id,  # foreign key to i3_event collection
-            scanner_server_env_from_user=args.scanner_server_env,
+            scanner_server_env_from_user=args.scanner_server_env,  # (note: name change)
         )
-        await self.scan_request_coll.insert_one(scan_request_obj)
 
         # go!
         manifest = await _start_scan(
@@ -524,6 +527,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             self.scan_backlog,
             self.skyscan_k8s_job_coll,
             scan_request_obj,
+            insert_scan_request_obj=True,
+            scan_request_coll=self.scan_request_coll,
         )
         self.write(
             dict_projection(dc.asdict(manifest), args.manifest_projection),
@@ -535,9 +540,19 @@ async def _start_scan(
     scan_backlog: database.interface.ScanBacklogClient,
     skyscan_k8s_job_coll: AsyncIOMotorCollection,  # type: ignore[valid-type]
     scan_request_obj: dict,
-    new_scan_id: str = "",  # don't use scan_request_obj.scan_id--this could be a rescan
+    /,
+    insert_scan_request_obj: bool,  # False for rescans
+    scan_request_coll: AsyncIOMotorCollection | None = None,  # type: ignore[valid-type]
 ) -> schema.Manifest:
-    scan_id = new_scan_id or scan_request_obj["scan_id"]
+    scan_id = scan_request_obj["scan_id"]
+
+    # persist the scan request obj in db?
+    if insert_scan_request_obj:
+        if scan_request_coll is None:
+            raise RuntimeError(
+                "'scan_request_coll' instance must be provided for 'insert_scan_request_obj=True'"
+            )
+        await scan_request_coll.insert_one(scan_request_obj)
 
     # get the container info ready
     skyscan_k8s_job_dict, scanner_server_args = SkyScanK8sJobFactory.make(
@@ -633,7 +648,8 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         scan_request_obj = await self.scan_request_coll.find_one_and_update(
             get_scan_request_obj_filter(scan_id),
             {
-                # NOTE: must preserve order here -- so push
+                # record linkage (discoverability)
+                # NOTE: must preserve order here for history -- so push
                 "$push": {"rescan_ids": new_scan_id},
             },
             return_document=ReturnDocument.AFTER,
@@ -645,18 +661,24 @@ class ScanRescanHandler(BaseSkyDriverHandler):
                 log_message="Could not find original scan-request information to start a rescan",
             )
 
-        # add to 'classifiers' so the user has provenance info
-        scan_request_obj["classifiers"].update(
-            {"rescan": True, "origin_scan_id": scan_id}
-        )
-
         # go!
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
             self.skyscan_k8s_job_coll,
-            scan_request_obj,
-            new_scan_id=new_scan_id,
+            {
+                **scan_request_obj,
+                **{
+                    # set id
+                    "scan_id": new_scan_id,
+                    # add to 'classifiers' so the user has provenance info
+                    "classifiers": {
+                        **scan_request_obj["classifiers"],
+                        **{"rescan": True, "origin_scan_id": scan_id},
+                    },
+                },
+            },
+            insert_scan_request_obj=False,
         )
 
         if args.replace_scan:
@@ -669,6 +691,169 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         self.write(
             dict_projection(dc.asdict(manifest), args.manifest_projection),
         )
+
+
+# -----------------------------------------------------------------------------
+
+
+class ScanRemixHandler(BaseSkyDriverHandler):
+    """Handles actions on copying a scan's request obj, tweaking it, then starting that."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/actions/remix$"
+
+    ILLEGAL_REMIX_FIELDS = {"scan_id", "rescan_ids", "i3_event_id"}
+
+    @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
+    async def post(self, scan_id: str) -> None:
+        """POST."""
+        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
+        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
+        arghand.add_argument(
+            "abort_first",
+            default=False,
+            type=bool,
+        )
+        # NOTE: unlike a rescan, when remixing a scan, you cannot also set up a replacement redirect
+        arghand.add_argument(
+            "changes",
+            type=dict,  # each changed field will be replaced wholesale (aka no sub-field specific updates)
+            required=True,
+        )
+        # response args
+        arghand.add_argument(
+            "manifest_projection",
+            default=all_dc_fields(database.schema.Manifest),
+            type=str,
+        )
+        args = arghand.parse_args()
+
+        if args.abort_first:
+            await abort_scan(self.manifests, scan_id, self.ewms_rc)
+
+        # ensure we actually have changes (avoid accidental identical remix)
+        if not args.changes:
+            msg = "Remix requires a non-empty 'changes' object -- to duplicate, request a rescan"
+            raise web.HTTPError(
+                400,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+
+        # generate unique scan_id
+        new_scan_id = make_scan_id()
+
+        # fetch original request and record linkage (discoverability)
+        orig_scan_req_obj = await self.scan_request_coll.find_one_and_update(
+            get_scan_request_obj_filter(scan_id),
+            {"$push": {"remix_ids": new_scan_id}},
+            return_document=ReturnDocument.AFTER,
+        )
+        if not orig_scan_req_obj:
+            raise web.HTTPError(
+                404,
+                log_message="Could not find original scan-request information to remix",
+            )
+
+        # build the new remix doc (validation + application in one place)
+        new_scan_req_obj = await self._build_remix_doc(
+            orig_doc=orig_scan_req_obj,
+            changes=args.changes,
+            origin_scan_id=scan_id,
+            new_scan_id=new_scan_id,
+        )
+
+        # start the remix scan
+        manifest = await _start_scan(
+            self.manifests,
+            self.scan_backlog,
+            self.skyscan_k8s_job_coll,
+            new_scan_req_obj,
+            insert_scan_request_obj=True,  # persist the new scan-request
+            scan_request_coll=self.scan_request_coll,
+        )
+
+        self.write(
+            dict_projection(dc.asdict(manifest), args.manifest_projection),
+        )
+
+    @staticmethod
+    async def _build_remix_doc(
+        orig_doc: dict,
+        changes: dict,
+        origin_scan_id: str,
+        new_scan_id: str,
+    ) -> dict:
+        """Return a new scan-request document with `changes` applied and provenance set."""
+
+        # sanitize fields copied from the source doc
+        doc = dict(orig_doc)
+        doc.pop("_id", None)
+        doc.pop("remix_ids", None)
+        doc.pop("replaced_by_scan_id", None)
+
+        # validate requested changes
+        for k in ScanRemixHandler.ILLEGAL_REMIX_FIELDS:
+            if k in changes:
+                msg = f"scan cannot be remixed with changed field {k}"
+                raise web.HTTPError(
+                    422,
+                    log_message=msg + f" for origin_scan_id={origin_scan_id!r}",
+                    reason=msg,
+                )
+        for k in changes:
+            if k not in doc:
+                msg = (
+                    f"scan cannot be remixed with non-existent changed field '{k}' "
+                    f"(available fields: {set(doc.keys()) - ScanRemixHandler.ILLEGAL_REMIX_FIELDS})"
+                )
+                raise web.HTTPError(
+                    422,
+                    log_message=msg + f" for origin_scan_id={origin_scan_id!r}",
+                    reason=msg,
+                )
+            elif type(doc[k]) is not type(changes[k]):
+                # gerry-rigged type checker -- remove once we have openapi
+                msg = (
+                    f"scan cannot be remixed with mistyped changed field: '{k}' "
+                    f"(should be {type(doc[k])} not {type(changes[k])})"
+                )
+                raise web.HTTPError(
+                    422,
+                    log_message=msg + f" for origin_scan_id={origin_scan_id!r}",
+                    reason=msg,
+                )
+
+        # apply changes (wholesale replace per key)
+        doc.update(changes)
+
+        # provenance (kept inside existing classifiers; no new top-level attrs)
+        doc.setdefault("classifiers", {})
+        doc["classifiers"].update(
+            {
+                "remix_from_scan_id": origin_scan_id,
+                "remix_changes": sorted(list(changes.keys())),
+            }
+        )
+
+        # generated fields
+        doc["scan_id"] = new_scan_id
+        doc["rescan_ids"] = []
+
+        # resolve docker_tag (if provided)
+        if "docker_tag" in changes:
+            try:
+                doc["docker_tag"] = await images.resolve_docker_tag(
+                    changes["docker_tag"]
+                )
+            except ValueError as e:
+                raise web.HTTPError(
+                    400,
+                    reason=f"invalid remix field 'docker_tag': {e}",
+                    log_message=str(e),
+                )
+
+        return doc
 
 
 # -----------------------------------------------------------------------------
