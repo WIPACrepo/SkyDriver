@@ -854,7 +854,7 @@ async def _is_scan_complete(rc: RestClient, scan_id: str) -> bool:
 
 
 ########################################################################################
-# TESTS
+# BASIC TESTS
 ########################################################################################
 
 
@@ -1014,6 +1014,8 @@ async def _after_scan_start_logic(
         )
 
 
+########################################################################################
+# RESCAN TESTS
 ########################################################################################
 
 
@@ -1181,7 +1183,192 @@ async def test_110__rescan_replacement_redirect(
 
 
 ########################################################################################
+# REMIX TESTS
+########################################################################################
 
+
+def _assert_remix_response(
+    manifest_alpha: dict,
+    manifest_beta: dict,
+    expected_changed_keys: list[str],
+) -> None:
+
+    # new scan id & timestamps differ
+    for sk in ["scan_id", "last_updated", "timestamp"]:
+        assert manifest_beta[sk] != manifest_alpha[sk]
+
+    # classifiers must include remix provenance
+    assert manifest_beta["classifiers"] == {
+        **manifest_alpha["classifiers"],
+        **{
+            "remix_from_scan_id": manifest_alpha["scan_id"],
+            "remix_changes": sorted(expected_changed_keys),
+        },
+    }
+
+    # unchanged fields except known-different keys
+    skip_keys = {
+        "classifiers",  # ^^^
+        "scan_id",  # ^^^
+        "last_updated",  # ^^^
+        "timestamp",  # ^^^
+        "scanner_server_args",  # recomputed; may differ due to config/image changes
+        *expected_changed_keys,  # see below
+    }
+    eq_alpha = {k: v for k, v in manifest_alpha.items() if k not in skip_keys}
+    eq_beta = {k: v for k, v in manifest_beta.items() if k not in skip_keys}
+    assert eq_beta == eq_alpha
+
+    # changed keys should actually differ in manifest (when present)
+    for k in expected_changed_keys:
+        if k in manifest_alpha and k in manifest_beta:
+            assert manifest_beta[k] != manifest_alpha[k]
+
+
+async def test_200__remix_simple(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+) -> None:
+    """Test remix request that tweaks docker_tag and scanner env."""
+    rc = server()
+
+    # OG SCAN
+    manifest_alpha = await _launch_scan(
+        rc,
+        mongo_client,
+        {
+            **POST_SCAN_BODY,
+            "docker_tag": "3.4.0",
+            "cluster": {"foobar": 1, "a-schedd": 999},
+        },
+        "3.4.0",
+    )
+
+    # REMIX (change docker_tag and add/modify scanner_server_env)
+    changes = {
+        "docker_tag": "3.1",  # will resolve to e.g. 3.1.5 per server rules
+        "scanner_server_env": {**POST_SCAN_BODY["scanner_server_env"], "EXTRA": "1"},
+    }
+    manifest_beta = await rc.request(
+        "POST",
+        f"/scan/{manifest_alpha['scan_id']}/actions/remix",
+        {"changes": changes, "manifest_projection": ["*"]},
+    )
+
+    _assert_remix_response(
+        manifest_alpha,
+        manifest_beta,
+        expected_changed_keys=sorted(list(changes.keys())),
+    )
+
+    # DB: origin doc should have remix_ids containing the new id
+    origin_doc = await mongo_client["SkyDriver_DB"]["ScanRequests"].find_one(  # type: ignore[index]
+        {"scan_id": manifest_alpha["scan_id"]},
+        {"_id": 0, "remix_ids": 1},
+    )
+    assert (
+        origin_doc
+        and "remix_ids" in origin_doc
+        and manifest_beta["scan_id"] in origin_doc["remix_ids"]
+    )
+
+    # Optional: let the remix run through baseline post-launch logic (doesn't set redirects)
+    await _after_scan_start_logic(
+        rc,
+        manifest_beta,
+        test_wait_before_teardown,
+    )
+
+
+async def test_210__remix_illegal_fields_rejected(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+) -> None:
+    """Changing scan_id/i3_event_id/rescan_ids is illegal for remix."""
+    rc = server()
+
+    # OG SCAN
+    manifest = await _launch_scan(
+        rc,
+        mongo_client,
+        {
+            **POST_SCAN_BODY,
+            "docker_tag": "latest",
+            "cluster": {"foobar": 1},
+        },
+        os.environ["LATEST_TAG"],
+    )
+
+    # REMIX
+    # Illegal fields
+    for k in ["scan_id", "i3_event_id", "rescan_ids"]:
+        with pytest.raises(
+            requests.exceptions.HTTPError,
+            match=r"422 Client Error: scan cannot be remixed with changed field " + k,
+        ) as e:
+            await rc.request(
+                "POST",
+                f"/scan/{manifest['scan_id']}/actions/remix",
+                {"changes": {k: "nope"}},
+            )
+        print(e.value)
+
+
+async def test_220__remix_empty_or_unknown_changes(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+) -> None:
+    """Empty changes -> 400; unknown field -> 422."""
+    rc = server()
+
+    # OG SCAN
+    manifest = await _launch_scan(
+        rc,
+        mongo_client,
+        {
+            **POST_SCAN_BODY,
+            "docker_tag": "latest",
+            "cluster": {"foobar": 1},
+        },
+        os.environ["LATEST_TAG"],
+    )
+
+    # REMIX
+    # Empty changes -> 400
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=r"400 Client Error: Remix requires a non-empty 'changes' object",
+    ) as e:
+        await rc.request(
+            "POST",
+            f"/scan/{manifest['scan_id']}/actions/remix",
+            {"changes": {}},
+        )
+    print(e.value)
+
+    # REMIX
+    # Unknown field -> 422
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=r"422 Client Error: scan cannot be remixed with non-existent changed field not_a_field",
+    ) as e:
+        await rc.request(
+            "POST",
+            f"/scan/{manifest['scan_id']}/actions/remix",
+            {"changes": {"not_a_field": 123}},
+        )
+    print(e.value)
+
+
+########################################################################################
+# ERROR TESTS
+########################################################################################
 
 POST_SCAN_BODY_FOR_TEST_300 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
