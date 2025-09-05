@@ -7,7 +7,7 @@ import pprint
 import random
 import re
 import time
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 import humanfriendly
 import pytest
@@ -1249,7 +1249,10 @@ async def test_200__remix_simple(
     # REMIX (change docker_tag and add/modify scanner_server_env)
     changes = {
         "docker_tag": "3.1",  # will resolve to e.g. 3.1.5 per server rules
-        "scanner_server_env": {**POST_SCAN_BODY["scanner_server_env"], "EXTRA": "1"},
+        "scanner_server_env": {
+            **cast(dict, POST_SCAN_BODY["scanner_server_env"]),
+            "EXTRA": "1",
+        },
     }
     manifest_beta = await rc.request(
         "POST",
