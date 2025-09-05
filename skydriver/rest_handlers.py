@@ -496,7 +496,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             docker_tag=args.docker_tag,
             #
             # skyscan server config
-            scanner_server_memory_bytes=args.scanner_server_memory,  # already in bytes
+            scanner_server_memory_bytes=args.scanner_server_memory,  # already in bytes # (note: name change)
             reco_algo=args.reco_algo,
             nsides=args.nsides,
             real_or_simulated_event=args.real_or_simulated_event,
@@ -505,16 +505,16 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             classifiers=args.classifiers,
             #
             # cluster (condor) config
-            request_clusters=args.cluster,  # a list
-            worker_memory_bytes=args.worker_memory,
-            worker_disk_bytes=args.worker_disk,  # already in bytes
+            request_clusters=args.cluster,  # a list # (note: name change)
+            worker_memory_bytes=args.worker_memory,  # (note: name change)
+            worker_disk_bytes=args.worker_disk,  # already in bytes # (note: name change)
             max_pixel_reco_time=args.max_pixel_reco_time,
             priority=args.priority,
             debug_mode=[d.value for d in args.debug_mode],
             #
             # misc
             i3_event_id=i3_event_id,  # foreign key to i3_event collection
-            scanner_server_env_from_user=args.scanner_server_env,
+            scanner_server_env_from_user=args.scanner_server_env,  # (note: name change)
         )
 
         # go!
@@ -697,7 +697,7 @@ class ScanRemixHandler(BaseSkyDriverHandler):
 
     ROUTE = r"/scan/(?P<scan_id>\w+)/actions/remix$"
 
-    ILLEGAL_REMIX_FIELDS = ["scan_id", "rescan_ids", "i3_event_id"]
+    ILLEGAL_REMIX_FIELDS = {"scan_id", "rescan_ids", "i3_event_id"}
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
@@ -799,7 +799,10 @@ class ScanRemixHandler(BaseSkyDriverHandler):
                 )
         for k in changes:
             if k not in doc:
-                msg = f"scan cannot be remixed with non-existent changed field {k}"
+                msg = (
+                    f"scan cannot be remixed with non-existent changed field {k} "
+                    f"(available fields: {set(doc.keys()) - ScanRemixHandler.ILLEGAL_REMIX_FIELDS})"
+                )
                 raise web.HTTPError(
                     422,
                     log_message=msg + f" for origin_scan_id={origin_scan_id!r}",
