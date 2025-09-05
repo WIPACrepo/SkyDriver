@@ -808,6 +808,17 @@ class ScanRemixHandler(BaseSkyDriverHandler):
                     log_message=msg + f" for origin_scan_id={origin_scan_id!r}",
                     reason=msg,
                 )
+            elif type(doc[k]) is not type(changes[k]):
+                # gerry-rigged type checker -- remove once we have openapi
+                msg = (
+                    f"scan cannot be remixed with mistyped changed field: {k} "
+                    f"(should be {type(doc[k])} not {type(changes[k])})"
+                )
+                raise web.HTTPError(
+                    422,
+                    log_message=msg + f" for origin_scan_id={origin_scan_id!r}",
+                    reason=msg,
+                )
 
         # apply changes (wholesale replace per key)
         doc.update(changes)
