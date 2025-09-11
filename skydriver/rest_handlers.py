@@ -609,6 +609,19 @@ async def _start_scan(
 # -----------------------------------------------------------------------------
 
 
+class ScanRequestHandler(BaseSkyDriverHandler):
+    """Handles metadata for scan requests."""
+
+    ROUTE = r"/scan-requests/(?P<scan_id>\w+)$"
+
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    async def get(self) -> None:
+        """GET."""
+
+
+# -----------------------------------------------------------------------------
+
+
 class ScanRescanHandler(BaseSkyDriverHandler):
     """Handles actions on copying a scan's manifest and starting that."""
 
