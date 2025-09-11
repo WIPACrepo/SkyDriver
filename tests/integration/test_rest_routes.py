@@ -1220,7 +1220,7 @@ async def test_300__bad_data(
         requests.exceptions.HTTPError,
         match=re.escape(
             f"400 Client Error: the following arguments are required: "
-            f"docker_tag, cluster, reco_algo, event_i3live_json, nsides, "
+            f"docker_tag, reco_algo, event_i3live_json, nsides, "
             f"real_or_simulated_event, max_pixel_reco_time "
             f"for url: {rc.address}/scan"
         ),
