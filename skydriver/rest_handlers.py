@@ -509,6 +509,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 type=_classifiers_validator,  # piggy-back this validator
                 default=argparse.SUPPRESS,
             )
+        arghand.add_argument(
+            "i3_event_id",
+            type=str,
+        )
         # response args
         arghand.add_argument(
             "manifest_projection",
@@ -571,15 +575,32 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         # generate unique scan_id
         scan_id = make_scan_id()
 
+        async def _get_i3_event_id() -> str:
+            if args.i3_event_id:
+                ret = await self.i3_event_coll.find_one(
+                    {"i3_event_id": args.i3_event_id}
+                )
+                if not ret:
+                    _msg = "i3 event not found"
+                    raise web.HTTPError(
+                        400,
+                        reason=_msg,
+                        log_message=_msg + f" for {args.i3_event_id=}",
+                    )
+                else:
+                    return args.i3_event_id
+            else:
+                # -> store the event in its own collection to reduce redundancy
+                i3_event_id = uuid.uuid4().hex
+                await self.i3_event_coll.insert_one(
+                    {
+                        "i3_event_id": i3_event_id,
+                        "json_dict": args.event_i3live_json,  # this was transformed into dict
+                    }
+                )
+                return i3_event_id
+
         # Before doing anything else, persist in DB
-        # -> store the event in its own collection to reduce redundancy
-        i3_event_id = uuid.uuid4().hex
-        await self.i3_event_coll.insert_one(
-            {
-                "i3_event_id": i3_event_id,
-                "json_dict": args.event_i3live_json,  # this was transformed into dict
-            }
-        )
         # -> store scan_request_obj in db
         scan_request_obj = dict(
             scan_id=scan_id,
@@ -605,7 +626,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             debug_mode=[d.value for d in args.debug_mode],
             #
             # misc
-            i3_event_id=i3_event_id,  # foreign key to i3_event collection
+            i3_event_id=await _get_i3_event_id(),  # foreign key to i3_event collection
             scanner_server_env_from_user=args.scanner_server_env_from_user,
         )
 
