@@ -698,7 +698,7 @@ class ScanRequestHandler(BaseSkyDriverHandler):
         """GET."""
         scan_request_obj = await self.scan_request_coll.find_one({"scan_id": scan_id})
         if not scan_request_obj:
-            msg = f"Scan request not found"
+            msg = "Scan request not found"
             raise web.HTTPError(
                 404,
                 log_message=msg + f" for {scan_id=}",
