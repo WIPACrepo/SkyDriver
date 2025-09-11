@@ -343,6 +343,35 @@ def _data_size_parse(val: Any) -> int:
         raise argparse.ArgumentTypeError("invalid data size")
 
 
+def _take_one_arg(
+    ns: argparse.Namespace,
+    dest: str,
+    *,
+    default: object,
+    required: bool = False,
+):
+    """Resolve aliased args aggregated under `dest` via action='append'."""
+    if not hasattr(ns, dest):
+        if required:
+            raise web.HTTPError(
+                400,
+                reason=f"Missing required argument: '{dest}'",
+            )
+        return default
+
+    vals = getattr(ns, dest)
+
+    if isinstance(vals, list):
+        if len(vals) > 1:
+            raise web.HTTPError(
+                400,
+                reason=f"Provide only one value for '{dest}'",
+            )
+        return vals[0]
+    else:
+        return vals
+
+
 class ScanLauncherHandler(BaseSkyDriverHandler):
     """Handles starting new scans."""
 
@@ -362,17 +391,23 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         #             so, when migrating to OpenAPI, use the field names in scan-request-obj / manifest.
         #             Then, set the old args as deprecated/aliases (aka backward compatibility).
         # scanner server args
-        arghand.add_argument(
-            "scanner_server_memory",
-            type=_data_size_parse,
-            default=humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT),
-        )
+        for name in ["scanner_server_memory", "scanner_server_memory_bytes"]:
+            arghand.add_argument(
+                name,
+                dest="scanner_server_memory_bytes",
+                action="append",
+                type=_data_size_parse,
+                default=argparse.SUPPRESS,
+            )
         # client worker args
-        arghand.add_argument(
-            "worker_memory",
-            type=_data_size_parse,
-            default=humanfriendly.parse_size(ENV.EWMS_WORKER_MEMORY__DEFAULT),
-        )
+        for name in ["worker_memory", "worker_memory_bytes"]:
+            arghand.add_argument(
+                name,
+                dest="worker_memory_bytes",
+                action="append",
+                type=_data_size_parse,
+                default=argparse.SUPPRESS,
+            )
         arghand.add_argument(  # NOTE - DEPRECATED
             "memory",
             type=lambda x: argparse_tools.validate_arg(
@@ -384,15 +419,22 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             ),
             default=None,
         )
-        arghand.add_argument(
-            "worker_disk",
-            type=_data_size_parse,
-            default=humanfriendly.parse_size(ENV.EWMS_WORKER_DISK__DEFAULT),
-        )
-        arghand.add_argument(
-            "cluster",
-            type=_validate_request_clusters,
-        )
+        for name in ["worker_disk", "worker_disk_bytes"]:
+            arghand.add_argument(
+                name,
+                dest="worker_disk_bytes",
+                action="append",
+                type=_data_size_parse,
+                default=argparse.SUPPRESS,
+            )
+        for name in ["cluster", "request_clusters"]:
+            arghand.add_argument(
+                name,
+                dest="request_clusters",
+                action="append",
+                type=_validate_request_clusters,
+                default=argparse.SUPPRESS,
+            )
         # scanner args
         arghand.add_argument(
             "reco_algo",
@@ -440,11 +482,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             type=int,
             default=0,
         )
-        arghand.add_argument(
-            "scanner_server_env",
-            type=_classifiers_validator,  # piggy-back this validator
-            default={},
-        )
+        for name in ["scanner_server_env", "scanner_server_env_from_user"]:
+            arghand.add_argument(
+                name,
+                dest="scanner_server_env_from_user",
+                action="append",
+                type=_classifiers_validator,  # piggy-back this validator
+                default=argparse.SUPPRESS,
+            )
         # response args
         arghand.add_argument(
             "manifest_projection",
@@ -452,6 +497,34 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             type=str,
         )
         args = arghand.parse_args()
+
+        # coalesce backward-compatible/deprecated/aliased args
+        args.scanner_server_memory_bytes = _take_one_arg(
+            args,
+            "scanner_server_memory_bytes",
+            default=humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT),
+        )
+        args.worker_memory_bytes = _take_one_arg(
+            args,
+            "worker_memory_bytes",
+            default=humanfriendly.parse_size(ENV.EWMS_WORKER_MEMORY__DEFAULT),
+        )
+        args.worker_disk_bytes = _take_one_arg(
+            args,
+            "worker_disk_bytes",
+            default=humanfriendly.parse_size(ENV.EWMS_WORKER_DISK__DEFAULT),
+        )
+        args.request_clusters = _take_one_arg(
+            args,
+            "request_clusters",
+            default=None,
+            required=True,
+        )
+        args.scanner_server_env_from_user = _take_one_arg(
+            args,
+            "scanner_server_env_from_user",
+            default={},
+        )
 
         # more arg validation
         if DebugMode.CLIENT_LOGS in args.debug_mode:
