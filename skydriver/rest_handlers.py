@@ -387,9 +387,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             "docker_tag",
             type=str,  # validated below
         )
-        # FUTURE DEV: Several of these args map to fields with similar but slightly different names
-        #             so, when migrating to OpenAPI, use the field names in scan-request-obj / manifest.
-        #             Then, set the old args as deprecated/aliases (aka backward compatibility).
+        # NOTE: Several of these args have aliased names. When migrating to OpenAPI,
+        #       use the field names in scan-request-obj / manifest.
+        #       - Keep the old args as deprecated/aliases (aka backward compatibility).
         # scanner server args
         for name in ["scanner_server_memory", "scanner_server_memory_bytes"]:
             arghand.add_argument(
@@ -527,6 +527,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         )
 
         # more arg validation
+        # -- validate among multiple args
         if DebugMode.CLIENT_LOGS in args.debug_mode:
             for cname, cworkers in args.request_clusters:  # <== was args.cluster
                 if cworkers > (
@@ -543,6 +544,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                             f"includes '{DebugMode.CLIENT_LOGS.value}'"
                         ),
                     )
+        # -- validate w/ async call
         try:
             args.docker_tag = await images.resolve_docker_tag(args.docker_tag)
         except ValueError as e:
