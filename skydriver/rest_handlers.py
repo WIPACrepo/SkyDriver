@@ -612,11 +612,16 @@ async def _start_scan(
 class ScanRequestHandler(BaseSkyDriverHandler):
     """Handles metadata for scan requests."""
 
-    ROUTE = r"/scan-requests/(?P<scan_id>\w+)$"
+    ROUTE = r"/scan-request/(?P<scan_id>\w+)$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    async def get(self) -> None:
+    async def get(self, scan_id: str) -> None:
         """GET."""
+        scan_request_obj = await self.scan_request_coll.find_one({"scan_id": scan_id})
+
+        scan_request_obj.pop("_id", None)
+
+        self.write(scan_request_obj)
 
 
 # -----------------------------------------------------------------------------
