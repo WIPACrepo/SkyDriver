@@ -558,6 +558,16 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 log_message=str(e),
             )
 
+        # validate classifiers
+        for x in ["rescan", "origin_scan_id"]:  # these denote rescan relations
+            if x in args.classifiers:
+                msg = f"classifier cannot contain '{x}' sub-field"
+                raise web.HTTPError(
+                    400,
+                    log_message=msg,
+                    reason=msg,
+                )
+
         # generate unique scan_id
         scan_id = make_scan_id()
 
