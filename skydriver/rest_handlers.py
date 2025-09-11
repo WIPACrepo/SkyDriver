@@ -528,7 +528,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
 
         # more arg validation
         if DebugMode.CLIENT_LOGS in args.debug_mode:
-            for cname, cworkers in args.cluster:
+            for cname, cworkers in args.request_clusters:  # <== was args.cluster
                 if cworkers > (
                     val := KNOWN_CLUSTERS[cname].get(
                         "max_n_clients_during_debug_mode", float("inf")
@@ -538,8 +538,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                         400,
                         log_message=(
                             f"Too many workers: Cluster '{cname}' can only have "
-                            f"{val} "
-                            f"workers when 'debug_mode' "
+                            f"{val} workers when 'debug_mode' "
                             f"includes '{DebugMode.CLIENT_LOGS.value}'"
                         ),
                     )
@@ -572,7 +571,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             docker_tag=args.docker_tag,
             #
             # skyscan server config
-            scanner_server_memory_bytes=args.scanner_server_memory,  # already in bytes # (note: name change)
+            scanner_server_memory_bytes=args.scanner_server_memory_bytes,
             reco_algo=args.reco_algo,
             nsides=args.nsides,
             real_or_simulated_event=args.real_or_simulated_event,
@@ -581,16 +580,16 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             classifiers=args.classifiers,
             #
             # cluster (condor) config
-            request_clusters=args.cluster,  # a list # (note: name change)
-            worker_memory_bytes=args.worker_memory,  # (note: name change)
-            worker_disk_bytes=args.worker_disk,  # already in bytes # (note: name change)
+            request_clusters=args.request_clusters,
+            worker_memory_bytes=args.worker_memory_bytes,
+            worker_disk_bytes=args.worker_disk_bytes,
             max_pixel_reco_time=args.max_pixel_reco_time,
             priority=args.priority,
             debug_mode=[d.value for d in args.debug_mode],
             #
             # misc
             i3_event_id=i3_event_id,  # foreign key to i3_event collection
-            scanner_server_env_from_user=args.scanner_server_env,  # (note: name change)
+            scanner_server_env_from_user=args.scanner_server_env_from_user,
         )
 
         # go!
