@@ -618,6 +618,13 @@ class ScanRequestHandler(BaseSkyDriverHandler):
     async def get(self, scan_id: str) -> None:
         """GET."""
         scan_request_obj = await self.scan_request_coll.find_one({"scan_id": scan_id})
+        if not scan_request_obj:
+            msg = f"Scan request not found"
+            raise web.HTTPError(
+                404,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
 
         scan_request_obj.pop("_id", None)
 
