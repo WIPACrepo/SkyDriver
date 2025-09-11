@@ -538,7 +538,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                         400,
                         log_message=(
                             f"Too many workers: Cluster '{cname}' can only have "
-                            f"{val} workers when 'debug_mode' "
+                            f"{val} "
+                            f"workers when 'debug_mode' "
                             f"includes '{DebugMode.CLIENT_LOGS.value}'"
                         ),
                     )
