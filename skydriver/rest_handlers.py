@@ -576,6 +576,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         scan_id = make_scan_id()
 
         async def _get_i3_event_id() -> str:
+            if args.i3_event_id and args.event_i3live_json:
+                raise web.HTTPError(
+                    400,
+                    reason=f"Provide only one value for 'i3_event_id' and 'event_i3live_json'",
+                )
             if args.i3_event_id:
                 ret = await self.i3_event_coll.find_one(
                     {"i3_event_id": args.i3_event_id}
