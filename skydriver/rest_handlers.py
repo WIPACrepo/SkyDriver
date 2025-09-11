@@ -343,6 +343,25 @@ def _data_size_parse(val: Any) -> int:
         raise argparse.ArgumentTypeError("invalid data size")
 
 
+def _validate_debug_mode_with_clusters(debug_mode: list, request_clusters: dict):
+    if DebugMode.CLIENT_LOGS in debug_mode:
+        for cname, cworkers in request_clusters:
+            if cworkers > (
+                val := KNOWN_CLUSTERS[cname].get(
+                    "max_n_clients_during_debug_mode", float("inf")
+                )
+            ):
+                raise web.HTTPError(
+                    400,
+                    log_message=(
+                        f"Too many workers: Cluster '{cname}' can only have "
+                        f"{val} "
+                        f"workers when 'debug_mode' "
+                        f"includes '{DebugMode.CLIENT_LOGS.value}'"
+                    ),
+                )
+
+
 def _take_one_arg(
     ns: argparse.Namespace,
     dest: str,
@@ -528,22 +547,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
 
         # more arg validation
         # -- validate among multiple args
-        if DebugMode.CLIENT_LOGS in args.debug_mode:
-            for cname, cworkers in args.request_clusters:  # <== was args.cluster
-                if cworkers > (
-                    val := KNOWN_CLUSTERS[cname].get(
-                        "max_n_clients_during_debug_mode", float("inf")
-                    )
-                ):
-                    raise web.HTTPError(
-                        400,
-                        log_message=(
-                            f"Too many workers: Cluster '{cname}' can only have "
-                            f"{val} "
-                            f"workers when 'debug_mode' "
-                            f"includes '{DebugMode.CLIENT_LOGS.value}'"
-                        ),
-                    )
+        _validate_debug_mode_with_clusters(args.debug_mode, args.request_clusters)
         # -- validate w/ async call
         try:
             args.docker_tag = await images.resolve_docker_tag(args.docker_tag)
