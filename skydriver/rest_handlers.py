@@ -5,7 +5,6 @@ import asyncio
 import dataclasses as dc
 import json
 import logging
-import operator
 import re
 import time
 import uuid
@@ -402,7 +401,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         i3_event_id: str | None,
         event_i3live_json: dict | None,
     ) -> str:
-        if operator.xor(bool(i3_event_id), bool(event_i3live_json)):
+        if bool(i3_event_id) == bool(event_i3live_json):  # only one allowed
             msg = "Must provide either 'i3_event_id' or 'event_i3live_json' (xor)"
             raise web.HTTPError(
                 400,
