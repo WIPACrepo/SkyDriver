@@ -63,6 +63,7 @@ REQUIRED_FIELDS = [
     "real_or_simulated_event",
     "docker_tag",
     "max_pixel_reco_time",
+    "cluster",
 ]
 
 
@@ -1264,19 +1265,24 @@ async def test_300__bad_data(
     for arg in POST_SCAN_BODY_FOR_TEST_300:
         if arg in REQUIRED_FIELDS:
             print(arg)
-            with pytest.raises(
-                requests.exceptions.HTTPError,
-                match=re.escape(
-                    (
-                        "400 Client Error: Must provide either 'event_i3live_json' or 'i3_event_id' (xor)"
-                        f"for url: {rc.address}/scan"
-                    )
-                    if arg == "event_i3live_json"
-                    else (
-                        f"400 Client Error: the following arguments are required: {arg} "
-                        f"for url: {rc.address}/scan"
-                    )
+            err = {
+                "event_i3live_json": (
+                    "400 Client Error: Must provide either 'event_i3live_json' or 'i3_event_id' (xor) "
+                    f"for url: {rc.address}/scan"
                 ),
+                "cluster": (  # 'cluster' is aliased w/ 'request_clusters'
+                    "400 Client Error: Missing required argument: 'request_clusters' "
+                    f"for url: {rc.address}/scan"
+                ),
+            }.get(
+                arg,
+                (
+                    f"400 Client Error: the following arguments are required: {arg} "
+                    f"for url: {rc.address}/scan"
+                ),
+            )
+            with pytest.raises(
+                requests.exceptions.HTTPError, match=re.escape(err)
             ) as e:
                 # remove arg from body
                 await rc.request(
