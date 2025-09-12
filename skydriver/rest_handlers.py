@@ -402,7 +402,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         event_i3live_json: dict | None,
     ) -> str:
         if bool(i3_event_id) == bool(event_i3live_json):  # only one allowed
-            msg = "Must provide either 'i3_event_id' or 'event_i3live_json' (xor)"
+            msg = "Must provide either 'event_i3live_json' or 'i3_event_id' (xor)"
             raise web.HTTPError(
                 400,
                 reason=msg,

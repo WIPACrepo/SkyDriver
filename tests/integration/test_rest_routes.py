@@ -1267,8 +1267,15 @@ async def test_300__bad_data(
             with pytest.raises(
                 requests.exceptions.HTTPError,
                 match=re.escape(
-                    f"400 Client Error: the following arguments are required: {arg} "
-                    f"for url: {rc.address}/scan"
+                    (
+                        "400 Client Error: Must provide either 'event_i3live_json' or 'i3_event_id' (xor)"
+                        f"for url: {rc.address}/scan"
+                    )
+                    if arg == "event_i3live_json"
+                    else (
+                        f"400 Client Error: the following arguments are required: {arg} "
+                        f"for url: {rc.address}/scan"
+                    )
                 ),
             ) as e:
                 # remove arg from body
