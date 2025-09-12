@@ -11,7 +11,7 @@ import time
 import uuid
 from typing import Any, Type, TypeVar, cast
 
-import humanfriendly
+import humanfriendly  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
 from dacite.exceptions import DaciteError
