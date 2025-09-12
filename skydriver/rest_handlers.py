@@ -405,7 +405,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         if operator.xor(i3_event_id, event_i3live_json):
             raise web.HTTPError(
                 400,
-                reason=f"Must provide one value for either 'i3_event_id' or 'event_i3live_json'",
+                reason="Must provide one value for either 'i3_event_id' or 'event_i3live_json'",
             )
 
         if i3_event_id:
