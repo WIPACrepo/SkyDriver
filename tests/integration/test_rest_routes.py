@@ -9,7 +9,7 @@ import re
 import time
 from typing import Any, Callable
 
-import humanfriendly
+import humanfriendly  # type: ignore[import-untyped]
 import pytest
 import requests
 from motor.motor_asyncio import AsyncIOMotorClient
