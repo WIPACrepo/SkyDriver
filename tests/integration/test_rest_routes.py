@@ -1194,6 +1194,26 @@ async def test_110__rescan_replacement_redirect(
 POST_SCAN_BODY_FOR_TEST_300 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
+def _get_required_field_missing_error(arg: str, address: str) -> str:
+    errs = {
+        "event_i3live_json": (
+            "400 Client Error: Must provide either 'event_i3live_json' or 'i3_event_id' (xor) "
+            f"for url: {address}/scan"
+        ),
+        "cluster": (  # 'cluster' is aliased w/ 'request_clusters'
+            "400 Client Error: Missing required argument: 'request_clusters' "
+            f"for url: {address}/scan"
+        ),
+    }
+
+    default = (
+        f"400 Client Error: the following arguments are required: {arg} "
+        f"for url: {address}/scan"
+    )
+
+    return errs.get(arg, default)
+
+
 async def test_300__bad_data(
     server: Callable[[], RestClient],
     known_clusters: dict,
@@ -1265,24 +1285,9 @@ async def test_300__bad_data(
     for arg in POST_SCAN_BODY_FOR_TEST_300:
         if arg in REQUIRED_FIELDS:
             print(arg)
-            err = {
-                "event_i3live_json": (
-                    "400 Client Error: Must provide either 'event_i3live_json' or 'i3_event_id' (xor) "
-                    f"for url: {rc.address}/scan"
-                ),
-                "cluster": (  # 'cluster' is aliased w/ 'request_clusters'
-                    "400 Client Error: Missing required argument: 'request_clusters' "
-                    f"for url: {rc.address}/scan"
-                ),
-            }.get(
-                arg,
-                (
-                    f"400 Client Error: the following arguments are required: {arg} "
-                    f"for url: {rc.address}/scan"
-                ),
-            )
             with pytest.raises(
-                requests.exceptions.HTTPError, match=re.escape(err)
+                requests.exceptions.HTTPError,
+                match=re.escape(_get_required_field_missing_error(arg, rc.address)),
             ) as e:
                 # remove arg from body
                 await rc.request(
