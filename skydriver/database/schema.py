@@ -146,9 +146,9 @@ class Manifest(ScanIDDataclass):
     )
 
     # open to requestor
-    classifiers: dict[str, str | bool | float | int | None] = dc.field(
-        default_factory=dict
-    )
+    classifiers: dict[
+        str, str | bool | float | int | None | list[str | bool | float | int | None]
+    ] = dc.field(default_factory=dict)
 
     # i3 event -- grabbed by scanner central server
     i3_event_id: str = ""  # id to i3_event coll
