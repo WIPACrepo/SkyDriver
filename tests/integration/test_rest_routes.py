@@ -9,7 +9,7 @@ import re
 import time
 from typing import Any, Callable
 
-import humanfriendly
+import humanfriendly  # type: ignore[import-untyped]
 import pytest
 import requests
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -63,6 +63,7 @@ REQUIRED_FIELDS = [
     "real_or_simulated_event",
     "docker_tag",
     "max_pixel_reco_time",
+    "cluster",
 ]
 
 
@@ -854,7 +855,7 @@ async def _is_scan_complete(rc: RestClient, scan_id: str) -> bool:
 
 
 ########################################################################################
-# TESTS
+# BASIC TESTS
 ########################################################################################
 
 
@@ -1014,6 +1015,8 @@ async def _after_scan_start_logic(
         )
 
 
+########################################################################################
+# RESCAN TESTS
 ########################################################################################
 
 
@@ -1181,9 +1184,239 @@ async def test_110__rescan_replacement_redirect(
 
 
 ########################################################################################
+# GET–EDIT–LAUNCH NEW SCAN TEST
+########################################################################################
 
+
+async def _get_scan_request(rc: RestClient, scan_id: str) -> sdict:
+    """Helper to GET /scan-request/{scan_id} and return the stored scan request object."""
+    sr = await rc.request("GET", f"/scan-request/{scan_id}")
+    # sanity checks on a few required fields that should always be present
+    assert sr["scan_id"] == scan_id
+    assert isinstance(sr["i3_event_id"], str) and len(sr["i3_event_id"]) > 0
+    assert sr["docker_tag"]
+    assert sr["reco_algo"]
+    assert isinstance(sr["nsides"], dict)
+    assert sr["real_or_simulated_event"] in ("real", "simulated")
+    return sr
+
+
+async def test_200__get_edit_launchdup(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+) -> None:
+    """Get the stored scan-request, 'edit' the inputs to reuse the same event via i3_event_id, then launch a duplicate."""
+    rc = server()
+
+    #
+    # 1) LAUNCH ORIGINAL (with event_i3live_json) → gets a fresh i3_event_id
+    #
+    orig_clusters = {"foobar": 1}  # keep small for this test
+    manifest_alpha = await _launch_scan(
+        rc,
+        mongo_client,
+        {
+            **POST_SCAN_BODY,
+            "docker_tag": "3.4.0",
+            "cluster": orig_clusters,
+        },
+        "3.4.0",
+    )
+    scan_id_alpha = manifest_alpha["scan_id"]
+    i3_event_id_alpha = manifest_alpha["i3_event_id"]
+
+    # (optional light sanity path; we don't need the whole _after_scan_start_logic)
+    resp = await rc.request("GET", f"/scan/{scan_id_alpha}")
+    assert resp["manifest"]["scan_id"] == scan_id_alpha
+    assert resp["result"] == {}
+
+    #
+    # 2) GET THE STORED REQUEST DOC BACK VIA /scan-request/{scan_id}
+    #
+    sr_alpha = await _get_scan_request(rc, scan_id_alpha)
+    # key expectations about normalization in the stored request:
+    assert sr_alpha["i3_event_id"] == i3_event_id_alpha
+    assert sr_alpha["docker_tag"] == "3.4.0"
+    assert sr_alpha["reco_algo"] == POST_SCAN_BODY["reco_algo"]
+    # nsides keys get stringified in storage:
+    assert sr_alpha["nsides"] == {
+        str(k): v for k, v in POST_SCAN_BODY["nsides"].items()  # type: ignore[attr-defined]
+    }
+    # request_clusters normalized (either list-of-pairs or dict accepted on input)
+    assert sr_alpha["request_clusters"] in (
+        list([k, v] for k, v in orig_clusters.items()),
+        orig_clusters,
+    )
+    assert sr_alpha["classifiers"] == POST_SCAN_BODY["classifiers"]
+
+    #
+    # 3) EDIT THE INPUTS LOCALLY TO REUSE THE SAME EVENT VIA i3_event_id (xor rule)
+    #    - Switch to providing i3_event_id instead of event_i3live_json
+    #    - Tweak a couple of benign args (e.g., reco_algo) to show “edited”
+    #
+    post_body_dup = {
+        **POST_SCAN_BODY,
+        "reco_algo": POST_SCAN_BODY["reco_algo"] + "-dup",  # type: ignore[operator]
+        "event_i3live_json": {},  # cleared out (xor)
+        "i3_event_id": i3_event_id_alpha,  # reuse the same event
+        "cluster": orig_clusters,
+        "docker_tag": "3.4.0",
+    }
+
+    #
+    # 4) LAUNCH DUPLICATE (should ACCEPT i3_event_id; must produce a NEW scan_id but SAME i3_event_id)
+    #
+    manifest_beta = await _launch_scan(
+        rc,
+        mongo_client,
+        post_body_dup,
+        "3.4.0",
+    )
+    scan_id_beta = manifest_beta["scan_id"]
+    i3_event_id_beta = manifest_beta["i3_event_id"]
+
+    assert scan_id_beta != scan_id_alpha  # new scan
+    assert (
+        i3_event_id_beta == i3_event_id_alpha
+    )  # same event reused (no duplicate event doc)
+
+    # confirm stored duplicate request doc reflects the reuse
+    sr_beta = await _get_scan_request(rc, scan_id_beta)
+    assert sr_beta["i3_event_id"] == i3_event_id_alpha
+    assert sr_beta["docker_tag"] == "3.4.0"
+    assert sr_beta["reco_algo"] == post_body_dup["reco_algo"]
+    assert sr_beta["nsides"] == {str(k): v for k, v in POST_SCAN_BODY["nsides"].items()}  # type: ignore[attr-defined]
+    assert sr_beta["request_clusters"] in (
+        list([k, v] for k, v in orig_clusters.items()),
+        orig_clusters,
+    )
+
+    #
+    # 5) (LIGHT) FOLLOW-UPS: ensure both scans are queryable and distinct
+    #
+    # original
+    resp_a = await rc.request("GET", f"/scan/{scan_id_alpha}")
+    assert resp_a["manifest"]["scan_id"] == scan_id_alpha
+    assert resp_a["manifest"]["i3_event_id"] == i3_event_id_alpha
+    # duplicate
+    resp_b = await rc.request("GET", f"/scan/{scan_id_beta}")
+    assert resp_b["manifest"]["scan_id"] == scan_id_beta
+    assert resp_b["manifest"]["i3_event_id"] == i3_event_id_alpha
+
+    # mild clean-up path to keep environment tidy (don’t assert workforce completion here)
+    # delete both (these are not completed; allow deletion)
+    await rc.request(
+        "DELETE", f"/scan/{scan_id_alpha}", {"delete_completed_scan": True}
+    )
+    await rc.request("DELETE", f"/scan/{scan_id_beta}", {"delete_completed_scan": True})
+
+
+async def test_210__post_with_get_fields__single_bad_field(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+) -> None:
+    """User copies fields from GET /scan-request/{scan_id} back into POST /scan (single extra)."""
+    rc = server()
+
+    # First, launch a normal scan so we can fetch a canonical scan-request object
+    manifest = await _launch_scan(
+        rc,
+        mongo_client,
+        {**POST_SCAN_BODY, "docker_tag": "3.4.0", "cluster": {"foobar": 1}},
+        "3.4.0",
+    )
+    scan_id = manifest["scan_id"]
+
+    # Pull the stored request
+    sr = await rc.request("GET", f"/scan-request/{scan_id}")
+
+    # Re-post with one *extraneous* field copied from GET (scan_id)
+    bad_body = {
+        **POST_SCAN_BODY,
+        "docker_tag": "3.4.0",
+        "cluster": {"foobar": 1},
+        "event_i3live_json": {"a": 22},  # valid xor usage
+        #
+        "scan_id": sr["scan_id"],  # <-- not allowed in POST
+    }
+
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=rf"400 Client Error: .*unrecognized.*scan_id.* for url: {rc.address}/scan",
+    ) as e:
+        await rc.request("POST", "/scan", bad_body)
+    print(e.value)
+
+
+async def test_215__post_with_get_fields__multiple_bad_fields(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    test_wait_before_teardown: float,
+    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+) -> None:
+    """User copies several fields from GET /scan-request/{scan_id} back into POST /scan (multiple extras)."""
+    rc = server()
+
+    # Launch a normal scan and fetch its stored request
+    manifest = await _launch_scan(
+        rc,
+        mongo_client,
+        {**POST_SCAN_BODY, "docker_tag": "3.4.0", "cluster": {"foobar": 1}},
+        "3.4.0",
+    )
+    scan_id = manifest["scan_id"]
+    sr = await rc.request("GET", f"/scan-request/{scan_id}")
+
+    # Build a body that reuses the same event via i3_event_id (valid),
+    # but also injects *extraneous* GET-resp fields that should be rejected.
+    bad_body = {
+        **POST_SCAN_BODY,
+        "docker_tag": "3.4.0",
+        "cluster": {"foobar": 1},
+        "event_i3live_json": {},  # xor -> empty
+        "i3_event_id": sr["i3_event_id"],  # valid field for POST
+        #
+        "scan_id": sr["scan_id"],  # <-- not allowed in POST
+        "rescan_ids": sr.get("rescan_ids", []),  # <-- not allowed in POST
+    }
+
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=rf"400 Client Error: .*unrecognized.*(scan_id|rescan_ids).* for url: {rc.address}/scan",
+    ) as e:
+        await rc.request("POST", "/scan", bad_body)
+    print(e.value)
+
+
+########################################################################################
+# ERROR TESTS
+########################################################################################
 
 POST_SCAN_BODY_FOR_TEST_300 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
+
+
+def _get_required_field_missing_error(arg: str, address: str) -> str:
+    errs = {
+        "event_i3live_json": (
+            "400 Client Error: Must provide either 'event_i3live_json' or 'i3_event_id' (xor) "
+            f"for url: {address}/scan"
+        ),
+        "cluster": (  # 'cluster' is aliased w/ 'request_clusters'
+            "400 Client Error: Missing required argument: 'request_clusters' "
+            f"for url: {address}/scan"
+        ),
+    }
+
+    default = (
+        f"400 Client Error: the following arguments are required: {arg} "
+        f"for url: {address}/scan"
+    )
+
+    return errs.get(arg, default)
 
 
 async def test_300__bad_data(
@@ -1213,7 +1446,7 @@ async def test_300__bad_data(
         requests.exceptions.HTTPError,
         match=re.escape(
             f"400 Client Error: the following arguments are required: "
-            f"docker_tag, cluster, reco_algo, event_i3live_json, nsides, "
+            f"docker_tag, reco_algo, nsides, "
             f"real_or_simulated_event, max_pixel_reco_time "
             f"for url: {rc.address}/scan"
         ),
@@ -1259,10 +1492,7 @@ async def test_300__bad_data(
             print(arg)
             with pytest.raises(
                 requests.exceptions.HTTPError,
-                match=re.escape(
-                    f"400 Client Error: the following arguments are required: {arg} "
-                    f"for url: {rc.address}/scan"
-                ),
+                match=re.escape(_get_required_field_missing_error(arg, rc.address)),
             ) as e:
                 # remove arg from body
                 await rc.request(

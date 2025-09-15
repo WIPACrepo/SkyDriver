@@ -10,7 +10,7 @@ import time
 import uuid
 from typing import Any, Type, TypeVar, cast
 
-import humanfriendly
+import humanfriendly  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
 from dacite.exceptions import DaciteError
@@ -343,10 +343,93 @@ def _data_size_parse(val: Any) -> int:
         raise argparse.ArgumentTypeError("invalid data size")
 
 
+def _validate_debug_mode_with_clusters(debug_mode: list, request_clusters: dict):
+    if DebugMode.CLIENT_LOGS in debug_mode:
+        for cname, cworkers in request_clusters:
+            if cworkers > (
+                val := KNOWN_CLUSTERS[cname].get(
+                    "max_n_clients_during_debug_mode", float("inf")
+                )
+            ):
+                raise web.HTTPError(
+                    400,
+                    log_message=(
+                        f"Too many workers: Cluster '{cname}' can only have "
+                        f"{val} "
+                        f"workers when 'debug_mode' "
+                        f"includes '{DebugMode.CLIENT_LOGS.value}'"
+                    ),
+                )
+
+
+def _take_one_arg(
+    ns: argparse.Namespace,
+    dest: str,
+    *,
+    default: object,
+    required: bool = False,
+):
+    """Resolve aliased args aggregated under `dest` via action='append'."""
+    if not hasattr(ns, dest):
+        if required:
+            raise web.HTTPError(
+                400,
+                reason=f"Missing required argument: '{dest}'",
+            )
+        return default
+
+    vals = getattr(ns, dest)
+
+    if isinstance(vals, list):
+        if len(vals) > 1:
+            raise web.HTTPError(
+                400,
+                reason=f"Provide only one value for '{dest}'",
+            )
+        return vals[0]
+    else:
+        return vals
+
+
 class ScanLauncherHandler(BaseSkyDriverHandler):
     """Handles starting new scans."""
 
     ROUTE = r"/scan$"
+
+    async def _get_i3_event_id(
+        self,
+        i3_event_id: str | None,
+        event_i3live_json: dict | None,
+    ) -> str:
+        if bool(i3_event_id) == bool(event_i3live_json):  # only one allowed
+            msg = "Must provide either 'event_i3live_json' or 'i3_event_id' (xor)"
+            raise web.HTTPError(
+                400,
+                reason=msg,
+                log_message=msg + f" for {i3_event_id=} {event_i3live_json=}",
+            )
+
+        if i3_event_id:
+            ret = await self.i3_event_coll.find_one({"i3_event_id": i3_event_id})
+            if not ret:
+                _msg = "i3 event not found"
+                raise web.HTTPError(
+                    400,
+                    reason=_msg,
+                    log_message=_msg + f" for {i3_event_id=}",
+                )
+            else:
+                return i3_event_id
+        else:
+            # -> store the event in its own collection to reduce redundancy
+            i3_event_id = uuid.uuid4().hex
+            await self.i3_event_coll.insert_one(
+                {
+                    "i3_event_id": i3_event_id,
+                    "json_dict": event_i3live_json,  # this was transformed into dict
+                }
+            )
+            return i3_event_id
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     async def post(self) -> None:
@@ -358,18 +441,27 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             "docker_tag",
             type=str,  # validated below
         )
+        # NOTE: Several of these args have aliased names. When migrating to OpenAPI,
+        #       use the field names in scan-request-obj / manifest.
+        #       - Keep the old args as deprecated/aliases (aka backward compatibility).
         # scanner server args
-        arghand.add_argument(
-            "scanner_server_memory",
-            type=_data_size_parse,
-            default=humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT),
-        )
+        for name in ["scanner_server_memory", "scanner_server_memory_bytes"]:
+            arghand.add_argument(
+                name,
+                dest="scanner_server_memory_bytes",
+                action="append",
+                type=_data_size_parse,
+                default=argparse.SUPPRESS,
+            )
         # client worker args
-        arghand.add_argument(
-            "worker_memory",
-            type=_data_size_parse,
-            default=humanfriendly.parse_size(ENV.EWMS_WORKER_MEMORY__DEFAULT),
-        )
+        for name in ["worker_memory", "worker_memory_bytes"]:
+            arghand.add_argument(
+                name,
+                dest="worker_memory_bytes",
+                action="append",
+                type=_data_size_parse,
+                default=argparse.SUPPRESS,
+            )
         arghand.add_argument(  # NOTE - DEPRECATED
             "memory",
             type=lambda x: argparse_tools.validate_arg(
@@ -381,15 +473,22 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             ),
             default=None,
         )
-        arghand.add_argument(
-            "worker_disk",
-            type=_data_size_parse,
-            default=humanfriendly.parse_size(ENV.EWMS_WORKER_DISK__DEFAULT),
-        )
-        arghand.add_argument(
-            "cluster",
-            type=_validate_request_clusters,
-        )
+        for name in ["worker_disk", "worker_disk_bytes"]:
+            arghand.add_argument(
+                name,
+                dest="worker_disk_bytes",
+                action="append",
+                type=_data_size_parse,
+                default=argparse.SUPPRESS,
+            )
+        for name in ["cluster", "request_clusters"]:
+            arghand.add_argument(
+                name,
+                dest="request_clusters",
+                action="append",
+                type=_validate_request_clusters,
+                default=argparse.SUPPRESS,
+            )
         # scanner args
         arghand.add_argument(
             "reco_algo",
@@ -402,6 +501,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         arghand.add_argument(
             "event_i3live_json",
             type=_json_to_dict,  # JSON-string/JSON-friendly dict -> dict
+            default={},
+        )
+        arghand.add_argument(
+            "i3_event_id",  # id to an existing i3 event
+            type=str,
+            default="",
         )
         arghand.add_argument(
             "nsides",
@@ -437,11 +542,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             type=int,
             default=0,
         )
-        arghand.add_argument(
-            "scanner_server_env",
-            type=_classifiers_validator,  # piggy-back this validator
-            default={},
-        )
+        for name in ["scanner_server_env", "scanner_server_env_from_user"]:
+            arghand.add_argument(
+                name,
+                dest="scanner_server_env_from_user",
+                action="append",
+                type=_classifiers_validator,  # piggy-back this validator
+                default=argparse.SUPPRESS,
+            )
         # response args
         arghand.add_argument(
             "manifest_projection",
@@ -450,23 +558,38 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         )
         args = arghand.parse_args()
 
+        # coalesce backward-compatible/deprecated/aliased args
+        args.scanner_server_memory_bytes = _take_one_arg(
+            args,
+            "scanner_server_memory_bytes",
+            default=humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT),
+        )
+        args.worker_memory_bytes = _take_one_arg(
+            args,
+            "worker_memory_bytes",
+            default=humanfriendly.parse_size(ENV.EWMS_WORKER_MEMORY__DEFAULT),
+        )
+        args.worker_disk_bytes = _take_one_arg(
+            args,
+            "worker_disk_bytes",
+            default=humanfriendly.parse_size(ENV.EWMS_WORKER_DISK__DEFAULT),
+        )
+        args.request_clusters = _take_one_arg(
+            args,
+            "request_clusters",
+            default=None,
+            required=True,
+        )
+        args.scanner_server_env_from_user = _take_one_arg(
+            args,
+            "scanner_server_env_from_user",
+            default={},
+        )
+
         # more arg validation
-        if DebugMode.CLIENT_LOGS in args.debug_mode:
-            for cname, cworkers in args.cluster:
-                if cworkers > (
-                    val := KNOWN_CLUSTERS[cname].get(
-                        "max_n_clients_during_debug_mode", float("inf")
-                    )
-                ):
-                    raise web.HTTPError(
-                        400,
-                        log_message=(
-                            f"Too many workers: Cluster '{cname}' can only have "
-                            f"{val} "
-                            f"workers when 'debug_mode' "
-                            f"includes '{DebugMode.CLIENT_LOGS.value}'"
-                        ),
-                    )
+        # -- validate among multiple args
+        _validate_debug_mode_with_clusters(args.debug_mode, args.request_clusters)
+        # -- validate w/ async call
         try:
             args.docker_tag = await images.resolve_docker_tag(args.docker_tag)
         except ValueError as e:
@@ -476,18 +599,20 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 log_message=str(e),
             )
 
+        # validate classifiers
+        for x in ["rescan", "origin_scan_id"]:  # these denote rescan relations
+            if x in args.classifiers:
+                msg = f"classifier cannot contain '{x}' sub-field"
+                raise web.HTTPError(
+                    400,
+                    log_message=msg,
+                    reason=msg,
+                )
+
         # generate unique scan_id
         scan_id = make_scan_id()
 
         # Before doing anything else, persist in DB
-        # -> store the event in its own collection to reduce redundancy
-        i3_event_id = uuid.uuid4().hex
-        await self.i3_event_coll.insert_one(
-            {
-                "i3_event_id": i3_event_id,
-                "json_dict": args.event_i3live_json,  # this was transformed into dict
-            }
-        )
         # -> store scan_request_obj in db
         scan_request_obj = dict(
             scan_id=scan_id,
@@ -496,7 +621,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             docker_tag=args.docker_tag,
             #
             # skyscan server config
-            scanner_server_memory_bytes=args.scanner_server_memory,  # already in bytes
+            scanner_server_memory_bytes=args.scanner_server_memory_bytes,
             reco_algo=args.reco_algo,
             nsides=args.nsides,
             real_or_simulated_event=args.real_or_simulated_event,
@@ -505,18 +630,19 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             classifiers=args.classifiers,
             #
             # cluster (condor) config
-            request_clusters=args.cluster,  # a list
-            worker_memory_bytes=args.worker_memory,
-            worker_disk_bytes=args.worker_disk,  # already in bytes
+            request_clusters=args.request_clusters,
+            worker_memory_bytes=args.worker_memory_bytes,
+            worker_disk_bytes=args.worker_disk_bytes,
             max_pixel_reco_time=args.max_pixel_reco_time,
             priority=args.priority,
             debug_mode=[d.value for d in args.debug_mode],
             #
             # misc
-            i3_event_id=i3_event_id,  # foreign key to i3_event collection
-            scanner_server_env_from_user=args.scanner_server_env,
+            i3_event_id=await self._get_i3_event_id(  # foreign key to i3_event collection
+                args.i3_event_id, args.event_i3live_json
+            ),
+            scanner_server_env_from_user=args.scanner_server_env_from_user,
         )
-        await self.scan_request_coll.insert_one(scan_request_obj)
 
         # go!
         manifest = await _start_scan(
@@ -524,6 +650,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             self.scan_backlog,
             self.skyscan_k8s_job_coll,
             scan_request_obj,
+            insert_scan_request_obj=True,
+            scan_request_coll=self.scan_request_coll,
         )
         self.write(
             dict_projection(dc.asdict(manifest), args.manifest_projection),
@@ -535,9 +663,19 @@ async def _start_scan(
     scan_backlog: database.interface.ScanBacklogClient,
     skyscan_k8s_job_coll: AsyncIOMotorCollection,  # type: ignore[valid-type]
     scan_request_obj: dict,
-    new_scan_id: str = "",  # don't use scan_request_obj.scan_id--this could be a rescan
+    /,
+    insert_scan_request_obj: bool,  # False for rescans
+    scan_request_coll: AsyncIOMotorCollection | None = None,  # type: ignore[valid-type]
 ) -> schema.Manifest:
-    scan_id = new_scan_id or scan_request_obj["scan_id"]
+    scan_id = scan_request_obj["scan_id"]
+
+    # persist the scan request obj in db?
+    if insert_scan_request_obj:
+        if scan_request_coll is None:
+            raise RuntimeError(
+                "'scan_request_coll' instance must be provided for 'insert_scan_request_obj=True'"
+            )
+        await scan_request_coll.insert_one(scan_request_obj)
 
     # get the container info ready
     skyscan_k8s_job_dict, scanner_server_args = SkyScanK8sJobFactory.make(
@@ -595,6 +733,31 @@ async def _start_scan(
 # -----------------------------------------------------------------------------
 
 
+class ScanRequestHandler(BaseSkyDriverHandler):
+    """Handles metadata for scan requests."""
+
+    ROUTE = r"/scan-request/(?P<scan_id>\w+)$"
+
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    async def get(self, scan_id: str) -> None:
+        """GET."""
+        scan_request_obj = await self.scan_request_coll.find_one({"scan_id": scan_id})
+        if not scan_request_obj:
+            msg = "Scan request not found"
+            raise web.HTTPError(
+                404,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+
+        scan_request_obj.pop("_id", None)
+
+        self.write(scan_request_obj)
+
+
+# -----------------------------------------------------------------------------
+
+
 class ScanRescanHandler(BaseSkyDriverHandler):
     """Handles actions on copying a scan's manifest and starting that."""
 
@@ -633,7 +796,8 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         scan_request_obj = await self.scan_request_coll.find_one_and_update(
             get_scan_request_obj_filter(scan_id),
             {
-                # NOTE: must preserve order here -- so push
+                # record linkage (discoverability)
+                # NOTE: must preserve order here for history -- so push
                 "$push": {"rescan_ids": new_scan_id},
             },
             return_document=ReturnDocument.AFTER,
@@ -645,18 +809,24 @@ class ScanRescanHandler(BaseSkyDriverHandler):
                 log_message="Could not find original scan-request information to start a rescan",
             )
 
-        # add to 'classifiers' so the user has provenance info
-        scan_request_obj["classifiers"].update(
-            {"rescan": True, "origin_scan_id": scan_id}
-        )
-
         # go!
         manifest = await _start_scan(
             self.manifests,
             self.scan_backlog,
             self.skyscan_k8s_job_coll,
-            scan_request_obj,
-            new_scan_id=new_scan_id,
+            {
+                **scan_request_obj,
+                **{
+                    # set id
+                    "scan_id": new_scan_id,
+                    # add to 'classifiers' so the user has provenance info
+                    "classifiers": {
+                        **scan_request_obj["classifiers"],
+                        **{"rescan": True, "origin_scan_id": scan_id},
+                    },
+                },
+            },
+            insert_scan_request_obj=False,
         )
 
         if args.replace_scan:

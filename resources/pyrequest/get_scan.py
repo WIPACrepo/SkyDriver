@@ -48,11 +48,20 @@ def extract_keys(obj: dict[str, Any], keys: list[str] | None) -> dict[str, Any]:
 async def fetch_scan_info(
     rc: RestClient,
     scan_id: str,
+    scan_request_keys: list[str] | None,
     manifest_keys: list[str] | None,
     status_keys: list[str] | None,
     log_keys: list[str] | None,
 ) -> None:
     logging.info(f"Processing scan {scan_id}")
+
+    if scan_request_keys is not None:
+        logging.info(f"Getting scan request object for scan {scan_id}")
+        resp = await rc.request("GET", f"/scan-request/{scan_id}")
+        subset = extract_keys(resp, scan_request_keys)
+        print(f"\n=== Scan Request Object for scan {scan_id} ===")
+        print(json.dumps(subset, indent=4), flush=True)
+        print()
 
     if manifest_keys is not None:
         logging.info(f"Getting manifest for scan {scan_id}")
@@ -125,20 +134,38 @@ async def main() -> None:
             "allowed). Use without arguments to print full logs."
         ),
     )
+    parser.add_argument(
+        "--scan-request",
+        nargs="*",
+        help=(
+            "Optional keys to extract from the scan request object (dot notation "
+            "allowed). Use without arguments to print the full scan request object."
+        ),
+    )
+
     args = parser.parse_args()
 
     if not args.scan_ids:
         args.scan_ids = input("Scan ID(s): ").split()
 
-    if all(x is None for x in (args.manifest, args.status, args.logs)):
+    if all(
+        v is None for v in (args.scan_request, args.manifest, args.status, args.logs)
+    ):
         parser.error(
-            "At least one of --manifest, --status, or --logs must be specified."
+            "At least one of --scan-request, --manifest, --status, or --logs must be specified."
         )
 
     rc = get_rest_client(args.skydriver_type)
 
     for scan_id in args.scan_ids:
-        await fetch_scan_info(rc, scan_id, args.manifest, args.status, args.logs)
+        await fetch_scan_info(
+            rc,
+            scan_id,
+            args.scan_request,
+            args.manifest,
+            args.status,
+            args.logs,
+        )
 
     logging.info("Done.")
 
