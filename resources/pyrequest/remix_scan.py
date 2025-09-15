@@ -11,14 +11,17 @@ All overrides are passed directly to POST @ '/scan'. No local validation is done
 
 import argparse
 import asyncio
+import copy
 import json
 import logging
 from typing import Any
 
 from _connect import get_rest_client  # type: ignore[import-not-found]
-from resources.pyrequest.stop_scan import stop_scan
+from stop_scan import stop_scan
 
 logging.getLogger().setLevel(logging.INFO)
+
+EXCLUDE_KEYS = ["scan_id", "rescan_ids"]
 
 
 def init_new_scanreq(override_list: list[str]) -> dict[str, Any]:
@@ -78,9 +81,14 @@ async def main():
     # get source scan request object
     logging.info(f"Fetching stored request for scan_id={args.scan_id}")
     source = await rc.request("GET", f"/scan-request/{args.scan_id}")
+    logging.info(f"GET '/scan-request/{args.scan_id}' resp:")
+    print(json.dumps(source, indent=4), flush=True)
     # -- make edits
-    new_scanreq = init_new_scanreq(args.override)
-    new_scanreq["i3_event_id"] = source["i3_event_id"]
+    new_scanreq = {
+        **{k: v for k, v in copy.deepcopy(source).items() if k not in EXCLUDE_KEYS},
+        **init_new_scanreq(args.override),
+        "i3_event_id": source["i3_event_id"],
+    }
     logging.info("Constructed POST '/scan' body:")
     print(json.dumps(new_scanreq, indent=4), flush=True)
 
