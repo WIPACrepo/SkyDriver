@@ -16,6 +16,7 @@ import logging
 from typing import Any
 
 from _connect import get_rest_client  # type: ignore[import-not-found]
+from resources.pyrequest.stop_scan import stop_scan
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -53,9 +54,15 @@ async def main():
         help="SkyDriver environment",
     )
     parser.add_argument(
+        "--stop-first",
+        required=True,
+        type=bool,
+        help="whether to stop the original scan first",
+    )
+    parser.add_argument(
         "--override",
         action="append",
-        default=[],
+        required=True,  # b/c the whole point is to change something
         metavar="KEY=VALUE",
         help="override/additional POST fields, e.g. --override reco_algo=new",
     )
@@ -81,6 +88,10 @@ async def main():
     if args.dry_run:
         logging.info("Dry-run enabled; not posting.")
         return
+
+    # stop the original?
+    if args.stop_first:
+        await stop_scan(rc, args.scan_id)
 
     # launch new scan
     logging.info("Launching new scan...")
