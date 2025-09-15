@@ -55,7 +55,7 @@ async def fetch_scan_info(
 ) -> None:
     logging.info(f"Processing scan {scan_id}")
 
-    if scan_request_keys is not None:  # NEW
+    if scan_request_keys is not None:
         logging.info(f"Getting scan request object for scan {scan_id}")
         resp = await rc.request("GET", f"/scan-request/{scan_id}")
         subset = extract_keys(resp, scan_request_keys)
@@ -148,7 +148,9 @@ async def main() -> None:
     if not args.scan_ids:
         args.scan_ids = input("Scan ID(s): ").split()
 
-    if not any([args.scan_request, args.manifest, args.status, args.logs]):
+    if all(
+        v is None for v in (args.scan_request, args.manifest, args.status, args.logs)
+    ):
         parser.error(
             "At least one of --scan-request, --manifest, --status, or --logs must be specified."
         )
