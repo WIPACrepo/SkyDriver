@@ -7,6 +7,8 @@ on:
     tags-ignore: [ '**' ]
 
 env:
+  CI_DOCKER_IMAGE_W_TAG: skydriver/test:local
+  # skydriver env vars...
   HERE_URL: skydriver.ci-test.aq
   THIS_IMAGE_WITH_TAG: 'ghcr.io/wipacrepo/skydriver:vX.Y.Z'
   EWMS_PILOT_TASK_TIMEOUT: 999
@@ -15,7 +17,7 @@ env:
   SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE: 200
   SCAN_POD_WATCHDOG_DELAY: 1
   LOG_LEVEL: debug
-  # mandatory env vars...
+  # skydriver mandatory env vars...
   EWMS_ADDRESS: http://localhost:8081
   EWMS_TOKEN_URL: 65f3b929
   EWMS_CLIENT_ID: b75a974d
@@ -27,7 +29,6 @@ env:
   S3_SECRET_KEY__K8S_SECRET_KEY: cdf7c60b
   S3_BUCKET: 72017610
   K8S_SECRET_NAME: super-secrets
-  MIN_SKYMAP_SCANNER_TAG: "v3.1.2" # TODO: remove once skyscan v4 is out (that's the real min)
 
 
 jobs:
@@ -188,7 +189,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=min
           file: Dockerfile
-          tags: wipac/skydriver:local
+          tags: ${{ env.CI_DOCKER_IMAGE_W_TAG }}
           load: true
 
       - name: test
@@ -205,16 +206,11 @@ jobs:
           )
           echo $LATEST_TAG  # this tag may be off if there's a delay between GH release & docker hub
 
-          # make test script
-          DIR="test-script-dir"
-          mkdir $DIR
-          echo "#!/bin/bash" >> $DIR/test-script.sh
-          echo "set -xe" >> $DIR/test-script.sh
-          echo "pip install .[tests]" >> $DIR/test-script.sh
-          echo "python -m pytest -vvv tests/integration --exitfirst" >> $DIR/test-script.sh
-          chmod +x $DIR/test-script.sh
-          cat $DIR/test-script.sh
+          # grab the dependencies needed for pytest and friends
+          pip install tomli
+          tests_reqs=$( python -c "import tomli; d=tomli.load(open('pyproject.toml','rb')); print(' '.join(d['project']['optional-dependencies']['tests']))" )
 
+          # run pytest in container
           docker run --network="host" --rm -i --name test \
               --env LATEST_TAG=$LATEST_TAG \
               --env THIS_IMAGE_WITH_TAG=$THIS_IMAGE_WITH_TAG \
@@ -228,9 +224,13 @@ jobs:
               $(env | grep '^MIN_SKYMAP_SCANNER_TAG' | awk '$0="--env "$0') \
               $(env | grep '^HERE_URL' | awk '$0="--env "$0') \
               --mount type=bind,source=$(realpath $DIR),target=/local/$DIR \
-              wipac/skydriver:local \
-              /local/$DIR/test-script.sh
-      #
+              ${{ env.CI_DOCKER_IMAGE_W_TAG }} \
+              /bin/bash -c "\
+                pip install $tests_reqs && \
+                python -m pytest -vvv tests/integration --exitfirst
+              "
+
+      # DUMP LOGS
       - name: dump test logs
         if: always()
         run: |
@@ -259,7 +259,7 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          tags: wipac/skydriver:local
+          tags: ${{ env.CI_DOCKER_IMAGE_W_TAG }}
 
 
   #############################################################################
