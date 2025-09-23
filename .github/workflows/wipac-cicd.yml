@@ -223,7 +223,6 @@ jobs:
               $(env | grep '^SCAN_' | awk '$0="--env "$0') \
               $(env | grep '^MIN_SKYMAP_SCANNER_TAG' | awk '$0="--env "$0') \
               $(env | grep '^HERE_URL' | awk '$0="--env "$0') \
-              --mount type=bind,source=$(realpath $DIR),target=/local/$DIR \
               ${{ env.CI_DOCKER_IMAGE_W_TAG }} \
               /bin/bash -c "\
                 pip install $tests_reqs && \
