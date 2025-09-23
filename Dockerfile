@@ -5,9 +5,15 @@ RUN useradd -m -U app
 WORKDIR /home/app
 USER app
 
-COPY --chown=app:app . .
-
-RUN pip install --no-cache-dir .
+# NOTE:
+#  - During pip-install, no additional files are written to package
+#  - No 'COPY .' because we don't want to copy extra files (especially '.git/')
+#  - Mounting source files prevents unnecessary file duplication
+#  - Mounting '.git/' allows the Python project to build with 'setuptools-scm'
+RUN --mount=type=bind,source=.git,target=.git,ro \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml,ro \
+    --mount=type=bind,source=skydriver,target=skydriver,ro \
+    pip install --no-cache .
 
 ENV PYTHONPATH=/home/app
 
