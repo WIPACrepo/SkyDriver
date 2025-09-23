@@ -866,10 +866,7 @@ async def _is_scan_complete(rc: RestClient, scan_id: str) -> bool:
         ("4.1.0", "4.1.0"),
         ("v4", os.environ["LATEST_TAG"]),
         ("4.1", "4.1.5"),
-        (
-            "blaufuss-updated_icetraycontainer-50e560e",
-            "blaufuss-updated_icetraycontainer-50e560e",
-        ),
+        ("gcd-handling-improvements-fe8ecee", "gcd-handling-improvements-fe8ecee"),
     ],
 )
 @pytest.mark.parametrize(
