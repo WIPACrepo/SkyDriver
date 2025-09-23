@@ -863,9 +863,9 @@ async def _is_scan_complete(rc: RestClient, scan_id: str) -> bool:
     "docker_tag_input,docker_tag_expected",
     [
         ("latest", os.environ["LATEST_TAG"]),
-        ("4.1.0", "4.1.0"),
+        ("3.4.0", "3.4.0"),
         ("v4", os.environ["LATEST_TAG"]),
-        ("4.1", "4.1.5"),
+        ("3.1", "3.1.5"),
         ("gcd-handling-improvements-fe8ecee", "gcd-handling-improvements-fe8ecee"),
     ],
 )
@@ -1049,10 +1049,10 @@ async def test_100__rescan(
         mongo_client,
         {
             **POST_SCAN_BODY,
-            "docker_tag": "4.1.0",
+            "docker_tag": "3.4.0",
             "cluster": {"foobar": 1, "a-schedd": 999, "cloud": 4568},
         },
-        "4.1.0",
+        "3.4.0",
     )
     await _after_scan_start_logic(
         rc,
@@ -1153,10 +1153,10 @@ async def test_110__rescan_replacement_redirect(
         mongo_client,
         {
             **POST_SCAN_BODY,
-            "docker_tag": "4.1.0",
+            "docker_tag": "3.4.0",
             "cluster": {"foobar": 1, "a-schedd": 999, "cloud": 4568},
         },
-        "4.1.0",
+        "3.4.0",
     )
     await _after_scan_start_logic(
         rc,
@@ -1219,10 +1219,10 @@ async def test_200__get_edit_launchdup(
         mongo_client,
         {
             **POST_SCAN_BODY,
-            "docker_tag": "4.1.0",
+            "docker_tag": "3.4.0",
             "cluster": orig_clusters,
         },
-        "4.1.0",
+        "3.4.0",
     )
     scan_id_alpha = manifest_alpha["scan_id"]
     i3_event_id_alpha = manifest_alpha["i3_event_id"]
@@ -1238,7 +1238,7 @@ async def test_200__get_edit_launchdup(
     sr_alpha = await _get_scan_request(rc, scan_id_alpha)
     # key expectations about normalization in the stored request:
     assert sr_alpha["i3_event_id"] == i3_event_id_alpha
-    assert sr_alpha["docker_tag"] == "4.1.0"
+    assert sr_alpha["docker_tag"] == "3.4.0"
     assert sr_alpha["reco_algo"] == POST_SCAN_BODY["reco_algo"]
     # nsides keys get stringified in storage:
     assert sr_alpha["nsides"] == {
@@ -1262,7 +1262,7 @@ async def test_200__get_edit_launchdup(
         "event_i3live_json": {},  # cleared out (xor)
         "i3_event_id": i3_event_id_alpha,  # reuse the same event
         "cluster": orig_clusters,
-        "docker_tag": "4.1.0",
+        "docker_tag": "3.4.0",
     }
 
     #
@@ -1272,7 +1272,7 @@ async def test_200__get_edit_launchdup(
         rc,
         mongo_client,
         post_body_dup,
-        "4.1.0",
+        "3.4.0",
     )
     scan_id_beta = manifest_beta["scan_id"]
     i3_event_id_beta = manifest_beta["i3_event_id"]
@@ -1285,7 +1285,7 @@ async def test_200__get_edit_launchdup(
     # confirm stored duplicate request doc reflects the reuse
     sr_beta = await _get_scan_request(rc, scan_id_beta)
     assert sr_beta["i3_event_id"] == i3_event_id_alpha
-    assert sr_beta["docker_tag"] == "4.1.0"
+    assert sr_beta["docker_tag"] == "3.4.0"
     assert sr_beta["reco_algo"] == post_body_dup["reco_algo"]
     assert sr_beta["nsides"] == {str(k): v for k, v in POST_SCAN_BODY["nsides"].items()}  # type: ignore[attr-defined]
     assert sr_beta["request_clusters"] in (
@@ -1326,8 +1326,8 @@ async def test_210__post_with_get_fields__single_bad_field(
     manifest = await _launch_scan(
         rc,
         mongo_client,
-        {**POST_SCAN_BODY, "docker_tag": "4.1.0", "cluster": {"foobar": 1}},
-        "4.1",
+        {**POST_SCAN_BODY, "docker_tag": "3.4.0", "cluster": {"foobar": 1}},
+        "3.4.0",
     )
     scan_id = manifest["scan_id"]
 
@@ -1337,7 +1337,7 @@ async def test_210__post_with_get_fields__single_bad_field(
     # Re-post with one *extraneous* field copied from GET (scan_id)
     bad_body = {
         **POST_SCAN_BODY,
-        "docker_tag": "4.1.0",
+        "docker_tag": "3.4.0",
         "cluster": {"foobar": 1},
         "event_i3live_json": {"a": 22},  # valid xor usage
         #
@@ -1365,8 +1365,8 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
     manifest = await _launch_scan(
         rc,
         mongo_client,
-        {**POST_SCAN_BODY, "docker_tag": "4.1.0", "cluster": {"foobar": 1}},
-        "4.1.0",
+        {**POST_SCAN_BODY, "docker_tag": "3.4.0", "cluster": {"foobar": 1}},
+        "3.4.0",
     )
     scan_id = manifest["scan_id"]
     sr = await rc.request("GET", f"/scan-request/{scan_id}")
@@ -1375,7 +1375,7 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
     # but also injects *extraneous* GET-resp fields that should be rejected.
     bad_body = {
         **POST_SCAN_BODY,
-        "docker_tag": "4.1.0",
+        "docker_tag": "3.4.0",
         "cluster": {"foobar": 1},
         "event_i3live_json": {},  # xor -> empty
         "i3_event_id": sr["i3_event_id"],  # valid field for POST
