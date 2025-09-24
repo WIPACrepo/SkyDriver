@@ -3,6 +3,7 @@
 import dataclasses as dc
 import enum
 import logging
+from pathlib import Path
 from typing import Any
 
 from wipac_dev_tools import from_environment_as_dataclass, logging_tools
@@ -133,6 +134,10 @@ class EnvConfig:
     CACHE_DURATION_DOCKER_HUB: int = 5 * 60
     CACHE_DURATION_PROMETHEUS: int = 15 * 60
 
+    CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR: Path = Path(
+        "/cvmfs/icecube.opensciencegrid.org/containers/realtime/"
+    )
+
     def __post_init__(self) -> None:
         object.__setattr__(self, "LOG_LEVEL", self.LOG_LEVEL.upper())  # b/c frozen
 
@@ -160,6 +165,12 @@ class EnvConfig:
             raise RuntimeError(
                 "'K8S_TTL_SECONDS_AFTER_FINISHED' must be at least 3x 'SCAN_POD_WATCHDOG_DELAY'"
             )
+
+        # check that cvmfs images dir is available
+        if not self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR.exists():
+            raise FileNotFoundError(self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR)
+        elif not self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR.is_dir():
+            raise NotADirectoryError(self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR)
 
 
 ENV = from_environment_as_dataclass(EnvConfig)

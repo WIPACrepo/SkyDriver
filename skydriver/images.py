@@ -38,10 +38,6 @@ SKYSCAN_DOCKERHUB_API_URL = (
     f"https://hub.docker.com/v2/repositories/{_SKYSCAN_DOCKER_IMAGE_NO_TAG}/tags"
 )
 
-# cvmfs singularity
-_SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH = Path(
-    "/cvmfs/icecube.opensciencegrid.org/containers/realtime/"
-)
 
 # NOTE: for security, limit the regex section lengths (with trusted input we'd use + and *)
 # https://cwe.mitre.org/data/definitions/1333.html
@@ -58,7 +54,7 @@ RE_VERSION_PREFIX_V = re.compile(r"(v|V)\d{1,3}(\.\d{1,3}(\.\d{1,3})?)?$")
 
 def get_skyscan_cvmfs_singularity_image(tag: str, check_exists: bool = False) -> Path:
     """Get the singularity image path for 'tag' (assumes it exists)."""
-    dpath = _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH / f"{_IMAGE}:{tag}"
+    dpath = ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR / f"{_IMAGE}:{tag}"
 
     # optional guardrail
     if check_exists and not dpath.exists():
@@ -134,7 +130,7 @@ def iter_x_y_z_cvmfs_tags() -> Iterable[str]:
     """Iterate over all 'X.Y.Z' skymap scanner tags on CVMFS, youngest to oldest."""
 
     cvmfs_tags = sorted(
-        _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH.glob(f"{_IMAGE}:*"),
+        ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR.glob(f"{_IMAGE}:*"),
         key=lambda x: x.stat().st_mtime,  # filesystem modification time
         reverse=True,  # newest -> oldest
     )
