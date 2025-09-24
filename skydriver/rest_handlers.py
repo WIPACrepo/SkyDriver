@@ -596,7 +596,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         except ImageNotFoundException as e:
             raise web.HTTPError(
                 400,
-                reason="argument docker_tag: image could not be found",
+                reason="argument docker_tag: image not found",
                 log_message=repr(e),
             )
         except ImageTooOldException as e:
