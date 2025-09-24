@@ -645,7 +645,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         )
 
         # go!
-        manifest = await _start_scan(
+        manifest = await enqueue_scan(
             self.manifests,
             self.scan_backlog,
             self.skyscan_k8s_job_coll,
@@ -658,7 +658,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         )
 
 
-async def _start_scan(
+async def enqueue_scan(
     manifests: database.interface.ManifestClient,
     scan_backlog: database.interface.ScanBacklogClient,
     skyscan_k8s_job_coll: AsyncIOMotorCollection,  # type: ignore[valid-type]
@@ -667,6 +667,7 @@ async def _start_scan(
     insert_scan_request_obj: bool,  # False for rescans
     scan_request_coll: AsyncIOMotorCollection | None = None,  # type: ignore[valid-type]
 ) -> schema.Manifest:
+    """Create all need data for a new scan, then enqueue it on the backlog."""
     scan_id = scan_request_obj["scan_id"]
 
     # persist the scan request obj in db?
@@ -810,7 +811,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             )
 
         # go!
-        manifest = await _start_scan(
+        manifest = await enqueue_scan(
             self.manifests,
             self.scan_backlog,
             self.skyscan_k8s_job_coll,
