@@ -150,8 +150,7 @@ jobs:
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
-          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:3.4.0
-          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:3.1.5
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:foo
 
       - name: pip install
         run: |
@@ -207,6 +206,7 @@ jobs:
           mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
           touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:3.4.0
           touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:3.1.5
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:gcd-handling-improvements-fe8ecee
 
       - name: test
         run: |
