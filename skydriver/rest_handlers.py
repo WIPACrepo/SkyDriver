@@ -596,7 +596,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         except (ImageNotFoundException, ValueError) as e:
             raise web.HTTPError(
                 400,
-                reason=f"argument docker_tag: {repr(e)}",
+                reason=f"argument docker_tag: {e}",
                 log_message=repr(e),
             )
 

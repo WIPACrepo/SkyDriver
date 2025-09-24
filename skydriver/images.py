@@ -19,6 +19,9 @@ LOGGER = logging.getLogger(__name__)
 class ImageNotFoundException(Exception):
     """Raised when an image (tag) cannot be found."""
 
+    def __init__(self, image: str):
+        super().__init__(f"Image '{image}' cannot be found.")
+
 
 class ImageTooOldException(Exception):
     """Raised when an image (tag) is too old to be used in a scan."""
