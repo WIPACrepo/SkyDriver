@@ -166,11 +166,15 @@ class EnvConfig:
                 "'K8S_TTL_SECONDS_AFTER_FINISHED' must be at least 3x 'SCAN_POD_WATCHDOG_DELAY'"
             )
 
-        # check that cvmfs images dir is available
+        # check that cvmfs images dir is available and non-empty
         if not self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR.exists():
             raise FileNotFoundError(self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR)
         elif not self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR.is_dir():
             raise NotADirectoryError(self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR)
+        elif not list(self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR.iterdir()):
+            raise RuntimeError(
+                f"directory is empty: {self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR}"
+            )
 
 
 ENV = from_environment_as_dataclass(EnvConfig)
