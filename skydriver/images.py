@@ -26,6 +26,13 @@ class ImageNotFoundException(Exception):
 class ImageTooOldException(Exception):
     """Raised when an image (tag) is too old to be used in a scan."""
 
+    def __init__(self):
+        # NOTE - this message is sent to user, so don't supply tag name (security)
+        super().__init__(
+            f"Image tag is older than the minimum supported tag "
+            f"'{ENV.MIN_SKYMAP_SCANNER_TAG}'. Contact admins for more info."
+        )
+
 
 # ---------------------------------------------------------------------------------------
 # constants
@@ -198,9 +205,6 @@ async def resolve_docker_tag(docker_tag: str) -> str:
 
     # check that the image is not too old
     if _parse_image_ts(dh_info) < await min_skymap_scanner_tag_ts():
-        raise ImageTooOldException(
-            f"Image tag is older than the minimum supported tag "
-            f"'{ENV.MIN_SKYMAP_SCANNER_TAG}'. Contact admins for more info."
-        )
+        raise ImageTooOldException()
 
     return docker_tag

@@ -150,7 +150,7 @@ jobs:
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
-          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:foo
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:im-just-here-so-i-dont-get-fined
 
       - name: pip install
         run: |
