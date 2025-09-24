@@ -235,10 +235,10 @@ jobs:
               $(env | grep '^SCAN_' | awk '$0="--env "$0') \
               $(env | grep '^MIN_SKYMAP_SCANNER_TAG' | awk '$0="--env "$0') \
               $(env | grep '^HERE_URL' | awk '$0="--env "$0') \
-              --env CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR=cvmfs \
+              --env CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR="$( realpath $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR )" \
               --mount type=bind,source="$( realpath ./tests )",target="/app/tests",readonly \
               --mount type=bind,source="$( realpath ./pytest.ini )",target="/app/pytest.ini",readonly \
-              --mount type=bind,source="$( realpath $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR )",target="cvmfs",readonly \
+              --mount type=bind,source="$( realpath $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR )",target="$( realpath $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR )",readonly \
               ${{ env.CI_DOCKER_IMAGE_W_TAG }} \
               /bin/bash -c "\
                 pip install $tests_reqs && \
