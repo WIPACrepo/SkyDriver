@@ -3,6 +3,7 @@
 import logging
 import re
 from pathlib import Path
+from typing import Iterable
 
 import aiocache  # type: ignore[import-untyped]
 import requests
@@ -15,8 +16,12 @@ from .config import ENV
 LOGGER = logging.getLogger(__name__)
 
 
-class ImageNotFound(Exception):
+class ImageNotFoundException(Exception):
     """Raised when an image (tag) cannot be found."""
+
+
+class ImageTooOldException(Exception):
+    """Raised when an image (tag) is too old to be used in a scan."""
 
 
 # ---------------------------------------------------------------------------------------
@@ -37,8 +42,11 @@ _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH = Path(
 
 # NOTE: for security, limit the regex section lengths (with trusted input we'd use + and *)
 # https://cwe.mitre.org/data/definitions/1333.html
-VERSION_REGEX_MAJMINPATCH = re.compile(r"\d{1,3}\.\d{1,3}\.\d{1,3}$")
-VERSION_REGEX_PREFIX_V = re.compile(r"(v|V)\d{1,3}(\.\d{1,3}(\.\d{1,3})?)?$")
+RE_VERSION_X_Y_Z = re.compile(r"\d{1,3}\.\d{1,3}\.\d{1,3}$")
+RE_VERSION_X_Y = re.compile(r"\d{1,3}\.\d{1,3}$")
+RE_VERSION_X = re.compile(r"\d{1,3}$")
+
+RE_VERSION_PREFIX_V = re.compile(r"(v|V)\d{1,3}(\.\d{1,3}(\.\d{1,3})?)?$")
 
 
 # ---------------------------------------------------------------------------------------
@@ -51,7 +59,7 @@ def get_skyscan_cvmfs_singularity_image(tag: str, check_exists: bool = False) ->
 
     # optional guardrail
     if check_exists and not dpath.exists():
-        raise ImageNotFound(dpath)
+        raise ImageNotFoundException(dpath)
 
     return dpath
 
@@ -63,75 +71,6 @@ def get_skyscan_docker_image(tag: str) -> str:
 
 # ---------------------------------------------------------------------------------------
 # utils
-
-
-def _extract_digest(result: dict) -> str | None:
-    """Return the digest for a Docker Hub tag result.
-
-    Prefers the top-level 'digest'. If missing, falls back to the first image
-    digest in 'images' (if any). Returns None if no digest is found.
-    """
-
-    # Docker Hub tag results may provide 'digest' at the top level
-    # (common in current API responses) or inside the 'images' list
-    # (older API responses). Some tags may have an empty 'images' list.
-    # This function handles all cases gracefully.
-
-    if digest := result.get("digest"):
-        return digest
-
-    if not (imgs := result.get("images")):
-        return None
-
-    for img in imgs:
-        if d := img.get("digest"):
-            return d
-
-    return None
-
-
-async def _match_sha_to_majminpatch(target_sha: str) -> str | None:
-    """Finds the image w/ same SHA and has a version tag like '#.#.#'.
-
-    No error handling
-    """
-    LOGGER.debug(
-        f"finding an image that has a version tag like '#.#.#' for sha={target_sha}..."
-    )
-
-    rc = RestClient(SKYSCAN_DOCKERHUB_API_URL)
-
-    while True:  # loop for pagination
-        LOGGER.info(f"looking at {rc.address}...")
-        resp = await rc.request("GET", "")
-
-        # look at each result on this page
-        for result in resp.get("results") or []:
-
-            # does the image digest (sha) match?
-            result_sha = _extract_digest(result)
-            if not result_sha:
-                LOGGER.debug(f"-> skipping tag={result.get('name')} (no digest found)")
-                continue
-            if target_sha != result_sha:
-                continue
-
-            # is this a full version ('#.#.#') tag?
-            name = result.get("name", "")
-            if VERSION_REGEX_MAJMINPATCH.fullmatch(name):
-                LOGGER.debug("-> success! matches AND has a full version tag")
-                return name  # type: ignore[no-any-return]
-            else:
-                LOGGER.debug("-> matches, but not a full version tag")
-
-        # looping logic
-        if not (next_url := resp.get("next")):  # no more -> no match!
-            LOGGER.debug(
-                f"-> could not find a full version tag matching sha={target_sha}"
-            )
-            return None
-        else:
-            rc.address = next_url
 
 
 def _parse_image_ts(info: dict) -> float:
@@ -150,11 +89,66 @@ async def min_skymap_scanner_tag_ts() -> float:
     return _parse_image_ts(info)
 
 
-@aiocache.cached(ttl=ENV.CACHE_DURATION_DOCKER_HUB)  # fyi: tags can be overwritten
-async def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
-    """Get the '#.#.#' tag on Docker Hub w/ `docker_tag`'s SHA if possible.
+def strip_v_prefix(docker_tag: str) -> str:
+    """Remove the v-prefix for semver tags."""
+    if RE_VERSION_PREFIX_V.fullmatch(docker_tag):
+        # v4 -> 4; v5.1 -> 5.1; v3.6.9 -> 3.6.9
+        docker_tag = docker_tag.lstrip("v")
 
-    Return `docker_tag` if already a '#.#.#', or if there's no match.
+    if not docker_tag or not docker_tag.strip():
+        raise ImageNotFoundException(docker_tag)
+
+    return docker_tag
+
+
+@aiocache.cached(ttl=ENV.CACHE_DURATION_DOCKER_HUB)  # fyi: tags can be overwritten
+async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
+    """Get the json dict from GET @ Docker Hub, and the non v-prefixed tag (see below).
+
+    Accepts v-prefixed tags, like 'v2.3.4', 'v4', etc.
+    """
+    LOGGER.info(f"retrieving tag info on docker hub: {docker_tag}")
+    docker_tag = strip_v_prefix(docker_tag)
+
+    try:
+        rc = RestClient(SKYSCAN_DOCKERHUB_API_URL)
+        LOGGER.debug(f"looking at {rc.address} for {docker_tag}...")
+        resp = await rc.request("GET", docker_tag)
+    except requests.exceptions.HTTPError as e:
+        LOGGER.exception(e)
+        raise ImageNotFoundException(docker_tag) from e
+    except Exception as e:
+        LOGGER.exception(e)
+        raise ImageNotFoundException(docker_tag) from ValueError(
+            "Image tag verification failed"
+        )
+
+    LOGGER.debug(resp)
+    return resp, docker_tag
+
+
+def iter_x_y_z_cvmfs_tags() -> Iterable[str]:
+    """Iterate over all 'X.Y.Z' skymap scanner tags on CVMFS, youngest to oldest."""
+
+    cvmfs_tags = sorted(
+        _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH.glob(f"{_IMAGE}:*"),
+        key=lambda x: x.stat().st_mtime,  # filesystem modification time
+        reverse=True,  # newest -> oldest
+    )
+
+    for p in cvmfs_tags:
+        try:
+            tag = p.name.split(":", maxsplit=1)[1]
+        except IndexError:
+            continue
+        if not RE_VERSION_X_Y_Z.fullmatch(tag):
+            continue
+        # tag is a full 'X.Y.Z' tag
+        yield tag
+
+
+def resolve_tag_on_cvmfs(docker_tag: str) -> str:
+    """Get the 'X.Y.Z' tag on CVMFS corresponding to `docker_tag`.
 
     Examples:
         3.4.5     ->  3.4.5
@@ -162,83 +156,49 @@ async def _try_resolve_to_majminpatch_docker_hub(docker_tag: str) -> str:
         3         ->  3.3.5 (on 2023/03/08)
         latest    ->  3.4.2 (on 2023/03/15)
         test-foo  ->  test-foo
-        typo_tag  ->  `ValueError`
-
-    Raises:
-        ValueError -- if `docker_tag` doesn't exist on Docker Hub
-        ValueError -- if there's an issue communicating w/ Docker Hub API
+        typO_tag  ->  `ImageNotFoundException`
     """
-    info, docker_tag = await get_info_from_docker_hub(docker_tag)
-    # check that the image is not too old
-    if _parse_image_ts(info) < await min_skymap_scanner_tag_ts():
-        raise ValueError(
-            f"Image tag is older than the minimum supported tag "
-            f"'{ENV.MIN_SKYMAP_SCANNER_TAG}'. Contact admins for more info"
-        )
+    LOGGER.info(f"checking tag exists on cvmfs: {docker_tag}")
+    docker_tag = strip_v_prefix(docker_tag)
 
-    # make sure tag is fully qualified
-    if VERSION_REGEX_MAJMINPATCH.fullmatch(docker_tag):
-        return docker_tag  # already full version
-    # match sha to vX.Y.Z
+    # step 1: does the tag simply exist on cvmfs?
     try:
-        if majminpatch := await _match_sha_to_majminpatch(info["digest"]):
-            return majminpatch
-        else:  # no match
-            return docker_tag
-    except Exception as e:
-        LOGGER.exception(e)
-        raise ValueError("Error validating image on Docker Hub")
+        get_skyscan_cvmfs_singularity_image(docker_tag, check_exists=True)
+        return docker_tag
+    except ImageNotFoundException:
+        pass
 
+    # step 2: was the tag a non-specific tag (like 'latest', 'v4.1', 'v4', etc.)
+    # -- case 1: user gave 'latest'
+    if docker_tag == "latest":
+        for tag in iter_x_y_z_cvmfs_tags():
+            return tag
+    # -- case 2: user gave an non-specific semver tag (like 'v4.1', 'v4', etc.)
+    elif RE_VERSION_X_Y.fullmatch(docker_tag) or RE_VERSION_X.fullmatch(docker_tag):
+        for tag in iter_x_y_z_cvmfs_tags():
+            if tag.startswith(docker_tag + "."):  # ex: '3.1.4' startswith '3.1.'
+                return tag
 
-async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
-    """Get the json dict from GET @ Docker Hub, and the non v-prefixed tag (see below).
-
-    Accepts v-prefixed tags, like 'v2.3.4', 'v4', etc.
-    """
-    if VERSION_REGEX_PREFIX_V.fullmatch(docker_tag):
-        # v4 -> 4; v5.1 -> 5.1; v3.6.9 -> 3.6.9
-        docker_tag = docker_tag.lstrip("v")
-
-    if not docker_tag or not docker_tag.strip():
-        raise ImageNotFound(docker_tag)
-
-    try:
-        rc = RestClient(SKYSCAN_DOCKERHUB_API_URL)
-        LOGGER.info(f"looking at {rc.address} for {docker_tag}...")
-        resp = await rc.request("GET", docker_tag)
-    except requests.exceptions.HTTPError as e:
-        LOGGER.exception(e)
-        raise ImageNotFound(docker_tag) from e
-    except Exception as e:
-        LOGGER.exception(e)
-        raise ImageNotFound(docker_tag) from ValueError("Image tag verification failed")
-
-    LOGGER.debug(resp)
-    return resp, docker_tag
+    # fall-through
+    raise ImageNotFoundException(docker_tag)
 
 
 async def resolve_docker_tag(docker_tag: str) -> str:
     """Check if the docker tag exists, then resolve 'latest' if needed."""
     LOGGER.info(f"checking docker tag: {docker_tag}")
 
-    # resolve tag on docker hub
-    try:
-        resolved_image = await _try_resolve_to_majminpatch_docker_hub(docker_tag)
-        LOGGER.info(f"resolved tag: {docker_tag} -> {resolved_image}")
-    except Exception as e:
-        LOGGER.exception(e)
-        raise ImageNotFound(docker_tag) from e
+    # cvmfs is the source of truth
+    docker_tag = resolve_tag_on_cvmfs(docker_tag)
+    get_skyscan_cvmfs_singularity_image(docker_tag, check_exists=True)  # just-in-case
 
-    # now, check that the image exists on CVMFS
-    # -- case 1: user gave a resolved tag (aka a very specific tag)
-    if resolved_image == docker_tag:
-        get_skyscan_cvmfs_singularity_image(resolved_image, check_exists=True)
-    # -- case 2: user gave a non-specific tag (like latest, v4, etc.)
-    else:
-        try:
-            get_skyscan_cvmfs_singularity_image(resolved_image, check_exists=True)
-        except ImageNotFound as e:
-            LOGGER.warning(f"{repr(e)} -- will now attempt to downgrade tag...")
-            pass
+    # check that it also exists on docker hub
+    dh_info, _ = await get_info_from_docker_hub(docker_tag)
 
-    return resolved_image
+    # check that the image is not too old
+    if _parse_image_ts(dh_info) < await min_skymap_scanner_tag_ts():
+        raise ImageTooOldException(
+            f"Image tag is older than the minimum supported tag "
+            f"'{ENV.MIN_SKYMAP_SCANNER_TAG}'. Contact admins for more info."
+        )
+
+    return docker_tag
