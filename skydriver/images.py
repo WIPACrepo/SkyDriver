@@ -15,6 +15,10 @@ from .config import ENV
 LOGGER = logging.getLogger(__name__)
 
 
+class ImageNotFound(Exception):
+    """Raised when an image (tag) cannot be found."""
+
+
 # ---------------------------------------------------------------------------------------
 # constants
 
@@ -41,9 +45,15 @@ VERSION_REGEX_PREFIX_V = re.compile(r"(v|V)\d{1,3}(\.\d{1,3}(\.\d{1,3})?)?$")
 # getters
 
 
-def get_skyscan_cvmfs_singularity_image(tag: str) -> str:
+def get_skyscan_cvmfs_singularity_image(tag: str, check_exists: bool = False) -> Path:
     """Get the singularity image path for 'tag' (assumes it exists)."""
-    return str(_SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH / f"{_IMAGE}:{tag}")
+    dpath = _SKYSCAN_CVMFS_SINGULARITY_IMAGES_DPATH / f"{_IMAGE}:{tag}"
+
+    # optional guardrail
+    if check_exists and not dpath.exists():
+        raise ImageNotFound(dpath)
+
+    return dpath
 
 
 def get_skyscan_docker_image(tag: str) -> str:
@@ -210,16 +220,27 @@ async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
 
 
 async def resolve_docker_tag(docker_tag: str) -> str:
-    """Check if the docker tag exists, then resolve 'latest' if needed.
-
-    NOTE: Assumes tag exists (or will soon) on CVMFS. Condor will back
-          off & retry until the image exists
-    """
+    """Check if the docker tag exists, then resolve 'latest' if needed."""
     LOGGER.info(f"checking docker tag: {docker_tag}")
+
+    # resolve tag on docker hub
     try:
-        out_image = await _try_resolve_to_majminpatch_docker_hub(docker_tag)
-        LOGGER.info(f"resolved tag: {docker_tag} -> {out_image}")
-        return out_image
+        resolved_image = await _try_resolve_to_majminpatch_docker_hub(docker_tag)
+        LOGGER.info(f"resolved tag: {docker_tag} -> {resolved_image}")
     except Exception as e:
         LOGGER.exception(e)
-        raise e
+        raise ImageNotFound(docker_tag) from e
+
+    # now, check that the image exists on CVMFS
+    # -- case 1: user gave a resolved tag (aka a very specific tag)
+    if resolved_image == docker_tag:
+        get_skyscan_cvmfs_singularity_image(resolved_image, check_exists=True)
+    # -- case 2: user gave a non-specific tag (like latest, v4, etc.)
+    else:
+        try:
+            get_skyscan_cvmfs_singularity_image(resolved_image, check_exists=True)
+        except ImageNotFound as e:
+            LOGGER.warning(f"{repr(e)} -- will now attempt to downgrade tag...")
+            pass
+
+    return resolved_image

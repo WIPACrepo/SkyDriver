@@ -42,6 +42,7 @@ from .database.schema import (
     has_skydriver_requested_ewms_workflow,
 )
 from .ewms import get_deactivated_type, request_stop_on_ewms
+from .images import ImageNotFound
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
 from .rest_decorators import maybe_redirect_scan_id, service_account_auth
 from .utils import (
@@ -592,7 +593,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         # -- validate w/ async call
         try:
             args.docker_tag = await images.resolve_docker_tag(args.docker_tag)
-        except ValueError as e:
+        except ImageNotFound as e:
             raise web.HTTPError(
                 400,
                 reason=f"argument docker_tag: {e}",
