@@ -150,7 +150,8 @@ jobs:
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
-          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:4.1.5
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:3.4.0
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:3.1.5
 
       - name: pip install
         run: |
@@ -204,7 +205,8 @@ jobs:
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
-          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:4.1.5
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:3.4.0
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:3.1.5
 
       - name: test
         run: |
@@ -218,7 +220,8 @@ jobs:
               | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}' \
               | sed 's/v//' \
           )
-          echo $LATEST_TAG  # this tag may be off if there's a delay between GH release & docker hub
+          echo $LATEST_TAG  # in reality, this tag may be off if there's a delay between GH release & docker hub
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:"$LATEST_TAG"
 
           # grab the dependencies needed for pytest and friends
           pip install tomli
