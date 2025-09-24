@@ -146,10 +146,10 @@ jobs:
         with:
           python-version: ${{ matrix.py3 }}
 
-      - name: "mkdir $CVMFS_DIR"
+      - name: "mkdir -p $CVMFS_DIR"
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
-          mkdir $CVMFS_DIR
+          mkdir -p $CVMFS_DIR
 
       - name: pip install
         run: |
@@ -199,10 +199,10 @@ jobs:
           tags: ${{ env.CI_DOCKER_IMAGE_W_TAG }}
           load: true
 
-      - name: "mkdir $CVMFS_DIR"
+      - name: "mkdir -p $CVMFS_DIR"
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
-          mkdir $CVMFS_DIR
+          mkdir -p $CVMFS_DIR
 
       - name: test
         run: |
