@@ -8,6 +8,7 @@ on:
 
 env:
   CI_DOCKER_IMAGE_W_TAG: skydriver/test:local
+  CVMFS_DIR: "/cvmfs/icecube.opensciencegrid.org/containers/realtime/"
   # skydriver env vars...
   HERE_URL: skydriver.ci-test.aq
   THIS_IMAGE_WITH_TAG: 'ghcr.io/wipacrepo/skydriver:vX.Y.Z'
@@ -145,6 +146,11 @@ jobs:
         with:
           python-version: ${{ matrix.py3 }}
 
+      - name: "mkdir $CVMFS_DIR"
+        run: |
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          mkdir $CVMFS_DIR
+
       - name: pip install
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
@@ -193,6 +199,11 @@ jobs:
           tags: ${{ env.CI_DOCKER_IMAGE_W_TAG }}
           load: true
 
+      - name: "mkdir $CVMFS_DIR"
+        run: |
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          mkdir $CVMFS_DIR
+
       - name: test
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
@@ -226,6 +237,7 @@ jobs:
               $(env | grep '^HERE_URL' | awk '$0="--env "$0') \
               --mount type=bind,source="$( realpath ./tests )",target="/app/tests",readonly \
               --mount type=bind,source="$( realpath ./pytest.ini )",target="/app/pytest.ini",readonly \
+              --mount type=bind,source="$CVMFS_DIR",target="$CVMFS_DIR",readonly \
               ${{ env.CI_DOCKER_IMAGE_W_TAG }} \
               /bin/bash -c "\
                 pip install $tests_reqs && \
