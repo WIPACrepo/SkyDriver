@@ -593,7 +593,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         # -- validate w/ async call
         try:
             args.docker_tag = await images.resolve_docker_tag(args.docker_tag)
-        except ImageNotFoundException | ValueError as e:
+        except (ImageNotFoundException, ValueError) as e:
             raise web.HTTPError(
                 400,
                 reason=f"argument docker_tag: {repr(e)}",
