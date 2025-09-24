@@ -19,7 +19,7 @@ LOGGER = logging.getLogger(__name__)
 class ImageNotFoundException(Exception):
     """Raised when an image (tag) cannot be found."""
 
-    def __init__(self, image: str):
+    def __init__(self, image: str | Path):
         super().__init__(f"Image '{image}' cannot be found.")
 
 
@@ -166,7 +166,8 @@ def resolve_tag_on_cvmfs(docker_tag: str) -> str:
 
     # step 1: does the tag simply exist on cvmfs?
     try:
-        get_skyscan_cvmfs_singularity_image(docker_tag, check_exists=True)
+        _path = get_skyscan_cvmfs_singularity_image(docker_tag, check_exists=True)
+        LOGGER.debug(f"tag exists on cvmfs: {_path}")
         return docker_tag
     except ImageNotFoundException:
         pass
@@ -175,11 +176,13 @@ def resolve_tag_on_cvmfs(docker_tag: str) -> str:
     # -- case 1: user gave 'latest'
     if docker_tag == "latest":
         for tag in iter_x_y_z_cvmfs_tags():
+            LOGGER.debug(f"resolved 'latest' to youngest X.Y.Z tag: {tag}")
             return tag
     # -- case 2: user gave an non-specific semver tag (like 'v4.1', 'v4', etc.)
     elif RE_VERSION_X_Y.fullmatch(docker_tag) or RE_VERSION_X.fullmatch(docker_tag):
         for tag in iter_x_y_z_cvmfs_tags():
             if tag.startswith(docker_tag + "."):  # ex: '3.1.4' startswith '3.1.'
+                LOGGER.debug(f"resolved '{docker_tag}' to '{tag}'")
                 return tag
 
     # fall-through
