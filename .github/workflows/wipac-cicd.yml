@@ -146,10 +146,11 @@ jobs:
         with:
           python-version: ${{ matrix.py3 }}
 
-      - name: "mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"
+      - name: setup mock CVMFS directory
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:4.1.5
 
       - name: pip install
         run: |
@@ -199,10 +200,11 @@ jobs:
           tags: ${{ env.CI_DOCKER_IMAGE_W_TAG }}
           load: true
 
-      - name: "mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"
+      - name: setup mock CVMFS directory
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
           mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:4.1.5
 
       - name: test
         run: |

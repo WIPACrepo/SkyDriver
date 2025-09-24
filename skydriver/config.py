@@ -173,7 +173,7 @@ class EnvConfig:
             raise NotADirectoryError(self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR)
         elif not list(self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR.iterdir()):
             raise RuntimeError(
-                f"directory is empty: {self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR}"
+                f"cvmfs images directory is empty: {self.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR}"
             )
 
 
