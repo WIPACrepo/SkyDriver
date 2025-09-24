@@ -199,10 +199,8 @@ async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
         # v4 -> 4; v5.1 -> 5.1; v3.6.9 -> 3.6.9
         docker_tag = docker_tag.lstrip("v")
 
-    _error = ValueError("Image tag not on Docker Hub")
-
     if not docker_tag or not docker_tag.strip():
-        raise _error
+        raise ImageNotFound(docker_tag)
 
     try:
         rc = RestClient(SKYSCAN_DOCKERHUB_API_URL)
@@ -210,10 +208,10 @@ async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
         resp = await rc.request("GET", docker_tag)
     except requests.exceptions.HTTPError as e:
         LOGGER.exception(e)
-        raise _error from e
+        raise ImageNotFound(docker_tag) from e
     except Exception as e:
         LOGGER.exception(e)
-        raise ValueError("Image tag verification failed")
+        raise ImageNotFound(docker_tag) from ValueError("Image tag verification failed")
 
     LOGGER.debug(resp)
     return resp, docker_tag
