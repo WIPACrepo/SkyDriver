@@ -30,7 +30,7 @@ env:
   S3_BUCKET: 72017610
   K8S_SECRET_NAME: super-secrets
   MIN_SKYMAP_SCANNER_TAG: "v3.1.2" # technically prod uses v4 as min tag but tests use this (same logic)
-  CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR: "/test-cvmfs/"
+  CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR: "./test-cvmfs/"
 
 
 jobs:
