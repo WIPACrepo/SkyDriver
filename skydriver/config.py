@@ -2,11 +2,11 @@
 
 import dataclasses as dc
 import enum
-import logging
 from pathlib import Path
 from typing import Any
 
 from wipac_dev_tools import from_environment_as_dataclass, logging_tools
+from wipac_dev_tools.logging_tools import WIPACDevToolsFormatter
 
 sdict = dict[str, Any]
 
@@ -202,24 +202,11 @@ def config_logging() -> None:
     This is separated into a function for consistency between app and
     testing environments.
     """
-    hand = logging.StreamHandler()
-    hand.setFormatter(
-        logging.Formatter(
-            "%(asctime)s.%(msecs)03d [%(levelname)8s] %(name)s[%(process)d] %(message)s <%(filename)s:%(lineno)s/%(funcName)s()>",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-    )
-
-    root_logger = logging.getLogger()
-
-    if root_logger.hasHandlers():
-        return  # already configured
-
-    root_logger.addHandler(hand)
     logging_tools.set_level(
         ENV.LOG_LEVEL,  # type: ignore[arg-type]
         first_party_loggers=__name__.split(".", maxsplit=1)[0],
         third_party_level=ENV.LOG_LEVEL_THIRD_PARTY,  # type: ignore[arg-type]
         future_third_parties=[],
         specialty_loggers={"rest_tools": "INFO"},
+        formatter=WIPACDevToolsFormatter(),
     )
