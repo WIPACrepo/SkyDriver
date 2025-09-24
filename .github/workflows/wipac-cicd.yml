@@ -8,7 +8,6 @@ on:
 
 env:
   CI_DOCKER_IMAGE_W_TAG: skydriver/test:local
-  CVMFS_DIR: "/cvmfs/icecube.opensciencegrid.org/containers/realtime/"
   # skydriver env vars...
   HERE_URL: skydriver.ci-test.aq
   THIS_IMAGE_WITH_TAG: 'ghcr.io/wipacrepo/skydriver:vX.Y.Z'
@@ -31,6 +30,7 @@ env:
   S3_BUCKET: 72017610
   K8S_SECRET_NAME: super-secrets
   MIN_SKYMAP_SCANNER_TAG: "v3.1.2" # technically prod uses v4 as min tag but tests use this (same logic)
+  CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR: "./cvmfs/icecube.opensciencegrid.org/containers/realtime/"
 
 
 jobs:
@@ -146,10 +146,10 @@ jobs:
         with:
           python-version: ${{ matrix.py3 }}
 
-      - name: "mkdir -p $CVMFS_DIR"
+      - name: "mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
-          mkdir -p $CVMFS_DIR
+          mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
 
       - name: pip install
         run: |
@@ -199,10 +199,10 @@ jobs:
           tags: ${{ env.CI_DOCKER_IMAGE_W_TAG }}
           load: true
 
-      - name: "mkdir -p $CVMFS_DIR"
+      - name: "mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
-          mkdir -p $CVMFS_DIR
+          mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
 
       - name: test
         run: |
@@ -235,9 +235,10 @@ jobs:
               $(env | grep '^SCAN_' | awk '$0="--env "$0') \
               $(env | grep '^MIN_SKYMAP_SCANNER_TAG' | awk '$0="--env "$0') \
               $(env | grep '^HERE_URL' | awk '$0="--env "$0') \
+              --env CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR=cvmfs \
               --mount type=bind,source="$( realpath ./tests )",target="/app/tests",readonly \
               --mount type=bind,source="$( realpath ./pytest.ini )",target="/app/pytest.ini",readonly \
-              --mount type=bind,source="$CVMFS_DIR",target="$CVMFS_DIR",readonly \
+              --mount type=bind,source="$( realpath $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR )",target="cvmfs",readonly \
               ${{ env.CI_DOCKER_IMAGE_W_TAG }} \
               /bin/bash -c "\
                 pip install $tests_reqs && \
