@@ -13,9 +13,7 @@ from pathlib import Path
 import texttable  # type: ignore
 from rest_tools.client import RestClient
 
-import config
-import test_getter
-import test_runner
+from . import config, test_getter, test_runner
 
 # Setup logging
 logging.basicConfig(
