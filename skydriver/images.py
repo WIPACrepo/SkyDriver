@@ -1,5 +1,6 @@
 """Utilities for dealing with docker/cvmfs/singularity images."""
 
+import asyncio
 import logging
 from pathlib import Path
 
@@ -82,7 +83,8 @@ async def min_skymap_scanner_tag_ts() -> float:
 @aiocache.cached(ttl=ENV.CACHE_DURATION_DOCKER_HUB)  # fyi: tags can be overwritten
 async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
     """Cache dockerhub api call."""
-    return await ImageToolsDockerHub(SKYSCAN_DOCKERHUB_API_URL).request_info(docker_tag)
+    await asyncio.sleep(0)  # let pending async tasks do things before this http request
+    return ImageToolsDockerHub(SKYSCAN_DOCKERHUB_API_URL).request_info(docker_tag)
 
 
 async def resolve_docker_tag(docker_tag: str) -> str:
