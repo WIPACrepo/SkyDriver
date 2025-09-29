@@ -22,7 +22,7 @@ from ..config import (
     sdict,
 )
 from ..database.schema import Manifest
-from ..images import get_skyscan_cvmfs_singularity_image
+from ..images import get_skyscan_cvmfs_apptainer_image_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -278,7 +278,9 @@ class EnvVarFactory:
                 "EWMS_CLUSTERS": " ".join(cname for cname, _ in request_clusters),
                 "EWMS_N_WORKERS": request_clusters[0][1],
                 #
-                "EWMS_TASK_IMAGE": str(get_skyscan_cvmfs_singularity_image(docker_tag)),
+                "EWMS_TASK_IMAGE": str(
+                    get_skyscan_cvmfs_apptainer_image_path(docker_tag)
+                ),
                 #
                 "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.EWMS_PILOT_TIMEOUT_QUEUE_INCOMING,
                 "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
