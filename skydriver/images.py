@@ -8,7 +8,11 @@ import requests
 from async_lru import alru_cache
 from dateutil import parser as dateutil_parser
 from rest_tools.client import RestClient
-from wipac_dev_tools import container_registry_tools, semver_parser_tools
+from wipac_dev_tools import semver_parser_tools
+from wipac_dev_tools.container_registry_tools import (
+    ImageCVMFS,
+    ImageNotFoundException,
+)
 
 from .config import ENV
 
@@ -46,8 +50,7 @@ def get_skyscan_cvmfs_apptainer_image_path(
     tag: str, check_exists: bool = False
 ) -> Path:
     """Get the apptainer image path on CVMFS for 'tag' (optionally, check if it exists)."""
-    return container_registry_tools.get_cvmfs_image_path(
-        ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR,
+    return ImageCVMFS(ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR).get_image_path(
         _IMAGE,
         tag,
         check_exists,
@@ -63,7 +66,7 @@ def get_skyscan_docker_image(tag: str) -> str:
 # utils
 
 
-def _parse_image_ts(info: dict) -> float:
+def dockerhub_parse_image_ts(info: dict) -> float:
     """Get the timestamp for when the image was created."""
     try:
         return dateutil_parser.parse(info["last_updated"]).timestamp()
@@ -76,7 +79,7 @@ def _parse_image_ts(info: dict) -> float:
 async def min_skymap_scanner_tag_ts() -> float:
     """Get the timestamp for when the `MIN_SKYMAP_SCANNER_TAG` image was created."""
     info, _ = await get_info_from_docker_hub(ENV.MIN_SKYMAP_SCANNER_TAG)
-    return _parse_image_ts(info)
+    return dockerhub_parse_image_ts(info)
 
 
 @aiocache.cached(ttl=ENV.CACHE_DURATION_DOCKER_HUB)  # fyi: tags can be overwritten
@@ -91,7 +94,7 @@ async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
     try:
         docker_tag = semver_parser_tools.strip_v_prefix(docker_tag)
     except ValueError as e:
-        raise container_registry_tools.ImageNotFoundException(docker_tag) from e
+        raise ImageNotFoundException(docker_tag) from e
 
     # look for tag on docker hub
     try:
@@ -101,13 +104,13 @@ async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
     # -> http issue
     except requests.exceptions.HTTPError as e:
         LOGGER.exception(e)
-        raise container_registry_tools.ImageNotFoundException(docker_tag) from e
+        raise ImageNotFoundException(docker_tag) from e
     # -> tag issue
     except Exception as e:
         LOGGER.exception(e)
-        raise container_registry_tools.ImageNotFoundException(
-            docker_tag
-        ) from ValueError("Image tag verification failed")
+        raise ImageNotFoundException(docker_tag) from ValueError(
+            "Image tag verification failed"
+        )
 
     LOGGER.debug(resp)
     return resp, docker_tag
@@ -118,8 +121,7 @@ async def resolve_docker_tag(docker_tag: str) -> str:
     LOGGER.info(f"checking docker tag: {docker_tag}")
 
     # cvmfs is the source of truth
-    docker_tag = container_registry_tools.resolve_tag_on_cvmfs(
-        ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR,
+    docker_tag = ImageCVMFS(ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR).resolve_tag(
         _IMAGE,
         docker_tag,
     )
@@ -129,7 +131,7 @@ async def resolve_docker_tag(docker_tag: str) -> str:
     dh_info, _ = await get_info_from_docker_hub(docker_tag)
 
     # check that the image is not too old
-    if _parse_image_ts(dh_info) < await min_skymap_scanner_tag_ts():
+    if dockerhub_parse_image_ts(dh_info) < await min_skymap_scanner_tag_ts():
         raise ImageTooOldException()
 
     return docker_tag
