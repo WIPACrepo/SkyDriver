@@ -4,14 +4,11 @@ import logging
 from pathlib import Path
 
 import aiocache  # type: ignore[import-untyped]
-import requests
 from async_lru import alru_cache
 from dateutil import parser as dateutil_parser
-from rest_tools.client import RestClient
-from wipac_dev_tools import semver_parser_tools
 from wipac_dev_tools.container_registry_tools import (
-    ImageCVMFS,
-    ImageNotFoundException,
+    ImageToolsCVMFS,
+    ImageToolsDockerHub,
 )
 
 from .config import ENV
@@ -50,7 +47,7 @@ def get_skyscan_cvmfs_apptainer_image_path(
     tag: str, check_exists: bool = False
 ) -> Path:
     """Get the apptainer image path on CVMFS for 'tag' (optionally, check if it exists)."""
-    return ImageCVMFS(ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR).get_image_path(
+    return ImageToolsCVMFS(ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR).get_image_path(
         _IMAGE,
         tag,
         check_exists,
@@ -84,36 +81,8 @@ async def min_skymap_scanner_tag_ts() -> float:
 
 @aiocache.cached(ttl=ENV.CACHE_DURATION_DOCKER_HUB)  # fyi: tags can be overwritten
 async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
-    """Get the json dict from GET @ Docker Hub, and the non v-prefixed tag (see below).
-
-    Accepts v-prefixed tags, like 'v2.3.4', 'v4', etc. -- and non-v-prefixed tags.
-    """
-    LOGGER.info(f"retrieving tag info on docker hub: {docker_tag}")
-
-    # prep tag
-    try:
-        docker_tag = semver_parser_tools.strip_v_prefix(docker_tag)
-    except ValueError as e:
-        raise ImageNotFoundException(docker_tag) from e
-
-    # look for tag on docker hub
-    try:
-        rc = RestClient(SKYSCAN_DOCKERHUB_API_URL)
-        LOGGER.debug(f"looking at {rc.address} for {docker_tag}...")
-        resp = await rc.request("GET", docker_tag)
-    # -> http issue
-    except requests.exceptions.HTTPError as e:
-        LOGGER.exception(e)
-        raise ImageNotFoundException(docker_tag) from e
-    # -> tag issue
-    except Exception as e:
-        LOGGER.exception(e)
-        raise ImageNotFoundException(docker_tag) from ValueError(
-            "Image tag verification failed"
-        )
-
-    LOGGER.debug(resp)
-    return resp, docker_tag
+    """Cache dockerhub api call."""
+    return await ImageToolsDockerHub(SKYSCAN_DOCKERHUB_API_URL).request_info(docker_tag)
 
 
 async def resolve_docker_tag(docker_tag: str) -> str:
@@ -121,7 +90,7 @@ async def resolve_docker_tag(docker_tag: str) -> str:
     LOGGER.info(f"checking docker tag: {docker_tag}")
 
     # cvmfs is the source of truth
-    docker_tag = ImageCVMFS(ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR).resolve_tag(
+    docker_tag = ImageToolsCVMFS(ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR).resolve_tag(
         _IMAGE,
         docker_tag,
     )
