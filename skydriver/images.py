@@ -8,8 +8,8 @@ import aiocache  # type: ignore[import-untyped]
 from async_lru import alru_cache
 from dateutil import parser as dateutil_parser
 from wipac_dev_tools.container_registry_tools import (
-    ImageToolsCVMFS,
-    ImageToolsDockerHub,
+    CVMFSRegistryTools,
+    DockerHubRegistryTools,
 )
 
 from .config import ENV
@@ -48,7 +48,7 @@ def get_skyscan_cvmfs_apptainer_image_path(
     tag: str, check_exists: bool = False
 ) -> Path:
     """Get the apptainer image path on CVMFS for 'tag' (optionally, check if it exists)."""
-    return ImageToolsCVMFS(ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR).get_image_path(
+    return CVMFSRegistryTools(ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR).get_image_path(
         _IMAGE,
         tag,
         check_exists,
@@ -83,8 +83,9 @@ async def min_skymap_scanner_tag_ts() -> float:
 @aiocache.cached(ttl=ENV.CACHE_DURATION_DOCKER_HUB)  # fyi: tags can be overwritten
 async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
     """Cache dockerhub api call."""
-    await asyncio.sleep(0)  # let pending async tasks do things before this http request
-    return ImageToolsDockerHub(SKYSCAN_DOCKERHUB_API_URL).request_info(docker_tag)
+    ret = DockerHubRegistryTools(SKYSCAN_DOCKERHUB_API_URL).request_info(docker_tag)
+    await asyncio.sleep(0)  # let pending async tasks do things after http request
+    return ret
 
 
 async def resolve_docker_tag(docker_tag: str) -> str:
@@ -92,10 +93,8 @@ async def resolve_docker_tag(docker_tag: str) -> str:
     LOGGER.info(f"checking docker tag: {docker_tag}")
 
     # cvmfs is the source of truth
-    docker_tag = ImageToolsCVMFS(ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR).resolve_tag(
-        _IMAGE,
-        docker_tag,
-    )
+    tool = CVMFSRegistryTools(ENV.CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR, _IMAGE)
+    docker_tag = tool.resolve_tag(docker_tag)
     get_skyscan_cvmfs_apptainer_image_path(docker_tag, check_exists=True)  # assurance
 
     # check that it also exists on docker hub
