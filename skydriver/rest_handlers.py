@@ -24,6 +24,7 @@ from rest_tools.server import (
 )
 from tornado import web
 from wipac_dev_tools import argparse_tools
+from wipac_dev_tools.container_registry_tools import ImageNotFoundException
 
 from . import database, ewms, images
 from .background_runners.scan_launcher import put_on_backlog
@@ -42,7 +43,7 @@ from .database.schema import (
     has_skydriver_requested_ewms_workflow,
 )
 from .ewms import get_deactivated_type, request_stop_on_ewms
-from .images import ImageNotFoundException, ImageTooOldException
+from .images import ImageTooOldException
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
 from .rest_decorators import maybe_redirect_scan_id, service_account_auth
 from .utils import (
