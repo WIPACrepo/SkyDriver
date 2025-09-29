@@ -6,7 +6,6 @@ from pathlib import Path
 
 import aiocache  # type: ignore[import-untyped]
 from async_lru import alru_cache
-from dateutil import parser as dateutil_parser
 from wipac_dev_tools.container_registry_tools import (
     CVMFSRegistryTools,
     DockerHubRegistryTools,
@@ -64,20 +63,11 @@ def get_skyscan_docker_image(tag: str) -> str:
 # utils
 
 
-def dockerhub_parse_image_ts(info: dict) -> float:
-    """Get the timestamp for when the image was created."""
-    try:
-        return dateutil_parser.parse(info["last_updated"]).timestamp()
-    except Exception as e:
-        LOGGER.exception(e)
-        raise e
-
-
 @alru_cache  # cache it forever
-async def min_skymap_scanner_tag_ts() -> float:
+async def min_skyscan_tag_ts() -> float:
     """Get the timestamp for when the `MIN_SKYMAP_SCANNER_TAG` image was created."""
     info, _ = await get_info_from_docker_hub(ENV.MIN_SKYMAP_SCANNER_TAG)
-    return dockerhub_parse_image_ts(info)
+    return DockerHubRegistryTools.parse_image_ts(info)
 
 
 @aiocache.cached(ttl=ENV.CACHE_DURATION_DOCKER_HUB)  # fyi: tags can be overwritten
@@ -101,7 +91,7 @@ async def resolve_docker_tag(docker_tag: str) -> str:
     dh_info, _ = await get_info_from_docker_hub(docker_tag)
 
     # check that the image is not too old
-    if dockerhub_parse_image_ts(dh_info) < await min_skymap_scanner_tag_ts():
+    if DockerHubRegistryTools.parse_image_ts(dh_info) < await min_skyscan_tag_ts():
         raise ImageTooOldException()
 
     return docker_tag
