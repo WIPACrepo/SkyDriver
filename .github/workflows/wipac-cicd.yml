@@ -183,7 +183,7 @@ jobs:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     services:
       mongo:
-        image: bitnami/mongodb:4
+        image: bitnamilegacy/mongodb:4
         ports:
           - 27017:27017
     steps:
