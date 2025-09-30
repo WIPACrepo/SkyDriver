@@ -200,8 +200,6 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          cache-from: type=gha
-          cache-to: type=gha,mode=min
           file: Dockerfile
           tags: ${{ env.CI_DOCKER_IMAGE_W_TAG }}
           load: true
