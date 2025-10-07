@@ -381,7 +381,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     {"name": "EWMS_N_WORKERS", "value": "1"},
                                     {
                                         "name": "EWMS_TASK_IMAGE",
-                                        "value": f"/cvmfs/icecube.opensciencegrid.org/containers/realtime/skymap_scanner:{docker_tag_expected}",
+                                        "value": f"{os.environ['CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR']}/skymap_scanner:{docker_tag_expected}",
                                     },
                                     {
                                         "name": "EWMS_PILOT_TASK_TIMEOUT",
@@ -1504,7 +1504,7 @@ async def test_300__bad_data(
     # # bad docker tag
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: argument docker_tag: Image tag not on Docker Hub for url: {rc.address}/scan",
+        match=rf"400 Client Error: argument docker_tag: image not found for url: {rc.address}/scan",
     ) as e:
         await rc.request(
             "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "docker_tag": "foo"}
