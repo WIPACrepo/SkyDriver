@@ -13,7 +13,7 @@ from typing import Iterator
 import requests
 import yaml
 
-import config
+from . import config
 
 RECO_ALGO_KEY = "reco_algo"
 EVENTFILE_KEY = "eventfile"

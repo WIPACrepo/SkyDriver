@@ -24,6 +24,7 @@ from rest_tools.server import (
 )
 from tornado import web
 from wipac_dev_tools import argparse_tools
+from wipac_dev_tools.container_registry_tools import ImageNotFoundException
 
 from . import database, ewms, images
 from .background_runners.scan_launcher import put_on_backlog
@@ -42,6 +43,7 @@ from .database.schema import (
     has_skydriver_requested_ewms_workflow,
 )
 from .ewms import get_deactivated_type, request_stop_on_ewms
+from .images import ImageTooOldException
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
 from .rest_decorators import maybe_redirect_scan_id, service_account_auth
 from .utils import (
@@ -592,11 +594,17 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         # -- validate w/ async call
         try:
             args.docker_tag = await images.resolve_docker_tag(args.docker_tag)
-        except ValueError as e:
+        except ImageNotFoundException as e:
+            raise web.HTTPError(
+                400,
+                reason="argument docker_tag: image not found",
+                log_message=repr(e),
+            )
+        except ImageTooOldException as e:
             raise web.HTTPError(
                 400,
                 reason=f"argument docker_tag: {e}",
-                log_message=str(e),
+                log_message=repr(e),
             )
 
         # validate classifiers
@@ -645,7 +653,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         )
 
         # go!
-        manifest = await _start_scan(
+        manifest = await enqueue_scan(
             self.manifests,
             self.scan_backlog,
             self.skyscan_k8s_job_coll,
@@ -658,7 +666,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         )
 
 
-async def _start_scan(
+async def enqueue_scan(
     manifests: database.interface.ManifestClient,
     scan_backlog: database.interface.ScanBacklogClient,
     skyscan_k8s_job_coll: AsyncIOMotorCollection,  # type: ignore[valid-type]
@@ -667,6 +675,7 @@ async def _start_scan(
     insert_scan_request_obj: bool,  # False for rescans
     scan_request_coll: AsyncIOMotorCollection | None = None,  # type: ignore[valid-type]
 ) -> schema.Manifest:
+    """Create all need data for a new scan, then enqueue it on the backlog."""
     scan_id = scan_request_obj["scan_id"]
 
     # persist the scan request obj in db?
@@ -810,7 +819,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             )
 
         # go!
-        manifest = await _start_scan(
+        manifest = await enqueue_scan(
             self.manifests,
             self.scan_backlog,
             self.skyscan_k8s_job_coll,
