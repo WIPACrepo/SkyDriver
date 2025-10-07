@@ -13,14 +13,16 @@ from pathlib import Path
 import texttable  # type: ignore
 from rest_tools.client import RestClient
 
-import config
-import test_getter
-import test_runner
+from . import config, test_getter, test_runner
 
 # Setup logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+
+class DryRunException(Exception):
+    """Raised in order to stop execution when using the dry run option."""
 
 
 class ResultChecker:
@@ -201,6 +203,7 @@ async def test_all(
     skyscan_docker_tag: str,
     run_one: bool,
     priority: int,
+    dry_run: bool,
 ) -> None:
     """Do all the tests."""
     # setup
@@ -209,6 +212,9 @@ async def test_all(
         tests = [tests[-1]]  # #0 is often millipede original (slowest), so pick faster
     if rescans:
         _match_rescans_to_tests(rescans, tests)
+
+    if dry_run:
+        raise DryRunException()
 
     # launch!
     tests = await launch_scans(  # adds scan ids to 'tests'
@@ -313,6 +319,12 @@ async def main():
         action="store_true",
         help="just requests a single scan instead of the whole suite",
     )
+    parser.add_argument(
+        "--dry-run",
+        default=False,
+        action="store_true",
+        help="don't send anything to skydriver",
+    )
     args = parser.parse_args()
     if args.one and args.rescan:
         raise RuntimeError("cannot give --one and --rescan together")
@@ -377,6 +389,7 @@ async def main():
         args.skyscan_docker_tag,
         args.one,
         args.priority,
+        args.dry_run,
     )
 
 

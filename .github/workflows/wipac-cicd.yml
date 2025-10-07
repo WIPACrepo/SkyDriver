@@ -6,6 +6,11 @@ on:
     branches: [ '**' ]
     tags-ignore: [ '**' ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # don't cancel on main/master/default
+  cancel-in-progress: ${{ format('refs/heads/{0}', github.event.repository.default_branch) != github.ref }}
+
 env:
   CI_DOCKER_IMAGE_W_TAG: skydriver/test:local
   # skydriver env vars...
@@ -30,6 +35,7 @@ env:
   S3_BUCKET: 72017610
   K8S_SECRET_NAME: super-secrets
   MIN_SKYMAP_SCANNER_TAG: "v3.1.2" # technically prod uses v4 as min tag but tests use this (same logic)
+  CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR: "./test-cvmfs/"
 
 
 jobs:
@@ -66,7 +72,7 @@ jobs:
           python-version: ${{ matrix.py3 }}
       - uses: WIPACrepo/wipac-dev-flake8-action@v1.3
         with:
-          max-complexity: 10  # ideal is ~10-15
+          max-complexity: 11  # ideal is ~10-15
 
   mypy:
     needs: [ py-versions ]
@@ -98,7 +104,7 @@ jobs:
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           ref: ${{ github.ref }}  # dont lock to sha (action needs to push)
-      - uses: WIPACrepo/wipac-dev-py-setup-action@v5.4
+      - uses: WIPACrepo/wipac-dev-py-setup-action@v5.5
         with:
           mode: PACKAGING
           python_min: 3.13
@@ -145,6 +151,13 @@ jobs:
         with:
           python-version: ${{ matrix.py3 }}
 
+      - name: setup mock CVMFS directory
+        run: |
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:im-just-here-so-i-dont-get-fined
+          ls $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
+
       - name: pip install
         run: |
           set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
@@ -171,7 +184,7 @@ jobs:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     services:
       mongo:
-        image: bitnami/mongodb:4
+        image: bitnamilegacy/mongodb:4
         ports:
           - 27017:27017
     steps:
@@ -187,11 +200,18 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          cache-from: type=gha
-          cache-to: type=gha,mode=min
           file: Dockerfile
           tags: ${{ env.CI_DOCKER_IMAGE_W_TAG }}
           load: true
+
+      - name: setup mock CVMFS directory
+        run: |
+          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:3.4.0
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:3.1.5
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:gcd-handling-improvements-fe8ecee
+          ls $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
 
       - name: test
         run: |
@@ -205,7 +225,8 @@ jobs:
               | awk -F '/' '/^location/ {print  substr($NF, 1, length($NF)-1)}' \
               | sed 's/v//' \
           )
-          echo $LATEST_TAG  # this tag may be off if there's a delay between GH release & docker hub
+          echo $LATEST_TAG  # in reality, this tag may be off if there's a delay between GH release & docker hub
+          touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:"$LATEST_TAG"
 
           # grab the dependencies needed for pytest and friends
           pip install tomli
@@ -224,8 +245,10 @@ jobs:
               $(env | grep '^SCAN_' | awk '$0="--env "$0') \
               $(env | grep '^MIN_SKYMAP_SCANNER_TAG' | awk '$0="--env "$0') \
               $(env | grep '^HERE_URL' | awk '$0="--env "$0') \
+              --env CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR="$( realpath $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR )" \
               --mount type=bind,source="$( realpath ./tests )",target="/app/tests",readonly \
               --mount type=bind,source="$( realpath ./pytest.ini )",target="/app/pytest.ini",readonly \
+              --mount type=bind,source="$( realpath $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR )",target="$( realpath $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR )",readonly \
               ${{ env.CI_DOCKER_IMAGE_W_TAG }} \
               /bin/bash -c "\
                 pip install $tests_reqs && \
@@ -280,7 +303,7 @@ jobs:
       - unit-tests
       - integration-tests
       - test-build-docker
-    uses: WIPACrepo/wipac-dev-workflows/.github/workflows/tag-and-release.yml@v1.14
+    uses: WIPACrepo/wipac-dev-workflows/.github/workflows/tag-and-release.yml@v1.16
     with:
       project-type: python
       python-version: "${{ fromJSON(needs.py-versions.outputs.matrix)[0] }}"

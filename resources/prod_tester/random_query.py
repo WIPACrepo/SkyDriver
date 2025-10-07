@@ -8,7 +8,7 @@ import asyncio
 import pprint
 import random
 
-import test_runner
+from . import test_runner
 
 
 # Function to split list into chunks
