@@ -12,6 +12,8 @@ USER app
 #  - Mounting '.git/' allows the Python project to build with 'setuptools-scm'
 RUN --mount=type=bind,source=.git,target=.git,ro \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml,ro \
+    --mount=type=bind,source=ewms_init_container,target=ewms_init_container,ro \
+    --mount=type=bind,source=s3_sidecar,target=s3_sidecar,ro \
     --mount=type=bind,source=skydriver,target=skydriver,ro \
     pip install --no-cache .
 
