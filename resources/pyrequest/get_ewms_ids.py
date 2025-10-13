@@ -9,16 +9,20 @@ import sys
 import tempfile
 from pathlib import Path
 from typing import AsyncIterable
+from urllib.parse import urlparse
 
 import requests
 from rest_tools.client import RestClient
+from wipac_dev_tools import logging_tools
 
 from _connect import get_rest_client  # type: ignore[import-not-found]
 
+EWMS_HELPER_SCRIPT_URLS = [
+    "https://raw.githubusercontent.com/Observation-Management-Service/ewms-workflow-management-service/refs/heads/main/resources/get_all_ids.py",
+    "https://raw.githubusercontent.com/Observation-Management-Service/ewms-workflow-management-service/refs/heads/main/resources/utils.py",
+]
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
-
-EWMS_HELPER_SCRIPT_URL = "https://raw.githubusercontent.com/Observation-Management-Service/ewms-workflow-management-service/refs/heads/main/resources/get_all_ids.py"
 
 
 def print_scan_id(scan_id: str) -> None:
@@ -47,36 +51,57 @@ async def grab_scan_info(rc: RestClient, scan_ids: list[str]) -> AsyncIterable[d
         }
 
 
-def run_ewms_helper_script(cl_args: str) -> list[dict]:
+def run_ewms_helper_script(ewms_args: str) -> list[dict]:
     """Download and run the EWMS helper script with the given CLI args, returning parsed JSON output."""
-    with tempfile.NamedTemporaryFile(suffix=".py") as f:
-        subprocess.run(
-            ["curl", "-sSfL", EWMS_HELPER_SCRIPT_URL, "-o", f.name],
-            check=True,
-        )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir_path = Path(tmpdir)
+        downloaded = []
+        for url in EWMS_HELPER_SCRIPT_URLS:
+            name = Path(urlparse(url).path).name  # keep the file's original name
+            dest = tmpdir_path / name
+            subprocess.run(
+                ["curl", "-sSfL", url, "-o", str(dest)],
+                check=True,
+            )
+            downloaded.append(dest)
+
+        script = [p for p in downloaded if p.name == "get_all_ids.py"][0]
 
         # check if the token file exists -- this is hard to do with subproc w/ captured stdout
         if (
             not Path(
-                f"~/device-refresh-token-ewms-{'prod' if 'prod' in cl_args else 'dev'}"
+                f"~/device-refresh-token-ewms-{'prod' if 'prod' in ewms_args else 'dev'}"
             )
             .expanduser()
             .exists()
         ):
             LOGGER.warning("you need a device client token first, so running 2x...")
-            subprocess.run(["python3", f.name, *cl_args.split()], check=True)
+            subprocess.run(["python3", script, *ewms_args.split()], check=True)
 
         # get ids from ewms
-        proc = subprocess.run(
-            ["python3", f.name, *cl_args.split()],
-            stdout=subprocess.PIPE,
-            stderr=sys.stderr,
-            check=True,
-            text=True,
-        )
-        print("ewms ids ::")
-        print(proc.stdout.strip())
-        return json.loads(proc.stdout)
+        try:
+            proc = subprocess.run(
+                ["python3", script, *ewms_args.split()],
+                stdout=subprocess.PIPE,
+                stderr=sys.stderr,
+                check=True,
+                text=True,
+            )
+            print("ewms ids ::")
+            print(proc.stdout.strip())
+        except subprocess.CalledProcessError as e:
+            print(e.stdout.strip(), file=sys.stderr)
+            raise RuntimeError(
+                "issue running ewms helper script — see above error message "
+                "(if this is an issue with '--ewms-args', run with '--ewms-args -h')"
+            ) from None  # suppress 'CalledProcessError' stack trace
+
+        # done here
+        if " -h" in ewms_args:
+            sys.exit(2)
+        else:
+            return json.loads(proc.stdout)
 
 
 def print_banner(char: str = "-", width: int = 40) -> None:
@@ -91,7 +116,7 @@ async def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "scan_ids",
+        "--scan-ids",
         nargs="*",
         help="One or more SkyDriver scan IDs",
     )
@@ -106,14 +131,15 @@ async def main():
         ),
     )
     parser.add_argument(
-        "--ewms-ids",
+        "--ewms-args",
         default="",
-        help="Command-line args to forward to the EWMS helper script (use only if not providing scan_ids)",
+        help="Command-line args to forward to the EWMS helper script (use only if not providing --scan-ids)",
     )
     args = parser.parse_args()
+    logging_tools.log_argparse_args(args, LOGGER)
 
-    if bool(args.scan_ids) == bool(args.ewms_ids):
-        raise ValueError("Specify exactly one of: SCAN_IDS or --ewms-ids")
+    if bool(args.scan_ids) == bool(args.ewms_args):
+        raise ValueError("Specify exactly one of: --scan-ids or --ewms-args")
 
     rc = get_rest_client(args.skydriver_type)
 
@@ -132,7 +158,7 @@ async def main():
     # EWMS -> SkyDriver
     else:
         print_banner()
-        for ids in run_ewms_helper_script(args.ewms_ids):
+        for ids in run_ewms_helper_script(args.ewms_args):
             resp = await rc.request(
                 "POST",
                 "/scans/find",
