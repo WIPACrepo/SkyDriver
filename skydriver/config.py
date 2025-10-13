@@ -183,6 +183,10 @@ LOCAL_K8S_HOST = "local"
 
 # known cluster locations
 KNOWN_CLUSTERS: dict[str, dict[str, Any]] = {
+    # NOTE -- even if the cluster does not have special settings, it must be present in dict
+    "osg": {
+        "max_n_clients_during_debug_mode": 100,
+    },
     "sub-2": {
         "max_n_clients_during_debug_mode": 100,
     },
