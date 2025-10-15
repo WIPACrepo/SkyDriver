@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 import aiocache  # type: ignore[import-untyped]
-from async_lru import alru_cache
+import async_lru
 from wipac_dev_tools.container_registry_tools import (
     CVMFSRegistryTools,
     DockerHubRegistryTools,
@@ -57,16 +57,20 @@ def get_skyscan_docker_image(tag: str) -> str:
 # utils
 
 
-@alru_cache  # cache it forever
+@async_lru.alru_cache  # cache forever
 async def min_skyscan_tag_ts() -> float:
     """Get the timestamp for when the `MIN_SKYMAP_SCANNER_TAG` image was created."""
     info, _ = await get_info_from_docker_hub(ENV.MIN_SKYMAP_SCANNER_TAG)
     return DockerHubRegistryTools.parse_image_ts(info)
 
 
-@aiocache.cached(ttl=60)  # short ttl to prevent hammering but still up-to-date w/ cvmfs
+@async_lru.alru_cache  # cache forever -- errors aren't cached (i.e. a missing image tag)
 async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
-    """Cache docker hub api call."""
+    """Cache docker hub api call.
+
+    Raises:
+        ImageNotFoundException
+    """
     docker_hub = DockerHubRegistryTools(_SKYSCAN_DOCKER_IMAGE_NAMESPACE, _IMAGE_NAME)
     ret = docker_hub.request_info(docker_tag)
 
@@ -76,7 +80,12 @@ async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
 
 @aiocache.cached(ttl=5)  # very short ttl just to stop stampedes
 async def resolve_docker_tag(docker_tag: str) -> str:
-    """Check if the docker tag exists, then resolve 'latest' if needed."""
+    """Check if the docker tag exists, then resolve 'latest' if needed.
+
+    Raises:
+        ImageNotFoundException
+        ImageTooOldException
+    """
     LOGGER.info(f"checking docker tag: {docker_tag}")
 
     # cvmfs is the source of truth
