@@ -46,7 +46,8 @@ async def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "scan_id",
+        "--scan-id",
+        required=True,
         help="existing scan_id whose stored scan-request will be used as a template",
     )
     parser.add_argument(
