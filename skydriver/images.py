@@ -64,7 +64,7 @@ async def min_skyscan_tag_ts() -> float:
     return DockerHubRegistryTools.parse_image_ts(info)
 
 
-@aiocache.cached(ttl=ENV.CACHE_DURATION_DOCKER_HUB)  # fyi: tags can be overwritten
+@aiocache.cached(ttl=60)  # short ttl to prevent hammering but still up-to-date w/ cvmfs
 async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
     """Cache docker hub api call."""
     docker_hub = DockerHubRegistryTools(_SKYSCAN_DOCKER_IMAGE_NAMESPACE, _IMAGE_NAME)

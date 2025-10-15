@@ -131,7 +131,6 @@ class EnvConfig:
 
     # cache durations
     CACHE_DURATION_EWMS: int = 1 * 60
-    CACHE_DURATION_DOCKER_HUB: int = 5 * 60
     CACHE_DURATION_PROMETHEUS: int = 15 * 60
 
     CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR: Path = Path(
