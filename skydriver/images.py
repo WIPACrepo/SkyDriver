@@ -74,7 +74,6 @@ async def get_info_from_docker_hub(docker_tag: str) -> tuple[dict, str]:
     return ret
 
 
-@aiocache.cached(ttl=15)  # cache to appease rapid calls -- short ttl is okay
 async def resolve_docker_tag(docker_tag: str) -> str:
     """Check if the docker tag exists, then resolve 'latest' if needed."""
     LOGGER.info(f"checking docker tag: {docker_tag}")
