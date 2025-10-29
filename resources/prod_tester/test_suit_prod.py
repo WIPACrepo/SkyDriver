@@ -308,7 +308,7 @@ def rotate_sandbox() -> None:
             entry.unlink()
 
 
-def reconstruct_tests_from_sandbox(sandbox: dir) -> list[test_getter.TestParamSet]:
+def reconstruct_tests_from_sandbox(sandbox: Path) -> list[test_getter.TestParamSet]:
     """Make test objects from the sanbox."""
     if sandbox.is_dir():
         with open(sandbox / config.SANDBOX_MAP_FPATH.name) as f:
@@ -318,7 +318,7 @@ def reconstruct_tests_from_sandbox(sandbox: dir) -> list[test_getter.TestParamSe
             member = tar.getmember(
                 f"{config.SANDBOX_DIR.name}/{config.SANDBOX_MAP_FPATH.name}"
             )
-            with tar.extractfile(member) as f:
+            with tar.extractfile(member) as f:  # type: ignore[union-attr]
                 json_data = json.loads(f.read())
 
     return [
