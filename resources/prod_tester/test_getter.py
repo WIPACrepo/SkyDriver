@@ -59,10 +59,51 @@ class TestParamSet:
             rescan_origin_id=self.rescan_origin_id,
         )
 
+    def download_files(self, no_cache: bool):
+        """Download all files locally."""
 
-def download_file(url: str, dest: Path) -> Path:
-    """Download a file from a URL."""
-    if os.path.exists(dest):
+        # get event file -- all event files will be saved as .json
+        as_json = self.event_file.with_suffix(".json")  # file could already be *.json
+        if no_cache or not as_json.exists():
+            # download it
+            try:
+                download_file(
+                    f"{config.EVENT_DIR_URL}{self.event_file.name}",
+                    self.event_file,
+                    no_cache,
+                )
+            # hm... maybe user wants to re-download and the event file was originally pkl
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 404:
+                    download_file(
+                        f"{config.EVENT_DIR_URL}{self.event_file.with_suffix(".pkl").name}",
+                        self.event_file,
+                        no_cache,
+                    )
+                else:
+                    raise
+            # -> transform pkl file into json file -- skydriver only takes json
+            if self.event_file.suffix == ".pkl":
+                with open(self.event_file, "rb") as f:
+                    contents = pickle.load(f)
+                self.event_file.unlink()  # rm
+                with open(as_json, "w") as f:
+                    json.dump(contents, f, indent=4)
+        self.event_file = as_json  # use the .json filepath
+
+        # get the expected-result file
+        try:
+            url = f"{config.RESULT_DIR_URL}{self.reco_algo}/{config.EVENT_RESULT_MAP[self.event_file.name]}"
+        # hm... maybe user wants to re-download and the event file was originally pkl
+        except KeyError:
+            url = f"{config.RESULT_DIR_URL}{self.reco_algo}/{config.EVENT_RESULT_MAP[self.event_file.with_suffix(".pkl").name]}"
+        # now, download
+        download_file(url, self.result_file, no_cache)
+
+
+def download_file(url: str, dest: Path, force: bool) -> Path:
+    """Download a file from a URL if it doesn't already exist (unless force=True)."""
+    if not force and os.path.exists(dest):
         return dest
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"downloading from {url}...")
@@ -82,10 +123,14 @@ class GHATestFetcher:
     MATRIX_KEY = "matrix"
     EXCLUDE_KEY = "exclude"
 
-    def _read_gha_matrix(self):
+    def _read_gha_matrix(self, no_cache: bool):
         """Parse the 'matrix' defined in the github actions CI job."""
         with open(
-            download_file(config.GHA_FILE_URL, config.SANDBOX_DIR / "tests.yml")
+            download_file(
+                config.GHA_FILE_URL,
+                config.SANDBOX_DIR / "tests.yml",
+                no_cache,
+            )
         ) as f:
             gha_data = yaml.safe_load(f)
 
@@ -126,20 +171,20 @@ class GHATestFetcher:
 
         return expanded_matrix
 
-    def get_runtime_matrix(self) -> list[dict]:
+    def get_runtime_matrix(self, no_cache: bool) -> list[dict]:
         """Get the 'matrix' defined in the github actions CI job."""
-        matrix_dict = self._read_gha_matrix()
+        matrix_dict = self._read_gha_matrix(no_cache)
         return self._expand_matrix(matrix_dict)
 
 
-def setup_tests() -> Iterator[TestParamSet]:
+def setup_tests(no_cache: bool) -> Iterator[TestParamSet]:
     """Get all the files needed for running all the tests used in skymap_scanner CI.
 
     Yields all possible combinations of reco_algo and eventfiles from skymap_scanner tests.
     """
     logging.info("setting up tests...")
 
-    matrix = GHATestFetcher().get_runtime_matrix()
+    matrix = GHATestFetcher().get_runtime_matrix(no_cache)
     print(json.dumps(matrix, indent=4))
 
     # put all the events into a local directory
@@ -157,27 +202,11 @@ def setup_tests() -> Iterator[TestParamSet]:
             results_dir / m[RECO_ALGO_KEY] / config.EVENT_RESULT_MAP[event_fname]
         )
 
-        # get event file -- all event files will be saved as .json
-        as_json = event_file.with_suffix(".json")
-        if not as_json.exists():
-            download_file(f"{config.EVENT_DIR_URL}{event_fname}", event_file)
-            # -> transform pkl file into json file -- skydriver only takes json
-            if event_file.suffix == ".pkl":
-                with open(event_file, "rb") as f:
-                    contents = pickle.load(f)
-                event_file.unlink()  # rm
-                with open(as_json, "w") as f:
-                    json.dump(contents, f, indent=4)
-        event_file = as_json  # use the .json filepath
-
-        # get the expected-result file
-        download_file(
-            f"{config.RESULT_DIR_URL}{m[RECO_ALGO_KEY]}/{config.EVENT_RESULT_MAP[event_fname]}",
-            result_file,
-        )
-
-        yield TestParamSet(
+        test = TestParamSet(
             event_file=event_file,
             reco_algo=m[RECO_ALGO_KEY],
             result_file=result_file,
         )
+        test.download_files(no_cache)
+
+        yield test
