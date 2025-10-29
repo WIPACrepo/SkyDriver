@@ -41,8 +41,9 @@ async def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "scan_ids",
+        "--scan-ids",
         nargs="+",
+        required=True,
         help="one or more scan IDs to rescan",
     )
     parser.add_argument(
