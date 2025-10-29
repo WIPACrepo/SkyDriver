@@ -5,7 +5,6 @@ import logging
 import os
 import shutil
 import subprocess
-import sys
 import tarfile
 from datetime import date, datetime
 from pathlib import Path
@@ -34,16 +33,29 @@ class ResultChecker:
             config.GH_URL_COMPARE_SCRIPT, self.compare_script_fpath
         )
 
-    def compare_results(self, scan_result: dict, test: test_getter.TestParamSet):
+    def compare_results(
+        self,
+        test: test_getter.TestParamSet,
+        scan_result: dict | None = None,
+    ) -> None:
         """Compare scan result against expected result."""
+        logging.info(
+            f"Comparing scan result to expected values: {test.reco_algo} + {test.event_file}"
+        )
+
         scan_result_file = (
             config.SANDBOX_DIR
             / "actual_results"
             / f"{test.reco_algo}-{test.event_file.name}.json"
         )
         scan_result_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(scan_result_file, "w") as f:
-            json.dump(scan_result, f)
+
+        if scan_result is None:
+            if not scan_result_file.exists():
+                raise FileNotFoundError(scan_result_file)
+        else:
+            with open(scan_result_file, "w") as f:
+                json.dump(scan_result, f)
 
         diffs_dir = config.SANDBOX_DIR / "result_diffs"
         diffs_dir.mkdir(parents=True, exist_ok=True)
@@ -74,7 +86,7 @@ class ResultChecker:
         else:
             logging.error("Mismatch in results:")
             logging.error(result.stderr)
-            raise ValueError(f"Mismatch in results: {test}")
+            raise TestException("Mismatch in results", test)
 
 
 class TestException(Exception):
@@ -92,27 +104,28 @@ async def wait_then_check_results(
 ) -> test_getter.TestParamSet:
     """Wait until the scan is done, then check its result."""
     try:
-        # monitor
         logging.info(
             f"Monitoring scan; see logs in {test.log_file}: {test.reco_algo} + {test.event_file}"
         )
         test.log_file.parent.mkdir(parents=True, exist_ok=True)
+
         try:
+            # Wait until the scan is done...
             scan_result = await test_runner.monitor(rc, test.scan_id, test.log_file)
             logging.info(f"Scan {test.scan_id} completed successfully.")
         except Exception as e:
             logging.error(f"Error monitoring scan {test.scan_id}: {e}")
             raise
+        else:
+            # then check its result
+            checker.compare_results(test, scan_result)
 
-        # check
-        logging.info(
-            f"Comparing scan result to expected values: {test.reco_algo} + {test.event_file}"
-        )
-        checker.compare_results(scan_result, test)
     except Exception as e:
+        # no error in testing shall bring down the test suite
         raise TestException(repr(e), test) from e
-    else:
-        return test
+
+    # done here
+    return test
 
 
 async def launch_scans(
@@ -199,23 +212,11 @@ async def test_all(
     rc: RestClient,
     cluster: str,
     n_workers: int,
-    rescans: list[test_getter.TestParamSet] | None,
     skyscan_docker_tag: str,
-    run_one: bool,
     priority: int,
-    dry_run: bool,
+    tests: list[test_getter.TestParamSet],
 ) -> None:
     """Do all the tests."""
-    # setup
-    tests = list(test_getter.setup_tests())
-    if run_one:
-        tests = [tests[-1]]  # #0 is often millipede original (slowest), so pick faster
-    if rescans:
-        _match_rescans_to_tests(rescans, tests)
-
-    if dry_run:
-        raise DryRunException()
-
     # launch!
     tests = await launch_scans(  # adds scan ids to 'tests'
         tests,
@@ -262,6 +263,78 @@ async def test_all(
         raise RuntimeError(f"{n_failed}/{len(tests)} tests failed.")
     else:
         logging.info("All tests passed!")
+
+
+def rotate_sandbox() -> None:
+    """Tar old sandbox and prep for new."""
+    if not config.SANDBOX_DIR.exists():
+        raise NotADirectoryError(config.SANDBOX_DIR)
+
+    logging.info(
+        f"taring the existing '{config.SANDBOX_DIR}', then overwriting the directory"
+    )
+
+    # tar it
+    with tarfile.open(
+        f"{config.SANDBOX_DIR}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.tar",
+        "w",
+    ) as tar:
+        tar.add(config.SANDBOX_DIR, arcname=os.path.basename(config.SANDBOX_DIR))
+
+    # then rm -rf the dir (saving the downloaded files)
+    for entry in config.SANDBOX_DIR.iterdir():
+        if entry.name in {
+            "expected_results",  # dir
+            "realtime_events",  # dir
+            "compare_scan_results.py",  # file
+            "tests.yml",  # file
+        }:
+            continue
+        if entry.is_dir():
+            shutil.rmtree(entry)
+        else:
+            entry.unlink()
+
+
+def reconstruct_tests_from_sandbox(sandbox: dir) -> list[test_getter.TestParamSet]:
+    """Make test objects from the sanbox."""
+    if sandbox.is_dir():
+        with open(sandbox / config.SANDBOX_MAP_FPATH.name) as f:
+            json_data = json.loads(f.read())
+    else:
+        with tarfile.open(sandbox) as tar:
+            member = tar.getmember(
+                f"{config.SANDBOX_DIR.name}/{config.SANDBOX_MAP_FPATH.name}"
+            )
+            with tar.extractfile(member) as f:
+                json_data = json.loads(f.read())
+
+    return [
+        test_getter.TestParamSet(
+            Path(x["event_file"]),
+            x["reco_algo"],
+            Path(x["result_file"]),
+            x["scan_id"],
+        )
+        for x in json_data
+    ]
+
+
+def compare_only() -> None:
+    """Compare tests results from whatever is in the sandbox."""
+    tests = reconstruct_tests_from_sandbox(config.SANDBOX_DIR)
+    checker = ResultChecker()
+
+    fails = []
+    for t in tests:
+        try:
+            checker.compare_results(t)
+        except TestException as e:
+            fails.append(e)
+
+    logging.error(f"Failed tests: {len(fails)}")
+    for f in fails:
+        logging.error(f"{f}: {f.test}")
 
 
 async def main():
@@ -320,6 +393,12 @@ async def main():
         help="just requests a single scan instead of the whole suite",
     )
     parser.add_argument(
+        "--compare-only",
+        default=False,
+        action="store_true",
+        help="only compare results",
+    )
+    parser.add_argument(
         "--dry-run",
         default=False,
         action="store_true",
@@ -329,71 +408,38 @@ async def main():
     if args.one and args.rescan:
         raise RuntimeError("cannot give --one and --rescan together")
 
+    # --compare-only
+    if args.compare_only:
+        compare_only()
+        return
+
+    # --rescan
     if args.rescan:
-        # grab json map
-        if args.rescan_dir.is_dir():
-            with open(args.rescan_dir / config.SANDBOX_MAP_FPATH.name) as f:
-                json_data = json.loads(f.read())
-        else:
-            with tarfile.open(args.rescan_dir) as tar:
-                member = tar.getmember(
-                    f"{config.SANDBOX_DIR.name}/{config.SANDBOX_MAP_FPATH.name}"
-                )
-                with tar.extractfile(member) as f:
-                    json_data = json.loads(f.read())
-        rescans = [
-            test_getter.TestParamSet(
-                Path(x["event_file"]),
-                x["reco_algo"],
-                Path(x["result_file"]),
-                x["scan_id"],
-            )
-            for x in json_data
-        ]
+        rescans = reconstruct_tests_from_sandbox(args.rescan_dir)
     else:
         rescans = None
 
     # tar existing sandbox
     if config.SANDBOX_DIR.exists():
-        logging.info(
-            f"taring the existing '{config.SANDBOX_DIR}', then overwriting the directory"
-        )
-        # tar it
-        with tarfile.open(
-            f"{config.SANDBOX_DIR}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.tar",
-            "w",
-        ) as tar:
-            tar.add(config.SANDBOX_DIR, arcname=os.path.basename(config.SANDBOX_DIR))
-        # then rm -rf the dir (saving the downloaded files)
-        for entry in config.SANDBOX_DIR.iterdir():
-            if entry.name in {
-                "expected_results",  # dir
-                "realtime_events",  # dir
-                "compare_scan_results.py",  # file
-                "tests.yml",  # file
-            }:
-                continue
-            if entry.is_dir():
-                shutil.rmtree(entry)
-            else:
-                entry.unlink()
+        rotate_sandbox()
     config.SANDBOX_DIR.mkdir(exist_ok=True)
 
+    # get rest client
     rc = test_runner.get_rest_client(args.skydriver_type)
 
+    # run tests
+    tests = list(test_getter.setup_tests())
+    if args.one:
+        tests = [tests[-1]]  # #0 is often millipede original (slowest), so pick faster
+    if rescans:
+        _match_rescans_to_tests(rescans, tests)
+    if args.dry_run:
+        raise DryRunException()
     await test_all(
         rc,
         args.cluster,
         args.n_workers,
-        rescans,
         args.skyscan_docker_tag,
-        args.one,
         args.priority,
-        args.dry_run,
+        tests,
     )
-
-
-# Run the asyncio event loop
-if __name__ == "__main__":
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "icecube-skyreader"])
-    asyncio.run(main())
