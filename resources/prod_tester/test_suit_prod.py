@@ -28,12 +28,12 @@ class DryRunException(Exception):
 class ResultChecker:
     """Class to check/compare/assert scan results."""
 
-    def __init__(self, redownload: bool):
+    def __init__(self, no_cache: bool):
         self.compare_script_fpath = config.SANDBOX_DIR / "compare_scan_results.py"
         test_getter.download_file(
             config.GH_URL_COMPARE_SCRIPT,
             self.compare_script_fpath,
-            redownload,
+            no_cache,
         )
 
     def compare_results(
@@ -81,9 +81,9 @@ class ResultChecker:
         )
 
         if result.returncode == 0:
-            logging.info("Results for scan match expected output.")
+            logging.info("> PASSED: Results for scan match expected output.")
         else:
-            logging.error("Mismatch in results:")
+            logging.error("> FAILED: Mismatch in results...")
             logging.error(result.stderr)
             raise TestException("Mismatch in results", test)
 
@@ -257,10 +257,23 @@ async def test_all(
                 logging.error(f"A test failed: {repr(e)}")
             display_test_status(tests)
 
-    # how'd it all go?
+    tests_result_summary(n_failed, len(tests))
+
+
+def tests_result_summary(
+    n_failed: int,
+    n_tests: int,
+    raise_on_fail: bool = True,
+) -> None:
+    """How'd it all go?"""
+    msg = f"{n_failed}/{n_tests} tests failed."
+
     if n_failed:
-        raise RuntimeError(f"{n_failed}/{len(tests)} tests failed.")
+        logging.error(msg)
+        if raise_on_fail:
+            raise RuntimeError(msg)
     else:
+        logging.info(msg)
         logging.info("All tests passed!")
 
 
@@ -319,10 +332,16 @@ def reconstruct_tests_from_sandbox(sandbox: dir) -> list[test_getter.TestParamSe
     ]
 
 
-def compare_only(checker: ResultChecker) -> None:
+def compare_only(checker: ResultChecker, no_cache: bool) -> None:
     """Compare tests results from whatever is in the sandbox."""
     tests = reconstruct_tests_from_sandbox(config.SANDBOX_DIR)
 
+    # re-download the test files? -- doesn't touch result files
+    if no_cache:
+        for t in tests:
+            t.download_files(no_cache)
+
+    # compare to expected results
     fails = []
     for t in tests:
         try:
@@ -330,9 +349,14 @@ def compare_only(checker: ResultChecker) -> None:
         except TestException as e:
             fails.append(e)
 
-    logging.error(f"Failed tests: {len(fails)}")
-    for f in fails:
-        logging.error(f"{f}: {f.test}")
+    # log summary
+    tests_result_summary(len(fails), len(tests), raise_on_fail=False)
+
+    # fail-specific logging
+    if fails:
+        for f in fails:
+            logging.error(f"{f}: {f.test}")
+        tests_result_summary(len(fails), len(tests), raise_on_fail=True)
 
 
 async def main():
@@ -416,7 +440,7 @@ async def main():
 
     # --compare-only
     if args.compare_only:
-        compare_only(checker)
+        compare_only(checker, args.repull_tests)
         return
 
     # --rescan
@@ -434,7 +458,7 @@ async def main():
     rc = test_runner.get_rest_client(args.skydriver_type)
 
     # run tests
-    tests = list(test_getter.setup_tests(redownload=args.repull_tests))
+    tests = list(test_getter.setup_tests(no_cache=args.repull_tests))
     if args.one:
         tests = [tests[-1]]  # #0 is often millipede original (slowest), so pick faster
     if rescans:
