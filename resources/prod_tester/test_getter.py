@@ -60,9 +60,9 @@ class TestParamSet:
         )
 
 
-def download_file(url: str, dest: Path) -> Path:
-    """Download a file from a URL."""
-    if os.path.exists(dest):
+def download_file(url: str, dest: Path, force: bool) -> Path:
+    """Download a file from a URL if it doesn't already exist (unless force=True)."""
+    if not force and os.path.exists(dest):
         return dest
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"downloading from {url}...")
@@ -82,10 +82,14 @@ class GHATestFetcher:
     MATRIX_KEY = "matrix"
     EXCLUDE_KEY = "exclude"
 
-    def _read_gha_matrix(self):
+    def _read_gha_matrix(self, redownload: bool):
         """Parse the 'matrix' defined in the github actions CI job."""
         with open(
-            download_file(config.GHA_FILE_URL, config.SANDBOX_DIR / "tests.yml")
+            download_file(
+                config.GHA_FILE_URL,
+                config.SANDBOX_DIR / "tests.yml",
+                redownload,
+            )
         ) as f:
             gha_data = yaml.safe_load(f)
 
@@ -126,20 +130,20 @@ class GHATestFetcher:
 
         return expanded_matrix
 
-    def get_runtime_matrix(self) -> list[dict]:
+    def get_runtime_matrix(self, redownload: bool) -> list[dict]:
         """Get the 'matrix' defined in the github actions CI job."""
-        matrix_dict = self._read_gha_matrix()
+        matrix_dict = self._read_gha_matrix(redownload)
         return self._expand_matrix(matrix_dict)
 
 
-def setup_tests() -> Iterator[TestParamSet]:
+def setup_tests(redownload: bool) -> Iterator[TestParamSet]:
     """Get all the files needed for running all the tests used in skymap_scanner CI.
 
     Yields all possible combinations of reco_algo and eventfiles from skymap_scanner tests.
     """
     logging.info("setting up tests...")
 
-    matrix = GHATestFetcher().get_runtime_matrix()
+    matrix = GHATestFetcher().get_runtime_matrix(redownload)
     print(json.dumps(matrix, indent=4))
 
     # put all the events into a local directory
@@ -160,7 +164,11 @@ def setup_tests() -> Iterator[TestParamSet]:
         # get event file -- all event files will be saved as .json
         as_json = event_file.with_suffix(".json")
         if not as_json.exists():
-            download_file(f"{config.EVENT_DIR_URL}{event_fname}", event_file)
+            download_file(
+                f"{config.EVENT_DIR_URL}{event_fname}",
+                event_file,
+                redownload,
+            )
             # -> transform pkl file into json file -- skydriver only takes json
             if event_file.suffix == ".pkl":
                 with open(event_file, "rb") as f:
@@ -174,6 +182,7 @@ def setup_tests() -> Iterator[TestParamSet]:
         download_file(
             f"{config.RESULT_DIR_URL}{m[RECO_ALGO_KEY]}/{config.EVENT_RESULT_MAP[event_fname]}",
             result_file,
+            redownload,
         )
 
         yield TestParamSet(

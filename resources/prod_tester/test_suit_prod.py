@@ -6,10 +6,11 @@ import os
 import shutil
 import subprocess
 import tarfile
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 
 import texttable  # type: ignore
+import wipac_dev_tools
 from rest_tools.client import RestClient
 
 from . import config, test_getter, test_runner
@@ -27,10 +28,12 @@ class DryRunException(Exception):
 class ResultChecker:
     """Class to check/compare/assert scan results."""
 
-    def __init__(self):
+    def __init__(self, redownload: bool):
         self.compare_script_fpath = config.SANDBOX_DIR / "compare_scan_results.py"
         test_getter.download_file(
-            config.GH_URL_COMPARE_SCRIPT, self.compare_script_fpath
+            config.GH_URL_COMPARE_SCRIPT,
+            self.compare_script_fpath,
+            redownload,
         )
 
     def compare_results(
@@ -215,6 +218,7 @@ async def test_all(
     skyscan_docker_tag: str,
     priority: int,
     tests: list[test_getter.TestParamSet],
+    checker: ResultChecker,
 ) -> None:
     """Do all the tests."""
     # launch!
@@ -232,7 +236,6 @@ async def test_all(
     display_test_status(tests)
 
     # start test-waiters
-    checker = ResultChecker()
     logging.info("Starting scan watchers...")
     tasks = set()
     for test in tests:
@@ -320,10 +323,9 @@ def reconstruct_tests_from_sandbox(sandbox: dir) -> list[test_getter.TestParamSe
     ]
 
 
-def compare_only() -> None:
+def compare_only(checker: ResultChecker) -> None:
     """Compare tests results from whatever is in the sandbox."""
     tests = reconstruct_tests_from_sandbox(config.SANDBOX_DIR)
-    checker = ResultChecker()
 
     fails = []
     for t in tests:
@@ -399,6 +401,12 @@ async def main():
         help="only compare results",
     )
     parser.add_argument(
+        "--repull-tests",
+        required=True,
+        type=wipac_dev_tools.strtobool,
+        help="whether to re-download test files instead of using cached files: yes/no",
+    )
+    parser.add_argument(
         "--dry-run",
         default=False,
         action="store_true",
@@ -408,9 +416,11 @@ async def main():
     if args.one and args.rescan:
         raise RuntimeError("cannot give --one and --rescan together")
 
+    checker = ResultChecker(args.repull_tests)
+
     # --compare-only
     if args.compare_only:
-        compare_only()
+        compare_only(checker)
         return
 
     # --rescan
@@ -428,7 +438,7 @@ async def main():
     rc = test_runner.get_rest_client(args.skydriver_type)
 
     # run tests
-    tests = list(test_getter.setup_tests())
+    tests = list(test_getter.setup_tests(redownload=args.repull_tests))
     if args.one:
         tests = [tests[-1]]  # #0 is often millipede original (slowest), so pick faster
     if rescans:
@@ -442,4 +452,9 @@ async def main():
         args.skyscan_docker_tag,
         args.priority,
         tests,
+        checker,
     )
+
+
+if __name__ == "__main__":
+    raise RuntimeError("must run from pacakge: 'python -m prod_tester ...'")
