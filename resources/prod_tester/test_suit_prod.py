@@ -389,7 +389,7 @@ async def main():
     parser.add_argument(
         "--cluster",
         required=True,
-        help="the cluster to use for running workers. Ex: sub-2",
+        help="the cluster to use for running workers. Ex: osg",
     )
     parser.add_argument(
         "--skyscan-docker-tag",

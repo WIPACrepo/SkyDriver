@@ -186,7 +186,7 @@ KNOWN_CLUSTERS: dict[str, dict[str, Any]] = {
     "osg": {
         "max_n_clients_during_debug_mode": 100,
     },
-    "sub-2": {
+    "sub-2": {  # Nov 2025: sub-2 was replaced with osg — ewms will relabel any 'sub-2' requests as 'osg'
         "max_n_clients_during_debug_mode": 100,
     },
     LOCAL_K8S_HOST: {

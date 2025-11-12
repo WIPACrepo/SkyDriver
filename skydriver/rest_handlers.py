@@ -270,7 +270,7 @@ def _validate_request_clusters(
     val: dict | list,
 ) -> list[tuple[str, int]]:
     _error = argparse.ArgumentTypeError(
-        "must be a dict of cluster location and number of workers, Ex: {'sub-2': 1500, ...}"
+        "must be a dict of cluster location and number of workers, Ex: {'osg': 1500, ...}"
         " (to request a cluster location more than once, provide a list of 2-lists instead)"
         # TODO: make n_workers optional when using "EWMS smart starter"
     )
