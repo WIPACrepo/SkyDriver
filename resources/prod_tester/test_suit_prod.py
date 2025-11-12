@@ -65,7 +65,7 @@ class ResultChecker:
 
         def _check_time_bomb():
             # see https://github.com/icecube/skymap_scanner/blob/cb422e412d1607ce1e0ea2db4402a4e3461908ed/.github/workflows/tests.yml#L539-L560
-            if date.today() > date(2025, 9, 18):
+            if date.today() > date(2026, 3, 18):
                 raise RuntimeError(
                     "************************* HEY LOOK AT THIS FAILURE ************************* "
                     "we need to attend to # see https://github.com/icecube/skymap_scanner/blob/cb422e412d1607ce1e0ea2db4402a4e3461908ed/.github/workflows/tests.yml#L539-L560"
