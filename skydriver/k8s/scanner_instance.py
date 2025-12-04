@@ -153,6 +153,7 @@ class SkyScanK8sJobFactory:
                 app.kubernetes.io/instance: {ENV.K8S_APPLICATION_NAME}
               annotations:
                 argocd.argoproj.io/sync-options: "Prune=false"
+                argocd.argoproj.io/tracking-id: "{ENV.K8S_APPLICATION_NAME}:apps/Job:{ENV.K8S_NAMESPACE}/{SkyScanK8sJobFactory.get_job_name(scan_id)}"
             spec:
               ttlSecondsAfterFinished: {ENV.K8S_TTL_SECONDS_AFTER_FINISHED}
               backoffLimit: 0
