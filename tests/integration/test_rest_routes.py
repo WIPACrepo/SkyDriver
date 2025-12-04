@@ -212,10 +212,15 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
             "apiVersion": "batch/v1",
             "kind": "Job",
             "metadata": {
-                "annotations": {"argocd.argoproj.io/sync-options": "Prune=false"},
-                "labels": {"app.kubernetes.io/instance": None},
+                "annotations": {
+                    "argocd.argoproj.io/sync-options": "Prune=false",
+                    "argocd.argoproj.io/tracking-id": f"{os.getenv("K8S_APPLICATION_NAME")}:apps/Job:{os.getenv("K8S_NAMESPACE")}/skyscan-{post_resp['scan_id']}",
+                },
+                "labels": {
+                    "app.kubernetes.io/instance": os.getenv("K8S_APPLICATION_NAME"),
+                },
                 "name": f"skyscan-{post_resp['scan_id']}",
-                "namespace": None,
+                "namespace": os.getenv("K8S_NAMESPACE"),
             },
             "spec": {
                 "activeDeadlineSeconds": 172800,

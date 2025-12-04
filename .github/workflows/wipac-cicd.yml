@@ -36,6 +36,8 @@ env:
   K8S_SECRET_NAME: super-secrets
   MIN_SKYMAP_SCANNER_TAG: "v3.1.2" # technically prod uses v4 as min tag but tests use this (same logic)
   CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR: "./test-cvmfs/"
+  K8S_NAMESPACE: "test_k8s_namespace"
+  K8S_APPLICATION_NAME: "test_k8s_app_name"
 
 
 jobs:
@@ -245,6 +247,7 @@ jobs:
               $(env | grep '^SCAN_' | awk '$0="--env "$0') \
               $(env | grep '^MIN_SKYMAP_SCANNER_TAG' | awk '$0="--env "$0') \
               $(env | grep '^HERE_URL' | awk '$0="--env "$0') \
+              $(env | grep '^K8S_' | awk '$0="--env "$0') \
               --env CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR="$( realpath $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR )" \
               --mount type=bind,source="$( realpath ./tests )",target="/app/tests",readonly \
               --mount type=bind,source="$( realpath ./pytest.ini )",target="/app/pytest.ini",readonly \
