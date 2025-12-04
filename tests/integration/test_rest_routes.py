@@ -327,7 +327,6 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                         "memory": "10M",
                                     },
                                 },
-                                "restartPolicy": "OnFailure",
                                 "volumeMounts": [
                                     {
                                         "mountPath": "/common-space",
