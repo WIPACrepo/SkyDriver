@@ -131,7 +131,6 @@ class EnvConfig:
 
     # cache durations
     CACHE_DURATION_EWMS: int = 1 * 60
-    CACHE_DURATION_DOCKER_HUB: int = 5 * 60
     CACHE_DURATION_PROMETHEUS: int = 15 * 60
 
     CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR: Path = Path(
@@ -183,7 +182,11 @@ LOCAL_K8S_HOST = "local"
 
 # known cluster locations
 KNOWN_CLUSTERS: dict[str, dict[str, Any]] = {
-    "sub-2": {
+    # NOTE -- even if the cluster does not have special settings, it must be present in dict
+    "osg": {
+        "max_n_clients_during_debug_mode": 100,
+    },
+    "sub-2": {  # Nov 2025: sub-2 was replaced with osg — ewms will relabel any 'sub-2' requests as 'osg'
         "max_n_clients_during_debug_mode": 100,
     },
     LOCAL_K8S_HOST: {

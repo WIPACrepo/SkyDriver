@@ -45,11 +45,11 @@ jobs:
     outputs:
       matrix: ${{ steps.versions.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
       - id: versions
-        uses: WIPACrepo/wipac-dev-py-versions-action@v2.7
+        uses: WIPACrepo/wipac-dev-py-versions-action@v2.8
 
 
   #############################################################################
@@ -64,7 +64,7 @@ jobs:
       matrix:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
       - uses: actions/setup-python@v6
@@ -82,7 +82,7 @@ jobs:
       matrix:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
           fetch-depth: 0  # setuptools-scm needs to access git tags
@@ -100,11 +100,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' }} # dependabot cannot access PAT
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           ref: ${{ github.ref }}  # dont lock to sha (action needs to push)
-      - uses: WIPACrepo/wipac-dev-py-setup-action@v5.6
+      - uses: WIPACrepo/wipac-dev-py-setup-action@v5.9
         with:
           mode: PACKAGING
           python_min: 3.13
@@ -117,7 +117,7 @@ jobs:
   py-dependencies:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
           fetch-depth: 0  # setuptools-scm needs to access git tags
@@ -128,7 +128,7 @@ jobs:
           file: Dockerfile
           tags: skydriver:py-dep-this
           load: true
-      - uses: WIPACrepo/wipac-dev-py-dependencies-action@v3.2
+      - uses: WIPACrepo/wipac-dev-py-dependencies-action@v3.4
 
 
   #############################################################################
@@ -143,7 +143,7 @@ jobs:
       matrix:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
           fetch-depth: 0  # setuptools-scm needs to access git tags
@@ -188,7 +188,7 @@ jobs:
         ports:
           - 27017:27017
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
           fetch-depth: 0  # setuptools-scm needs to access git tags
@@ -275,7 +275,7 @@ jobs:
   test-build-docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
           fetch-depth: 0  # setuptools-scm needs to access git tags
