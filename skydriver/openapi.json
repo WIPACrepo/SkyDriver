@@ -357,10 +357,12 @@
                         "name": "projection",
                         "in": "query",
                         "required": false,
-                        "description": "Fields to include in the returned manifest. Single value only -- Tornado's `get_argument` collapses repeated query params to the last value. Pass `*` for all fields, or a single field name. For multi-field projections, use POST /scans/find with a JSON body instead. (If `ArgumentHandler` supports comma-separated lists here, widen this to reflect that.)",
+                        "description": "Fields to include in the returned manifest. See `ManifestProjection`. Array form in query: send as repeated keys (`?projection=a&projection=b`) -- OpenAPI `style: form, explode: true` semantics. The new server implementation should use Tornado's `request.arguments` (which is list-of-values-per-key), not `get_argument` (which collapses to a single value).",
                         "schema": {
-                            "type": "string"
-                        }
+                            "$ref": "#/components/schemas/ManifestProjection"
+                        },
+                        "style": "form",
+                        "explode": true
                     }
                 ],
                 "responses": {
@@ -940,7 +942,9 @@
                         "$ref": "#/components/schemas/ProgressProcessingStats"
                     },
                     "predictive_scanning_threshold": {
-                        "type": "number"
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
                     },
                     "last_updated": {
                         "type": "string"
@@ -1078,6 +1082,34 @@
                     "maxLength": 25
                 }
             },
+            "ScannerServerEnvFromUser": {
+                "type": "object",
+                "description": "User-provided env-vars injected into the scanner server k8s job. Scalar values only. Limits are intentionally looser than `ClassifiersInput` because env-var values (URLs, PATHs, tokens, etc.) routinely exceed 25 chars.",
+                "additionalProperties": {
+                    "oneOf": [
+                        {
+                            "type": "string",
+                            "maxLength": 4096
+                        },
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "maxProperties": 25,
+                "propertyNames": {
+                    "maxLength": 128
+                }
+            },
             "RequestClusters": {
                 "description": "Either a dict `{cluster_location: n_workers}` OR a list of `[cluster_location, n_workers]` 2-tuples. Use the list form to request the same cluster more than once.",
                 "oneOf": [
@@ -1110,12 +1142,12 @@
                 ]
             },
             "DebugMode": {
-                "description": "DebugMode flag. Accepts a single value or a list of values. NOTE: enum values listed here are based on observed usage (`client_logs`) -- extend this list to match the full `DebugMode` enum.",
+                "description": "DebugMode flag. Accepts a single value or a list of values. Currently `client-logs` is the only defined value; extend the enum as the `DebugMode` Python enum grows.",
                 "oneOf": [
                     {
                         "type": "string",
                         "enum": [
-                            "client_logs"
+                            "client-logs"
                         ]
                     },
                     {
@@ -1123,7 +1155,7 @@
                         "items": {
                             "type": "string",
                             "enum": [
-                                "client_logs"
+                                "client-logs"
                             ]
                         }
                     }
@@ -1142,19 +1174,20 @@
                 ]
             },
             "ManifestProjection": {
-                "description": "Fields to include in the returned manifest. Either a list of field names or the literal string `\"*\"` (all allowed fields).",
+                "description": "Fields to include in the returned manifest. Either `\"*\"` (all allowed fields) or an explicit array of field names. Omit the field entirely for the default (all fields, minus the disallowed ones on /scans/find). NOTE: under the legacy arghandler implementation, array values were silently broken (stringified via `type=str`); the OpenAPI-validated implementation is expected to accept both forms and normalize to a set server-side before the disallowed-fields check and `dict_projection`.",
                 "oneOf": [
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
                     {
                         "type": "string",
                         "enum": [
                             "*"
                         ]
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "uniqueItems": true
                     }
                 ]
             },
@@ -1345,7 +1378,9 @@
                         ]
                     },
                     "predictive_scanning_threshold": {
-                        "type": "number"
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
                     },
                     "classifiers": {
                         "$ref": "#/components/schemas/ClassifiersStored"
@@ -1360,7 +1395,8 @@
                         "$ref": "#/components/schemas/DataSize"
                     },
                     "max_pixel_reco_time": {
-                        "type": "integer"
+                        "type": "integer",
+                        "minimum": 1
                     },
                     "priority": {
                         "type": "integer",
@@ -1377,7 +1413,7 @@
                         "type": "string"
                     },
                     "scanner_server_env_from_user": {
-                        "$ref": "#/components/schemas/ClassifiersInput"
+                        "$ref": "#/components/schemas/ScannerServerEnvFromUser"
                     }
                 },
                 "additionalProperties": true
@@ -1539,10 +1575,13 @@
                     },
                     "predictive_scanning_threshold": {
                         "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
                         "default": 1.0
                     },
                     "max_pixel_reco_time": {
-                        "type": "integer"
+                        "type": "integer",
+                        "minimum": 1
                     },
                     "debug_mode": {
                         "$ref": "#/components/schemas/DebugMode"
@@ -1563,7 +1602,7 @@
                     "scanner_server_env_from_user": {
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/ClassifiersInput"
+                                "$ref": "#/components/schemas/ScannerServerEnvFromUser"
                             }
                         ],
                         "default": {},
@@ -1572,7 +1611,7 @@
                     "scanner_server_env": {
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/ClassifiersInput"
+                                "$ref": "#/components/schemas/ScannerServerEnvFromUser"
                             }
                         ],
                         "deprecated": true,
