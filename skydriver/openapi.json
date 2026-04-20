@@ -357,15 +357,10 @@
                         "name": "projection",
                         "in": "query",
                         "required": false,
-                        "description": "Fields to include in the returned manifest. Omit or pass `*` (via the request's normal splitting) for all fields.",
+                        "description": "Fields to include in the returned manifest. Single value only -- Tornado's `get_argument` collapses repeated query params to the last value. Pass `*` for all fields, or a single field name. For multi-field projections, use POST /scans/find with a JSON body instead. (If `ArgumentHandler` supports comma-separated lists here, widen this to reflect that.)",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        },
-                        "style": "form",
-                        "explode": true
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
