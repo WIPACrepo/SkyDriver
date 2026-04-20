@@ -5,6 +5,7 @@ import enum
 from pathlib import Path
 from typing import Any
 
+from rest_tools import openapi_tools
 from wipac_dev_tools import from_environment_as_dataclass, logging_tools
 from wipac_dev_tools.logging_tools import WIPACDevToolsFormatter
 
@@ -177,6 +178,9 @@ class EnvConfig:
 
 
 ENV = from_environment_as_dataclass(EnvConfig)
+
+OPENAPI_PATH = Path(__file__).parent / "openapi.json"
+OPENAPI_SPEC, OPENAPI_DICT = openapi_tools.load_openapi_spec(OPENAPI_PATH, "skydriver")
 
 LOCAL_K8S_HOST = "local"
 

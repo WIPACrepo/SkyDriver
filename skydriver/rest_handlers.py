@@ -5,7 +5,6 @@ import asyncio
 import dataclasses as dc
 import json
 import logging
-import re
 import time
 import uuid
 from typing import Any, Type, TypeVar, cast
@@ -17,16 +16,11 @@ from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from pymongo import ReturnDocument
 from rest_tools.client import RestClient
-from rest_tools.server import (
-    ArgumentHandler,
-    ArgumentSource,
-    RestHandler,
-)
+from rest_tools.server import RestHandler, validate_request
 from tornado import web
-from wipac_dev_tools import argparse_tools
 from wipac_dev_tools.container_registry_tools import ImageNotFoundException
 
-from . import database, ewms, images
+from . import config, database, ewms, images
 from .background_runners.scan_launcher import put_on_backlog
 from .config import (
     DebugMode,
@@ -174,43 +168,29 @@ class ScansFindHandler(BaseSkyDriverHandler):
     DEFAULT_FIELDS = all_dc_fields(database.schema.Manifest) - DISALLOWED_FIELDS
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @validate_request(config.OPENAPI_SPEC)
     async def post(self) -> None:
         """Get matching scan manifest(s) for the given search."""
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
-        arghand.add_argument(
-            "filter",
-            type=_arg_dict_strict,
+        manifest_projection = self.get_argument(
+            "manifest_projection", self.DEFAULT_FIELDS
         )
-        arghand.add_argument(
-            "include_deleted",
-            default=False,
-            type=bool,
-        )
-        # response args
-        arghand.add_argument(
-            "manifest_projection",
-            default=self.DEFAULT_FIELDS,
-            type=str,
-        )
-        args = arghand.parse_args()
+        filter_ = self.get_argument("filter")
+        include_deleted = self.get_argument("include_deleted", False)
 
-        if args.manifest_projection == "*":  # can't use star here, too dangerous
-            args.manifest_projection = self.DEFAULT_FIELDS
-        if (
-            args.manifest_projection - self.DISALLOWED_FIELDS
-            != args.manifest_projection
-        ):
+        if manifest_projection == "*":  # can't use star here, too dangerous
+            manifest_projection = self.DEFAULT_FIELDS
+        if manifest_projection - self.DISALLOWED_FIELDS != manifest_projection:
             raise web.HTTPError(
                 400,
                 log_message=f"'manifest_projection' cannot include any of the following: {self.DISALLOWED_FIELDS}",
             )
 
-        if "is_deleted" not in args.filter and not args.include_deleted:
-            args.filter["is_deleted"] = False
+        if "is_deleted" not in filter_ and not include_deleted:
+            filter_["is_deleted"] = False
 
         manifests = [
-            dict_projection(dc.asdict(m), args.manifest_projection)
-            async for m in self.manifests.find_all(args.filter)
+            dict_projection(dc.asdict(m), manifest_projection)
+            async for m in self.manifests.find_all(filter_)
         ]
 
         self.write({"manifests": manifests})
@@ -434,166 +414,59 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             return i3_event_id
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @validate_request(config.OPENAPI_SPEC)
     async def post(self) -> None:
         """Start a new scan."""
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
-        # docker args
-        arghand.add_argument(
-            # any tag on docker hub (including 'latest') -- must also be on CVMFS (but not checked here)
-            "docker_tag",
-            type=str,  # validated below
-        )
-        # NOTE: Several of these args have aliased names. When migrating to OpenAPI,
-        #       use the field names in scan-request-obj / manifest.
-        #       - Keep the old args as deprecated/aliases (aka backward compatibility).
-        # scanner server args
-        for name in ["scanner_server_memory", "scanner_server_memory_bytes"]:
-            arghand.add_argument(
-                name,
-                dest="scanner_server_memory_bytes",
-                action="append",
-                type=_data_size_parse,
-                default=argparse.SUPPRESS,
-            )
-        # client worker args
-        for name in ["worker_memory", "worker_memory_bytes"]:
-            arghand.add_argument(
-                name,
-                dest="worker_memory_bytes",
-                action="append",
-                type=_data_size_parse,
-                default=argparse.SUPPRESS,
-            )
-        arghand.add_argument(  # NOTE - DEPRECATED
-            "memory",
-            type=lambda x: argparse_tools.validate_arg(
-                x,
-                not bool(x),  # False if given
-                argparse.ArgumentTypeError(
-                    "argument is deprecated--use 'worker_memory'"
-                ),
-            ),
-            default=None,
-        )
-        for name in ["worker_disk", "worker_disk_bytes"]:
-            arghand.add_argument(
-                name,
-                dest="worker_disk_bytes",
-                action="append",
-                type=_data_size_parse,
-                default=argparse.SUPPRESS,
-            )
-        for name in ["cluster", "request_clusters"]:
-            arghand.add_argument(
-                name,
-                dest="request_clusters",
-                action="append",
-                type=_validate_request_clusters,
-                default=argparse.SUPPRESS,
-            )
-        # scanner args
-        arghand.add_argument(
-            "reco_algo",
-            type=lambda x: argparse_tools.validate_arg(
-                x,
-                bool(re.match(r"\S", x)),  # no empty string / whitespace
-                argparse.ArgumentTypeError("cannot be empty string / whitespace"),
-            ),
-        )
-        arghand.add_argument(
-            "event_i3live_json",
-            type=_json_to_dict,  # JSON-string/JSON-friendly dict -> dict
-            default={},
-        )
-        arghand.add_argument(
-            "i3_event_id",  # id to an existing i3 event
-            type=str,
-            default="",
-        )
-        arghand.add_argument(
-            "nsides",
-            type=_arg_dict_strict,
-        )
-        arghand.add_argument(
-            "real_or_simulated_event",  # as opposed to simulation
-            type=str,
-            choices=REAL_CHOICES + SIM_CHOICES,
-        )
-        arghand.add_argument(
-            "predictive_scanning_threshold",
-            type=float,
-            default=1.0,
-        )
-        arghand.add_argument(
-            "max_pixel_reco_time",
-            type=int,
-        )
-        arghand.add_argument(
-            "debug_mode",
-            type=_debug_mode,
-            default=[],
-        )
-        # other args
-        arghand.add_argument(
-            "classifiers",
-            type=_classifiers_validator,
-            default={},
-        )
-        arghand.add_argument(
-            "priority",
-            type=int,
-            default=0,
-        )
-        for name in ["scanner_server_env", "scanner_server_env_from_user"]:
-            arghand.add_argument(
-                name,
-                dest="scanner_server_env_from_user",
-                action="append",
-                type=_classifiers_validator,  # piggy-back this validator
-                default=argparse.SUPPRESS,
-            )
-        # response args
-        arghand.add_argument(
-            "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
-            type=str,
-        )
-        args = arghand.parse_args()
-
-        # coalesce backward-compatible/deprecated/aliased args
-        args.scanner_server_memory_bytes = _take_one_arg(
-            args,
+        # NOTE: Deprecated/aliased args (scanner_server_memory, worker_memory,
+        #       memory, worker_disk, cluster, scanner_server_env) are no longer
+        #       handled here. Add them to the spec if backward compat is needed.
+        docker_tag = self.get_argument("docker_tag")
+        scanner_server_memory_bytes = self.get_argument(
             "scanner_server_memory_bytes",
-            default=humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT),
+            humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT),
         )
-        args.worker_memory_bytes = _take_one_arg(
-            args,
+        worker_memory_bytes = self.get_argument(
             "worker_memory_bytes",
-            default=humanfriendly.parse_size(ENV.EWMS_WORKER_MEMORY__DEFAULT),
+            humanfriendly.parse_size(ENV.EWMS_WORKER_MEMORY__DEFAULT),
         )
-        args.worker_disk_bytes = _take_one_arg(
-            args,
+        worker_disk_bytes = self.get_argument(
             "worker_disk_bytes",
-            default=humanfriendly.parse_size(ENV.EWMS_WORKER_DISK__DEFAULT),
+            humanfriendly.parse_size(ENV.EWMS_WORKER_DISK__DEFAULT),
         )
-        args.request_clusters = _take_one_arg(
-            args,
-            "request_clusters",
-            default=None,
-            required=True,
+        request_clusters = self.get_argument("request_clusters")  # required
+        reco_algo = self.get_argument("reco_algo")  # required
+        event_i3live_json = self.get_argument("event_i3live_json", {})
+        i3_event_id = self.get_argument("i3_event_id", "")
+        nsides = self.get_argument("nsides")  # required
+        real_or_simulated_event = self.get_argument(
+            "real_or_simulated_event"
+        )  # required
+        predictive_scanning_threshold = self.get_argument(
+            "predictive_scanning_threshold", 1.0
         )
-        args.scanner_server_env_from_user = _take_one_arg(
-            args,
-            "scanner_server_env_from_user",
-            default={},
+        max_pixel_reco_time = self.get_argument("max_pixel_reco_time")  # required
+        debug_mode = _debug_mode(self.get_argument("debug_mode", []))
+        classifiers = self.get_argument("classifiers", {})
+        priority = self.get_argument("priority", 0)
+        scanner_server_env_from_user = self.get_argument(
+            "scanner_server_env_from_user", {}
+        )
+        manifest_projection = self.get_argument(
+            "manifest_projection",
+            all_dc_fields(database.schema.Manifest),
         )
 
         # more arg validation
         # -- validate among multiple args
-        _validate_debug_mode_with_clusters(args.debug_mode, args.request_clusters)
+        _validate_debug_mode_with_clusters(debug_mode, request_clusters)
+        # -- validate cluster names against known list
+        for name, _ in request_clusters:
+            if name not in KNOWN_CLUSTERS:
+                msg = f"requested unknown cluster: {name} (available: {', '.join(KNOWN_CLUSTERS.keys())})"
+                raise web.HTTPError(400, reason=msg, log_message=msg)
         # -- validate w/ async call
         try:
-            args.docker_tag = await images.resolve_docker_tag(args.docker_tag)
+            docker_tag = await images.resolve_docker_tag(docker_tag)
         except ImageNotFoundException as e:
             raise web.HTTPError(
                 400,
@@ -609,7 +482,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
 
         # validate classifiers
         for x in ["rescan", "origin_scan_id"]:  # these denote rescan relations
-            if x in args.classifiers:
+            if x in classifiers:
                 msg = f"classifier cannot contain '{x}' sub-field"
                 raise web.HTTPError(
                     400,
@@ -626,30 +499,30 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             scan_id=scan_id,
             rescan_ids=[],
             #
-            docker_tag=args.docker_tag,
+            docker_tag=docker_tag,
             #
             # skyscan server config
-            scanner_server_memory_bytes=args.scanner_server_memory_bytes,
-            reco_algo=args.reco_algo,
-            nsides=args.nsides,
-            real_or_simulated_event=args.real_or_simulated_event,
-            predictive_scanning_threshold=args.predictive_scanning_threshold,
+            scanner_server_memory_bytes=scanner_server_memory_bytes,
+            reco_algo=reco_algo,
+            nsides=nsides,
+            real_or_simulated_event=real_or_simulated_event,
+            predictive_scanning_threshold=predictive_scanning_threshold,
             #
-            classifiers=args.classifiers,
+            classifiers=classifiers,
             #
             # cluster (condor) config
-            request_clusters=args.request_clusters,
-            worker_memory_bytes=args.worker_memory_bytes,
-            worker_disk_bytes=args.worker_disk_bytes,
-            max_pixel_reco_time=args.max_pixel_reco_time,
-            priority=args.priority,
-            debug_mode=[d.value for d in args.debug_mode],
+            request_clusters=request_clusters,
+            worker_memory_bytes=worker_memory_bytes,
+            worker_disk_bytes=worker_disk_bytes,
+            max_pixel_reco_time=max_pixel_reco_time,
+            priority=priority,
+            debug_mode=[d.value for d in debug_mode],
             #
             # misc
             i3_event_id=await self._get_i3_event_id(  # foreign key to i3_event collection
-                args.i3_event_id, args.event_i3live_json
+                i3_event_id, event_i3live_json
             ),
-            scanner_server_env_from_user=args.scanner_server_env_from_user,
+            scanner_server_env_from_user=scanner_server_env_from_user,
         )
 
         # go!
@@ -662,7 +535,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             scan_request_coll=self.scan_request_coll,
         )
         self.write(
-            dict_projection(dc.asdict(manifest), args.manifest_projection),
+            dict_projection(dc.asdict(manifest), manifest_projection),
         )
 
 
@@ -774,28 +647,17 @@ class ScanRescanHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @validate_request(config.OPENAPI_SPEC)
     async def post(self, scan_id: str) -> None:
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
-        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
-        arghand.add_argument(
-            "abort_first",
-            default=False,
-            type=bool,
-        )
-        arghand.add_argument(
-            "replace_scan",
-            default=False,
-            type=bool,
-        )
+        abort_first = self.get_argument("abort_first", False)
+        replace_scan = self.get_argument("replace_scan", False)
         # response args
-        arghand.add_argument(
+        manifest_projection = self.get_argument(
             "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
-            type=str,
+            all_dc_fields(database.schema.Manifest),
         )
-        args = arghand.parse_args()
 
-        if args.abort_first:
+        if abort_first:
             await abort_scan(self.manifests, scan_id, self.ewms_rc)
 
         # generate unique scan_id
@@ -838,7 +700,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             insert_scan_request_obj=False,
         )
 
-        if args.replace_scan:
+        if replace_scan:
             await self.manifests.collection.find_one_and_update(
                 {"scan_id": scan_id},
                 {"$set": {"replaced_by_scan_id": new_scan_id}},
@@ -846,7 +708,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             )
 
         self.write(
-            dict_projection(dc.asdict(manifest), args.manifest_projection),
+            dict_projection(dc.asdict(manifest), manifest_projection),
         )
 
 
@@ -860,19 +722,10 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @validate_request(config.OPENAPI_SPEC)
     async def post(self, scan_id: str) -> None:
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
-        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
-        # response args
-        arghand.add_argument(
-            "n_workers",
-            type=int,
-        )
-        arghand.add_argument(
-            "cluster_location",
-            type=str,
-        )
-        args = arghand.parse_args()
+        n_workers = self.get_argument("n_workers")  # required
+        cluster_location = self.get_argument("cluster_location")  # required
 
         manifest = await self.manifests.get(scan_id, True)
 
@@ -920,8 +773,8 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
                 "POST",
                 f"/{EWMS_URL_V_PREFIX}/task-directives/{task_id}/actions/add-workers",
                 {
-                    "cluster_location": args.cluster_location,
-                    "n_workers": args.n_workers,
+                    "cluster_location": cluster_location,
+                    "n_workers": n_workers,
                 },
             )
         except Exception as e:  # broad b/c ewms is abstracted from user
@@ -1027,25 +880,18 @@ class ScanHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @validate_request(config.OPENAPI_SPEC)
     async def delete(self, scan_id: str) -> None:
         """Abort a scan and/or mark manifest & result as "deleted"."""
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
-        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
-        arghand.add_argument(
-            "delete_completed_scan",
-            default=False,
-            type=bool,
-        )
+        delete_completed_scan = self.get_argument("delete_completed_scan", False)
         # response args
-        arghand.add_argument(
+        manifest_projection = self.get_argument(
             "manifest_projection",
-            default=all_dc_fields(database.schema.Manifest),
-            type=str,
+            all_dc_fields(database.schema.Manifest),
         )
-        args = arghand.parse_args()
 
         # check DB states
-        if (not args.delete_completed_scan) and (
+        if (not delete_completed_scan) and (
             await get_scan_state_if_final_result_received(scan_id, self.results)
         ):
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
@@ -1066,31 +912,23 @@ class ScanHandler(BaseSkyDriverHandler):
 
         self.write(
             {
-                "manifest": dict_projection(
-                    dc.asdict(manifest), args.manifest_projection
-                ),
+                "manifest": dict_projection(dc.asdict(manifest), manifest_projection),
                 "result": result_dict,
             }
         )
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get manifest & result."""
-        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
-        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
-        arghand.add_argument(
-            "include_deleted",
-            default=False,
-            type=bool,
-        )
-        args = arghand.parse_args()
+        include_deleted = self.get_argument("include_deleted", False)
 
         result, manifest = await get_result_safely(
             self.manifests,
             self.results,
             scan_id,
-            args.include_deleted,
+            include_deleted,
         )
 
         self.write(
@@ -1111,32 +949,24 @@ class ScanManifestHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
-        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
-        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
-        arghand.add_argument(
-            "include_deleted",
-            default=False,
-            type=bool,
-        )
+        include_deleted = self.get_argument("include_deleted", False)
         # response args
-        arghand.add_argument(
-            "projection",
-            default=all_dc_fields(database.schema.Manifest),
-            type=str,
+        projection = self.get_argument(
+            "projection", all_dc_fields(database.schema.Manifest)
         )
-        args = arghand.parse_args()
 
         # get manifest from db
-        manifest = await self.manifests.get(scan_id, args.include_deleted)
+        manifest = await self.manifests.get(scan_id, include_deleted)
 
         # Backward Compatibility for Skymap Scanner:
         #   Include the whole event dict in the response like the 'old' manifest.
         #   This overrides the manifest's field which should be an id.
         if (
             self.auth_roles[0] == INTERNAL_ACCT  # type: ignore
-            and "event_i3live_json_dict" in args.projection
+            and "event_i3live_json_dict" in projection
             and manifest.i3_event_id  # if no id, then event already in manifest
         ):
             if i3event_doc := await self.i3_event_coll.find_one(
@@ -1154,14 +984,13 @@ class ScanManifestHandler(BaseSkyDriverHandler):
                     reason=error_msg,
                 )
 
-        resp = dict_projection(dc.asdict(manifest), args.projection)
+        resp = dict_projection(dc.asdict(manifest), projection)
         self.write(resp)
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
+    @validate_request(config.OPENAPI_SPEC)
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
-
         T = TypeVar("T")
 
         def from_dict_wrapper_or_none(data_class: Type[T], val: Any) -> T | None:
@@ -1170,30 +999,23 @@ class ScanManifestHandler(BaseSkyDriverHandler):
             try:
                 return from_dict(data_class, val)
             except DaciteError as e:
-                raise argparse.ArgumentTypeError(str(e))
+                raise web.HTTPError(400, reason=str(e), log_message=str(e))
 
-        arghand.add_argument(
-            "progress",
-            type=lambda x: from_dict_wrapper_or_none(database.schema.Progress, x),
-            default=None,
+        progress = from_dict_wrapper_or_none(
+            database.schema.Progress,
+            self.get_argument("progress", None),
         )
-        arghand.add_argument(
-            "event_metadata",
-            type=lambda x: from_dict_wrapper_or_none(database.schema.EventMetadata, x),
-            default=None,
+        event_metadata = from_dict_wrapper_or_none(
+            database.schema.EventMetadata,
+            self.get_argument("event_metadata", None),
         )
-        arghand.add_argument(
-            "scan_metadata",
-            type=dict,
-            default={},
-        )
-        args = arghand.parse_args()
+        scan_metadata = self.get_argument("scan_metadata", {})
 
         manifest = await self.manifests.patch(
             scan_id,
-            args.progress,
-            args.event_metadata,
-            args.scan_metadata,
+            progress,
+            event_metadata,
+            scan_metadata,
         )
 
         self.write(dc.asdict(manifest))  # don't use a projection
@@ -1254,48 +1076,35 @@ class ScanResultHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted result."""
-        arghand = ArgumentHandler(ArgumentSource.QUERY_ARGUMENTS, self)
-        _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
-        arghand.add_argument(
-            "include_deleted",
-            default=False,
-            type=bool,
-        )
-        args = arghand.parse_args()
+        include_deleted = self.get_argument("include_deleted", False)
 
         result, _ = await get_result_safely(
             self.manifests,
             self.results,
             scan_id,
-            args.include_deleted,
+            include_deleted,
         )
 
         self.write(dc.asdict(result) if result else {})
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
+    @validate_request(config.OPENAPI_SPEC)
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's result."""
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
-        arghand.add_argument(
-            "skyscan_result",
-            type=_arg_dict_strict,
-        )
-        arghand.add_argument(
-            "is_final",
-            type=bool,
-        )
-        args = arghand.parse_args()
+        skyscan_result = self.get_argument("skyscan_result")  # required
+        is_final = self.get_argument("is_final")  # required
 
-        if not args.skyscan_result:
+        if not skyscan_result:
             self.write({})
             return
 
         result_dc = await self.results.put(
             scan_id,
-            args.skyscan_result,
-            args.is_final,
+            skyscan_result,
+            is_final,
         )
         self.write(dc.asdict(result_dc))
 
@@ -1304,7 +1113,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
         # AFTER RESPONSE #
 
         # when we get the final result, it's time to tear down
-        if args.is_final:
+        if is_final:
             await asyncio.sleep(
                 WAIT_BEFORE_TEARDOWN
             )  # regular time.sleep() sleeps the entire server
@@ -1423,20 +1232,11 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
         )
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
+    @validate_request(config.OPENAPI_SPEC)
     async def post(self, scan_id: str) -> None:
         """Update the ewms workflow_id."""
-        arghand = ArgumentHandler(ArgumentSource.JSON_BODY_ARGUMENTS, self)
-        arghand.add_argument(
-            "workflow_id",
-            required=True,
-            type=str,
-        )
-        arghand.add_argument(
-            "ewms_address",
-            required=True,
-            type=str,
-        )
-        args = arghand.parse_args()
+        workflow_id = self.get_argument("workflow_id")  # required
+        ewms_address = self.get_argument("ewms_address")  # required
 
         try:
             manifest = await self.manifests.collection.find_one_and_update(
@@ -1447,8 +1247,8 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
                 },
                 {
                     "$set": {
-                        "ewms_workflow_id": args.workflow_id,
-                        "ewms_address": args.ewms_address,
+                        "ewms_workflow_id": workflow_id,
+                        "ewms_address": ewms_address,
                     }
                 },
                 return_document=ReturnDocument.AFTER,
