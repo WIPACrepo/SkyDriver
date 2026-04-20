@@ -1,0 +1,1888 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "SkyDriver REST API",
+        "version": "2.x",
+        "description": "REST API for orchestrating IceCube Skymap Scanner scans. Derived from `rest_handlers.py` and `schema.py`. Dataclass schemas (`Manifest`, `Result`, `Progress`, etc.) are defined in `#/components/schemas` for reuse in DB validation as well as request/response validation."
+    },
+    "servers": [
+        {
+            "url": "/"
+        }
+    ],
+    "tags": [
+        {
+            "name": "root"
+        },
+        {
+            "name": "scans"
+        },
+        {
+            "name": "scan"
+        },
+        {
+            "name": "scan-request"
+        },
+        {
+            "name": "backlog"
+        },
+        {
+            "name": "ewms"
+        }
+    ],
+    "paths": {
+        "/": {
+            "get": {
+                "tags": [
+                    "root"
+                ],
+                "summary": "Root ping",
+                "operationId": "getRoot",
+                "responses": {
+                    "200": {
+                        "description": "Empty object",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/scans/find": {
+            "post": {
+                "tags": [
+                    "scans"
+                ],
+                "summary": "Find scan manifests matching a filter",
+                "operationId": "postScansFind",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ScansFindRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Matching manifests (possibly projected).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ScansFindResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error400"
+                    }
+                }
+            }
+        },
+        "/scans/backlog": {
+            "get": {
+                "tags": [
+                    "backlog"
+                ],
+                "summary": "List all scan IDs currently on the backlog",
+                "operationId": "getScansBacklog",
+                "responses": {
+                    "200": {
+                        "description": "All scan backlog entries.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "entries"
+                                    ],
+                                    "properties": {
+                                        "entries": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ScanBacklogEntry"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/scan": {
+            "post": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Start a new scan",
+                "operationId": "postScan",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ScanLauncherRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Manifest for the newly enqueued scan (possibly projected).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Manifest"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error400"
+                    }
+                }
+            }
+        },
+        "/scan-request/{scan_id}": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "scan-request"
+                ],
+                "summary": "Get the persisted scan-request object for a scan",
+                "operationId": "getScanRequest",
+                "responses": {
+                    "200": {
+                        "description": "The scan-request object originally used to start the scan.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ScanRequestObj"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            }
+        },
+        "/scan/{scan_id}/actions/rescan": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "post": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Copy a scan's request and start a new scan from it",
+                "operationId": "postScanRescan",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ScanRescanRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Manifest of the new (rescan) scan.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Manifest"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            }
+        },
+        "/scan/{scan_id}/actions/add-workers": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "post": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Add more EWMS workers to an ongoing scan",
+                "operationId": "postScanAddWorkers",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ScanAddWorkersRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "New taskforce info.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ScanAddWorkersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Error422"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/Error500"
+                    }
+                }
+            }
+        },
+        "/scan/{scan_id}": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Get a scan's manifest and result",
+                "operationId": "getScan",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/NoRedirectQuery"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IncludeDeletedQuery"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Manifest plus result (result may be empty `{}` if not yet produced).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ManifestAndResultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Abort a scan and mark manifest/result as deleted",
+                "operationId": "deleteScan",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ScanDeleteRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Deleted manifest plus (possibly empty) result.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ManifestAndResultResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error400"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            }
+        },
+        "/scan/{scan_id}/manifest": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Get a scan's manifest",
+                "operationId": "getScanManifest",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/NoRedirectQuery"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IncludeDeletedQuery"
+                    },
+                    {
+                        "name": "projection",
+                        "in": "query",
+                        "required": false,
+                        "description": "Fields to include in the returned manifest. Omit or pass `*` (via the request's normal splitting) for all fields.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "style": "form",
+                        "explode": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The scan's manifest (possibly projected).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Manifest"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Update scan progress / event metadata / scan metadata",
+                "operationId": "patchScanManifest",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ScanManifestPatchRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated manifest (full, no projection).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Manifest"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error400"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            }
+        },
+        "/scan/{scan_id}/i3-event": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Get a scan's underlying i3 event payload",
+                "operationId": "getScanI3Event",
+                "responses": {
+                    "200": {
+                        "description": "Wrapped i3 event payload.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "i3_event"
+                                    ],
+                                    "properties": {
+                                        "i3_event": {
+                                            "description": "Raw i3 event JSON (open-ended dict).",
+                                            "type": "object",
+                                            "additionalProperties": true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            }
+        },
+        "/scan/{scan_id}/result": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Get a scan's persisted result",
+                "operationId": "getScanResult",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/NoRedirectQuery"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IncludeDeletedQuery"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The scan's result (empty `{}` if not yet produced).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/Result"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "description": "Empty object when no result is available yet."
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Persist a scan's result",
+                "operationId": "putScanResult",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ScanResultPutRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Persisted result (or `{}` if skyscan_result was falsy).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/Result"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "additionalProperties": false
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error400"
+                    }
+                }
+            }
+        },
+        "/scan/{scan_id}/status": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Get a scan's status",
+                "operationId": "getScanStatus",
+                "responses": {
+                    "200": {
+                        "description": "Aggregated scan status.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ScanStatusResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            }
+        },
+        "/scan/{scan_id}/logs": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Get a scan's log URLs",
+                "operationId": "getScanLogs",
+                "responses": {
+                    "200": {
+                        "description": "Log URL(s) for the scan.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ScanLogsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            }
+        },
+        "/scan/{scan_id}/ewms/workflow-id": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "ewms"
+                ],
+                "summary": "Get a scan's EWMS workflow id",
+                "operationId": "getScanEwmsWorkflowId",
+                "responses": {
+                    "200": {
+                        "description": "EWMS workflow id info.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ScanEwmsWorkflowIdResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "ewms"
+                ],
+                "summary": "Assign a scan's EWMS workflow id",
+                "operationId": "postScanEwmsWorkflowId",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ScanEwmsWorkflowIdPostRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated manifest (as a raw dict).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Manifest"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            }
+        },
+        "/scan/{scan_id}/ewms/workforce": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "ewms"
+                ],
+                "summary": "Get a scan's EWMS workforce statuses",
+                "operationId": "getScanEwmsWorkforce",
+                "responses": {
+                    "200": {
+                        "description": "Workforce status object (shape defined by EWMS).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true,
+                                    "description": "Opaque workforce-status payload returned by EWMS; shape is not owned by SkyDriver."
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            }
+        },
+        "/scan/{scan_id}/ewms/taskforces": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "ewms"
+                ],
+                "summary": "Get a scan's EWMS taskforces (condor submissions)",
+                "operationId": "getScanEwmsTaskforces",
+                "responses": {
+                    "200": {
+                        "description": "Taskforce info objects.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "taskforces"
+                                    ],
+                                    "properties": {
+                                        "taskforces": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": true,
+                                                "description": "Opaque taskforce payload returned by EWMS."
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "parameters": {
+            "ScanIdPath": {
+                "name": "scan_id",
+                "in": "path",
+                "required": true,
+                "description": "Unique scan identifier.",
+                "schema": {
+                    "type": "string",
+                    "pattern": "^\\w+$"
+                }
+            },
+            "NoRedirectQuery": {
+                "name": "no_redirect",
+                "in": "query",
+                "required": false,
+                "description": "If true, suppresses the redirect that `@maybe_redirect_scan_id` would otherwise issue for replaced scans.",
+                "schema": {
+                    "type": "boolean",
+                    "default": false
+                }
+            },
+            "IncludeDeletedQuery": {
+                "name": "include_deleted",
+                "in": "query",
+                "required": false,
+                "description": "If true, deleted manifests/results are included.",
+                "schema": {
+                    "type": "boolean",
+                    "default": false
+                }
+            }
+        },
+        "responses": {
+            "Error400": {
+                "description": "Bad request (argument validation failed or request-level precondition violated).",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "Error404": {
+                "description": "Not found.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "Error422": {
+                "description": "Request is well-formed but the scan is in a state that disallows the action.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "Error500": {
+                "description": "Internal / upstream failure.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "schemas": {
+            "Error": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "string"
+                    },
+                    "reason": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": true
+            },
+            "ScanIDDataclass": {
+                "type": "object",
+                "description": "Base dataclass with a scan id.",
+                "required": [
+                    "scan_id"
+                ],
+                "properties": {
+                    "scan_id": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ScanBacklogEntry": {
+                "description": "An entry for the scan backlog used for rate-limiting. Extends ScanIDDataclass.",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/ScanIDDataclass"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "timestamp"
+                        ],
+                        "properties": {
+                            "timestamp": {
+                                "type": "number"
+                            },
+                            "pickled_k8s_job": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "contentEncoding": "base64",
+                                "default": null,
+                                "deprecated": true,
+                                "description": "DEPRECATED -- replaced by SkyScanK8sJob in db."
+                            },
+                            "priority": {
+                                "type": "integer",
+                                "default": 0
+                            },
+                            "pending_timestamp": {
+                                "type": "number",
+                                "default": 0.0
+                            },
+                            "next_attempt": {
+                                "type": "integer",
+                                "default": 0
+                            }
+                        }
+                    }
+                ]
+            },
+            "ProgressProcessingStats": {
+                "type": "object",
+                "description": "Details about the scan processing.",
+                "required": [
+                    "start",
+                    "runtime"
+                ],
+                "properties": {
+                    "start": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "runtime": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "rate": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "default": {}
+                    },
+                    "end": {
+                        "type": "string",
+                        "default": ""
+                    },
+                    "finished": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "predictions": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "default": {},
+                        "description": "Open-ended predictions dict (shape defined by requestor)."
+                    }
+                }
+            },
+            "Progress": {
+                "type": "object",
+                "description": "Houses all the progress for a scan (changed throughout scan).",
+                "required": [
+                    "summary",
+                    "epilogue",
+                    "tallies",
+                    "processing_stats",
+                    "predictive_scanning_threshold",
+                    "last_updated"
+                ],
+                "properties": {
+                    "summary": {
+                        "type": "string"
+                    },
+                    "epilogue": {
+                        "type": "string"
+                    },
+                    "tallies": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "processing_stats": {
+                        "$ref": "#/components/schemas/ProgressProcessingStats"
+                    },
+                    "predictive_scanning_threshold": {
+                        "type": "number"
+                    },
+                    "last_updated": {
+                        "type": "string"
+                    },
+                    "start": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "default": null,
+                        "description": "New in SkyDriver v2."
+                    },
+                    "end": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "default": null,
+                        "description": "New in SkyDriver v2."
+                    }
+                }
+            },
+            "Result": {
+                "description": "Encompasses the physics results for a scan. Extends ScanIDDataclass.",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/ScanIDDataclass"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "skyscan_result",
+                            "is_final"
+                        ],
+                        "properties": {
+                            "skyscan_result": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "description": "Physics result payload; keys/values are open to requestor."
+                            },
+                            "is_final": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                ]
+            },
+            "EventMetadata": {
+                "type": "object",
+                "description": "Encapsulates the identity of an event.",
+                "required": [
+                    "run_id",
+                    "event_id",
+                    "event_type",
+                    "mjd",
+                    "is_real_event"
+                ],
+                "properties": {
+                    "run_id": {
+                        "type": "integer"
+                    },
+                    "event_id": {
+                        "type": "integer"
+                    },
+                    "event_type": {
+                        "type": "string"
+                    },
+                    "mjd": {
+                        "type": "number"
+                    },
+                    "is_real_event": {
+                        "type": "boolean",
+                        "description": "True for real events, False for simulation."
+                    }
+                }
+            },
+            "ClassifiersStored": {
+                "type": "object",
+                "description": "Classifiers as stored on a Manifest: scalar values or lists of scalars. Used for persisted/DB data.",
+                "additionalProperties": {
+                    "oneOf": [
+                        {
+                            "type": [
+                                "string",
+                                "boolean",
+                                "number",
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": [
+                                    "string",
+                                    "boolean",
+                                    "number",
+                                    "integer",
+                                    "null"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "maxProperties": 25,
+                "propertyNames": {
+                    "maxLength": 25
+                }
+            },
+            "ClassifiersInput": {
+                "type": "object",
+                "description": "Classifiers as accepted on POST /scan (stricter than `ClassifiersStored`): scalar values only, max 25 entries, keys and string-values max 25 chars. Lists are NOT accepted on input.",
+                "additionalProperties": {
+                    "oneOf": [
+                        {
+                            "type": "string",
+                            "maxLength": 25
+                        },
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "maxProperties": 25,
+                "propertyNames": {
+                    "maxLength": 25
+                }
+            },
+            "RequestClusters": {
+                "description": "Either a dict `{cluster_location: n_workers}` OR a list of `[cluster_location, n_workers]` 2-tuples. Use the list form to request the same cluster more than once.",
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "minProperties": 1
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "prefixItems": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            ]
+                        },
+                        "minItems": 1
+                    }
+                ]
+            },
+            "DebugMode": {
+                "description": "DebugMode flag. Accepts a single value or a list of values. NOTE: enum values listed here are based on observed usage (`client_logs`) -- extend this list to match the full `DebugMode` enum.",
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "enum": [
+                            "client_logs"
+                        ]
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "client_logs"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "DataSize": {
+                "description": "Human-friendly size string (e.g. `'1GB'`, `'512MB'`) parseable by `humanfriendly.parse_size`, or raw integer bytes.",
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                ]
+            },
+            "ManifestProjection": {
+                "description": "Fields to include in the returned manifest. Either a list of field names or the literal string `\"*\"` (all allowed fields).",
+                "oneOf": [
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "enum": [
+                            "*"
+                        ]
+                    }
+                ]
+            },
+            "Manifest": {
+                "description": "Encapsulates the manifest of a unique scan entity. Extends ScanIDDataclass. Fields may be absent in responses when a projection was applied.",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/ScanIDDataclass"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "timestamp",
+                            "is_deleted",
+                            "scanner_server_args"
+                        ],
+                        "properties": {
+                            "timestamp": {
+                                "type": "number"
+                            },
+                            "is_deleted": {
+                                "type": "boolean"
+                            },
+                            "scanner_server_args": {
+                                "type": "string",
+                                "description": "CLI args for the scanner server k8s job (sensitive values are obfuscated by `obfuscate_cl_args`)."
+                            },
+                            "ewms_workflow_id": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "default": null,
+                                "description": "EWMS workflow id. The sentinel `not-yet-requested` means SkyDriver has not yet sent the workflow request to EWMS (see `has_skydriver_requested_ewms_workflow()`)."
+                            },
+                            "ewms_address": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "default": null,
+                                "description": "EWMS address used to differentiate EWMS instances."
+                            },
+                            "ewms_task": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "additionalProperties": true
+                                    },
+                                    {
+                                        "type": "string"
+                                    }
+                                ],
+                                "default": "use 'ewms_workflow_id'",
+                                "deprecated": true,
+                                "description": "DEPRECATED -- use `ewms_workflow_id`. Was used in SkyDriver 1.x for local k8s starter/stopper."
+                            },
+                            "priority": {
+                                "type": "integer",
+                                "default": 0,
+                                "description": "HTCondor-style job priority."
+                            },
+                            "classifiers": {
+                                "$ref": "#/components/schemas/ClassifiersStored"
+                            },
+                            "i3_event_id": {
+                                "type": "string",
+                                "default": "",
+                                "description": "ID into the i3_event collection."
+                            },
+                            "event_i3live_json_dict": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "additionalProperties": true
+                                    },
+                                    {
+                                        "type": "string"
+                                    }
+                                ],
+                                "default": "use 'i3_event_id'",
+                                "deprecated": true,
+                                "description": "DEPRECATED -- use `i3_event_id`."
+                            },
+                            "event_i3live_json_dict__hash": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "default": null,
+                                "deprecated": true,
+                                "description": "DEPRECATED."
+                            },
+                            "event_metadata": {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/components/schemas/EventMetadata"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null
+                            },
+                            "scan_metadata": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "additionalProperties": true
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "description": "Open-ended metadata set by the scanner."
+                            },
+                            "progress": {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/components/schemas/Progress"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null
+                            },
+                            "replaced_by_scan_id": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "default": null,
+                                "description": "If set, this scan has been replaced -- used by REST redirects."
+                            },
+                            "last_updated": {
+                                "type": "number",
+                                "default": 0.0
+                            }
+                        }
+                    }
+                ]
+            },
+            "ScanRequestObj": {
+                "type": "object",
+                "description": "Persisted scan-request object (the input used to start a scan). Returned by GET /scan-request/{scan_id}.",
+                "required": [
+                    "scan_id",
+                    "docker_tag",
+                    "reco_algo",
+                    "nsides",
+                    "real_or_simulated_event",
+                    "request_clusters"
+                ],
+                "properties": {
+                    "scan_id": {
+                        "type": "string"
+                    },
+                    "rescan_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "default": []
+                    },
+                    "docker_tag": {
+                        "type": "string"
+                    },
+                    "scanner_server_memory_bytes": {
+                        "$ref": "#/components/schemas/DataSize"
+                    },
+                    "reco_algo": {
+                        "type": "string"
+                    },
+                    "nsides": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "real_or_simulated_event": {
+                        "type": "string",
+                        "enum": [
+                            "real",
+                            "real_event",
+                            "sim",
+                            "simulated",
+                            "simulated_event"
+                        ]
+                    },
+                    "predictive_scanning_threshold": {
+                        "type": "number"
+                    },
+                    "classifiers": {
+                        "$ref": "#/components/schemas/ClassifiersStored"
+                    },
+                    "request_clusters": {
+                        "$ref": "#/components/schemas/RequestClusters"
+                    },
+                    "worker_memory_bytes": {
+                        "$ref": "#/components/schemas/DataSize"
+                    },
+                    "worker_disk_bytes": {
+                        "$ref": "#/components/schemas/DataSize"
+                    },
+                    "max_pixel_reco_time": {
+                        "type": "integer"
+                    },
+                    "priority": {
+                        "type": "integer",
+                        "default": 0
+                    },
+                    "debug_mode": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "DebugMode values (as strings -- the Python enum's `.value`)."
+                    },
+                    "i3_event_id": {
+                        "type": "string"
+                    },
+                    "scanner_server_env_from_user": {
+                        "$ref": "#/components/schemas/ClassifiersInput"
+                    }
+                },
+                "additionalProperties": true
+            },
+            "ScansFindRequest": {
+                "type": "object",
+                "required": [
+                    "filter"
+                ],
+                "properties": {
+                    "filter": {
+                        "type": "object",
+                        "description": "MongoDB-style query filter over manifests.",
+                        "additionalProperties": true
+                    },
+                    "include_deleted": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If false and `filter.is_deleted` is not set, `is_deleted=false` is injected."
+                    },
+                    "manifest_projection": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ManifestProjection"
+                            }
+                        ],
+                        "description": "Cannot include any of: `ewms_task`, `event_i3live_json_dict`, `event_i3live_json_dict__hash` (these can blow up memory). `\"*\"` is remapped to the default fields (same set)."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "ScansFindResponse": {
+                "type": "object",
+                "required": [
+                    "manifests"
+                ],
+                "properties": {
+                    "manifests": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Manifest"
+                        }
+                    }
+                }
+            },
+            "ScanLauncherRequest": {
+                "type": "object",
+                "description": "Body for POST /scan. Several fields have legacy aliases (marked deprecated); the server coalesces them via `_take_one_arg`. Exactly one of `event_i3live_json` or `i3_event_id` must be provided.",
+                "required": [
+                    "docker_tag",
+                    "reco_algo",
+                    "nsides",
+                    "real_or_simulated_event",
+                    "max_pixel_reco_time",
+                    "request_clusters"
+                ],
+                "properties": {
+                    "docker_tag": {
+                        "type": "string",
+                        "description": "Any tag on Docker Hub (including `latest`). Must also be on CVMFS (not checked here)."
+                    },
+                    "scanner_server_memory_bytes": {
+                        "$ref": "#/components/schemas/DataSize"
+                    },
+                    "scanner_server_memory": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DataSize"
+                            }
+                        ],
+                        "deprecated": true,
+                        "description": "Alias for `scanner_server_memory_bytes`."
+                    },
+                    "worker_memory_bytes": {
+                        "$ref": "#/components/schemas/DataSize"
+                    },
+                    "worker_memory": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DataSize"
+                            }
+                        ],
+                        "deprecated": true,
+                        "description": "Alias for `worker_memory_bytes`."
+                    },
+                    "memory": {
+                        "type": [
+                            "string",
+                            "integer",
+                            "null"
+                        ],
+                        "default": null,
+                        "deprecated": true,
+                        "description": "DEPRECATED -- use `worker_memory_bytes`. Server will reject any truthy value."
+                    },
+                    "worker_disk_bytes": {
+                        "$ref": "#/components/schemas/DataSize"
+                    },
+                    "worker_disk": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DataSize"
+                            }
+                        ],
+                        "deprecated": true,
+                        "description": "Alias for `worker_disk_bytes`."
+                    },
+                    "request_clusters": {
+                        "$ref": "#/components/schemas/RequestClusters"
+                    },
+                    "cluster": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RequestClusters"
+                            }
+                        ],
+                        "deprecated": true,
+                        "description": "Alias for `request_clusters`."
+                    },
+                    "reco_algo": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S",
+                        "description": "Cannot be empty / whitespace-only."
+                    },
+                    "event_i3live_json": {
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "description": "JSON-string."
+                            },
+                            {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        ],
+                        "default": {},
+                        "description": "Raw i3 event JSON (dict or JSON-string). Mutually exclusive with `i3_event_id`."
+                    },
+                    "i3_event_id": {
+                        "type": "string",
+                        "default": "",
+                        "description": "ID of an existing i3 event. Mutually exclusive with `event_i3live_json`."
+                    },
+                    "nsides": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "Nside configuration for the scan (strict dict)."
+                    },
+                    "real_or_simulated_event": {
+                        "type": "string",
+                        "enum": [
+                            "real",
+                            "real_event",
+                            "sim",
+                            "simulated",
+                            "simulated_event"
+                        ]
+                    },
+                    "predictive_scanning_threshold": {
+                        "type": "number",
+                        "default": 1.0
+                    },
+                    "max_pixel_reco_time": {
+                        "type": "integer"
+                    },
+                    "debug_mode": {
+                        "$ref": "#/components/schemas/DebugMode"
+                    },
+                    "classifiers": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ClassifiersInput"
+                            }
+                        ],
+                        "default": {},
+                        "description": "Cannot contain `rescan` or `origin_scan_id` sub-fields (these are reserved for rescan provenance)."
+                    },
+                    "priority": {
+                        "type": "integer",
+                        "default": 0
+                    },
+                    "scanner_server_env_from_user": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ClassifiersInput"
+                            }
+                        ],
+                        "default": {},
+                        "description": "Extra env-vars injected into the scanner server k8s job."
+                    },
+                    "scanner_server_env": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ClassifiersInput"
+                            }
+                        ],
+                        "deprecated": true,
+                        "description": "Alias for `scanner_server_env_from_user`."
+                    },
+                    "manifest_projection": {
+                        "$ref": "#/components/schemas/ManifestProjection"
+                    }
+                },
+                "oneOf": [
+                    {
+                        "required": [
+                            "event_i3live_json"
+                        ],
+                        "not": {
+                            "required": [
+                                "i3_event_id"
+                            ]
+                        }
+                    },
+                    {
+                        "required": [
+                            "i3_event_id"
+                        ],
+                        "not": {
+                            "required": [
+                                "event_i3live_json"
+                            ]
+                        }
+                    }
+                ],
+                "additionalProperties": false
+            },
+            "ScanRescanRequest": {
+                "type": "object",
+                "properties": {
+                    "no_redirect": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "abort_first": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If true, abort the existing scan before starting the rescan."
+                    },
+                    "replace_scan": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If true, mark the original scan as replaced by the new scan (for REST redirect logic)."
+                    },
+                    "manifest_projection": {
+                        "$ref": "#/components/schemas/ManifestProjection"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "ScanAddWorkersRequest": {
+                "type": "object",
+                "required": [
+                    "n_workers",
+                    "cluster_location"
+                ],
+                "properties": {
+                    "no_redirect": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "n_workers": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "cluster_location": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "ScanAddWorkersResponse": {
+                "type": "object",
+                "description": "Subset of the EWMS add-workers response.",
+                "properties": {
+                    "taskforce_uuid": {
+                        "type": "string"
+                    },
+                    "n_workers": {
+                        "type": "integer"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "ScanDeleteRequest": {
+                "type": "object",
+                "properties": {
+                    "no_redirect": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "delete_completed_scan": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Required to be true in order to delete a scan whose final result has already been received."
+                    },
+                    "manifest_projection": {
+                        "$ref": "#/components/schemas/ManifestProjection"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "ManifestAndResultResponse": {
+                "type": "object",
+                "required": [
+                    "manifest",
+                    "result"
+                ],
+                "properties": {
+                    "manifest": {
+                        "$ref": "#/components/schemas/Manifest"
+                    },
+                    "result": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/Result"
+                            },
+                            {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "description": "Empty object when no result is available."
+                            }
+                        ]
+                    }
+                }
+            },
+            "ScanManifestPatchRequest": {
+                "type": "object",
+                "description": "All fields optional; only non-null fields are applied.",
+                "properties": {
+                    "progress": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/Progress"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
+                    },
+                    "event_metadata": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/EventMetadata"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
+                    },
+                    "scan_metadata": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "default": {}
+                    }
+                },
+                "additionalProperties": false
+            },
+            "ScanResultPutRequest": {
+                "type": "object",
+                "required": [
+                    "skyscan_result",
+                    "is_final"
+                ],
+                "properties": {
+                    "skyscan_result": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "Physics result payload (open to requestor). A falsy dict short-circuits to an empty `{}` response without persisting."
+                    },
+                    "is_final": {
+                        "type": "boolean",
+                        "description": "When true, SkyDriver will request EWMS teardown after a short delay."
+                    }
+                },
+                "additionalProperties": false
+            },
+            "ScanStatusResponse": {
+                "type": "object",
+                "required": [
+                    "scan_state",
+                    "is_deleted",
+                    "ewms_deactivated",
+                    "scan_complete",
+                    "scanner_server_logs",
+                    "ewms_workforce"
+                ],
+                "properties": {
+                    "scan_state": {
+                        "type": "string",
+                        "description": "Computed scan state (see `get_scan_state`)."
+                    },
+                    "is_deleted": {
+                        "type": "boolean"
+                    },
+                    "ewms_deactivated": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Type of EWMS deactivation (abort/stop/...) or null."
+                    },
+                    "scan_complete": {
+                        "type": "boolean",
+                        "description": "True when the physics is effectively done (lingering compute may still be winding down)."
+                    },
+                    "scanner_server_logs": {
+                        "type": "object",
+                        "required": [
+                            "url"
+                        ],
+                        "properties": {
+                            "url": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        }
+                    },
+                    "ewms_workforce": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "Opaque EWMS workforce-status payload. Same shape as GET /scan/{scan_id}/ewms/workforce."
+                    }
+                }
+            },
+            "ScanLogsResponse": {
+                "type": "object",
+                "required": [
+                    "scanner_server"
+                ],
+                "properties": {
+                    "scanner_server": {
+                        "type": "object",
+                        "required": [
+                            "url"
+                        ],
+                        "properties": {
+                            "url": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "ScanEwmsWorkflowIdResponse": {
+                "type": "object",
+                "required": [
+                    "workflow_id",
+                    "requested_ewms_workflow",
+                    "eligible_for_ewms",
+                    "ewms_address"
+                ],
+                "properties": {
+                    "workflow_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Raw value from the manifest. May be `null`, the `not-yet-requested` sentinel, or an actual EWMS workflow id."
+                    },
+                    "requested_ewms_workflow": {
+                        "type": "boolean",
+                        "description": "True iff `workflow_id` is an actual EWMS workflow id (see `has_skydriver_requested_ewms_workflow()`)."
+                    },
+                    "eligible_for_ewms": {
+                        "type": "boolean",
+                        "description": "True iff `workflow_id` is not null."
+                    },
+                    "ewms_address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                }
+            },
+            "ScanEwmsWorkflowIdPostRequest": {
+                "type": "object",
+                "required": [
+                    "workflow_id",
+                    "ewms_address"
+                ],
+                "properties": {
+                    "workflow_id": {
+                        "type": "string"
+                    },
+                    "ewms_address": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false
+            }
+        }
+    }
+}
