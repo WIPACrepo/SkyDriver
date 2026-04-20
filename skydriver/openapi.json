@@ -3,7 +3,7 @@
     "info": {
         "title": "SkyDriver REST API",
         "version": "2.x",
-        "description": "REST API for orchestrating IceCube Skymap Scanner scans. Named `#/components/schemas/*` are either (a) multi-referenced data models or (b) dataclass-backed objects used by DB-validation tooling. Single-use request/response wrappers are inlined into their path operations."
+        "description": "REST API for orchestrating IceCube Skymap Scanner scans. `#/components/schemas/Manifest` is the central data object; other schemas and path operations `$ref` into Manifest (and its deeply nested sub-fields) wherever they share a shape."
     },
     "servers": [
         {
@@ -260,8 +260,7 @@
                                         "description": "Raw i3 event JSON (dict or JSON-string). Mutually exclusive with `i3_event_id`."
                                     },
                                     "i3_event_id": {
-                                        "type": "string",
-                                        "default": "",
+                                        "$ref": "#/components/schemas/Manifest/properties/i3_event_id",
                                         "description": "ID of an existing i3 event. Mutually exclusive with `event_i3live_json`."
                                     },
                                     "nsides": {
@@ -272,9 +271,7 @@
                                         "$ref": "#/components/schemas/RealOrSimulatedEvent"
                                     },
                                     "predictive_scanning_threshold": {
-                                        "type": "number",
-                                        "minimum": 0,
-                                        "maximum": 1,
+                                        "$ref": "#/components/schemas/Manifest/properties/progress/oneOf/0/properties/predictive_scanning_threshold",
                                         "default": 1.0
                                     },
                                     "max_pixel_reco_time": {
@@ -304,7 +301,7 @@
                                     "classifiers": {
                                         "type": "object",
                                         "default": {},
-                                        "description": "Classifiers for the scan. Stricter than `ClassifiersStored`: scalar values only, max 25 entries, keys and string-values max 25 chars. Cannot contain `rescan` or `origin_scan_id` sub-fields (reserved for rescan provenance).",
+                                        "description": "Classifiers for the scan. STRICTER than the stored `Manifest.classifiers`: scalar values only, max 25 entries, keys and string-values max 25 chars. Cannot contain `rescan` or `origin_scan_id` sub-fields (reserved for rescan provenance).",
                                         "additionalProperties": {
                                             "oneOf": [
                                                 {
@@ -331,8 +328,7 @@
                                         }
                                     },
                                     "priority": {
-                                        "type": "integer",
-                                        "default": 0
+                                        "$ref": "#/components/schemas/Manifest/properties/priority"
                                     },
                                     "scanner_server_env_from_user": {
                                         "$ref": "#/components/schemas/ScannerServerEnvFromUser",
@@ -691,30 +687,15 @@
                                 "additionalProperties": false,
                                 "properties": {
                                     "progress": {
-                                        "oneOf": [
-                                            {
-                                                "$ref": "#/components/schemas/Progress"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
-                                        ],
-                                        "default": null
+                                        "$ref": "#/components/schemas/Manifest/properties/progress"
                                     },
                                     "event_metadata": {
-                                        "oneOf": [
-                                            {
-                                                "$ref": "#/components/schemas/EventMetadata"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
-                                        ],
-                                        "default": null
+                                        "$ref": "#/components/schemas/Manifest/properties/event_metadata"
                                     },
                                     "scan_metadata": {
                                         "$ref": "#/components/schemas/FreeFormObject",
-                                        "default": {}
+                                        "default": {},
+                                        "description": "Open-ended metadata set by the scanner. NOT nullable here (PATCH rejects null); nullable on the stored `Manifest.scan_metadata`."
                                     }
                                 }
                             }
@@ -843,11 +824,11 @@
                                 "additionalProperties": false,
                                 "properties": {
                                     "skyscan_result": {
-                                        "$ref": "#/components/schemas/FreeFormObject",
+                                        "$ref": "#/components/schemas/Result/properties/skyscan_result",
                                         "description": "Physics result payload (open to requestor). A falsy dict short-circuits to an empty `{}` response without persisting."
                                     },
                                     "is_final": {
-                                        "type": "boolean",
+                                        "$ref": "#/components/schemas/Result/properties/is_final",
                                         "description": "When true, SkyDriver will request EWMS teardown after a short delay."
                                     }
                                 }
@@ -913,7 +894,7 @@
                                             "description": "Computed scan state (see `get_scan_state`)."
                                         },
                                         "is_deleted": {
-                                            "type": "boolean"
+                                            "$ref": "#/components/schemas/Manifest/properties/is_deleted"
                                         },
                                         "ewms_deactivated": {
                                             "type": [
@@ -1008,10 +989,7 @@
                                     ],
                                     "properties": {
                                         "workflow_id": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ],
+                                            "$ref": "#/components/schemas/Manifest/properties/ewms_workflow_id",
                                             "description": "Raw value from the manifest. May be `null`, the `not-yet-requested` sentinel, or an actual EWMS workflow id."
                                         },
                                         "requested_ewms_workflow": {
@@ -1023,10 +1001,7 @@
                                             "description": "True iff `workflow_id` is not null."
                                         },
                                         "ewms_address": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ]
+                                            "$ref": "#/components/schemas/Manifest/properties/ewms_address"
                                         }
                                     }
                                 }
@@ -1164,7 +1139,7 @@
                 "required": true,
                 "description": "Unique scan identifier.",
                 "schema": {
-                    "type": "string",
+                    "$ref": "#/components/schemas/Manifest/properties/scan_id",
                     "pattern": "^\\w+$"
                 }
             },
@@ -1319,39 +1294,6 @@
                     }
                 ]
             },
-            "ClassifiersStored": {
-                "type": "object",
-                "description": "Classifiers as stored on a Manifest: scalar values or lists of scalars. Used for persisted/DB data.",
-                "additionalProperties": {
-                    "oneOf": [
-                        {
-                            "type": [
-                                "string",
-                                "boolean",
-                                "number",
-                                "integer",
-                                "null"
-                            ]
-                        },
-                        {
-                            "type": "array",
-                            "items": {
-                                "type": [
-                                    "string",
-                                    "boolean",
-                                    "number",
-                                    "integer",
-                                    "null"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                "maxProperties": 25,
-                "propertyNames": {
-                    "maxLength": 25
-                }
-            },
             "ScannerServerEnvFromUser": {
                 "type": "object",
                 "description": "User-provided env-vars injected into the scanner server k8s job. Scalar values only. Limits are intentionally looser than the classifier input shape because env-var values (URLs, PATHs, tokens, etc.) routinely exceed 25 chars.",
@@ -1380,333 +1322,337 @@
                     "maxLength": 128
                 }
             },
-            "EventMetadata": {
+            "Manifest": {
                 "type": "object",
-                "description": "Encapsulates the identity of an event.",
+                "description": "The central scan data object (represents the `Manifest` dataclass from `schema.py`). All deeply nested sub-shapes (progress, event_metadata, classifiers, processing stats) live inline here; other schemas `$ref` into them via JSON pointer.",
                 "required": [
-                    "run_id",
-                    "event_id",
-                    "event_type",
-                    "mjd",
-                    "is_real_event"
-                ],
-                "properties": {
-                    "run_id": {
-                        "type": "integer"
-                    },
-                    "event_id": {
-                        "type": "integer"
-                    },
-                    "event_type": {
-                        "type": "string"
-                    },
-                    "mjd": {
-                        "type": "number"
-                    },
-                    "is_real_event": {
-                        "type": "boolean",
-                        "description": "True for real events, False for simulation."
-                    }
-                }
-            },
-            "Progress": {
-                "type": "object",
-                "description": "Houses all the progress for a scan (changed throughout scan).",
-                "required": [
-                    "summary",
-                    "epilogue",
-                    "tallies",
-                    "processing_stats",
-                    "predictive_scanning_threshold",
-                    "last_updated"
-                ],
-                "properties": {
-                    "summary": {
-                        "type": "string"
-                    },
-                    "epilogue": {
-                        "type": "string"
-                    },
-                    "tallies": {
-                        "$ref": "#/components/schemas/FreeFormObject"
-                    },
-                    "processing_stats": {
-                        "type": "object",
-                        "description": "Details about the scan processing.",
-                        "required": [
-                            "start",
-                            "runtime"
-                        ],
-                        "properties": {
-                            "start": {
-                                "$ref": "#/components/schemas/FreeFormObject"
-                            },
-                            "runtime": {
-                                "$ref": "#/components/schemas/FreeFormObject"
-                            },
-                            "rate": {
-                                "$ref": "#/components/schemas/FreeFormObject",
-                                "default": {}
-                            },
-                            "end": {
-                                "type": "string",
-                                "default": ""
-                            },
-                            "finished": {
-                                "type": "boolean",
-                                "default": false
-                            },
-                            "predictions": {
-                                "$ref": "#/components/schemas/FreeFormObject",
-                                "default": {},
-                                "description": "Open-ended predictions dict (shape defined by requestor)."
-                            }
-                        }
-                    },
-                    "predictive_scanning_threshold": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 1
-                    },
-                    "last_updated": {
-                        "type": "string"
-                    },
-                    "start": {
-                        "type": [
-                            "integer",
-                            "null"
-                        ],
-                        "default": null,
-                        "description": "New in SkyDriver v2."
-                    },
-                    "end": {
-                        "type": [
-                            "integer",
-                            "null"
-                        ],
-                        "default": null,
-                        "description": "New in SkyDriver v2."
-                    }
-                }
-            },
-            "ScanIDDataclass": {
-                "type": "object",
-                "description": "Base dataclass with a scan id.",
-                "required": [
-                    "scan_id"
+                    "scan_id",
+                    "timestamp",
+                    "is_deleted",
+                    "scanner_server_args"
                 ],
                 "properties": {
                     "scan_id": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Unique scan identifier."
+                    },
+                    "timestamp": {
+                        "type": "number"
+                    },
+                    "is_deleted": {
+                        "type": "boolean"
+                    },
+                    "scanner_server_args": {
+                        "type": "string",
+                        "description": "CLI args for the scanner server k8s job (sensitive values are obfuscated by `obfuscate_cl_args`)."
+                    },
+                    "ewms_workflow_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "default": null,
+                        "description": "EWMS workflow id. The sentinel `not-yet-requested` means SkyDriver has not yet sent the workflow request to EWMS (see `has_skydriver_requested_ewms_workflow()`)."
+                    },
+                    "ewms_address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "default": null,
+                        "description": "EWMS address used to differentiate EWMS instances."
+                    },
+                    "ewms_task": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/FreeFormObject"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "default": "use 'ewms_workflow_id'",
+                        "deprecated": true,
+                        "description": "DEPRECATED -- use `ewms_workflow_id`. Was used in SkyDriver 1.x for local k8s starter/stopper."
+                    },
+                    "priority": {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "HTCondor-style job priority."
+                    },
+                    "classifiers": {
+                        "type": "object",
+                        "description": "Classifiers as stored on the manifest: scalar values or lists of scalars. (Compare with the stricter input shape used in POST /scan, which disallows lists and caps strings at 25 chars.)",
+                        "additionalProperties": {
+                            "oneOf": [
+                                {
+                                    "type": [
+                                        "string",
+                                        "boolean",
+                                        "number",
+                                        "integer",
+                                        "null"
+                                    ]
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": [
+                                            "string",
+                                            "boolean",
+                                            "number",
+                                            "integer",
+                                            "null"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        "maxProperties": 25,
+                        "propertyNames": {
+                            "maxLength": 25
+                        }
+                    },
+                    "i3_event_id": {
+                        "type": "string",
+                        "default": "",
+                        "description": "ID into the i3_event collection."
+                    },
+                    "event_i3live_json_dict": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/FreeFormObject"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "default": "use 'i3_event_id'",
+                        "deprecated": true,
+                        "description": "DEPRECATED -- use `i3_event_id`."
+                    },
+                    "event_i3live_json_dict__hash": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "default": null,
+                        "deprecated": true,
+                        "description": "DEPRECATED."
+                    },
+                    "event_metadata": {
+                        "description": "Encapsulates the identity of an event (nullable).",
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "required": [
+                                    "run_id",
+                                    "event_id",
+                                    "event_type",
+                                    "mjd",
+                                    "is_real_event"
+                                ],
+                                "properties": {
+                                    "run_id": {
+                                        "type": "integer"
+                                    },
+                                    "event_id": {
+                                        "type": "integer"
+                                    },
+                                    "event_type": {
+                                        "type": "string"
+                                    },
+                                    "mjd": {
+                                        "type": "number"
+                                    },
+                                    "is_real_event": {
+                                        "type": "boolean",
+                                        "description": "True for real events, False for simulation."
+                                    }
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
+                    },
+                    "scan_metadata": {
+                        "description": "Open-ended metadata set by the scanner (nullable).",
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/FreeFormObject"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
+                    },
+                    "progress": {
+                        "description": "Houses all the progress for a scan, updated throughout scanning (nullable).",
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "required": [
+                                    "summary",
+                                    "epilogue",
+                                    "tallies",
+                                    "processing_stats",
+                                    "predictive_scanning_threshold",
+                                    "last_updated"
+                                ],
+                                "properties": {
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "epilogue": {
+                                        "type": "string"
+                                    },
+                                    "tallies": {
+                                        "$ref": "#/components/schemas/FreeFormObject"
+                                    },
+                                    "processing_stats": {
+                                        "type": "object",
+                                        "description": "Details about the scan processing.",
+                                        "required": [
+                                            "start",
+                                            "runtime"
+                                        ],
+                                        "properties": {
+                                            "start": {
+                                                "$ref": "#/components/schemas/FreeFormObject"
+                                            },
+                                            "runtime": {
+                                                "$ref": "#/components/schemas/FreeFormObject"
+                                            },
+                                            "rate": {
+                                                "$ref": "#/components/schemas/FreeFormObject",
+                                                "default": {}
+                                            },
+                                            "end": {
+                                                "type": "string",
+                                                "default": ""
+                                            },
+                                            "finished": {
+                                                "type": "boolean",
+                                                "default": false
+                                            },
+                                            "predictions": {
+                                                "$ref": "#/components/schemas/FreeFormObject",
+                                                "default": {},
+                                                "description": "Open-ended predictions dict (shape defined by requestor)."
+                                            }
+                                        }
+                                    },
+                                    "predictive_scanning_threshold": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 1
+                                    },
+                                    "last_updated": {
+                                        "type": "string"
+                                    },
+                                    "start": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "default": null,
+                                        "description": "New in SkyDriver v2."
+                                    },
+                                    "end": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "default": null,
+                                        "description": "New in SkyDriver v2."
+                                    }
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null
+                    },
+                    "replaced_by_scan_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "default": null,
+                        "description": "If set, this scan has been replaced -- used by REST redirects."
+                    },
+                    "last_updated": {
+                        "type": "number",
+                        "default": 0.0
+                    }
+                }
+            },
+            "Result": {
+                "type": "object",
+                "description": "Physics results for a scan (represents the `Result` dataclass). Shares `scan_id` with Manifest.",
+                "required": [
+                    "scan_id",
+                    "skyscan_result",
+                    "is_final"
+                ],
+                "properties": {
+                    "scan_id": {
+                        "$ref": "#/components/schemas/Manifest/properties/scan_id"
+                    },
+                    "skyscan_result": {
+                        "$ref": "#/components/schemas/FreeFormObject",
+                        "description": "Physics result payload; keys/values are open to requestor."
+                    },
+                    "is_final": {
+                        "type": "boolean"
                     }
                 }
             },
             "ScanBacklogEntry": {
-                "description": "An entry for the scan backlog used for rate-limiting. Extends ScanIDDataclass.",
-                "allOf": [
-                    {
-                        "$ref": "#/components/schemas/ScanIDDataclass"
+                "type": "object",
+                "description": "An entry for the scan backlog used for rate-limiting (represents the `ScanBacklogEntry` dataclass). Shares `scan_id` and `priority` with Manifest.",
+                "required": [
+                    "scan_id",
+                    "timestamp"
+                ],
+                "properties": {
+                    "scan_id": {
+                        "$ref": "#/components/schemas/Manifest/properties/scan_id"
                     },
-                    {
-                        "type": "object",
-                        "required": [
-                            "timestamp"
-                        ],
-                        "properties": {
-                            "timestamp": {
-                                "type": "number"
-                            },
-                            "pickled_k8s_job": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ],
-                                "contentEncoding": "base64",
-                                "default": null,
-                                "deprecated": true,
-                                "description": "DEPRECATED -- replaced by SkyScanK8sJob in db."
-                            },
-                            "priority": {
-                                "type": "integer",
-                                "default": 0
-                            },
-                            "pending_timestamp": {
-                                "type": "number",
-                                "default": 0.0
-                            },
-                            "next_attempt": {
-                                "type": "integer",
-                                "default": 0
-                            }
-                        }
-                    }
-                ]
-            },
-            "Result": {
-                "description": "Encompasses the physics results for a scan. Extends ScanIDDataclass.",
-                "allOf": [
-                    {
-                        "$ref": "#/components/schemas/ScanIDDataclass"
+                    "timestamp": {
+                        "type": "number",
+                        "description": "Timestamp when the entry was added to the backlog (distinct from `Manifest.timestamp`)."
                     },
-                    {
-                        "type": "object",
-                        "required": [
-                            "skyscan_result",
-                            "is_final"
+                    "pickled_k8s_job": {
+                        "type": [
+                            "string",
+                            "null"
                         ],
-                        "properties": {
-                            "skyscan_result": {
-                                "$ref": "#/components/schemas/FreeFormObject",
-                                "description": "Physics result payload; keys/values are open to requestor."
-                            },
-                            "is_final": {
-                                "type": "boolean"
-                            }
-                        }
-                    }
-                ]
-            },
-            "Manifest": {
-                "description": "Encapsulates the manifest of a unique scan entity. Extends ScanIDDataclass. Fields may be absent in responses when a projection was applied.",
-                "allOf": [
-                    {
-                        "$ref": "#/components/schemas/ScanIDDataclass"
+                        "contentEncoding": "base64",
+                        "default": null,
+                        "deprecated": true,
+                        "description": "DEPRECATED -- replaced by SkyScanK8sJob in db."
                     },
-                    {
-                        "type": "object",
-                        "required": [
-                            "timestamp",
-                            "is_deleted",
-                            "scanner_server_args"
-                        ],
-                        "properties": {
-                            "timestamp": {
-                                "type": "number"
-                            },
-                            "is_deleted": {
-                                "type": "boolean"
-                            },
-                            "scanner_server_args": {
-                                "type": "string",
-                                "description": "CLI args for the scanner server k8s job (sensitive values are obfuscated by `obfuscate_cl_args`)."
-                            },
-                            "ewms_workflow_id": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ],
-                                "default": null,
-                                "description": "EWMS workflow id. The sentinel `not-yet-requested` means SkyDriver has not yet sent the workflow request to EWMS (see `has_skydriver_requested_ewms_workflow()`)."
-                            },
-                            "ewms_address": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ],
-                                "default": null,
-                                "description": "EWMS address used to differentiate EWMS instances."
-                            },
-                            "ewms_task": {
-                                "oneOf": [
-                                    {
-                                        "$ref": "#/components/schemas/FreeFormObject"
-                                    },
-                                    {
-                                        "type": "string"
-                                    }
-                                ],
-                                "default": "use 'ewms_workflow_id'",
-                                "deprecated": true,
-                                "description": "DEPRECATED -- use `ewms_workflow_id`. Was used in SkyDriver 1.x for local k8s starter/stopper."
-                            },
-                            "priority": {
-                                "type": "integer",
-                                "default": 0,
-                                "description": "HTCondor-style job priority."
-                            },
-                            "classifiers": {
-                                "$ref": "#/components/schemas/ClassifiersStored"
-                            },
-                            "i3_event_id": {
-                                "type": "string",
-                                "default": "",
-                                "description": "ID into the i3_event collection."
-                            },
-                            "event_i3live_json_dict": {
-                                "oneOf": [
-                                    {
-                                        "$ref": "#/components/schemas/FreeFormObject"
-                                    },
-                                    {
-                                        "type": "string"
-                                    }
-                                ],
-                                "default": "use 'i3_event_id'",
-                                "deprecated": true,
-                                "description": "DEPRECATED -- use `i3_event_id`."
-                            },
-                            "event_i3live_json_dict__hash": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ],
-                                "default": null,
-                                "deprecated": true,
-                                "description": "DEPRECATED."
-                            },
-                            "event_metadata": {
-                                "oneOf": [
-                                    {
-                                        "$ref": "#/components/schemas/EventMetadata"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ],
-                                "default": null
-                            },
-                            "scan_metadata": {
-                                "oneOf": [
-                                    {
-                                        "$ref": "#/components/schemas/FreeFormObject"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ],
-                                "default": null,
-                                "description": "Open-ended metadata set by the scanner."
-                            },
-                            "progress": {
-                                "oneOf": [
-                                    {
-                                        "$ref": "#/components/schemas/Progress"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ],
-                                "default": null
-                            },
-                            "replaced_by_scan_id": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ],
-                                "default": null,
-                                "description": "If set, this scan has been replaced -- used by REST redirects."
-                            },
-                            "last_updated": {
-                                "type": "number",
-                                "default": 0.0
-                            }
-                        }
+                    "priority": {
+                        "$ref": "#/components/schemas/Manifest/properties/priority"
+                    },
+                    "pending_timestamp": {
+                        "type": "number",
+                        "default": 0.0
+                    },
+                    "next_attempt": {
+                        "type": "integer",
+                        "default": 0
                     }
-                ]
+                }
             },
             "ScanRequestObj": {
                 "type": "object",
-                "description": "Persisted scan-request object (the input used to start a scan). Returned by GET /scan-request/{scan_id}. Not a dataclass in Python; this schema is used by DB-validation tooling.",
+                "description": "Persisted scan-request object (the input used to start a scan). Returned by GET /scan-request/{scan_id}. Not a dataclass in Python; this schema is used by DB-validation tooling. Fields shared with Manifest `$ref` into Manifest.",
                 "additionalProperties": true,
                 "required": [
                     "scan_id",
@@ -1718,12 +1664,12 @@
                 ],
                 "properties": {
                     "scan_id": {
-                        "type": "string"
+                        "$ref": "#/components/schemas/Manifest/properties/scan_id"
                     },
                     "rescan_ids": {
                         "type": "array",
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/Manifest/properties/scan_id"
                         },
                         "default": []
                     },
@@ -1743,12 +1689,10 @@
                         "$ref": "#/components/schemas/RealOrSimulatedEvent"
                     },
                     "predictive_scanning_threshold": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 1
+                        "$ref": "#/components/schemas/Manifest/properties/progress/oneOf/0/properties/predictive_scanning_threshold"
                     },
                     "classifiers": {
-                        "$ref": "#/components/schemas/ClassifiersStored"
+                        "$ref": "#/components/schemas/Manifest/properties/classifiers"
                     },
                     "request_clusters": {
                         "$ref": "#/components/schemas/RequestClusters"
@@ -1764,8 +1708,7 @@
                         "minimum": 1
                     },
                     "priority": {
-                        "type": "integer",
-                        "default": 0
+                        "$ref": "#/components/schemas/Manifest/properties/priority"
                     },
                     "debug_mode": {
                         "type": "array",
@@ -1775,7 +1718,7 @@
                         "description": "DebugMode values (as strings -- the Python enum's `.value`)."
                     },
                     "i3_event_id": {
-                        "type": "string"
+                        "$ref": "#/components/schemas/Manifest/properties/i3_event_id"
                     },
                     "scanner_server_env_from_user": {
                         "$ref": "#/components/schemas/ScannerServerEnvFromUser"
