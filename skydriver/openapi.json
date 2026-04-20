@@ -3,7 +3,7 @@
     "info": {
         "title": "SkyDriver REST API",
         "version": "2.x",
-        "description": "REST API for orchestrating IceCube Skymap Scanner scans. Derived from `rest_handlers.py` and `schema.py`. Dataclass schemas (`Manifest`, `Result`, `Progress`, etc.) are defined in `#/components/schemas` for reuse in DB validation as well as request/response validation."
+        "description": "REST API for orchestrating IceCube Skymap Scanner scans. Named `#/components/schemas/*` are either (a) multi-referenced data models or (b) dataclass-backed objects used by DB-validation tooling. Single-use request/response wrappers are inlined into their path operations."
     },
     "servers": [
         {
@@ -64,7 +64,26 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ScansFindRequest"
+                                "type": "object",
+                                "required": [
+                                    "filter"
+                                ],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "filter": {
+                                        "$ref": "#/components/schemas/FreeFormObject",
+                                        "description": "MongoDB-style query filter over manifests."
+                                    },
+                                    "include_deleted": {
+                                        "type": "boolean",
+                                        "default": false,
+                                        "description": "If false and `filter.is_deleted` is not set, `is_deleted=false` is injected."
+                                    },
+                                    "manifest_projection": {
+                                        "$ref": "#/components/schemas/ManifestProjection",
+                                        "description": "Cannot include any of: `ewms_task`, `event_i3live_json_dict`, `event_i3live_json_dict__hash` (these can blow up memory). `\"*\"` is remapped to the default fields (same set)."
+                                    }
+                                }
                             }
                         }
                     }
@@ -75,7 +94,18 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ScansFindResponse"
+                                    "type": "object",
+                                    "required": [
+                                        "manifests"
+                                    ],
+                                    "properties": {
+                                        "manifests": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Manifest"
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -130,7 +160,194 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ScanLauncherRequest"
+                                "type": "object",
+                                "description": "Body for POST /scan. Several fields have legacy aliases (marked deprecated); the server coalesces them via `_take_one_arg`. Exactly one of `event_i3live_json` or `i3_event_id` must be provided.",
+                                "additionalProperties": false,
+                                "required": [
+                                    "docker_tag",
+                                    "reco_algo",
+                                    "nsides",
+                                    "real_or_simulated_event",
+                                    "max_pixel_reco_time",
+                                    "request_clusters"
+                                ],
+                                "oneOf": [
+                                    {
+                                        "required": [
+                                            "event_i3live_json"
+                                        ],
+                                        "not": {
+                                            "required": [
+                                                "i3_event_id"
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "required": [
+                                            "i3_event_id"
+                                        ],
+                                        "not": {
+                                            "required": [
+                                                "event_i3live_json"
+                                            ]
+                                        }
+                                    }
+                                ],
+                                "properties": {
+                                    "docker_tag": {
+                                        "type": "string",
+                                        "description": "Any tag on Docker Hub (including `latest`). Must also be on CVMFS (not checked here)."
+                                    },
+                                    "scanner_server_memory_bytes": {
+                                        "$ref": "#/components/schemas/DataSize"
+                                    },
+                                    "scanner_server_memory": {
+                                        "$ref": "#/components/schemas/DataSize",
+                                        "deprecated": true,
+                                        "description": "Alias for `scanner_server_memory_bytes`."
+                                    },
+                                    "worker_memory_bytes": {
+                                        "$ref": "#/components/schemas/DataSize"
+                                    },
+                                    "worker_memory": {
+                                        "$ref": "#/components/schemas/DataSize",
+                                        "deprecated": true,
+                                        "description": "Alias for `worker_memory_bytes`."
+                                    },
+                                    "memory": {
+                                        "type": [
+                                            "string",
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "default": null,
+                                        "deprecated": true,
+                                        "description": "DEPRECATED -- use `worker_memory_bytes`. Server will reject any truthy value."
+                                    },
+                                    "worker_disk_bytes": {
+                                        "$ref": "#/components/schemas/DataSize"
+                                    },
+                                    "worker_disk": {
+                                        "$ref": "#/components/schemas/DataSize",
+                                        "deprecated": true,
+                                        "description": "Alias for `worker_disk_bytes`."
+                                    },
+                                    "request_clusters": {
+                                        "$ref": "#/components/schemas/RequestClusters"
+                                    },
+                                    "cluster": {
+                                        "$ref": "#/components/schemas/RequestClusters",
+                                        "deprecated": true,
+                                        "description": "Alias for `request_clusters`."
+                                    },
+                                    "reco_algo": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "pattern": "\\S",
+                                        "description": "Cannot be empty / whitespace-only."
+                                    },
+                                    "event_i3live_json": {
+                                        "oneOf": [
+                                            {
+                                                "type": "string",
+                                                "description": "JSON-string."
+                                            },
+                                            {
+                                                "$ref": "#/components/schemas/FreeFormObject"
+                                            }
+                                        ],
+                                        "default": {},
+                                        "description": "Raw i3 event JSON (dict or JSON-string). Mutually exclusive with `i3_event_id`."
+                                    },
+                                    "i3_event_id": {
+                                        "type": "string",
+                                        "default": "",
+                                        "description": "ID of an existing i3 event. Mutually exclusive with `event_i3live_json`."
+                                    },
+                                    "nsides": {
+                                        "$ref": "#/components/schemas/FreeFormObject",
+                                        "description": "Nside configuration for the scan (strict dict)."
+                                    },
+                                    "real_or_simulated_event": {
+                                        "$ref": "#/components/schemas/RealOrSimulatedEvent"
+                                    },
+                                    "predictive_scanning_threshold": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 1,
+                                        "default": 1.0
+                                    },
+                                    "max_pixel_reco_time": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                    },
+                                    "debug_mode": {
+                                        "description": "DebugMode flag. Accepts a single value or a list of values. Currently `client-logs` is the only defined value; extend the enum as the `DebugMode` Python enum grows.",
+                                        "oneOf": [
+                                            {
+                                                "type": "string",
+                                                "enum": [
+                                                    "client-logs"
+                                                ]
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "client-logs"
+                                                    ]
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "classifiers": {
+                                        "type": "object",
+                                        "default": {},
+                                        "description": "Classifiers for the scan. Stricter than `ClassifiersStored`: scalar values only, max 25 entries, keys and string-values max 25 chars. Cannot contain `rescan` or `origin_scan_id` sub-fields (reserved for rescan provenance).",
+                                        "additionalProperties": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string",
+                                                    "maxLength": 25
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "maxProperties": 25,
+                                        "propertyNames": {
+                                            "maxLength": 25
+                                        }
+                                    },
+                                    "priority": {
+                                        "type": "integer",
+                                        "default": 0
+                                    },
+                                    "scanner_server_env_from_user": {
+                                        "$ref": "#/components/schemas/ScannerServerEnvFromUser",
+                                        "default": {},
+                                        "description": "Extra env-vars injected into the scanner server k8s job."
+                                    },
+                                    "scanner_server_env": {
+                                        "$ref": "#/components/schemas/ScannerServerEnvFromUser",
+                                        "deprecated": true,
+                                        "description": "Alias for `scanner_server_env_from_user`."
+                                    },
+                                    "manifest_projection": {
+                                        "$ref": "#/components/schemas/ManifestProjection"
+                                    }
+                                }
                             }
                         }
                     }
@@ -198,7 +415,27 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ScanRescanRequest"
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "no_redirect": {
+                                        "type": "boolean",
+                                        "default": false
+                                    },
+                                    "abort_first": {
+                                        "type": "boolean",
+                                        "default": false,
+                                        "description": "If true, abort the existing scan before starting the rescan."
+                                    },
+                                    "replace_scan": {
+                                        "type": "boolean",
+                                        "default": false,
+                                        "description": "If true, mark the original scan as replaced by the new scan (for REST redirect logic)."
+                                    },
+                                    "manifest_projection": {
+                                        "$ref": "#/components/schemas/ManifestProjection"
+                                    }
+                                }
                             }
                         }
                     }
@@ -237,7 +474,25 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ScanAddWorkersRequest"
+                                "type": "object",
+                                "required": [
+                                    "n_workers",
+                                    "cluster_location"
+                                ],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "no_redirect": {
+                                        "type": "boolean",
+                                        "default": false
+                                    },
+                                    "n_workers": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                    },
+                                    "cluster_location": {
+                                        "type": "string"
+                                    }
+                                }
                             }
                         }
                     }
@@ -248,16 +503,40 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ScanAddWorkersResponse"
+                                    "type": "object",
+                                    "description": "Subset of the EWMS add-workers response.",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "taskforce_uuid": {
+                                            "type": "string"
+                                        },
+                                        "n_workers": {
+                                            "type": "integer"
+                                        }
+                                    }
                                 }
                             }
                         }
                     },
                     "422": {
-                        "$ref": "#/components/responses/Error422"
+                        "description": "Request is well-formed but the scan is in a state that disallows the action.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     },
                     "500": {
-                        "$ref": "#/components/responses/Error500"
+                        "description": "Internal / upstream failure (EWMS).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -309,7 +588,22 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ScanDeleteRequest"
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "no_redirect": {
+                                        "type": "boolean",
+                                        "default": false
+                                    },
+                                    "delete_completed_scan": {
+                                        "type": "boolean",
+                                        "default": false,
+                                        "description": "Required to be true in order to delete a scan whose final result has already been received."
+                                    },
+                                    "manifest_projection": {
+                                        "$ref": "#/components/schemas/ManifestProjection"
+                                    }
+                                }
                             }
                         }
                     }
@@ -357,7 +651,7 @@
                         "name": "projection",
                         "in": "query",
                         "required": false,
-                        "description": "Fields to include in the returned manifest. See `ManifestProjection`. Array form in query: send as repeated keys (`?projection=a&projection=b`) -- OpenAPI `style: form, explode: true` semantics. The new server implementation should use Tornado's `request.arguments` (which is list-of-values-per-key), not `get_argument` (which collapses to a single value).",
+                        "description": "Fields to include in the returned manifest. See `ManifestProjection`. Array form in query: send as repeated keys (`?projection=a&projection=b`) -- OpenAPI `style: form, explode: true` semantics. The new server implementation should use Tornado's `request.arguments` (list-of-values-per-key), not `get_argument` (which collapses to a single value).",
                         "schema": {
                             "$ref": "#/components/schemas/ManifestProjection"
                         },
@@ -392,7 +686,37 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ScanManifestPatchRequest"
+                                "type": "object",
+                                "description": "All fields optional; only non-null fields are applied.",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "progress": {
+                                        "oneOf": [
+                                            {
+                                                "$ref": "#/components/schemas/Progress"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    },
+                                    "event_metadata": {
+                                        "oneOf": [
+                                            {
+                                                "$ref": "#/components/schemas/EventMetadata"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "default": null
+                                    },
+                                    "scan_metadata": {
+                                        "$ref": "#/components/schemas/FreeFormObject",
+                                        "default": {}
+                                    }
+                                }
                             }
                         }
                     }
@@ -441,9 +765,8 @@
                                     ],
                                     "properties": {
                                         "i3_event": {
-                                            "description": "Raw i3 event JSON (open-ended dict).",
-                                            "type": "object",
-                                            "additionalProperties": true
+                                            "$ref": "#/components/schemas/FreeFormObject",
+                                            "description": "Raw i3 event JSON (open-ended dict)."
                                         }
                                     }
                                 }
@@ -512,7 +835,22 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ScanResultPutRequest"
+                                "type": "object",
+                                "required": [
+                                    "skyscan_result",
+                                    "is_final"
+                                ],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "skyscan_result": {
+                                        "$ref": "#/components/schemas/FreeFormObject",
+                                        "description": "Physics result payload (open to requestor). A falsy dict short-circuits to an empty `{}` response without persisting."
+                                    },
+                                    "is_final": {
+                                        "type": "boolean",
+                                        "description": "When true, SkyDriver will request EWMS teardown after a short delay."
+                                    }
+                                }
                             }
                         }
                     }
@@ -560,7 +898,42 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ScanStatusResponse"
+                                    "type": "object",
+                                    "required": [
+                                        "scan_state",
+                                        "is_deleted",
+                                        "ewms_deactivated",
+                                        "scan_complete",
+                                        "scanner_server_logs",
+                                        "ewms_workforce"
+                                    ],
+                                    "properties": {
+                                        "scan_state": {
+                                            "type": "string",
+                                            "description": "Computed scan state (see `get_scan_state`)."
+                                        },
+                                        "is_deleted": {
+                                            "type": "boolean"
+                                        },
+                                        "ewms_deactivated": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "description": "Type of EWMS deactivation (abort/stop/...) or null."
+                                        },
+                                        "scan_complete": {
+                                            "type": "boolean",
+                                            "description": "True when the physics is effectively done (lingering compute may still be winding down)."
+                                        },
+                                        "scanner_server_logs": {
+                                            "$ref": "#/components/schemas/LogUrlLink"
+                                        },
+                                        "ewms_workforce": {
+                                            "$ref": "#/components/schemas/FreeFormObject",
+                                            "description": "Opaque EWMS workforce-status payload. Same shape as GET /scan/{scan_id}/ewms/workforce."
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -589,7 +962,15 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ScanLogsResponse"
+                                    "type": "object",
+                                    "required": [
+                                        "scanner_server"
+                                    ],
+                                    "properties": {
+                                        "scanner_server": {
+                                            "$ref": "#/components/schemas/LogUrlLink"
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -618,7 +999,36 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ScanEwmsWorkflowIdResponse"
+                                    "type": "object",
+                                    "required": [
+                                        "workflow_id",
+                                        "requested_ewms_workflow",
+                                        "eligible_for_ewms",
+                                        "ewms_address"
+                                    ],
+                                    "properties": {
+                                        "workflow_id": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "description": "Raw value from the manifest. May be `null`, the `not-yet-requested` sentinel, or an actual EWMS workflow id."
+                                        },
+                                        "requested_ewms_workflow": {
+                                            "type": "boolean",
+                                            "description": "True iff `workflow_id` is an actual EWMS workflow id (see `has_skydriver_requested_ewms_workflow()`)."
+                                        },
+                                        "eligible_for_ewms": {
+                                            "type": "boolean",
+                                            "description": "True iff `workflow_id` is not null."
+                                        },
+                                        "ewms_address": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -639,7 +1049,20 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ScanEwmsWorkflowIdPostRequest"
+                                "type": "object",
+                                "required": [
+                                    "workflow_id",
+                                    "ewms_address"
+                                ],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "workflow_id": {
+                                        "type": "string"
+                                    },
+                                    "ewms_address": {
+                                        "type": "string"
+                                    }
+                                }
                             }
                         }
                     }
@@ -679,8 +1102,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "additionalProperties": true,
+                                    "$ref": "#/components/schemas/FreeFormObject",
                                     "description": "Opaque workforce-status payload returned by EWMS; shape is not owned by SkyDriver."
                                 }
                             }
@@ -718,8 +1140,7 @@
                                         "taskforces": {
                                             "type": "array",
                                             "items": {
-                                                "type": "object",
-                                                "additionalProperties": true,
+                                                "$ref": "#/components/schemas/FreeFormObject",
                                                 "description": "Opaque taskforce payload returned by EWMS."
                                             }
                                         }
@@ -788,26 +1209,6 @@
                         }
                     }
                 }
-            },
-            "Error422": {
-                "description": "Request is well-formed but the scan is in a state that disallows the action.",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/Error"
-                        }
-                    }
-                }
-            },
-            "Error500": {
-                "description": "Internal / upstream failure.",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/Error"
-                        }
-                    }
-                }
             }
         },
         "schemas": {
@@ -825,6 +1226,268 @@
                     }
                 },
                 "additionalProperties": true
+            },
+            "FreeFormObject": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "Open-ended JSON object (keys and values unrestricted). Used wherever the shape is owned by an external system or the requestor."
+            },
+            "RealOrSimulatedEvent": {
+                "type": "string",
+                "enum": [
+                    "real",
+                    "real_event",
+                    "sim",
+                    "simulated",
+                    "simulated_event"
+                ],
+                "description": "Event-type classification. `real*` values map to real events; `sim*` to simulation."
+            },
+            "LogUrlLink": {
+                "type": "object",
+                "description": "A `{url}` wrapper pointing at a log endpoint. The URL is nullable while the log source is unavailable.",
+                "required": [
+                    "url"
+                ],
+                "properties": {
+                    "url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                }
+            },
+            "DataSize": {
+                "description": "Human-friendly size string (e.g. `'1GB'`, `'512MB'`) parseable by `humanfriendly.parse_size`, or raw integer bytes.",
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                ]
+            },
+            "ManifestProjection": {
+                "description": "Fields to include in the returned manifest. Either `\"*\"` (all allowed fields) or an explicit array of field names. Omit the field entirely for the default (all fields, minus the disallowed ones on /scans/find). NOTE: under the legacy arghandler implementation, array values were silently broken (stringified via `type=str`); the OpenAPI-validated implementation is expected to accept both forms and normalize to a set server-side before the disallowed-fields check and `dict_projection`.",
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "enum": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "uniqueItems": true
+                    }
+                ]
+            },
+            "RequestClusters": {
+                "description": "Either a dict `{cluster_location: n_workers}` OR a list of `[cluster_location, n_workers]` 2-tuples. Use the list form to request the same cluster more than once.",
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "minProperties": 1
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "prefixItems": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            ]
+                        },
+                        "minItems": 1
+                    }
+                ]
+            },
+            "ClassifiersStored": {
+                "type": "object",
+                "description": "Classifiers as stored on a Manifest: scalar values or lists of scalars. Used for persisted/DB data.",
+                "additionalProperties": {
+                    "oneOf": [
+                        {
+                            "type": [
+                                "string",
+                                "boolean",
+                                "number",
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": [
+                                    "string",
+                                    "boolean",
+                                    "number",
+                                    "integer",
+                                    "null"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "maxProperties": 25,
+                "propertyNames": {
+                    "maxLength": 25
+                }
+            },
+            "ScannerServerEnvFromUser": {
+                "type": "object",
+                "description": "User-provided env-vars injected into the scanner server k8s job. Scalar values only. Limits are intentionally looser than the classifier input shape because env-var values (URLs, PATHs, tokens, etc.) routinely exceed 25 chars.",
+                "additionalProperties": {
+                    "oneOf": [
+                        {
+                            "type": "string",
+                            "maxLength": 4096
+                        },
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "maxProperties": 25,
+                "propertyNames": {
+                    "maxLength": 128
+                }
+            },
+            "EventMetadata": {
+                "type": "object",
+                "description": "Encapsulates the identity of an event.",
+                "required": [
+                    "run_id",
+                    "event_id",
+                    "event_type",
+                    "mjd",
+                    "is_real_event"
+                ],
+                "properties": {
+                    "run_id": {
+                        "type": "integer"
+                    },
+                    "event_id": {
+                        "type": "integer"
+                    },
+                    "event_type": {
+                        "type": "string"
+                    },
+                    "mjd": {
+                        "type": "number"
+                    },
+                    "is_real_event": {
+                        "type": "boolean",
+                        "description": "True for real events, False for simulation."
+                    }
+                }
+            },
+            "Progress": {
+                "type": "object",
+                "description": "Houses all the progress for a scan (changed throughout scan).",
+                "required": [
+                    "summary",
+                    "epilogue",
+                    "tallies",
+                    "processing_stats",
+                    "predictive_scanning_threshold",
+                    "last_updated"
+                ],
+                "properties": {
+                    "summary": {
+                        "type": "string"
+                    },
+                    "epilogue": {
+                        "type": "string"
+                    },
+                    "tallies": {
+                        "$ref": "#/components/schemas/FreeFormObject"
+                    },
+                    "processing_stats": {
+                        "type": "object",
+                        "description": "Details about the scan processing.",
+                        "required": [
+                            "start",
+                            "runtime"
+                        ],
+                        "properties": {
+                            "start": {
+                                "$ref": "#/components/schemas/FreeFormObject"
+                            },
+                            "runtime": {
+                                "$ref": "#/components/schemas/FreeFormObject"
+                            },
+                            "rate": {
+                                "$ref": "#/components/schemas/FreeFormObject",
+                                "default": {}
+                            },
+                            "end": {
+                                "type": "string",
+                                "default": ""
+                            },
+                            "finished": {
+                                "type": "boolean",
+                                "default": false
+                            },
+                            "predictions": {
+                                "$ref": "#/components/schemas/FreeFormObject",
+                                "default": {},
+                                "description": "Open-ended predictions dict (shape defined by requestor)."
+                            }
+                        }
+                    },
+                    "predictive_scanning_threshold": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    },
+                    "last_updated": {
+                        "type": "string"
+                    },
+                    "start": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "default": null,
+                        "description": "New in SkyDriver v2."
+                    },
+                    "end": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "default": null,
+                        "description": "New in SkyDriver v2."
+                    }
+                }
             },
             "ScanIDDataclass": {
                 "type": "object",
@@ -879,94 +1542,6 @@
                     }
                 ]
             },
-            "ProgressProcessingStats": {
-                "type": "object",
-                "description": "Details about the scan processing.",
-                "required": [
-                    "start",
-                    "runtime"
-                ],
-                "properties": {
-                    "start": {
-                        "type": "object",
-                        "additionalProperties": true
-                    },
-                    "runtime": {
-                        "type": "object",
-                        "additionalProperties": true
-                    },
-                    "rate": {
-                        "type": "object",
-                        "additionalProperties": true,
-                        "default": {}
-                    },
-                    "end": {
-                        "type": "string",
-                        "default": ""
-                    },
-                    "finished": {
-                        "type": "boolean",
-                        "default": false
-                    },
-                    "predictions": {
-                        "type": "object",
-                        "additionalProperties": true,
-                        "default": {},
-                        "description": "Open-ended predictions dict (shape defined by requestor)."
-                    }
-                }
-            },
-            "Progress": {
-                "type": "object",
-                "description": "Houses all the progress for a scan (changed throughout scan).",
-                "required": [
-                    "summary",
-                    "epilogue",
-                    "tallies",
-                    "processing_stats",
-                    "predictive_scanning_threshold",
-                    "last_updated"
-                ],
-                "properties": {
-                    "summary": {
-                        "type": "string"
-                    },
-                    "epilogue": {
-                        "type": "string"
-                    },
-                    "tallies": {
-                        "type": "object",
-                        "additionalProperties": true
-                    },
-                    "processing_stats": {
-                        "$ref": "#/components/schemas/ProgressProcessingStats"
-                    },
-                    "predictive_scanning_threshold": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 1
-                    },
-                    "last_updated": {
-                        "type": "string"
-                    },
-                    "start": {
-                        "type": [
-                            "integer",
-                            "null"
-                        ],
-                        "default": null,
-                        "description": "New in SkyDriver v2."
-                    },
-                    "end": {
-                        "type": [
-                            "integer",
-                            "null"
-                        ],
-                        "default": null,
-                        "description": "New in SkyDriver v2."
-                    }
-                }
-            },
             "Result": {
                 "description": "Encompasses the physics results for a scan. Extends ScanIDDataclass.",
                 "allOf": [
@@ -981,213 +1556,13 @@
                         ],
                         "properties": {
                             "skyscan_result": {
-                                "type": "object",
-                                "additionalProperties": true,
+                                "$ref": "#/components/schemas/FreeFormObject",
                                 "description": "Physics result payload; keys/values are open to requestor."
                             },
                             "is_final": {
                                 "type": "boolean"
                             }
                         }
-                    }
-                ]
-            },
-            "EventMetadata": {
-                "type": "object",
-                "description": "Encapsulates the identity of an event.",
-                "required": [
-                    "run_id",
-                    "event_id",
-                    "event_type",
-                    "mjd",
-                    "is_real_event"
-                ],
-                "properties": {
-                    "run_id": {
-                        "type": "integer"
-                    },
-                    "event_id": {
-                        "type": "integer"
-                    },
-                    "event_type": {
-                        "type": "string"
-                    },
-                    "mjd": {
-                        "type": "number"
-                    },
-                    "is_real_event": {
-                        "type": "boolean",
-                        "description": "True for real events, False for simulation."
-                    }
-                }
-            },
-            "ClassifiersStored": {
-                "type": "object",
-                "description": "Classifiers as stored on a Manifest: scalar values or lists of scalars. Used for persisted/DB data.",
-                "additionalProperties": {
-                    "oneOf": [
-                        {
-                            "type": [
-                                "string",
-                                "boolean",
-                                "number",
-                                "integer",
-                                "null"
-                            ]
-                        },
-                        {
-                            "type": "array",
-                            "items": {
-                                "type": [
-                                    "string",
-                                    "boolean",
-                                    "number",
-                                    "integer",
-                                    "null"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                "maxProperties": 25,
-                "propertyNames": {
-                    "maxLength": 25
-                }
-            },
-            "ClassifiersInput": {
-                "type": "object",
-                "description": "Classifiers as accepted on POST /scan (stricter than `ClassifiersStored`): scalar values only, max 25 entries, keys and string-values max 25 chars. Lists are NOT accepted on input.",
-                "additionalProperties": {
-                    "oneOf": [
-                        {
-                            "type": "string",
-                            "maxLength": 25
-                        },
-                        {
-                            "type": "boolean"
-                        },
-                        {
-                            "type": "number"
-                        },
-                        {
-                            "type": "integer"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "maxProperties": 25,
-                "propertyNames": {
-                    "maxLength": 25
-                }
-            },
-            "ScannerServerEnvFromUser": {
-                "type": "object",
-                "description": "User-provided env-vars injected into the scanner server k8s job. Scalar values only. Limits are intentionally looser than `ClassifiersInput` because env-var values (URLs, PATHs, tokens, etc.) routinely exceed 25 chars.",
-                "additionalProperties": {
-                    "oneOf": [
-                        {
-                            "type": "string",
-                            "maxLength": 4096
-                        },
-                        {
-                            "type": "boolean"
-                        },
-                        {
-                            "type": "number"
-                        },
-                        {
-                            "type": "integer"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "maxProperties": 25,
-                "propertyNames": {
-                    "maxLength": 128
-                }
-            },
-            "RequestClusters": {
-                "description": "Either a dict `{cluster_location: n_workers}` OR a list of `[cluster_location, n_workers]` 2-tuples. Use the list form to request the same cluster more than once.",
-                "oneOf": [
-                    {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "integer",
-                            "minimum": 1
-                        },
-                        "minProperties": 1
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "array",
-                            "minItems": 2,
-                            "maxItems": 2,
-                            "prefixItems": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "integer",
-                                    "minimum": 1
-                                }
-                            ]
-                        },
-                        "minItems": 1
-                    }
-                ]
-            },
-            "DebugMode": {
-                "description": "DebugMode flag. Accepts a single value or a list of values. Currently `client-logs` is the only defined value; extend the enum as the `DebugMode` Python enum grows.",
-                "oneOf": [
-                    {
-                        "type": "string",
-                        "enum": [
-                            "client-logs"
-                        ]
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string",
-                            "enum": [
-                                "client-logs"
-                            ]
-                        }
-                    }
-                ]
-            },
-            "DataSize": {
-                "description": "Human-friendly size string (e.g. `'1GB'`, `'512MB'`) parseable by `humanfriendly.parse_size`, or raw integer bytes.",
-                "oneOf": [
-                    {
-                        "type": "string"
-                    },
-                    {
-                        "type": "integer",
-                        "minimum": 0
-                    }
-                ]
-            },
-            "ManifestProjection": {
-                "description": "Fields to include in the returned manifest. Either `\"*\"` (all allowed fields) or an explicit array of field names. Omit the field entirely for the default (all fields, minus the disallowed ones on /scans/find). NOTE: under the legacy arghandler implementation, array values were silently broken (stringified via `type=str`); the OpenAPI-validated implementation is expected to accept both forms and normalize to a set server-side before the disallowed-fields check and `dict_projection`.",
-                "oneOf": [
-                    {
-                        "type": "string",
-                        "enum": [
-                            "*"
-                        ]
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "uniqueItems": true
                     }
                 ]
             },
@@ -1234,8 +1609,7 @@
                             "ewms_task": {
                                 "oneOf": [
                                     {
-                                        "type": "object",
-                                        "additionalProperties": true
+                                        "$ref": "#/components/schemas/FreeFormObject"
                                     },
                                     {
                                         "type": "string"
@@ -1261,8 +1635,7 @@
                             "event_i3live_json_dict": {
                                 "oneOf": [
                                     {
-                                        "type": "object",
-                                        "additionalProperties": true
+                                        "$ref": "#/components/schemas/FreeFormObject"
                                     },
                                     {
                                         "type": "string"
@@ -1295,8 +1668,7 @@
                             "scan_metadata": {
                                 "oneOf": [
                                     {
-                                        "type": "object",
-                                        "additionalProperties": true
+                                        "$ref": "#/components/schemas/FreeFormObject"
                                     },
                                     {
                                         "type": "null"
@@ -1334,7 +1706,8 @@
             },
             "ScanRequestObj": {
                 "type": "object",
-                "description": "Persisted scan-request object (the input used to start a scan). Returned by GET /scan-request/{scan_id}.",
+                "description": "Persisted scan-request object (the input used to start a scan). Returned by GET /scan-request/{scan_id}. Not a dataclass in Python; this schema is used by DB-validation tooling.",
+                "additionalProperties": true,
                 "required": [
                     "scan_id",
                     "docker_tag",
@@ -1364,18 +1737,10 @@
                         "type": "string"
                     },
                     "nsides": {
-                        "type": "object",
-                        "additionalProperties": true
+                        "$ref": "#/components/schemas/FreeFormObject"
                     },
                     "real_or_simulated_event": {
-                        "type": "string",
-                        "enum": [
-                            "real",
-                            "real_event",
-                            "sim",
-                            "simulated",
-                            "simulated_event"
-                        ]
+                        "$ref": "#/components/schemas/RealOrSimulatedEvent"
                     },
                     "predictive_scanning_threshold": {
                         "type": "number",
@@ -1415,313 +1780,11 @@
                     "scanner_server_env_from_user": {
                         "$ref": "#/components/schemas/ScannerServerEnvFromUser"
                     }
-                },
-                "additionalProperties": true
-            },
-            "ScansFindRequest": {
-                "type": "object",
-                "required": [
-                    "filter"
-                ],
-                "properties": {
-                    "filter": {
-                        "type": "object",
-                        "description": "MongoDB-style query filter over manifests.",
-                        "additionalProperties": true
-                    },
-                    "include_deleted": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "If false and `filter.is_deleted` is not set, `is_deleted=false` is injected."
-                    },
-                    "manifest_projection": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/ManifestProjection"
-                            }
-                        ],
-                        "description": "Cannot include any of: `ewms_task`, `event_i3live_json_dict`, `event_i3live_json_dict__hash` (these can blow up memory). `\"*\"` is remapped to the default fields (same set)."
-                    }
-                },
-                "additionalProperties": false
-            },
-            "ScansFindResponse": {
-                "type": "object",
-                "required": [
-                    "manifests"
-                ],
-                "properties": {
-                    "manifests": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/Manifest"
-                        }
-                    }
                 }
-            },
-            "ScanLauncherRequest": {
-                "type": "object",
-                "description": "Body for POST /scan. Several fields have legacy aliases (marked deprecated); the server coalesces them via `_take_one_arg`. Exactly one of `event_i3live_json` or `i3_event_id` must be provided.",
-                "required": [
-                    "docker_tag",
-                    "reco_algo",
-                    "nsides",
-                    "real_or_simulated_event",
-                    "max_pixel_reco_time",
-                    "request_clusters"
-                ],
-                "properties": {
-                    "docker_tag": {
-                        "type": "string",
-                        "description": "Any tag on Docker Hub (including `latest`). Must also be on CVMFS (not checked here)."
-                    },
-                    "scanner_server_memory_bytes": {
-                        "$ref": "#/components/schemas/DataSize"
-                    },
-                    "scanner_server_memory": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/DataSize"
-                            }
-                        ],
-                        "deprecated": true,
-                        "description": "Alias for `scanner_server_memory_bytes`."
-                    },
-                    "worker_memory_bytes": {
-                        "$ref": "#/components/schemas/DataSize"
-                    },
-                    "worker_memory": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/DataSize"
-                            }
-                        ],
-                        "deprecated": true,
-                        "description": "Alias for `worker_memory_bytes`."
-                    },
-                    "memory": {
-                        "type": [
-                            "string",
-                            "integer",
-                            "null"
-                        ],
-                        "default": null,
-                        "deprecated": true,
-                        "description": "DEPRECATED -- use `worker_memory_bytes`. Server will reject any truthy value."
-                    },
-                    "worker_disk_bytes": {
-                        "$ref": "#/components/schemas/DataSize"
-                    },
-                    "worker_disk": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/DataSize"
-                            }
-                        ],
-                        "deprecated": true,
-                        "description": "Alias for `worker_disk_bytes`."
-                    },
-                    "request_clusters": {
-                        "$ref": "#/components/schemas/RequestClusters"
-                    },
-                    "cluster": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/RequestClusters"
-                            }
-                        ],
-                        "deprecated": true,
-                        "description": "Alias for `request_clusters`."
-                    },
-                    "reco_algo": {
-                        "type": "string",
-                        "minLength": 1,
-                        "pattern": "\\S",
-                        "description": "Cannot be empty / whitespace-only."
-                    },
-                    "event_i3live_json": {
-                        "oneOf": [
-                            {
-                                "type": "string",
-                                "description": "JSON-string."
-                            },
-                            {
-                                "type": "object",
-                                "additionalProperties": true
-                            }
-                        ],
-                        "default": {},
-                        "description": "Raw i3 event JSON (dict or JSON-string). Mutually exclusive with `i3_event_id`."
-                    },
-                    "i3_event_id": {
-                        "type": "string",
-                        "default": "",
-                        "description": "ID of an existing i3 event. Mutually exclusive with `event_i3live_json`."
-                    },
-                    "nsides": {
-                        "type": "object",
-                        "additionalProperties": true,
-                        "description": "Nside configuration for the scan (strict dict)."
-                    },
-                    "real_or_simulated_event": {
-                        "type": "string",
-                        "enum": [
-                            "real",
-                            "real_event",
-                            "sim",
-                            "simulated",
-                            "simulated_event"
-                        ]
-                    },
-                    "predictive_scanning_threshold": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 1,
-                        "default": 1.0
-                    },
-                    "max_pixel_reco_time": {
-                        "type": "integer",
-                        "minimum": 1
-                    },
-                    "debug_mode": {
-                        "$ref": "#/components/schemas/DebugMode"
-                    },
-                    "classifiers": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/ClassifiersInput"
-                            }
-                        ],
-                        "default": {},
-                        "description": "Cannot contain `rescan` or `origin_scan_id` sub-fields (these are reserved for rescan provenance)."
-                    },
-                    "priority": {
-                        "type": "integer",
-                        "default": 0
-                    },
-                    "scanner_server_env_from_user": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/ScannerServerEnvFromUser"
-                            }
-                        ],
-                        "default": {},
-                        "description": "Extra env-vars injected into the scanner server k8s job."
-                    },
-                    "scanner_server_env": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/ScannerServerEnvFromUser"
-                            }
-                        ],
-                        "deprecated": true,
-                        "description": "Alias for `scanner_server_env_from_user`."
-                    },
-                    "manifest_projection": {
-                        "$ref": "#/components/schemas/ManifestProjection"
-                    }
-                },
-                "oneOf": [
-                    {
-                        "required": [
-                            "event_i3live_json"
-                        ],
-                        "not": {
-                            "required": [
-                                "i3_event_id"
-                            ]
-                        }
-                    },
-                    {
-                        "required": [
-                            "i3_event_id"
-                        ],
-                        "not": {
-                            "required": [
-                                "event_i3live_json"
-                            ]
-                        }
-                    }
-                ],
-                "additionalProperties": false
-            },
-            "ScanRescanRequest": {
-                "type": "object",
-                "properties": {
-                    "no_redirect": {
-                        "type": "boolean",
-                        "default": false
-                    },
-                    "abort_first": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "If true, abort the existing scan before starting the rescan."
-                    },
-                    "replace_scan": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "If true, mark the original scan as replaced by the new scan (for REST redirect logic)."
-                    },
-                    "manifest_projection": {
-                        "$ref": "#/components/schemas/ManifestProjection"
-                    }
-                },
-                "additionalProperties": false
-            },
-            "ScanAddWorkersRequest": {
-                "type": "object",
-                "required": [
-                    "n_workers",
-                    "cluster_location"
-                ],
-                "properties": {
-                    "no_redirect": {
-                        "type": "boolean",
-                        "default": false
-                    },
-                    "n_workers": {
-                        "type": "integer",
-                        "minimum": 1
-                    },
-                    "cluster_location": {
-                        "type": "string"
-                    }
-                },
-                "additionalProperties": false
-            },
-            "ScanAddWorkersResponse": {
-                "type": "object",
-                "description": "Subset of the EWMS add-workers response.",
-                "properties": {
-                    "taskforce_uuid": {
-                        "type": "string"
-                    },
-                    "n_workers": {
-                        "type": "integer"
-                    }
-                },
-                "additionalProperties": false
-            },
-            "ScanDeleteRequest": {
-                "type": "object",
-                "properties": {
-                    "no_redirect": {
-                        "type": "boolean",
-                        "default": false
-                    },
-                    "delete_completed_scan": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "Required to be true in order to delete a scan whose final result has already been received."
-                    },
-                    "manifest_projection": {
-                        "$ref": "#/components/schemas/ManifestProjection"
-                    }
-                },
-                "additionalProperties": false
             },
             "ManifestAndResultResponse": {
                 "type": "object",
+                "description": "Common envelope used by GET and DELETE on `/scan/{scan_id}`: the manifest plus (optionally) the persisted result.",
                 "required": [
                     "manifest",
                     "result"
@@ -1743,179 +1806,6 @@
                         ]
                     }
                 }
-            },
-            "ScanManifestPatchRequest": {
-                "type": "object",
-                "description": "All fields optional; only non-null fields are applied.",
-                "properties": {
-                    "progress": {
-                        "oneOf": [
-                            {
-                                "$ref": "#/components/schemas/Progress"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "default": null
-                    },
-                    "event_metadata": {
-                        "oneOf": [
-                            {
-                                "$ref": "#/components/schemas/EventMetadata"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "default": null
-                    },
-                    "scan_metadata": {
-                        "type": "object",
-                        "additionalProperties": true,
-                        "default": {}
-                    }
-                },
-                "additionalProperties": false
-            },
-            "ScanResultPutRequest": {
-                "type": "object",
-                "required": [
-                    "skyscan_result",
-                    "is_final"
-                ],
-                "properties": {
-                    "skyscan_result": {
-                        "type": "object",
-                        "additionalProperties": true,
-                        "description": "Physics result payload (open to requestor). A falsy dict short-circuits to an empty `{}` response without persisting."
-                    },
-                    "is_final": {
-                        "type": "boolean",
-                        "description": "When true, SkyDriver will request EWMS teardown after a short delay."
-                    }
-                },
-                "additionalProperties": false
-            },
-            "ScanStatusResponse": {
-                "type": "object",
-                "required": [
-                    "scan_state",
-                    "is_deleted",
-                    "ewms_deactivated",
-                    "scan_complete",
-                    "scanner_server_logs",
-                    "ewms_workforce"
-                ],
-                "properties": {
-                    "scan_state": {
-                        "type": "string",
-                        "description": "Computed scan state (see `get_scan_state`)."
-                    },
-                    "is_deleted": {
-                        "type": "boolean"
-                    },
-                    "ewms_deactivated": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Type of EWMS deactivation (abort/stop/...) or null."
-                    },
-                    "scan_complete": {
-                        "type": "boolean",
-                        "description": "True when the physics is effectively done (lingering compute may still be winding down)."
-                    },
-                    "scanner_server_logs": {
-                        "type": "object",
-                        "required": [
-                            "url"
-                        ],
-                        "properties": {
-                            "url": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ]
-                            }
-                        }
-                    },
-                    "ewms_workforce": {
-                        "type": "object",
-                        "additionalProperties": true,
-                        "description": "Opaque EWMS workforce-status payload. Same shape as GET /scan/{scan_id}/ewms/workforce."
-                    }
-                }
-            },
-            "ScanLogsResponse": {
-                "type": "object",
-                "required": [
-                    "scanner_server"
-                ],
-                "properties": {
-                    "scanner_server": {
-                        "type": "object",
-                        "required": [
-                            "url"
-                        ],
-                        "properties": {
-                            "url": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ]
-                            }
-                        }
-                    }
-                }
-            },
-            "ScanEwmsWorkflowIdResponse": {
-                "type": "object",
-                "required": [
-                    "workflow_id",
-                    "requested_ewms_workflow",
-                    "eligible_for_ewms",
-                    "ewms_address"
-                ],
-                "properties": {
-                    "workflow_id": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "Raw value from the manifest. May be `null`, the `not-yet-requested` sentinel, or an actual EWMS workflow id."
-                    },
-                    "requested_ewms_workflow": {
-                        "type": "boolean",
-                        "description": "True iff `workflow_id` is an actual EWMS workflow id (see `has_skydriver_requested_ewms_workflow()`)."
-                    },
-                    "eligible_for_ewms": {
-                        "type": "boolean",
-                        "description": "True iff `workflow_id` is not null."
-                    },
-                    "ewms_address": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    }
-                }
-            },
-            "ScanEwmsWorkflowIdPostRequest": {
-                "type": "object",
-                "required": [
-                    "workflow_id",
-                    "ewms_address"
-                ],
-                "properties": {
-                    "workflow_id": {
-                        "type": "string"
-                    },
-                    "ewms_address": {
-                        "type": "string"
-                    }
-                },
-                "additionalProperties": false
             }
         }
     }
