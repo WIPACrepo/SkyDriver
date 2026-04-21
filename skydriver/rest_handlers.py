@@ -925,7 +925,6 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
     @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
-
         manifest = await self.manifests.get(scan_id, True)
 
         # look up event in collection
@@ -1029,7 +1028,6 @@ class ScanStatusHandler(BaseSkyDriverHandler):
     @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
-
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         # scan state
@@ -1080,7 +1078,6 @@ class ScanLogsHandler(BaseSkyDriverHandler):
     @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
-
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         self.write(
@@ -1109,8 +1106,8 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
-
         manifest = await self.manifests.get(scan_id, incl_del=True)
+
         self.write(
             {
                 "workflow_id": manifest.ewms_workflow_id,
@@ -1174,7 +1171,6 @@ class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
 
         This is a high-level utility, which removes unnecessary EWMS semantics.
         """
-
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         self.write(
@@ -1201,7 +1197,6 @@ class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
 
         This is useful for debugging by seeing what was sent to condor.
         """
-
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
         self.write(
