@@ -194,7 +194,9 @@
                                 "properties": {
                                     "docker_tag": {
                                         "type": "string",
-                                        "description": "Any tag on Docker Hub (including `latest`). Must also be on CVMFS (not checked here)."
+                                        "minLength": 1,
+                                        "pattern": "\\S",
+                                        "description": "Any tag on Docker Hub (including `latest`). Must also be on CVMFS (not checked here). Cannot be empty / whitespace-only."
                                     },
                                     "scanner_server_memory_bytes": {
                                         "$ref": "#/components/schemas/DataSize"
@@ -248,7 +250,9 @@
                                         "oneOf": [
                                             {
                                                 "type": "string",
-                                                "description": "JSON-string."
+                                                "minLength": 2,
+                                                "pattern": "^\\s*\\{[\\s\\S]*\\}\\s*$",
+                                                "description": "JSON-string. Must be a serialized JSON object (i.e. start with `{` and end with `}`, with optional surrounding whitespace)."
                                             },
                                             {
                                                 "$ref": "#/components/schemas/FreeFormObject"

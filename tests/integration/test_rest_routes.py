@@ -1396,9 +1396,13 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
         requests.exceptions.HTTPError,
         match=(
             # jsonschema sorts the extras alphabetically (rescan_ids < scan_id)
-            # and emits a single error for additionalProperties: false
+            # and emits a single error for additionalProperties: false.
+            # NOTE: this body also has both event_i3live_json AND i3_event_id,
+            # which trips the oneOf mutex -> a second error is joined after via
+            # "; ". We allow anything between the two anchors.
             rf"400 Client Error: Additional properties are not allowed "
-            rf"\('rescan_ids', 'scan_id' were unexpected\) for url: {rc.address}/scan"
+            rf"\('rescan_ids', 'scan_id' were unexpected\)"
+            rf".* for url: {rc.address}/scan"
         ),
     ) as e:
         await rc.request("POST", "/scan", bad_body)
