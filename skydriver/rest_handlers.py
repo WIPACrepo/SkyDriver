@@ -80,13 +80,6 @@ def dict_projection(dicto: dict, projection: list[str] | str) -> dict:
     return {k: v for k, v in dicto.items() if k in projection}
 
 
-def _to_bytes(val: str | int) -> int:
-    """Convert a humanfriendly size string (e.g. `'4GB'`) to int bytes, or passthrough int."""
-    if isinstance(val, int):
-        return val
-    return humanfriendly.parse_size(val)  # type: ignore[no-any-return]
-
-
 # -----------------------------------------------------------------------------
 # handlers
 
@@ -225,6 +218,16 @@ def _debug_mode(val: Any) -> list[DebugMode]:
     if not isinstance(val, list):
         val = [val]
     return [DebugMode(v) for v in val]  # -> ValueError
+
+
+def _to_bytes(val: str | int) -> int:
+    """Convert a humanfriendly size string (e.g. `'4GB'`) to int bytes, or passthrough int."""
+    if isinstance(val, int):
+        return val
+    try:
+        return humanfriendly.parse_size(val)  # type: ignore[no-any-return]
+    except humanfriendly.InvalidSize:
+        raise web.HTTPError(400, reason=f"invalid size: {val}")
 
 
 def _validate_debug_mode_with_clusters(debug_mode: list, request_clusters: list):
