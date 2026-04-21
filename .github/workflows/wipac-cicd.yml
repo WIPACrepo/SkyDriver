@@ -106,7 +106,7 @@ jobs:
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           ref: ${{ github.ref }}  # dont lock to sha (action needs to push)
-      - uses: WIPACrepo/wipac-dev-py-setup-action@v5.9
+      - uses: WIPACrepo/wipac-dev-py-setup-action@v5.12
         with:
           mode: PACKAGING
           python_min: 3.13
@@ -155,26 +155,26 @@ jobs:
 
       - name: setup mock CVMFS directory
         run: |
-          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          set -euo pipefail
           mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
           touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:im-just-here-so-i-dont-get-fined
           ls $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
 
       - name: pip install
         run: |
-          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          set -euo pipefail
           pip install --upgrade pip wheel setuptools
           pip install .[tests]
 
       - name: test
         run: |
-          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          set -euo pipefail
           pytest -vvv tests/unit --exitfirst
 
       - name: Dump logs
         if: always()
         run: |
-          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          set -euo pipefail
           cat pytest.logs || true
 
   integration-tests:
@@ -208,7 +208,7 @@ jobs:
 
       - name: setup mock CVMFS directory
         run: |
-          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          set -euo pipefail
           mkdir -p $CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR
           touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:3.4.0
           touch "$CVMFS_SKYSCAN_SINGULARITY_IMAGES_DIR"/skymap_scanner:3.1.5
@@ -217,7 +217,7 @@ jobs:
 
       - name: test
         run: |
-          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          set -euo pipefail
           
           pip install .[tests]
           python tests/integration/dummy_ewms.py &> ./dummy_ewms.out &
@@ -262,17 +262,17 @@ jobs:
       - name: dump test logs
         if: always()
         run: |
-          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          set -euo pipefail
           docker logs test || true
       - name: dump dummy-ewms logs
         if: always()
         run: |
-          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          set -euo pipefail
           cat ./dummy_ewms.out
       - name: dump mongo logs
         if: always()
         run: |
-          set -euo pipefail; echo "now: $(date -u +"%Y-%m-%dT%H:%M:%S.%3N")"
+          set -euo pipefail
           docker logs "${{ job.services.mongo.id }}" || true
 
   test-build-docker:
