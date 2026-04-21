@@ -485,7 +485,10 @@
                                         "minimum": 1
                                     },
                                     "cluster_location": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "pattern": "\\S",
+                                        "description": "Cluster identifier. Cannot be empty / whitespace-only."
                                     }
                                 }
                             }
@@ -649,6 +652,8 @@
                         "description": "Pipe-delimited list of Manifest field names to include, or '*' for all fields. Example: `?projection=scan_id|priority|classifiers`.",
                         "schema": {
                             "type": "string",
+                            "minLength": 1,
+                            "pattern": "\\S",
                             "default": "*"
                         }
                     }
@@ -1030,10 +1035,16 @@
                                 "additionalProperties": false,
                                 "properties": {
                                     "workflow_id": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "pattern": "\\S",
+                                        "description": "EWMS workflow id to assign. Cannot be empty / whitespace-only."
                                     },
                                     "ewms_address": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "pattern": "\\S",
+                                        "description": "EWMS address for the workflow. Cannot be empty / whitespace-only."
                                     }
                                 }
                             }
@@ -1235,7 +1246,10 @@
                 "description": "Human-friendly size string (e.g. `'1GB'`, `'512MB'`) parseable by `humanfriendly.parse_size`, or raw integer bytes.",
                 "oneOf": [
                     {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S",
+                        "description": "Cannot be empty / whitespace-only. Must be parseable by `humanfriendly.parse_size` (more detailed validation is performed server-side)."
                     },
                     {
                         "type": "integer",
@@ -1255,7 +1269,10 @@
                     {
                         "type": "array",
                         "items": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1,
+                            "pattern": "\\S",
+                            "description": "Field name. Cannot be empty / whitespace-only. (Pattern is intentionally permissive to allow Mongo-style dotted keys.)"
                         },
                         "uniqueItems": true
                     }
@@ -1270,7 +1287,11 @@
                             "type": "integer",
                             "minimum": 1
                         },
-                        "minProperties": 1
+                        "minProperties": 1,
+                        "propertyNames": {
+                            "minLength": 1,
+                            "pattern": "\\S"
+                        }
                     },
                     {
                         "type": "array",
@@ -1280,7 +1301,10 @@
                             "maxItems": 2,
                             "prefixItems": [
                                 {
-                                    "type": "string"
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "pattern": "\\S",
+                                    "description": "cluster_location. Cannot be empty / whitespace-only."
                                 },
                                 {
                                     "type": "integer",
