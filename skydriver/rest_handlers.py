@@ -406,6 +406,14 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 reason=f"argument docker_tag: {e}",
                 log_message=repr(e),
             )
+        except web.HTTPError as e:
+            raise e
+        except Exception as e:
+            raise web.HTTPError(
+                400,
+                reason="unspecified validation error",
+                log_message=repr(e),
+            )
 
         # 2. Validate args that require accesing multiple fields
         _validate_debug_mode_with_clusters(
