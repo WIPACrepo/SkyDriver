@@ -553,16 +553,6 @@
                     },
                     {
                         "$ref": "#/components/parameters/IncludeDeletedQuery"
-                    },
-                    {
-                        "name": "include_deleted",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "default": false
-                        },
-                        "description": "If true, include manifests marked as deleted."
                     }
                 ],
                 "responses": {
@@ -660,16 +650,6 @@
                             "type": "string",
                             "default": "*"
                         }
-                    },
-                    {
-                        "name": "include_deleted",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "default": false
-                        },
-                        "description": "If true, include manifests marked as deleted."
                     }
                 ],
                 "responses": {
@@ -795,16 +775,6 @@
                     },
                     {
                         "$ref": "#/components/parameters/IncludeDeletedQuery"
-                    },
-                    {
-                        "name": "include_deleted",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "default": false
-                        },
-                        "description": "If true, include manifests marked as deleted."
                     }
                 ],
                 "responses": {
