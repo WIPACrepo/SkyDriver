@@ -344,6 +344,30 @@ def _validate_debug_mode_with_clusters(debug_mode: list, request_clusters: dict)
                 )
 
 
+def _validate_all_known_request_clusters(
+    request_clusters: list[tuple[str, int]],
+) -> list[tuple[str, int]]:
+    """Validate cluster names against known list."""
+    for name, _ in request_clusters:
+        if name not in KNOWN_CLUSTERS:
+            msg = f"requested unknown cluster: {name} (available: {', '.join(KNOWN_CLUSTERS.keys())})"
+            raise web.HTTPError(400, reason=msg, log_message=msg)
+    return request_clusters
+
+
+def _validate_classifiers_fields(classifiers: dict) -> dict:
+    """Validate that the fields of `classifiers` are valid."""
+    for x in ["rescan", "origin_scan_id"]:  # these denote rescan relations
+        if x in classifiers:
+            msg = f"classifier cannot contain '{x}' sub-field"
+            raise web.HTTPError(
+                400,
+                log_message=msg,
+                reason=msg,
+            )
+    return classifiers
+
+
 def _take_one_arg(
     ns: argparse.Namespace,
     dest: str,
@@ -420,53 +444,61 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         # NOTE: Deprecated/aliased args (scanner_server_memory, worker_memory,
         #       memory, worker_disk, cluster, scanner_server_env) are no longer
         #       handled here. Add them to the spec if backward compat is needed.
-        docker_tag = self.get_argument("docker_tag")
-        scanner_server_memory_bytes = self.get_argument(
-            "scanner_server_memory_bytes",
-            humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT),
-        )
-        worker_memory_bytes = self.get_argument(
-            "worker_memory_bytes",
-            humanfriendly.parse_size(ENV.EWMS_WORKER_MEMORY__DEFAULT),
-        )
-        worker_disk_bytes = self.get_argument(
-            "worker_disk_bytes",
-            humanfriendly.parse_size(ENV.EWMS_WORKER_DISK__DEFAULT),
-        )
-        request_clusters = self.get_argument("request_clusters")  # required
-        reco_algo = self.get_argument("reco_algo")  # required
-        event_i3live_json = self.get_argument("event_i3live_json", {})
-        i3_event_id = self.get_argument("i3_event_id", "")
-        nsides = self.get_argument("nsides")  # required
-        real_or_simulated_event = self.get_argument(
-            "real_or_simulated_event"
-        )  # required
-        predictive_scanning_threshold = self.get_argument(
-            "predictive_scanning_threshold", 1.0
-        )
-        max_pixel_reco_time = self.get_argument("max_pixel_reco_time")  # required
-        debug_mode = _debug_mode(self.get_argument("debug_mode", []))
-        classifiers = self.get_argument("classifiers", {})
-        priority = self.get_argument("priority", 0)
-        scanner_server_env_from_user = self.get_argument(
-            "scanner_server_env_from_user", {}
-        )
-        manifest_projection = self.get_argument(
-            "manifest_projection",
-            all_dc_fields(database.schema.Manifest),
-        )
 
-        # more arg validation
-        # -- validate among multiple args
-        _validate_debug_mode_with_clusters(debug_mode, request_clusters)
-        # -- validate cluster names against known list
-        for name, _ in request_clusters:
-            if name not in KNOWN_CLUSTERS:
-                msg = f"requested unknown cluster: {name} (available: {', '.join(KNOWN_CLUSTERS.keys())})"
-                raise web.HTTPError(400, reason=msg, log_message=msg)
-        # -- validate w/ async call
+        # 1. Make scan_request_obj while validating -- to go into DB
+        #    Note: type validation is done by OpenAPI spec, via '@validate_request()'
         try:
-            docker_tag = await images.resolve_docker_tag(docker_tag)
+            scan_request_obj = dict(
+                scan_id=make_scan_id(),
+                rescan_ids=[],
+                #
+                docker_tag=await images.resolve_docker_tag(
+                    self.get_argument("docker_tag")
+                ),
+                #
+                # skyscan server config
+                scanner_server_memory_bytes=self.get_argument(
+                    "scanner_server_memory_bytes",
+                    humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT),
+                ),
+                reco_algo=self.get_argument("reco_algo"),
+                nsides=self.get_argument("nsides"),
+                real_or_simulated_event=self.get_argument("real_or_simulated_event"),
+                predictive_scanning_threshold=self.get_argument(
+                    "predictive_scanning_threshold", 1.0
+                ),
+                #
+                classifiers=_validate_classifiers_fields(
+                    self.get_argument("classifiers", {})
+                ),
+                #
+                # cluster (condor) config
+                request_clusters=_validate_all_known_request_clusters(
+                    self.get_argument("request_clusters")
+                ),
+                worker_memory_bytes=self.get_argument(
+                    "worker_memory_bytes",
+                    humanfriendly.parse_size(ENV.EWMS_WORKER_MEMORY__DEFAULT),
+                ),
+                worker_disk_bytes=self.get_argument(
+                    "worker_disk_bytes",
+                    humanfriendly.parse_size(ENV.EWMS_WORKER_DISK__DEFAULT),
+                ),
+                max_pixel_reco_time=self.get_argument("max_pixel_reco_time"),
+                priority=self.get_argument("priority", 0),
+                debug_mode=[
+                    d.value for d in _debug_mode(self.get_argument("debug_mode", []))
+                ],
+                #
+                # misc
+                i3_event_id=await self._get_i3_event_id(  # foreign key to i3_event collection
+                    self.get_argument("i3_event_id", ""),
+                    self.get_argument("event_i3live_json", {}),
+                ),
+                scanner_server_env_from_user=self.get_argument(
+                    "scanner_server_env_from_user", {}
+                ),
+            )
         except ImageNotFoundException as e:
             raise web.HTTPError(
                 400,
@@ -480,52 +512,18 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 log_message=repr(e),
             )
 
-        # validate classifiers
-        for x in ["rescan", "origin_scan_id"]:  # these denote rescan relations
-            if x in classifiers:
-                msg = f"classifier cannot contain '{x}' sub-field"
-                raise web.HTTPError(
-                    400,
-                    log_message=msg,
-                    reason=msg,
-                )
-
-        # generate unique scan_id
-        scan_id = make_scan_id()
-
-        # Before doing anything else, persist in DB
-        # -> store scan_request_obj in db
-        scan_request_obj = dict(
-            scan_id=scan_id,
-            rescan_ids=[],
-            #
-            docker_tag=docker_tag,
-            #
-            # skyscan server config
-            scanner_server_memory_bytes=scanner_server_memory_bytes,
-            reco_algo=reco_algo,
-            nsides=nsides,
-            real_or_simulated_event=real_or_simulated_event,
-            predictive_scanning_threshold=predictive_scanning_threshold,
-            #
-            classifiers=classifiers,
-            #
-            # cluster (condor) config
-            request_clusters=request_clusters,
-            worker_memory_bytes=worker_memory_bytes,
-            worker_disk_bytes=worker_disk_bytes,
-            max_pixel_reco_time=max_pixel_reco_time,
-            priority=priority,
-            debug_mode=[d.value for d in debug_mode],
-            #
-            # misc
-            i3_event_id=await self._get_i3_event_id(  # foreign key to i3_event collection
-                i3_event_id, event_i3live_json
-            ),
-            scanner_server_env_from_user=scanner_server_env_from_user,
+        # 2. Validate args that require accesing multiple fields
+        _validate_debug_mode_with_clusters(
+            scan_request_obj["debug_mode"],
+            scan_request_obj["request_clusters"],
         )
 
-        # go!
+        # 3. Do this before we write anything in the off chance that grabbing the arg fails
+        manifest_projection = self.get_argument(
+            "manifest_projection", all_dc_fields(database.schema.Manifest)
+        )
+
+        # 4. Persist in DB
         manifest = await enqueue_scan(
             self.manifests,
             self.scan_backlog,
@@ -534,9 +532,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             insert_scan_request_obj=True,
             scan_request_coll=self.scan_request_coll,
         )
-        self.write(
-            dict_projection(dc.asdict(manifest), manifest_projection),
-        )
+
+        # 5. Write response
+        self.write(dict_projection(dc.asdict(manifest), manifest_projection))
 
 
 async def enqueue_scan(
