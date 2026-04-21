@@ -2,8 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "SkyDriver REST API",
-        "version": "2.x",
-        "description": "REST API for orchestrating IceCube Skymap Scanner scans. `#/components/schemas/Manifest` is the central data object; other schemas and path operations `$ref` into Manifest (and its deeply nested sub-fields) wherever they share a shape."
+        "version": "2.x"
     },
     "servers": [
         {
