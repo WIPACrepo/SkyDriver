@@ -180,7 +180,10 @@ class EnvConfig:
 ENV = from_environment_as_dataclass(EnvConfig)
 
 OPENAPI_PATH = Path(__file__).parent / "openapi.json"
-OPENAPI_SPEC, OPENAPI_DICT = openapi_tools.load_openapi_spec(OPENAPI_PATH, "skydriver")
+OPENAPI_SPEC, OPENAPI_DICT = openapi_tools.load_openapi_spec(
+    OPENAPI_PATH,
+    "skydriver-s3-sidecar-ewms-init-container",  # from pyproject.toml
+)
 
 LOCAL_K8S_HOST = "local"
 
