@@ -73,13 +73,22 @@ def all_dc_fields(class_or_instance: Any) -> set[str]:
 def dict_projection(dicto: dict, projection: list[str] | str) -> dict:
     """Keep only the keys in the `projection`.
 
-    Pass `"*"` or an empty list to keep all fields.
+    Passing the field names as a list or pipe-delimited string (not both).
+
+    Including a `"*"` as a field or an empty list, will keep all fields.
     """
     if not projection:  # any empty: str or list
         return dicto
-    elif isinstance(projection, str) and projection == "*":
-        return dicto
-    elif "*" in projection:
+
+    # case: string
+    if isinstance(projection, str):
+        if projection == "*":
+            return dicto
+        else:
+            return {k: v for k, v in dicto.items() if k in projection.split("|")}
+
+    # case: list
+    if "*" in projection:  # it doesn't matter what the other keys are, "*" trumps
         return dicto
     else:
         return {k: v for k, v in dicto.items() if k in projection}
@@ -168,7 +177,7 @@ class ScansFindHandler(BaseSkyDriverHandler):
         include_deleted = self.get_argument("include_deleted", False)
 
         # "*" means "all allowed fields", which == DEFAULT_FIELDS for this endpoint
-        # (the full Manifest set would include too-large fields, aka DISALLOWED_FIELDS)
+        # -- the full Manifest set would include too-large fields (data), aka DISALLOWED_FIELDS
         if manifest_projection == "*":
             manifest_projection = list(self.DEFAULT_FIELDS)
         # reject any explicit requests for disallowed (too-large) fields
@@ -853,11 +862,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         """Get scan progress."""
         include_deleted = self.get_argument("include_deleted", False)
         # response args: pipe-delimited string (query params can't natively represent arrays)
-        projection_arg = self.get_argument("projection", "*")
-        # "*" passes straight through dict_projection; only split if explicit list
-        projection: list[str] | str = (
-            projection_arg if projection_arg == "*" else projection_arg.split("|")
-        )
+        projection = self.get_argument("projection", "*")  # pipe-delimited string
 
         # get manifest from db
         manifest = await self.manifests.get(scan_id, include_deleted)
@@ -867,7 +872,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         #   This overrides the manifest's field which should be an id.
         if (
             self.auth_roles[0] == INTERNAL_ACCT  # type: ignore
-            and (projection == "*" or "event_i3live_json_dict" in projection)
+            and any(x in projection.split("|") for x in ["*", "event_i3live_json_dict"])
             and manifest.i3_event_id  # if no id, then event already in manifest
         ):
             if i3event_doc := await self.i3_event_coll.find_one(
@@ -885,8 +890,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
                     reason=error_msg,
                 )
 
-        resp = dict_projection(dc.asdict(manifest), projection)
-        self.write(resp)
+        self.write(dict_projection(dc.asdict(manifest), projection))
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     @validate_request(config.OPENAPI_SPEC)
