@@ -282,15 +282,22 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
     async def _get_i3_event_id(
         self,
         i3_event_id: str | None,
-        event_i3live_json: dict | None,
+        event_i3live_json: dict | str | None,
     ) -> str:
-        if bool(i3_event_id) == bool(event_i3live_json):  # only one allowed
+        if bool(i3_event_id) == bool(event_i3live_json):  # XOR: only one allowed
             msg = "Must provide either 'event_i3live_json' or 'i3_event_id' (xor)"
             raise web.HTTPError(
                 400,
                 reason=msg,
                 log_message=msg + f" for {i3_event_id=} {event_i3live_json=}",
             )
+
+        if isinstance(event_i3live_json, str):
+            try:
+                event_i3live_json = json.loads(event_i3live_json)
+            except json.JSONDecodeError as e:
+                msg = f"event_i3live_json is not valid JSON: {e}"
+                raise web.HTTPError(400, reason=msg, log_message=msg)
 
         if i3_event_id:
             ret = await self.i3_event_coll.find_one({"i3_event_id": i3_event_id})
@@ -323,15 +330,6 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             msg = "argument 'memory' is deprecated -- use 'worker_memory_bytes'"
             raise web.HTTPError(400, reason=msg, log_message=msg)
 
-        # Parse event_i3live_json -- spec allows str or object (per DataSize-style oneOf)
-        event_i3live_json = self.get_argument("event_i3live_json", {})
-        if isinstance(event_i3live_json, str):
-            try:
-                event_i3live_json = json.loads(event_i3live_json)
-            except json.JSONDecodeError as e:
-                msg = f"event_i3live_json is not valid JSON: {e}"
-                raise web.HTTPError(400, reason=msg, log_message=msg)
-
         # 1. Make scan_request_obj while validating -- to go into DB
         #    Note: type validation is done by OpenAPI spec, via '@validate_request()'
         #    Deprecated aliases are coalesced inline via `or` chains.
@@ -347,9 +345,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 # skyscan server config
                 scanner_server_memory_bytes=_to_bytes(
                     self.get_argument("scanner_server_memory_bytes", None)
-                    or self.get_argument(
-                        "scanner_server_memory", None
-                    )  # DEPRECATED alias
+                    or self.get_argument("scanner_server_memory", None)  # DEPRECATED
                     or ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT
                 ),
                 reco_algo=self.get_argument("reco_algo"),
@@ -366,18 +362,16 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 # cluster (condor) config
                 request_clusters=_validate_all_known_request_clusters(
                     self.get_argument("request_clusters", None)
-                    or self.get_argument(
-                        "cluster"
-                    )  # DEPRECATED alias (required if no canonical)
+                    or self.get_argument("cluster")  # DEPRECATED -- use if ^^^ missing
                 ),
                 worker_memory_bytes=_to_bytes(
                     self.get_argument("worker_memory_bytes", None)
-                    or self.get_argument("worker_memory", None)  # DEPRECATED alias
+                    or self.get_argument("worker_memory", None)  # DEPRECATED
                     or ENV.EWMS_WORKER_MEMORY__DEFAULT
                 ),
                 worker_disk_bytes=_to_bytes(
                     self.get_argument("worker_disk_bytes", None)
-                    or self.get_argument("worker_disk", None)  # DEPRECATED alias
+                    or self.get_argument("worker_disk", None)  # DEPRECATED
                     or ENV.EWMS_WORKER_DISK__DEFAULT
                 ),
                 max_pixel_reco_time=self.get_argument("max_pixel_reco_time"),
@@ -389,7 +383,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 # misc
                 i3_event_id=await self._get_i3_event_id(  # foreign key to i3_event collection
                     self.get_argument("i3_event_id", ""),
-                    event_i3live_json,
+                    self.get_argument("event_i3live_json", {}),  # str | object
                 ),
                 scanner_server_env_from_user=(
                     self.get_argument("scanner_server_env_from_user", None)
