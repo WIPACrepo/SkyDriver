@@ -161,15 +161,14 @@
                         "application/json": {
                             "schema": {
                                 "type": "object",
-                                "description": "Body for POST /scan. Several fields have legacy aliases (marked deprecated); the server coalesces them via `_take_one_arg`. Exactly one of `event_i3live_json` or `i3_event_id` must be provided.",
+                                "description": "Body for POST /scan. Several fields have legacy aliases (marked deprecated); the server coalesces them via `_take_one_arg`. Exactly one of `event_i3live_json` or `i3_event_id` must be provided. At least one of `request_clusters` or `cluster` (deprecated alias) must be provided.",
                                 "additionalProperties": false,
                                 "required": [
                                     "docker_tag",
                                     "reco_algo",
                                     "nsides",
                                     "real_or_simulated_event",
-                                    "max_pixel_reco_time",
-                                    "request_clusters"
+                                    "max_pixel_reco_time"
                                 ],
                                 "oneOf": [
                                     {
@@ -555,6 +554,16 @@
                     },
                     {
                         "$ref": "#/components/parameters/IncludeDeletedQuery"
+                    },
+                    {
+                        "name": "include_deleted",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": "If true, include manifests marked as deleted."
                     }
                 ],
                 "responses": {
@@ -647,12 +656,21 @@
                         "name": "projection",
                         "in": "query",
                         "required": false,
-                        "description": "Fields to include in the returned manifest. See `ManifestProjection`. Array form in query: send as repeated keys (`?projection=a&projection=b`) -- OpenAPI `style: form, explode: true` semantics. The new server implementation should use Tornado's `request.arguments` (list-of-values-per-key), not `get_argument` (which collapses to a single value).",
+                        "description": "Pipe-delimited list of Manifest field names to include, or '*' for all fields. Example: `?projection=scan_id|priority|classifiers`.",
                         "schema": {
-                            "$ref": "#/components/schemas/ManifestProjection"
+                            "type": "string",
+                            "default": "*"
+                        }
+                    },
+                    {
+                        "name": "include_deleted",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
                         },
-                        "style": "form",
-                        "explode": true
+                        "description": "If true, include manifests marked as deleted."
                     }
                 ],
                 "responses": {
@@ -778,6 +796,16 @@
                     },
                     {
                         "$ref": "#/components/parameters/IncludeDeletedQuery"
+                    },
+                    {
+                        "name": "include_deleted",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": "If true, include manifests marked as deleted."
                     }
                 ],
                 "responses": {

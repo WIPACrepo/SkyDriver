@@ -1,6 +1,5 @@
 """Handlers for the SkyDriver REST API server interface."""
 
-import argparse
 import asyncio
 import dataclasses as dc
 import json
@@ -66,32 +65,26 @@ WAIT_BEFORE_TEARDOWN = 60
 # utils
 
 
-def _add_no_redirect_arg(arghand) -> None:
-    # used only by @maybe_redirect_scan_id
-    arghand.add_argument("no_redirect", default=False, type=bool)
-
-
 def all_dc_fields(class_or_instance: Any) -> set[str]:
     """Get all the field names for a dataclass (instance or class)."""
     return set(f.name for f in dc.fields(class_or_instance))
 
 
-def dict_projection(dicto: dict, projection: set[str] | list[str]) -> dict:
+def dict_projection(dicto: dict, projection: list[str] | str) -> dict:
     """Keep only the keys in the `projection`.
 
-    If `projection` is empty or includes '*', return all fields.
+    Pass `"*"` or an empty list to keep all fields.
     """
-    if "*" in projection:
-        return dicto
-    if not projection:
+    if projection == "*" or not projection:
         return dicto
     return {k: v for k, v in dicto.items() if k in projection}
 
 
-def _arg_dict_strict(val: Any) -> dict:
-    if not isinstance(val, dict):
-        raise argparse.ArgumentTypeError("arg must be a dict")
-    return val
+def _to_bytes(val: str | int) -> int:
+    """Convert a humanfriendly size string (e.g. `'4GB'`) to int bytes, or passthrough int."""
+    if isinstance(val, int):
+        return val
+    return humanfriendly.parse_size(val)  # type: ignore[no-any-return]
 
 
 # -----------------------------------------------------------------------------
@@ -146,6 +139,7 @@ class MainHandler(BaseSkyDriverHandler):
     ROUTE = r"/$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self) -> None:
         """Handle GET."""
         self.write({})
@@ -171,15 +165,16 @@ class ScansFindHandler(BaseSkyDriverHandler):
     @validate_request(config.OPENAPI_SPEC)
     async def post(self) -> None:
         """Get matching scan manifest(s) for the given search."""
-        manifest_projection = self.get_argument(
-            "manifest_projection", self.DEFAULT_FIELDS
-        )
+        manifest_projection = self.get_argument("manifest_projection", "*")
         filter_ = self.get_argument("filter")
         include_deleted = self.get_argument("include_deleted", False)
 
-        if manifest_projection == "*":  # can't use star here, too dangerous
-            manifest_projection = self.DEFAULT_FIELDS
-        if manifest_projection - self.DISALLOWED_FIELDS != manifest_projection:
+        # "*" means "all allowed fields", which == DEFAULT_FIELDS for this endpoint
+        # (the full Manifest set would include too-large fields, aka DISALLOWED_FIELDS)
+        if manifest_projection == "*":
+            manifest_projection = list(self.DEFAULT_FIELDS)
+        # reject any explicit requests for disallowed (too-large) fields
+        if set(manifest_projection) & self.DISALLOWED_FIELDS:
             raise web.HTTPError(
                 400,
                 log_message=f"'manifest_projection' cannot include any of the following: {self.DISALLOWED_FIELDS}",
@@ -209,6 +204,7 @@ class ScanBacklogHandler(BaseSkyDriverHandler):
     ROUTE = r"/scans/backlog$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self) -> None:
         """Get all scan id(s) in the backlog."""
         entries = [e async for e in self.scan_backlog.get_all()]
@@ -224,108 +220,15 @@ class ScanBacklogHandler(BaseSkyDriverHandler):
 # -----------------------------------------------------------------------------
 
 
-def _json_to_dict(val: Any) -> dict:
-    _error = argparse.ArgumentTypeError("must be JSON-string or JSON-friendly dict")
-    # str -> json-dict
-    if isinstance(val, str):
-        try:
-            obj = json.loads(val)
-        except:  # noqa: E722
-            raise _error
-        if not isinstance(obj, dict):  # loaded object must be dict
-            raise _error
-        return obj
-    # dict -> check if json-friendly
-    elif isinstance(val, dict):
-        try:
-            json.dumps(val)
-            return val
-        except:  # noqa: E722
-            raise _error
-    # fall-through
-    raise _error
-
-
-def _validate_request_clusters(
-    val: dict | list,
-) -> list[tuple[str, int]]:
-    _error = argparse.ArgumentTypeError(
-        "must be a dict of cluster location and number of workers, Ex: {'osg': 1500, ...}"
-        " (to request a cluster location more than once, provide a list of 2-lists instead)"
-        # TODO: make n_workers optional when using "EWMS smart starter"
-    )
-    if isinstance(val, dict):
-        # {'a': 1, 'b': 2} -> [('a', 1), ('b', 2)}
-        list_tups: list[tuple[str, int]] = list(val.items())
-    else:
-        list_tups = val
-    del val
-
-    # validate
-    if not list_tups:
-        raise _error
-    if not isinstance(list_tups, list):
-        raise _error
-    # check all entries are 2-lists (or tuple)
-    if not all(isinstance(a, list | tuple) and len(a) == 2 for a in list_tups):
-        raise _error
-    # check that all locations are known (this validates sooner than ewms)
-    for name, n_workers in list_tups:
-        if name not in KNOWN_CLUSTERS:
-            raise argparse.ArgumentTypeError(
-                f"requested unknown cluster: {name} (available:"
-                f" {', '.join(KNOWN_CLUSTERS.keys())})"
-            )
-
-    return list_tups
-
-
-def _classifiers_validator(val: Any) -> dict[str, str | bool | float | int | None]:
-    # type checks
-    if not isinstance(val, dict):
-        raise argparse.ArgumentTypeError("must be a dict")
-    if any(
-        v for v in val.values() if not isinstance(v, str | bool | float | int | None)
-    ):
-        raise argparse.ArgumentTypeError(
-            "entry must be 'str | bool | float | int | None'"
-        )
-
-    # size check
-    if len(val) > MAX_CLASSIFIERS_LEN:
-        raise argparse.ArgumentTypeError(
-            f"must be at most {MAX_CLASSIFIERS_LEN} entries long"
-        )
-    for key, subval in val.items():
-        if len(key) > MAX_CLASSIFIERS_LEN:
-            raise argparse.ArgumentTypeError(
-                f"key must be at most {MAX_CLASSIFIERS_LEN} characters long"
-            )
-        try:
-            if len(subval) > MAX_CLASSIFIERS_LEN:
-                raise argparse.ArgumentTypeError(
-                    f"str-field must be at most {MAX_CLASSIFIERS_LEN} characters long"
-                )
-        except TypeError:
-            pass  # not a str
-
-    return val
-
-
 def _debug_mode(val: Any) -> list[DebugMode]:
+    """Normalize scalar-or-list input to a list of DebugMode enum values."""
     if not isinstance(val, list):
         val = [val]
     return [DebugMode(v) for v in val]  # -> ValueError
 
 
-def _data_size_parse(val: Any) -> int:
-    try:
-        return humanfriendly.parse_size(str(val))  # type: ignore[no-any-return]
-    except humanfriendly.InvalidSize:
-        raise argparse.ArgumentTypeError("invalid data size")
-
-
-def _validate_debug_mode_with_clusters(debug_mode: list, request_clusters: dict):
+def _validate_debug_mode_with_clusters(debug_mode: list, request_clusters: list):
+    """Cross-field check: client-logs debug mode caps worker counts per cluster."""
     if DebugMode.CLIENT_LOGS in debug_mode:
         for cname, cworkers in request_clusters:
             if cworkers > (
@@ -345,9 +248,12 @@ def _validate_debug_mode_with_clusters(debug_mode: list, request_clusters: dict)
 
 
 def _validate_all_known_request_clusters(
-    request_clusters: list[tuple[str, int]],
+    request_clusters: list | dict,
 ) -> list[tuple[str, int]]:
-    """Validate cluster names against known list."""
+    """Normalize dict-form to list of 2-tuples and validate cluster names against known list."""
+    # spec allows {'osg': 1500} OR [['osg', 1500], ...]; handler needs list form
+    if isinstance(request_clusters, dict):
+        request_clusters = list(request_clusters.items())
     for name, _ in request_clusters:
         if name not in KNOWN_CLUSTERS:
             msg = f"requested unknown cluster: {name} (available: {', '.join(KNOWN_CLUSTERS.keys())})"
@@ -366,35 +272,6 @@ def _validate_classifiers_fields(classifiers: dict) -> dict:
                 reason=msg,
             )
     return classifiers
-
-
-def _take_one_arg(
-    ns: argparse.Namespace,
-    dest: str,
-    *,
-    default: object,
-    required: bool = False,
-):
-    """Resolve aliased args aggregated under `dest` via action='append'."""
-    if not hasattr(ns, dest):
-        if required:
-            raise web.HTTPError(
-                400,
-                reason=f"Missing required argument: '{dest}'",
-            )
-        return default
-
-    vals = getattr(ns, dest)
-
-    if isinstance(vals, list):
-        if len(vals) > 1:
-            raise web.HTTPError(
-                400,
-                reason=f"Provide only one value for '{dest}'",
-            )
-        return vals[0]
-    else:
-        return vals
 
 
 class ScanLauncherHandler(BaseSkyDriverHandler):
@@ -441,12 +318,23 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
     @validate_request(config.OPENAPI_SPEC)
     async def post(self) -> None:
         """Start a new scan."""
-        # NOTE: Deprecated/aliased args (scanner_server_memory, worker_memory,
-        #       memory, worker_disk, cluster, scanner_server_env) are no longer
-        #       handled here. Add them to the spec if backward compat is needed.
+        # Reject fully-deprecated 'memory' field (no canonical replacement to fall through to)
+        if self.get_argument("memory", None):
+            msg = "argument 'memory' is deprecated -- use 'worker_memory_bytes'"
+            raise web.HTTPError(400, reason=msg, log_message=msg)
+
+        # Parse event_i3live_json -- spec allows str or object (per DataSize-style oneOf)
+        event_i3live_json = self.get_argument("event_i3live_json", {})
+        if isinstance(event_i3live_json, str):
+            try:
+                event_i3live_json = json.loads(event_i3live_json)
+            except json.JSONDecodeError as e:
+                msg = f"event_i3live_json is not valid JSON: {e}"
+                raise web.HTTPError(400, reason=msg, log_message=msg)
 
         # 1. Make scan_request_obj while validating -- to go into DB
         #    Note: type validation is done by OpenAPI spec, via '@validate_request()'
+        #    Deprecated aliases are coalesced inline via `or` chains.
         try:
             scan_request_obj = dict(
                 scan_id=make_scan_id(),
@@ -457,9 +345,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 ),
                 #
                 # skyscan server config
-                scanner_server_memory_bytes=self.get_argument(
-                    "scanner_server_memory_bytes",
-                    humanfriendly.parse_size(ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT),
+                scanner_server_memory_bytes=_to_bytes(
+                    self.get_argument("scanner_server_memory_bytes", None)
+                    or self.get_argument(
+                        "scanner_server_memory", None
+                    )  # DEPRECATED alias
+                    or ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT
                 ),
                 reco_algo=self.get_argument("reco_algo"),
                 nsides=self.get_argument("nsides"),
@@ -474,15 +365,20 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 #
                 # cluster (condor) config
                 request_clusters=_validate_all_known_request_clusters(
-                    self.get_argument("request_clusters")
+                    self.get_argument("request_clusters", None)
+                    or self.get_argument(
+                        "cluster"
+                    )  # DEPRECATED alias (required if no canonical)
                 ),
-                worker_memory_bytes=self.get_argument(
-                    "worker_memory_bytes",
-                    humanfriendly.parse_size(ENV.EWMS_WORKER_MEMORY__DEFAULT),
+                worker_memory_bytes=_to_bytes(
+                    self.get_argument("worker_memory_bytes", None)
+                    or self.get_argument("worker_memory", None)  # DEPRECATED alias
+                    or ENV.EWMS_WORKER_MEMORY__DEFAULT
                 ),
-                worker_disk_bytes=self.get_argument(
-                    "worker_disk_bytes",
-                    humanfriendly.parse_size(ENV.EWMS_WORKER_DISK__DEFAULT),
+                worker_disk_bytes=_to_bytes(
+                    self.get_argument("worker_disk_bytes", None)
+                    or self.get_argument("worker_disk", None)  # DEPRECATED alias
+                    or ENV.EWMS_WORKER_DISK__DEFAULT
                 ),
                 max_pixel_reco_time=self.get_argument("max_pixel_reco_time"),
                 priority=self.get_argument("priority", 0),
@@ -493,10 +389,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 # misc
                 i3_event_id=await self._get_i3_event_id(  # foreign key to i3_event collection
                     self.get_argument("i3_event_id", ""),
-                    self.get_argument("event_i3live_json", {}),
+                    event_i3live_json,
                 ),
-                scanner_server_env_from_user=self.get_argument(
-                    "scanner_server_env_from_user", {}
+                scanner_server_env_from_user=(
+                    self.get_argument("scanner_server_env_from_user", None)
+                    or self.get_argument("scanner_server_env", None)  # DEPRECATED alias
+                    or {}
                 ),
             )
         except ImageNotFoundException as e:
@@ -519,9 +417,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         )
 
         # 3. Do this before we write anything in the off chance that grabbing the arg fails
-        manifest_projection = self.get_argument(
-            "manifest_projection", all_dc_fields(database.schema.Manifest)
-        )
+        manifest_projection = self.get_argument("manifest_projection", "*")
 
         # 4. Persist in DB
         manifest = await enqueue_scan(
@@ -619,6 +515,7 @@ class ScanRequestHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan-request/(?P<scan_id>\w+)$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """GET."""
         scan_request_obj = await self.scan_request_coll.find_one({"scan_id": scan_id})
@@ -650,10 +547,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         abort_first = self.get_argument("abort_first", False)
         replace_scan = self.get_argument("replace_scan", False)
         # response args
-        manifest_projection = self.get_argument(
-            "manifest_projection",
-            all_dc_fields(database.schema.Manifest),
-        )
+        manifest_projection = self.get_argument("manifest_projection", "*")
 
         if abort_first:
             await abort_scan(self.manifests, scan_id, self.ewms_rc)
@@ -883,10 +777,7 @@ class ScanHandler(BaseSkyDriverHandler):
         """Abort a scan and/or mark manifest & result as "deleted"."""
         delete_completed_scan = self.get_argument("delete_completed_scan", False)
         # response args
-        manifest_projection = self.get_argument(
-            "manifest_projection",
-            all_dc_fields(database.schema.Manifest),
-        )
+        manifest_projection = self.get_argument("manifest_projection", "*")
 
         # check DB states
         if (not delete_completed_scan) and (
@@ -951,9 +842,11 @@ class ScanManifestHandler(BaseSkyDriverHandler):
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
         include_deleted = self.get_argument("include_deleted", False)
-        # response args
-        projection = self.get_argument(
-            "projection", all_dc_fields(database.schema.Manifest)
+        # response args: pipe-delimited string (query params can't natively represent arrays)
+        projection_arg = self.get_argument("projection", "*")
+        # "*" passes straight through dict_projection; only split if explicit list
+        projection: list[str] | str = (
+            projection_arg if projection_arg == "*" else projection_arg.split("|")
         )
 
         # get manifest from db
@@ -964,7 +857,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         #   This overrides the manifest's field which should be an id.
         if (
             self.auth_roles[0] == INTERNAL_ACCT  # type: ignore
-            and "event_i3live_json_dict" in projection
+            and (projection == "*" or "event_i3live_json_dict" in projection)
             and manifest.i3_event_id  # if no id, then event already in manifest
         ):
             if i3event_doc := await self.i3_event_coll.find_one(
@@ -1029,9 +922,9 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
-        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
 
         manifest = await self.manifests.get(scan_id, True)
 
@@ -1133,9 +1026,9 @@ class ScanStatusHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
-        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
 
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
@@ -1184,9 +1077,9 @@ class ScanLogsHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
-        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
 
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
@@ -1213,9 +1106,9 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
-        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
 
         manifest = await self.manifests.get(scan_id, incl_del=True)
         self.write(
@@ -1275,12 +1168,12 @@ class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """GET.
 
         This is a high-level utility, which removes unnecessary EWMS semantics.
         """
-        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
 
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
@@ -1302,12 +1195,12 @@ class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """GET.
 
         This is useful for debugging by seeing what was sent to condor.
         """
-        # _add_no_redirect_arg(arghand)  # used only by @maybe_redirect_scan_id
 
         manifest = await self.manifests.get(scan_id, incl_del=True)
 
