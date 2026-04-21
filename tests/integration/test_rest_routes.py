@@ -1263,7 +1263,7 @@ async def test_200__get_edit_launchdup(
     post_body_dup = {
         **POST_SCAN_BODY,
         "reco_algo": POST_SCAN_BODY["reco_algo"] + "-dup",  # type: ignore[operator]
-        "event_i3live_json": {},  # cleared out (xor)
+        # "event_i3live_json": {},  -> cleared out (fields xor by spec)
         "i3_event_id": i3_event_id_alpha,  # reuse the same event
         "cluster": orig_clusters,
         "docker_tag": "3.4.0",
