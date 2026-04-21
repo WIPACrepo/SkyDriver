@@ -15,7 +15,7 @@ RUN --mount=type=bind,source=.git,target=.git,ro \
     --mount=type=bind,source=ewms_init_container,target=ewms_init_container,ro \
     --mount=type=bind,source=s3_sidecar,target=s3_sidecar,ro \
     --mount=type=bind,source=skydriver,target=skydriver,ro \
-    git config --global --add safe.directory /app \
+    git config --global --add safe.directory /home/app \
     && pip install --no-cache .
 
 ENV PYTHONPATH=/home/app
