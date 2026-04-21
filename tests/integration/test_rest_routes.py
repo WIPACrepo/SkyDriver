@@ -1261,10 +1261,11 @@ async def test_200__get_edit_launchdup(
     #    - Tweak a couple of benign args (e.g., reco_algo) to show “edited”
     #
     post_body_dup = {
-        **POST_SCAN_BODY,
-        "reco_algo": POST_SCAN_BODY["reco_algo"] + "-dup",  # type: ignore[operator]
-        # "event_i3live_json": {},  -> cleared out (fields xor by spec)
+        # exclude event_i3live_json in favor of i3_event_id...
+        **{k: v for k, v in POST_SCAN_BODY.items() if k != "event_i3live_json"},
         "i3_event_id": i3_event_id_alpha,  # reuse the same event
+        # other tweaks...
+        "reco_algo": POST_SCAN_BODY["reco_algo"] + "-dup",  # type: ignore[operator]
         "cluster": orig_clusters,
         "docker_tag": "3.4.0",
     }
