@@ -75,9 +75,14 @@ def dict_projection(dicto: dict, projection: list[str] | str) -> dict:
 
     Pass `"*"` or an empty list to keep all fields.
     """
-    if projection == "*" or not projection:
+    if not projection:  # any empty: str or list
         return dicto
-    return {k: v for k, v in dicto.items() if k in projection}
+    elif isinstance(projection, str) and projection == "*":
+        return dicto
+    elif "*" in projection:
+        return dicto
+    else:
+        return {k: v for k, v in dicto.items() if k in projection}
 
 
 # -----------------------------------------------------------------------------
