@@ -1351,7 +1351,10 @@ async def test_210__post_with_get_fields__single_bad_field(
 
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: .*unrecognized.*scan_id.* for url: {rc.address}/scan",
+        match=(
+            rf"400 Client Error: Additional properties are not allowed "
+            rf"\('scan_id' was unexpected\) for url: {rc.address}/scan"
+        ),
     ) as e:
         await rc.request("POST", "/scan", bad_body)
     print(e.value)
@@ -1391,7 +1394,12 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
 
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: .*unrecognized.*(scan_id|rescan_ids).* for url: {rc.address}/scan",
+        match=(
+            # jsonschema sorts the extras alphabetically (rescan_ids < scan_id)
+            # and emits a single error for additionalProperties: false
+            rf"400 Client Error: Additional properties are not allowed "
+            rf"\('rescan_ids', 'scan_id' were unexpected\) for url: {rc.address}/scan"
+        ),
     ) as e:
         await rc.request("POST", "/scan", bad_body)
     print(e.value)
@@ -1405,20 +1413,33 @@ POST_SCAN_BODY_FOR_TEST_300 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
 def _get_required_field_missing_error(arg: str, address: str) -> str:
+    """Return a regex pattern (NOT a literal string) matching jsonschema's error
+    for a missing required field at POST /scan.
+
+    The caller should pass this directly to `match=` (no `re.escape`).
+    """
     errs = {
+        # 'event_i3live_json' is not in top-level `required`; it's one side of a
+        # oneOf xor with 'i3_event_id'. Removing it (with i3_event_id also absent)
+        # trips the oneOf, not a required-property error.
         "event_i3live_json": (
-            "400 Client Error: Must provide either 'event_i3live_json' or 'i3_event_id' (xor) "
-            f"for url: {address}/scan"
+            rf"400 Client Error: .*is not valid under any of the given schemas"
+            rf".* for url: {address}/scan"
         ),
-        "cluster": (  # 'cluster' is aliased w/ 'request_clusters'
-            "400 Client Error: Missing required argument: 'request_clusters' "
-            f"for url: {address}/scan"
+        # 'cluster' is a deprecated alias for 'request_clusters'. Neither is in
+        # the top-level `required`; the body schema expresses "at least one of"
+        # via its oneOf/anyOf structure, so removal also trips oneOf.
+        "cluster": (
+            rf"400 Client Error: .*is not valid under any of the given schemas"
+            rf".* for url: {address}/scan"
         ),
     }
 
+    # default: the field IS in the top-level `required` list, so jsonschema
+    # emits: "'<arg>' is a required property"
     default = (
-        f"400 Client Error: the following arguments are required: {arg} "
-        f"for url: {address}/scan"
+        rf"400 Client Error: .*'{re.escape(arg)}' is a required property"
+        rf".* for url: {address}/scan"
     )
 
     return errs.get(arg, default)
@@ -1449,11 +1470,17 @@ async def test_300__bad_data(
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=re.escape(
-            f"400 Client Error: the following arguments are required: "
-            f"docker_tag, reco_algo, nsides, "
-            f"real_or_simulated_event, max_pixel_reco_time "
-            f"for url: {rc.address}/scan"
+        # openapi emits one "'<field>' is a required property" error per missing
+        # required field, joined via "; ". schema_errors order isn't guaranteed,
+        # so use lookaheads to assert all five expected fields appear.
+        match=(
+            rf"400 Client Error: "
+            rf"(?=.*'docker_tag' is a required property)"
+            rf"(?=.*'reco_algo' is a required property)"
+            rf"(?=.*'nsides' is a required property)"
+            rf"(?=.*'real_or_simulated_event' is a required property)"
+            rf"(?=.*'max_pixel_reco_time' is a required property)"
+            rf".* for url: {rc.address}/scan"
         ),
     ) as e:
         await rc.request("POST", "/scan", {})
@@ -1469,7 +1496,10 @@ async def test_300__bad_data(
             print(f"{arg}: [{bad_val}]")
             with pytest.raises(
                 requests.exceptions.HTTPError,
-                match=rf"400 Client Error: argument {arg}: .+ for url: {rc.address}/scan",
+                # jsonschema errors describe the bad value (e.g. "'' is not of
+                # type 'object'", "'' does not match '\\S'") rather than naming
+                # the field, so we can't assert on {arg} here.
+                match=rf"400 Client Error: .+ for url: {rc.address}/scan",
             ) as e:
                 await rc.request(
                     "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, arg: bad_val}
@@ -1485,7 +1515,13 @@ async def test_300__bad_data(
         print(f"[{bad_val}]")
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=rf"400 Client Error: argument cluster: .+ for url: {rc.address}/scan",
+            # RequestClusters is a oneOf (object w/ int values OR array of
+            # [location, n_workers] tuples). All these malformed shapes fail
+            # both branches.
+            match=(
+                rf"400 Client Error: .*is not valid under any of the given schemas"
+                rf".* for url: {rc.address}/scan"
+            ),
         ) as e:
             await rc.request(
                 "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "cluster": bad_val}
@@ -1497,7 +1533,8 @@ async def test_300__bad_data(
             print(arg)
             with pytest.raises(
                 requests.exceptions.HTTPError,
-                match=re.escape(_get_required_field_missing_error(arg, rc.address)),
+                # helper returns a regex pattern; do NOT wrap with re.escape
+                match=_get_required_field_missing_error(arg, rc.address),
             ) as e:
                 # remove arg from body
                 await rc.request(
@@ -1507,9 +1544,13 @@ async def test_300__bad_data(
                 )
         print(e.value)
     # # bad docker tag
+    # NOTE: "foo" passes the OpenAPI schema (docker_tag is just `type: string`);
+    # the rejection comes from the server's downstream image-existence check,
+    # so the "image not found" wording is unchanged — only the legacy
+    # "argument docker_tag:" prefix goes away.
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: argument docker_tag: image not found for url: {rc.address}/scan",
+        match=rf"400 Client Error: image not found for url: {rc.address}/scan",
     ) as e:
         await rc.request(
             "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "docker_tag": "foo"}
@@ -1578,7 +1619,12 @@ async def test_300__bad_data(
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=rf"400 Client Error: argument progress: missing value for field .* for url: {rc.address}/scan/{scan_id}/manifest",
+            # progress is oneOf [object-with-required-fields, null]; a string
+            # or list fails both branches.
+            match=(
+                rf"400 Client Error: .*is not valid under any of the given schemas"
+                rf".* for url: {rc.address}/scan/{scan_id}/manifest"
+            ),
         ) as e:
             await rc.request(
                 "PATCH", f"/scan/{scan_id}/manifest", {"progress": bad_val}
@@ -1607,10 +1653,13 @@ async def test_300__bad_data(
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=re.escape(
-            f"400 Client Error: the following arguments are required: "
-            f"skyscan_result, is_final "
-            f"for url: {rc.address}/scan/{scan_id}/result"
+        # one "'<field>' is a required property" error per missing field,
+        # joined via "; ". Order isn't guaranteed.
+        match=(
+            rf"400 Client Error: "
+            rf"(?=.*'skyscan_result' is a required property)"
+            rf"(?=.*'is_final' is a required property)"
+            rf".* for url: {rc.address}/scan/{scan_id}/result"
         ),
     ) as e:
         await rc.request("PUT", f"/scan/{scan_id}/result", {})
@@ -1625,9 +1674,11 @@ async def test_300__bad_data(
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=re.escape(
-                f"400 Client Error: argument skyscan_result: arg must be a dict "
-                f"for url: {rc.address}/scan/{scan_id}/result"
+            # skyscan_result references FreeFormObject (type: object); a string
+            # or list fails the type check.
+            match=(
+                rf"400 Client Error: .*is not of type 'object'"
+                rf".* for url: {rc.address}/scan/{scan_id}/result"
             ),
         ) as e:
             await rc.request(
