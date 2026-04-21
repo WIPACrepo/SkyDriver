@@ -313,9 +313,6 @@
                                                     "type": "number"
                                                 },
                                                 {
-                                                    "type": "integer"
-                                                },
-                                                {
                                                     "type": "null"
                                                 }
                                             ]
@@ -1305,9 +1302,6 @@
                         },
                         {
                             "type": "number"
-                        },
-                        {
-                            "type": "integer"
                         },
                         {
                             "type": "null"

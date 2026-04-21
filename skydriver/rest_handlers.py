@@ -390,7 +390,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 ),
                 scanner_server_env_from_user=(
                     self.get_argument("scanner_server_env_from_user", None)
-                    or self.get_argument("scanner_server_env", None)  # DEPRECATED alias
+                    or self.get_argument("scanner_server_env", None)  # DEPRECATED
                     or {}
                 ),
             )
