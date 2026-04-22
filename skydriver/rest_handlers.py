@@ -363,7 +363,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 scanner_server_memory_bytes=_to_bytes(
                     self.get_argument("scanner_server_memory_bytes", None)
                     or self.get_argument("scanner_server_memory", None)  # DEPRECATED
-                    or ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT
+                    or ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT  # default
                 ),
                 reco_algo=self.get_argument("reco_algo"),
                 nsides=self.get_argument("nsides"),
@@ -379,17 +379,18 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 # cluster (condor) config
                 request_clusters=_validate_all_known_request_clusters(
                     self.get_argument("request_clusters", None)
-                    or self.get_argument("cluster")  # DEPRECATED -- use if ^^^ missing
+                    or self.get_argument("cluster")  # DEPRECATED
+                    or self.get_argument("request_clusters")  # now it's required -> 400
                 ),
                 worker_memory_bytes=_to_bytes(
                     self.get_argument("worker_memory_bytes", None)
                     or self.get_argument("worker_memory", None)  # DEPRECATED
-                    or ENV.EWMS_WORKER_MEMORY__DEFAULT
+                    or ENV.EWMS_WORKER_MEMORY__DEFAULT  # default
                 ),
                 worker_disk_bytes=_to_bytes(
                     self.get_argument("worker_disk_bytes", None)
                     or self.get_argument("worker_disk", None)  # DEPRECATED
-                    or ENV.EWMS_WORKER_DISK__DEFAULT
+                    or ENV.EWMS_WORKER_DISK__DEFAULT  # default
                 ),
                 max_pixel_reco_time=self.get_argument("max_pixel_reco_time"),
                 priority=self.get_argument("priority", 0),
@@ -405,7 +406,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 scanner_server_env_from_user=(
                     self.get_argument("scanner_server_env_from_user", None)
                     or self.get_argument("scanner_server_env", None)  # DEPRECATED
-                    or {}
+                    or {}  # default
                 ),
             )
         except ImageNotFoundException as e:
