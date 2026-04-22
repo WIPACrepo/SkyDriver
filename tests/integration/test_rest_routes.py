@@ -1619,6 +1619,8 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             )
         _log_delimiter()
 
+    assert 0
+
     # OK
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
     _log_delimiter()
