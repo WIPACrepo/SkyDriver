@@ -1520,9 +1520,9 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             requests.exceptions.HTTPError,
             # helper returns a regex pattern; do NOT wrap with re.escape
             match=(
-                rf"400 Client Error: .*"
+                rf"400 Client Error: "
                 rf"'{re.escape("request_clusters" if arg == "cluster" else arg)}'"  # alias for "cluster"
-                rf" is a required property.* for url: {rc.address}/scan"
+                rf" is a required property for url: {rc.address}/scan"
             ),
         ):
             # remove arg from body
