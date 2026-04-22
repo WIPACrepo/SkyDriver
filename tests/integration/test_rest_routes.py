@@ -1524,7 +1524,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             match = rf"400 Client Error: Must provide either 'event_i3live_json' or 'i3_event_id' (xor) for url: {rc.address}/scan"
         else:
             match = rf"400 Client Error: '{arg}' is a required property for url: {rc.address}/scan"
-        with pytest.raises(requests.exceptions.HTTPError, match=match):
+        with pytest.raises(requests.exceptions.HTTPError, match=re.escape(match)):
             # remove arg from body
             await rc.request(
                 "POST",
