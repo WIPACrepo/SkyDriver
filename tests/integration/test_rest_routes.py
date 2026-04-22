@@ -1447,26 +1447,6 @@ def _get_required_field_missing_error(arg: str, address: str) -> str:
     return errs.get(arg, default)
 
 
-@pytest.fixture
-def propagate_all_logs():
-    """Force propagation on every currently-registered logger so caplog sees everything."""
-    # logging.root.manager.loggerDict holds every logger created so far,
-    # keyed by name. Values can be Logger or PlaceHolder — filter to Logger.
-    loggers = [
-        lg
-        for lg in logging.root.manager.loggerDict.values()
-        if isinstance(lg, logging.Logger)
-    ]
-    saved = [(lg, lg.propagate) for lg in loggers]
-    for lg in loggers:
-        lg.propagate = True
-
-    yield
-
-    for lg, prev in saved:
-        lg.propagate = prev
-
-
 async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     server: Callable[[], RestClient],
     known_clusters: dict,
@@ -1475,7 +1455,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     # output capture fixtures used for clearing the terminal...
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
-    propagate_all_logs,  # just requesting it activates it
 ) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
