@@ -55,7 +55,12 @@ LOGGER = logging.getLogger(__name__)
 def _schema_error_to_human_readable(err):
     """Format a jsonschema ValidationError as 'path: reason'.
 
-    Omits sending the offending value back to the client -- security concern.
+    The offending value (err.instance) is intentionally NOT included in the
+    returned string: request bodies can contain secrets (tokens, auth URLs,
+    env-var values) or be very large (full event payloads), and a 400
+    response body is not the right place to reflect either back to the
+    client. The full value remains available server-side via LOGGER.error
+    for debugging.
     """
     field_path = ".".join(str(p) for p in err.absolute_path)
 
@@ -63,9 +68,9 @@ def _schema_error_to_human_readable(err):
     # err.validator is the failing keyword ('type', 'pattern', 'required',
     # 'oneOf', ...); err.validator_value is its schema value.
     keyword, constraint = err.validator, err.validator_value
-    if keyword == "required":
-        return str(err).split("\n", 1)[0]
-    if keyword == "additionalProperties":
+
+    if keyword in ("required", "additionalProperties"):
+        # default messages name the field but don't echo any value
         return str(err).split("\n", 1)[0]
     if keyword == "type":
         reason = f"not of type {constraint!r}"
