@@ -291,7 +291,7 @@ def _validate_classifiers_fields(classifiers: dict) -> dict:
     return classifiers
 
 
-def _raise_missing_argument_400(arg_name: str) -> str:
+def _raise_missing_argument_400(arg_name: str) -> list:
     """Raise a 400 error with a helpful message.
 
     NOTE: This is for special cases where the OpenAPI spec cannot detect
