@@ -1552,7 +1552,10 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         with pytest.raises(
             requests.exceptions.HTTPError,
             # helper returns a regex pattern; do NOT wrap with re.escape
-            match=_get_required_field_missing_error(arg, rc.address),
+            match=_get_required_field_missing_error(
+                "request_clusters" if arg == "cluster" else arg,  # alias for "cluster"
+                rc.address,
+            ),
         ):
             # remove arg from body
             await rc.request(
