@@ -1447,7 +1447,7 @@ def _get_required_field_missing_error(arg: str, address: str) -> str:
     return errs.get(arg, default)
 
 
-async def test_300__bad_data(  # noqa: too-many-statements
+async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
