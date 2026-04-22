@@ -1547,7 +1547,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         _log_delimiter()
 
     # # missing arg
-    for arg in [x for x in POST_SCAN_BODY_FOR_TEST_300.keys() if x in REQUIRED_FIELDS]:
+    for arg in sorted(x for x in POST_SCAN_BODY_FOR_TEST_300 if x in REQUIRED_FIELDS):
         print(arg)
         with pytest.raises(
             requests.exceptions.HTTPError,
