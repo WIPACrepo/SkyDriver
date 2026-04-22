@@ -378,8 +378,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 #
                 # cluster (condor) config
                 request_clusters=_validate_all_known_request_clusters(
-                    self.get_argument("request_clusters", None)
-                    or self.get_argument("cluster")  # DEPRECATED
+                    self.get_argument("request_clusters", None)  # see last 'or'
+                    or self.get_argument("cluster", None)  # DEPRECATED
                     or self.get_argument("request_clusters")  # now it's required -> 400
                 ),
                 worker_memory_bytes=_to_bytes(
