@@ -1453,9 +1453,14 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     known_clusters: dict,
     test_wait_before_teardown: float,
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
+
+    def _stderr_delimiter() -> None:
+        """Print to stderr a delimiting line so we can parse the logs."""
+        print("#" * 200, file=sys.stderr)
 
     # bad url
     with pytest.raises(
@@ -1464,7 +1469,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     ):
         await rc.request("GET", "/event")
 
-    print("#" * 200, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     #
     # LAUNCH SCAN
@@ -1488,7 +1493,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         ),
     ):
         await rc.request("POST", "/scan", {})
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     # # bad-type body-arg
     for arg in POST_SCAN_BODY_FOR_TEST_300:
@@ -1509,9 +1514,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                 await rc.request(
                     "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, arg: bad_val}
                 )
-            print(
-                "#" * 60, file=sys.stderr
-            )  # add a delimiting line so we can parse the logs
+            _stderr_delimiter()
 
     for bad_val in [  # type: ignore[assignment]
         {},
@@ -1534,9 +1537,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             await rc.request(
                 "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "cluster": bad_val}
             )
-        print(
-            "#" * 60, file=sys.stderr
-        )  # add a delimiting line so we can parse the logs
+        _stderr_delimiter()
 
     # # missing arg
     for arg in POST_SCAN_BODY_FOR_TEST_300:
@@ -1553,9 +1554,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                     "/scan",
                     {k: v for k, v in POST_SCAN_BODY_FOR_TEST_300.items() if k != arg},
                 )
-            print(
-                "#" * 60, file=sys.stderr
-            )  # add a delimiting line so we can parse the logs
+            _stderr_delimiter()
 
     # # bad docker tag
     # NOTE: "foo" passes the OpenAPI schema (docker_tag is just `type: string`);
@@ -1569,7 +1568,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         await rc.request(
             "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "docker_tag": "foo"}
         )
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     # OK
     manifest = await _launch_scan(
@@ -1584,7 +1583,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     resp = await rc.request("GET", f"/scan/{scan_id}")
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     #
     # INITIAL UPDATES
@@ -1595,7 +1594,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     resp = await rc.request("GET", f"/scan/{scan_id}")
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     # ATTEMPT OVERWRITE
     with pytest.raises(
@@ -1616,7 +1615,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                 is_real_event=IS_REAL_EVENT,
             ),
         )
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     #
     # ADD PROGRESS
@@ -1645,13 +1644,11 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             await rc.request(
                 "PATCH", f"/scan/{scan_id}/manifest", {"progress": bad_val}
             )
-        print(
-            "#" * 60, file=sys.stderr
-        )  # add a delimiting line so we can parse the logs
+        _stderr_delimiter()
 
     # OK
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     # ATTEMPT OVERWRITE
     with pytest.raises(
@@ -1663,7 +1660,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         await _do_patch(
             rc, scan_id, manifest, scan_metadata={"boo": "baz", "bot": "fox"}
         )
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     #
     # SEND RESULT
@@ -1683,14 +1680,14 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         ),
     ):
         await rc.request("PUT", f"/scan/{scan_id}/result", {})
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     # # empty body-arg -- no error, doesn't do anything but return {}
     ret = await rc.request(
         "PUT", f"/scan/{scan_id}/result", {"skyscan_result": {}, "is_final": True}
     )
     assert ret == {}
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     # # bad-type body-arg
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
@@ -1708,9 +1705,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                 f"/scan/{scan_id}/result",
                 {"skyscan_result": bad_val, "is_final": True},
             )
-        print(
-            "#" * 60, file=sys.stderr
-        )  # add a delimiting line so we can parse the logs
+        _stderr_delimiter()
 
     # OK
     result = await _send_result(rc, scan_id, manifest, True)
@@ -1718,7 +1713,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert await _is_scan_complete(rc, manifest["scan_id"])  # workforce is done
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     #
     # DELETE SCAN
@@ -1734,7 +1729,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         ),
     ):
         await rc.request("DELETE", f"/scan/{scan_id}", {"delete_completed_scan": False})
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     with pytest.raises(
         requests.exceptions.HTTPError,
@@ -1744,7 +1739,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         ),
     ):
         await rc.request("DELETE", f"/scan/{scan_id}")
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     # OK
     await _delete_scan(
@@ -1756,7 +1751,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         True,
         True,
     )
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
     # also OK
     await _delete_scan(
@@ -1768,7 +1763,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         True,
         True,
     )
-    print("#" * 60, file=sys.stderr)  # add a delimiting line so we can parse the logs
+    _stderr_delimiter()
 
 
 ########################################################################################
