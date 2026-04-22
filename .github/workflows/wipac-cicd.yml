@@ -169,7 +169,7 @@ jobs:
       - name: test
         run: |
           set -euo pipefail
-          pytest -vvv tests/unit --exitfirst
+          pytest -vvv -ra tests/unit --exitfirst
 
       - name: Dump logs
         if: always()
@@ -255,7 +255,7 @@ jobs:
               ${{ env.CI_DOCKER_IMAGE_W_TAG }} \
               /bin/bash -c "\
                 pip install $tests_reqs && \
-                python -m pytest -vvv /app/tests/integration --exitfirst
+                python -m pytest -vvv -ra /app/tests/integration --exitfirst
               "
 
       # DUMP LOGS
