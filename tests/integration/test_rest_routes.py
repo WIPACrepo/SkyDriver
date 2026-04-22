@@ -1355,9 +1355,8 @@ async def test_210__post_with_get_fields__single_bad_field(
             rf"400 Client Error: Additional properties are not allowed "
             rf"\('scan_id' was unexpected\) for url: {rc.address}/scan"
         ),
-    ) as e:
+    ):
         await rc.request("POST", "/scan", bad_body)
-    print(e.value)
 
 
 async def test_215__post_with_get_fields__multiple_bad_fields(
@@ -1404,9 +1403,8 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
             rf"\('rescan_ids', 'scan_id' were unexpected\)"
             rf".* for url: {rc.address}/scan"
         ),
-    ) as e:
+    ):
         await rc.request("POST", "/scan", bad_body)
-    print(e.value)
 
 
 ########################################################################################
@@ -1462,9 +1460,8 @@ async def test_300__bad_data(
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
-    ) as e:
+    ):
         await rc.request("GET", "/event")
-    print(e.value)
 
     #
     # LAUNCH SCAN
@@ -1486,9 +1483,8 @@ async def test_300__bad_data(
             rf"(?=.*'max_pixel_reco_time' is a required property)"
             rf".* for url: {rc.address}/scan"
         ),
-    ) as e:
+    ):
         await rc.request("POST", "/scan", {})
-    print(e.value)
     # # bad-type body-arg
     for arg in POST_SCAN_BODY_FOR_TEST_300:
         for bad_val in [
@@ -1504,11 +1500,10 @@ async def test_300__bad_data(
                 # type 'object'", "'' does not match '\\S'") rather than naming
                 # the field, so we can't assert on {arg} here.
                 match=rf"400 Client Error: .+ for url: {rc.address}/scan",
-            ) as e:
+            ):
                 await rc.request(
                     "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, arg: bad_val}
                 )
-            print(e.value)
     for bad_val in [  # type: ignore[assignment]
         {},
         {"collector": "a"},
@@ -1526,11 +1521,10 @@ async def test_300__bad_data(
                 rf"400 Client Error: .*is not valid under any of the given schemas"
                 rf".* for url: {rc.address}/scan"
             ),
-        ) as e:
+        ):
             await rc.request(
                 "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "cluster": bad_val}
             )
-    print(e.value)
     # # missing arg
     for arg in POST_SCAN_BODY_FOR_TEST_300:
         if arg in REQUIRED_FIELDS:
@@ -1539,14 +1533,13 @@ async def test_300__bad_data(
                 requests.exceptions.HTTPError,
                 # helper returns a regex pattern; do NOT wrap with re.escape
                 match=_get_required_field_missing_error(arg, rc.address),
-            ) as e:
+            ):
                 # remove arg from body
                 await rc.request(
                     "POST",
                     "/scan",
                     {k: v for k, v in POST_SCAN_BODY_FOR_TEST_300.items() if k != arg},
                 )
-        print(e.value)
     # # bad docker tag
     # NOTE: "foo" passes the OpenAPI schema (docker_tag is just `type: string`);
     # the rejection comes from the server's downstream image-existence check,
@@ -1555,11 +1548,10 @@ async def test_300__bad_data(
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=rf"400 Client Error: image not found for url: {rc.address}/scan",
-    ) as e:
+    ):
         await rc.request(
             "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "docker_tag": "foo"}
         )
-    print(e.value)
 
     # OK
     manifest = await _launch_scan(
@@ -1591,7 +1583,7 @@ async def test_300__bad_data(
         match=re.escape(
             f"400 Client Error: Cannot change an existing event_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
-    ) as e:
+    ):
         await _do_patch(
             rc,
             scan_id,
@@ -1616,9 +1608,8 @@ async def test_300__bad_data(
     #     match=re.escape(
     #         f"422 Client Error: Attempted progress update with an empty object ({{}}) for url: {rc.address}/scan/{scan_id}/manifest"
     #     ),
-    # ) as e:
+    # ):
     #     await rc.request("PATCH", f"/scan/{scan_id}/manifest", {"progress": {}})
-    print(e.value)
     # # bad-type body-arg
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
@@ -1629,11 +1620,10 @@ async def test_300__bad_data(
                 rf"400 Client Error: .*is not valid under any of the given schemas"
                 rf".* for url: {rc.address}/scan/{scan_id}/manifest"
             ),
-        ) as e:
+        ):
             await rc.request(
                 "PATCH", f"/scan/{scan_id}/manifest", {"progress": bad_val}
             )
-        print(e.value)
 
     # OK
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
@@ -1644,7 +1634,7 @@ async def test_300__bad_data(
         match=re.escape(
             f"400 Client Error: Cannot change an existing scan_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
-    ) as e:
+    ):
         await _do_patch(
             rc, scan_id, manifest, scan_metadata={"boo": "baz", "bot": "fox"}
         )
@@ -1665,15 +1655,13 @@ async def test_300__bad_data(
             rf"(?=.*'is_final' is a required property)"
             rf".* for url: {rc.address}/scan/{scan_id}/result"
         ),
-    ) as e:
+    ):
         await rc.request("PUT", f"/scan/{scan_id}/result", {})
-    print(e.value)
     # # empty body-arg -- no error, doesn't do anything but return {}
     ret = await rc.request(
         "PUT", f"/scan/{scan_id}/result", {"skyscan_result": {}, "is_final": True}
     )
     assert ret == {}
-    print(e.value)
     # # bad-type body-arg
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
@@ -1684,13 +1672,12 @@ async def test_300__bad_data(
                 rf"400 Client Error: .*is not of type 'object'"
                 rf".* for url: {rc.address}/scan/{scan_id}/result"
             ),
-        ) as e:
+        ):
             await rc.request(
                 "PUT",
                 f"/scan/{scan_id}/result",
                 {"skyscan_result": bad_val, "is_final": True},
             )
-        print(e.value)
 
     # OK
     result = await _send_result(rc, scan_id, manifest, True)
@@ -1711,18 +1698,16 @@ async def test_300__bad_data(
             f"400 Client Error: Attempted to delete a completed scan "
             f"(must use `delete_completed_scan=True`) for url: {rc.address}/scan"
         ),
-    ) as e:
+    ):
         await rc.request("DELETE", f"/scan/{scan_id}", {"delete_completed_scan": False})
-    print(e.value)
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
             f"400 Client Error: Attempted to delete a completed scan "
             f"(must use `delete_completed_scan=True`) for url: {rc.address}/scan"
         ),
-    ) as e:
+    ):
         await rc.request("DELETE", f"/scan/{scan_id}")
-    print(e.value)
 
     # OK
     await _delete_scan(
