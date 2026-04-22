@@ -1452,7 +1452,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     known_clusters: dict,
     test_wait_before_teardown: float,
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
@@ -1463,8 +1462,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
     ):
         await rc.request("GET", "/event")
-
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
     #
     # LAUNCH SCAN
@@ -1488,8 +1485,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         ),
     ):
         await rc.request("POST", "/scan", {})
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
-
     # # bad-type body-arg
     for arg in POST_SCAN_BODY_FOR_TEST_300:
         for bad_val in [
@@ -1509,8 +1504,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                 await rc.request(
                     "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, arg: bad_val}
                 )
-            capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
-
     for bad_val in [  # type: ignore[assignment]
         {},
         {"collector": "a"},
@@ -1532,8 +1525,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             await rc.request(
                 "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "cluster": bad_val}
             )
-        capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
-
     # # missing arg
     for arg in POST_SCAN_BODY_FOR_TEST_300:
         if arg in REQUIRED_FIELDS:
@@ -1549,8 +1540,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                     "/scan",
                     {k: v for k, v in POST_SCAN_BODY_FOR_TEST_300.items() if k != arg},
                 )
-            capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
-
     # # bad docker tag
     # NOTE: "foo" passes the OpenAPI schema (docker_tag is just `type: string`);
     # the rejection comes from the server's downstream image-existence check,
@@ -1563,7 +1552,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         await rc.request(
             "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "docker_tag": "foo"}
         )
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
     # OK
     manifest = await _launch_scan(
@@ -1578,7 +1566,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     resp = await rc.request("GET", f"/scan/{scan_id}")
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
     #
     # INITIAL UPDATES
@@ -1589,7 +1576,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     resp = await rc.request("GET", f"/scan/{scan_id}")
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
     # ATTEMPT OVERWRITE
     with pytest.raises(
@@ -1610,7 +1596,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                 is_real_event=IS_REAL_EVENT,
             ),
         )
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
     #
     # ADD PROGRESS
@@ -1639,11 +1624,9 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             await rc.request(
                 "PATCH", f"/scan/{scan_id}/manifest", {"progress": bad_val}
             )
-        capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
     # OK
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
     # ATTEMPT OVERWRITE
     with pytest.raises(
@@ -1655,7 +1638,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         await _do_patch(
             rc, scan_id, manifest, scan_metadata={"boo": "baz", "bot": "fox"}
         )
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
     #
     # SEND RESULT
@@ -1675,15 +1657,11 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         ),
     ):
         await rc.request("PUT", f"/scan/{scan_id}/result", {})
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
-
     # # empty body-arg -- no error, doesn't do anything but return {}
     ret = await rc.request(
         "PUT", f"/scan/{scan_id}/result", {"skyscan_result": {}, "is_final": True}
     )
     assert ret == {}
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
-
     # # bad-type body-arg
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
@@ -1700,7 +1678,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                 f"/scan/{scan_id}/result",
                 {"skyscan_result": bad_val, "is_final": True},
             )
-        capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
     # OK
     result = await _send_result(rc, scan_id, manifest, True)
@@ -1708,7 +1685,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert await _is_scan_complete(rc, manifest["scan_id"])  # workforce is done
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
     #
     # DELETE SCAN
@@ -1724,8 +1700,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         ),
     ):
         await rc.request("DELETE", f"/scan/{scan_id}", {"delete_completed_scan": False})
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
-
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
@@ -1734,7 +1708,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         ),
     ):
         await rc.request("DELETE", f"/scan/{scan_id}")
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
     # OK
     await _delete_scan(
@@ -1746,7 +1719,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         True,
         True,
     )
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
     # also OK
     await _delete_scan(
@@ -1758,7 +1730,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         True,
         True,
     )
-    capsys.readouterr()  # asserts passed: clear buffer -- we only care about output when things go wrong
 
 
 ########################################################################################
