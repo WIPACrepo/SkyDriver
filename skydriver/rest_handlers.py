@@ -10,12 +10,14 @@ from typing import Any, Type, TypeVar, cast
 
 import humanfriendly  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
+import tornado
 from dacite import from_dict
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from pymongo import ReturnDocument
 from rest_tools.client import RestClient
-from rest_tools.server import RestHandler, validate_request
+from rest_tools.openapi_tools import _http_server_request_to_openapi_request
+from rest_tools.server import RestHandler
 from tornado import web
 from wipac_dev_tools.container_registry_tools import ImageNotFoundException
 
@@ -48,6 +50,115 @@ from .utils import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _schema_error_to_human_readable(err):
+    """Format a jsonschema ValidationError as 'path: reason'.
+
+    Omits sending the offending value back to the client -- security concern.
+    """
+    field_path = ".".join(str(p) for p in err.absolute_path)
+
+    # Reconstruct the reason without including err.instance (the bad value).
+    # err.validator is the failing keyword ('type', 'pattern', 'required',
+    # 'oneOf', ...); err.validator_value is its schema value.
+    keyword, constraint = err.validator, err.validator_value
+    if keyword == "required":
+        return str(err).split("\n", 1)[0]
+    if keyword == "additionalProperties":
+        return str(err).split("\n", 1)[0]
+    if keyword == "type":
+        reason = f"not of type {constraint!r}"
+    elif keyword == "pattern":
+        reason = f"does not match pattern {constraint!r}"
+    elif keyword == "minLength":
+        reason = f"shorter than minimum length {constraint}"
+    elif keyword == "maxLength":
+        reason = f"longer than maximum length {constraint}"
+    elif keyword == "minimum":
+        reason = f"less than minimum {constraint}"
+    elif keyword == "maximum":
+        reason = f"greater than maximum {constraint}"
+    elif keyword == "enum":
+        reason = f"not one of allowed values {constraint!r}"
+    elif keyword in ("oneOf", "anyOf"):
+        reason = "does not match any allowed schema"
+    elif keyword == "minItems":
+        reason = f"fewer than minimum {constraint} items"
+    elif keyword == "maxItems":
+        reason = f"more than maximum {constraint} items"
+    elif keyword == "minProperties":
+        reason = f"fewer than minimum {constraint} properties"
+    elif keyword == "maxProperties":
+        reason = f"more than maximum {constraint} properties"
+    elif keyword == "uniqueItems":
+        reason = "items are not unique"
+    else:
+        reason = f"failed {keyword!r} constraint"
+
+    return f"{field_path!r}: {reason}" if field_path else reason
+
+
+def validate_request(openapi_spec: "openapi_core.OpenAPI"):  # type: ignore
+    """A REST-endpoint wrapper to validate requests against an OpenAPI spec.
+
+    Example:
+    ```
+    class MyRestHandler(RestHandler):
+
+        @validate_request(config.OPENAPI_SPEC)
+        async def get(self) -> None: ...
+    ```
+    """
+    # TODO: restore on merge to rest-tools
+    # if not openapi_available:
+    #     raise RuntimeError(
+    #         "openapi cannot be imported! perhaps you meant to pip install it?"
+    #     )
+
+    def make_wrapper(method):  # type: ignore[no-untyped-def]
+        async def wrapper(zelf: tornado.web.RequestHandler, *args, **kwargs):  # type: ignore[no-untyped-def]
+            LOGGER.debug("validating with openapi spec")
+            # NOTE - don't change data (unmarshal) b/c we are downstream of data separation
+            try:
+                # https://openapi-core.readthedocs.io/en/latest/validation.html
+                openapi_spec.validate_request(
+                    _http_server_request_to_openapi_request(zelf.request),
+                )
+            except ValidationError as e:  # type: ignore
+                LOGGER.error(f"invalid request: {e.__class__.__name__} - {e}")
+                # get reason
+                if isinstance(  # look at the ORIGINAL exception that caused this error
+                    e.__context__,
+                    openapi_core.validation.schemas.exceptions.InvalidSchemaValue,  # type: ignore
+                ):
+                    reason = "; ".join(
+                        _schema_error_to_human_readable(x)
+                        for x in e.__context__.schema_errors
+                    )
+                else:
+                    reason = str(e)  # to client
+                # send 400
+                raise tornado.web.HTTPError(
+                    status_code=400,
+                    log_message=f"{e.__class__.__name__}: {e}",  # to stderr
+                    reason=reason,  # to client
+                )
+            except Exception as e:
+                LOGGER.error(f"unexpected exception: {e.__class__.__name__} - {e}")
+                LOGGER.exception(e)
+                raise tornado.web.HTTPError(
+                    status_code=400,
+                    log_message=f"{e.__class__.__name__}: {e}",  # to stderr
+                    reason=None,  # to client (don't send possibly sensitive info)
+                )
+
+            return await method(zelf, *args, **kwargs)
+
+        return wrapper
+
+    return make_wrapper
+
 
 # -----------------------------------------------------------------------------
 # constants
