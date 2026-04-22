@@ -141,7 +141,7 @@ jobs:
       - name: test
         run: |
           set -euo pipefail
-          pytest -vvv -ra tests/unit --exitfirst
+          pytest -vvv tests/unit --exitfirst
 
       - name: Dump logs
         if: always()
@@ -228,7 +228,7 @@ jobs:
               /bin/bash -c "\
                 pip install $tests_reqs && \
                 pip install pytest-reverse  && \
-                python -m pytest -vvv -ra /app/tests/integration --exitfirst --reverse
+                python -m pytest -vvv /app/tests/integration --exitfirst --reverse
               "
 
       # DUMP LOGS
