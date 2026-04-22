@@ -1516,15 +1516,15 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     # # missing arg
     for arg in sorted(x for x in POST_SCAN_BODY_FOR_TEST_300 if x in REQUIRED_FIELDS):
         print(arg)
-        with pytest.raises(
-            requests.exceptions.HTTPError,
-            # helper returns a regex pattern; do NOT wrap with re.escape
-            match=(
-                rf"400 Client Error: "
-                rf"'{re.escape("request_clusters" if arg == "cluster" else arg)}'"  # alias for "cluster"
-                rf" is a required property for url: {rc.address}/scan"
-            ),
-        ):
+        if arg == "cluster":
+            # use alias for "cluster" -- not processed by openapi
+            match = rf"400 Client Error: 'request_clusters' is a required property for url: {rc.address}/scan"
+        elif arg == "event_i3live_json":
+            # xor logic -- not processed by openapi
+            match = rf"400 Client Error: Must provide either 'event_i3live_json' or 'i3_event_id' (xor) for url: {rc.address}/scan"
+        else:
+            match = rf"400 Client Error: '{arg}' is a required property for url: {rc.address}/scan"
+        with pytest.raises(requests.exceptions.HTTPError, match=match):
             # remove arg from body
             await rc.request(
                 "POST",

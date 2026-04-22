@@ -169,28 +169,6 @@
                                     "real_or_simulated_event",
                                     "max_pixel_reco_time"
                                 ],
-                                "oneOf": [
-                                    {
-                                        "required": [
-                                            "event_i3live_json"
-                                        ],
-                                        "not": {
-                                            "required": [
-                                                "i3_event_id"
-                                            ]
-                                        }
-                                    },
-                                    {
-                                        "required": [
-                                            "i3_event_id"
-                                        ],
-                                        "not": {
-                                            "required": [
-                                                "event_i3live_json"
-                                            ]
-                                        }
-                                    }
-                                ],
                                 "properties": {
                                     "docker_tag": {
                                         "type": "string",
