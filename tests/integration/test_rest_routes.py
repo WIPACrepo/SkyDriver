@@ -1533,14 +1533,10 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             )
         _log_delimiter()
 
-    # # bad docker tag
-    # NOTE: "foo" passes the OpenAPI schema (docker_tag is just `type: string`);
-    # the rejection comes from the server's downstream image-existence check,
-    # so the "image not found" wording is unchanged — only the legacy
-    # "argument docker_tag:" prefix goes away.
+    # # bad docker tag -- not processed by openapi
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: image not found for url: {rc.address}/scan",
+        match=rf"400 Client Error: argument docker_tag: image not found for url: {rc.address}/scan",
     ):
         await rc.request(
             "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "docker_tag": "foo"}
