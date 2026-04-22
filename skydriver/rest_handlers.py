@@ -291,6 +291,16 @@ def _validate_classifiers_fields(classifiers: dict) -> dict:
     return classifiers
 
 
+def _raise_missing_argument_400(arg_name: str) -> str:
+    """Raise a 400 error with a helpful message.
+
+    NOTE: This is for special cases where the OpenAPI spec cannot detect
+    the missing argument -- like when the required argument has an alias.
+    """
+    _msg = f"argument '{arg_name}' is required property"
+    raise web.HTTPError(400, reason=_msg, log_message=_msg)
+
+
 class ScanLauncherHandler(BaseSkyDriverHandler):
     """Handles starting new scans."""
 
@@ -380,7 +390,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 request_clusters=_validate_all_known_request_clusters(
                     self.get_argument("request_clusters", None)  # see last 'or'
                     or self.get_argument("cluster", None)  # DEPRECATED
-                    or self.get_argument("request_clusters")  # now it's required -> 400
+                    or _raise_missing_argument_400("request_clusters")  # it's required
                 ),
                 worker_memory_bytes=_to_bytes(
                     self.get_argument("worker_memory_bytes", None)

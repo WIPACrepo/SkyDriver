@@ -1415,39 +1415,6 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
 POST_SCAN_BODY_FOR_TEST_300 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
-def _get_required_field_missing_error(arg: str, address: str) -> str:
-    """Return a regex pattern (NOT a literal string) matching jsonschema's error
-    for a missing required field at POST /scan.
-
-    The caller should pass this directly to `match=` (no `re.escape`).
-    """
-    errs = {
-        # 'event_i3live_json' is not in top-level `required`; it's one side of a
-        # oneOf xor with 'i3_event_id'. Removing it (with i3_event_id also absent)
-        # trips the oneOf, not a required-property error.
-        "event_i3live_json": (
-            rf"400 Client Error: .*is not valid under any of the given schemas"
-            rf".* for url: {address}/scan"
-        ),
-        # 'cluster' is a deprecated alias for 'request_clusters'. Neither is in
-        # the top-level `required`; the body schema expresses "at least one of"
-        # via its oneOf/anyOf structure, so removal also trips oneOf.
-        "cluster": (
-            rf"400 Client Error: .*is not valid under any of the given schemas"
-            rf".* for url: {address}/scan"
-        ),
-    }
-
-    # default: the field IS in the top-level `required` list, so jsonschema
-    # emits: "'<arg>' is a required property"
-    default = (
-        rf"400 Client Error: .*'{re.escape(arg)}' is a required property"
-        rf".* for url: {address}/scan"
-    )
-
-    return errs.get(arg, default)
-
-
 _LINE_DELIMITER = f'{"#" * 100}\nNext set of asserts\n{"#" * 100}'
 
 
@@ -1552,9 +1519,10 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         with pytest.raises(
             requests.exceptions.HTTPError,
             # helper returns a regex pattern; do NOT wrap with re.escape
-            match=_get_required_field_missing_error(
-                "request_clusters" if arg == "cluster" else arg,  # alias for "cluster"
-                rc.address,
+            match=(
+                rf"400 Client Error: .*"
+                rf"'{re.escape("request_clusters" if arg == "cluster" else arg)}'"  # alias for "cluster"
+                rf" is a required property .* for url: {rc.address}/scan"
             ),
         ):
             # remove arg from body
