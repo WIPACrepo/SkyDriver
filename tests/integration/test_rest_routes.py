@@ -1448,6 +1448,17 @@ def _get_required_field_missing_error(arg: str, address: str) -> str:
     return errs.get(arg, default)
 
 
+_LINE_DELIMITER = f'{"#" * 100}\nNext set of asserts\n{"#" * 100}'
+
+
+def _log_delimiter() -> None:
+    """Log a delimiting line so we can parse the logs."""
+    # not print-stderr b/c pytest separates
+    logging.getLogger().critical(_LINE_DELIMITER)
+    # also print
+    print(_LINE_DELIMITER)
+
+
 async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     server: Callable[[], RestClient],
     known_clusters: dict,
@@ -1457,10 +1468,6 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
 ) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
-
-    def _log_delimiter() -> None:
-        """Log a delimiting line so we can parse the logs."""
-        logging.getLogger().critical("#" * 200)  # not just stderr b/c pytest separates
 
     # bad url
     with pytest.raises(
