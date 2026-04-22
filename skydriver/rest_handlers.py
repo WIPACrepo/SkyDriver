@@ -297,7 +297,7 @@ def _raise_missing_argument_400(arg_name: str) -> list:
     NOTE: This is for special cases where the OpenAPI spec cannot detect
     the missing argument -- like when the required argument has an alias.
     """
-    _msg = f"argument '{arg_name}' is required property"
+    _msg = f"argument '{arg_name}' is a required property"
     raise web.HTTPError(400, reason=_msg, log_message=_msg)
 
 
