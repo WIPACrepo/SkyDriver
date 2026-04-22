@@ -1461,7 +1461,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
 
     def _stderr_delimiter() -> None:
         """Print to stderr a delimiting line so we can parse the logs."""
-        print("#" * 200, file=sys.stderr)
+        print("#" * 200, file=sys.stderr, flush=True)
 
     # bad url
     with pytest.raises(
