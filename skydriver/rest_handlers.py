@@ -74,18 +74,15 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
     if keyword in ("required", "additionalProperties"):
         return str(err).split("\n", 1)[0]
 
-    TYPE_NAMES = {
-        "string": "text",
-        "integer": "a whole number",
-        "number": "a number",
-        "boolean": "true or false",
-        "array": "a list",
-        "object": "a dictionary",
-        "null": "null",
-    }
-
     if keyword == "type":
-        reason = f"must be {TYPE_NAMES.get(constraint, repr(constraint))}"
+        _type_alias = {
+            # communicate python equivalents for the more abstract JSON types
+            "boolean": " (bool)",
+            "array": " (list)",
+            "object": " (dict)",
+            "null": " (None)",
+        }
+        reason = f"must be type {constraint!r}{_type_alias.get(constraint, '')}"
     elif keyword == "pattern":
         reason = f"must match the pattern {constraint!r}"
     elif keyword == "minLength":
@@ -99,7 +96,7 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
     elif keyword == "enum":
         reason = f"must be one of: {', '.join(repr(v) for v in constraint)}"
     elif keyword in ("oneOf", "anyOf"):
-        reason = "does not match any of the accepted types"
+        reason = "must match one of the accepted types"
     elif keyword == "minItems":
         reason = f"must have at least {constraint} items"
     elif keyword == "maxItems":
