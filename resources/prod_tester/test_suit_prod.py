@@ -11,7 +11,7 @@ from pathlib import Path
 
 import texttable  # type: ignore
 import wipac_dev_tools
-from rest_tools.client import RestClient
+from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
 from . import config, test_getter, test_runner
 
@@ -331,7 +331,7 @@ def reconstruct_tests_from_sandbox(sandbox: Path) -> list[test_getter.TestParamS
             member = tar.getmember(
                 f"{config.SANDBOX_DIR.name}/{config.SANDBOX_MAP_FPATH.name}"
             )
-            with tar.extractfile(member) as f:  # type: ignore[union-attr]
+            with tar.extractfile(member) as f:  # type: ignore[union-attr]  # ty: ignore[invalid-context-manager]
                 json_data = json.loads(f.read())
 
     return [
@@ -431,7 +431,7 @@ async def main():
         "--compare-only",
         default=False,
         action="store_true",
-        help="only compare results",
+        help="only compare results of most recent test scans — **do NOT run tests**",
     )
     parser.add_argument(
         "--repull-tests",
@@ -468,7 +468,16 @@ async def main():
     config.SANDBOX_DIR.mkdir(exist_ok=True)
 
     # get rest client
-    rc = test_runner.get_rest_client(args.skydriver_type)
+    url_slug = {"prod": "skydriver", "dev": "skydriver-dev"}[args.skydriver_type]
+    rc = SavedDeviceGrantAuth(
+        f"https://{url_slug}.icecube.aq",
+        "https://keycloak.icecube.wisc.edu/auth/realms/IceCube",
+        filename=str(
+            Path(f"~/device-refresh-skydriver-{args.skydriver_type}.token").expanduser()
+        ),
+        client_id="skydriver-external",
+        retries=3,
+    )
 
     # run tests
     tests = list(test_getter.setup_tests(no_cache=args.repull_tests))

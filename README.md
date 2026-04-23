@@ -1,10 +1,25 @@
 <!--- Top of README Badges (automated) --->
-[![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/WIPACrepo/SkyDriver?include_prereleases)](https://github.com/WIPACrepo/SkyDriver/) [![GitHub issues](https://img.shields.io/github/issues/WIPACrepo/SkyDriver)](https://github.com/WIPACrepo/SkyDriver/issues?q=is%3Aissue+sort%3Aupdated-desc+is%3Aopen) [![GitHub pull requests](https://img.shields.io/github/issues-pr/WIPACrepo/SkyDriver)](https://github.com/WIPACrepo/SkyDriver/pulls?q=is%3Apr+sort%3Aupdated-desc+is%3Aopen)
+[![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/WIPACrepo/SkyDriver?include_prereleases)](https://github.com/WIPACrepo/SkyDriver) [![GitHub issues](https://img.shields.io/github/issues/WIPACrepo/SkyDriver)](https://github.com/WIPACrepo/SkyDriver/issues?q=is%3Aissue+sort%3Aupdated-desc+is%3Aopen) [![GitHub pull requests](https://img.shields.io/github/issues-pr/WIPACrepo/SkyDriver)](https://github.com/WIPACrepo/SkyDriver/pulls?q=is%3Apr+sort%3Aupdated-desc+is%3Aopen)
 <!--- End of README Badges (automated) --->
 
 # SkyDriver v2
 
 A SaaS Solution for Neutrino Event Reconstruction using the Skymap Scanner
+<!--- Top of README Metadata Section (automated) --->
+
+<!--- note: this information is pulled from the pyproject.toml --->
+
+<dl>
+    <dt><sub>Authors</sub></dt>
+    <dd><sub>WIPAC Developers / <a href='mailto:developers@icecube.wisc.edu'>developers@icecube.wisc.edu</a></sub></dd>
+    <dt><sub>Keywords</sub></dt>
+    <dd><sub>WIPAC&nbsp;&nbsp;·&nbsp;&nbsp;IceCube&nbsp;&nbsp;·&nbsp;&nbsp;Skymap Scanner&nbsp;&nbsp;·&nbsp;&nbsp;Reconstruction&nbsp;&nbsp;·&nbsp;&nbsp;IceTray&nbsp;&nbsp;·&nbsp;&nbsp;EWMS</sub></dd>
+    <dt><sub>URLs</sub></dt>
+    <dd><sub><a href='https://github.com/WIPACrepo/SkyDriver'>Homepage</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href='https://github.com/WIPACrepo/SkyDriver/issues'>Tracker</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href='https://github.com/WIPACrepo/SkyDriver'>Source</a></sub></dd>
+</dl>
+
+<br>
+<!--- End of README Metadata Section (automated) --->
 
 ## Overview
 

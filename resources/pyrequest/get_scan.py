@@ -11,7 +11,7 @@ from typing import Any
 
 from rest_tools.client import RestClient
 
-from _connect import get_rest_client  # type: ignore[import-not-found]
+from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
 
 logging.getLogger().setLevel(logging.INFO)
 

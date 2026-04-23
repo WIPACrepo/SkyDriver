@@ -121,11 +121,11 @@ async def run(
     results_client = database.interface.ResultClient(mongo_client)
     manifest_client = database.interface.ManifestClient(mongo_client)
     scan_request_client = AsyncIOMotorCollection(
-        mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+        mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
         database.utils._SCAN_REQUEST_COLL_NAME,
     )
     skyscan_k8s_job_client = AsyncIOMotorCollection(
-        mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+        mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
         database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
     )
     skyd_rc = RestClient(  # -- talk to self

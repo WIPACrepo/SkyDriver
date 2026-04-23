@@ -5,6 +5,7 @@ import enum
 from pathlib import Path
 from typing import Any
 
+from rest_tools import openapi_tools
 from wipac_dev_tools import from_environment_as_dataclass, logging_tools
 from wipac_dev_tools.logging_tools import WIPACDevToolsFormatter
 
@@ -67,8 +68,8 @@ class EnvConfig:
     REST_PORT: int = 8080
 
     CI: bool = False  # github actions sets this to 'true'
-    LOG_LEVEL: str = "DEBUG"
-    LOG_LEVEL_THIRD_PARTY: str = "WARNING"
+    LOG_LEVEL: logging_tools.LoggerLevel = "DEBUG"
+    LOG_LEVEL_THIRD_PARTY: logging_tools.LoggerLevel = "WARNING"
 
     SCAN_BACKLOG_MAX_ATTEMPTS: int = 3
     SCAN_BACKLOG_RUNNER_SHORT_DELAY: int = 15
@@ -178,6 +179,12 @@ class EnvConfig:
 
 ENV = from_environment_as_dataclass(EnvConfig)
 
+OPENAPI_PATH = Path(__file__).parent / "openapi.json"
+OPENAPI_SPEC, OPENAPI_DICT = openapi_tools.load_openapi_spec(
+    OPENAPI_PATH,
+    "skydriver-s3-sidecar-ewms-init-container",  # from pyproject.toml
+)
+
 LOCAL_K8S_HOST = "local"
 
 # known cluster locations
@@ -210,9 +217,9 @@ def config_logging() -> None:
     testing environments.
     """
     logging_tools.set_level(
-        ENV.LOG_LEVEL,  # type: ignore[arg-type]
+        ENV.LOG_LEVEL,
         first_party_loggers=__name__.split(".", maxsplit=1)[0],
-        third_party_level=ENV.LOG_LEVEL_THIRD_PARTY,  # type: ignore[arg-type]
+        third_party_level=ENV.LOG_LEVEL_THIRD_PARTY,
         future_third_parties=[],
         specialty_loggers={"rest_tools": "INFO"},
         formatter=WIPACDevToolsFormatter(),

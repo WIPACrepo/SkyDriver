@@ -7,7 +7,8 @@ import pprint
 import random
 import re
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any, cast
 
 import humanfriendly  # type: ignore[import-untyped]
 import pytest
@@ -373,12 +374,18 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     {
                                         "name": "EWMS_CLUSTERS",
                                         "value": " ".join(
-                                            list(post_scan_body["cluster"].keys())
+                                            [
+                                                str(k)
+                                                for k in post_scan_body[
+                                                    "cluster"
+                                                ].keys()
+                                            ]
                                             if isinstance(
                                                 post_scan_body["cluster"], dict
                                             )
                                             else [
-                                                c[0] for c in post_scan_body["cluster"]
+                                                str(c[0])
+                                                for c in post_scan_body["cluster"]
                                             ]
                                         ),
                                     },
@@ -1246,7 +1253,7 @@ async def test_200__get_edit_launchdup(
     assert sr_alpha["reco_algo"] == POST_SCAN_BODY["reco_algo"]
     # nsides keys get stringified in storage:
     assert sr_alpha["nsides"] == {
-        str(k): v for k, v in POST_SCAN_BODY["nsides"].items()  # type: ignore[attr-defined]
+        str(k): v for k, v in cast(dict, POST_SCAN_BODY["nsides"]).items()
     }
     # request_clusters normalized (either list-of-pairs or dict accepted on input)
     assert sr_alpha["request_clusters"] in (
@@ -1261,10 +1268,11 @@ async def test_200__get_edit_launchdup(
     #    - Tweak a couple of benign args (e.g., reco_algo) to show “edited”
     #
     post_body_dup = {
-        **POST_SCAN_BODY,
-        "reco_algo": POST_SCAN_BODY["reco_algo"] + "-dup",  # type: ignore[operator]
-        "event_i3live_json": {},  # cleared out (xor)
+        # exclude event_i3live_json in favor of i3_event_id...
+        **{k: v for k, v in POST_SCAN_BODY.items() if k != "event_i3live_json"},
         "i3_event_id": i3_event_id_alpha,  # reuse the same event
+        # other tweaks...
+        "reco_algo": cast(str, POST_SCAN_BODY["reco_algo"]) + "-dup",
         "cluster": orig_clusters,
         "docker_tag": "3.4.0",
     }
@@ -1291,7 +1299,9 @@ async def test_200__get_edit_launchdup(
     assert sr_beta["i3_event_id"] == i3_event_id_alpha
     assert sr_beta["docker_tag"] == "3.4.0"
     assert sr_beta["reco_algo"] == post_body_dup["reco_algo"]
-    assert sr_beta["nsides"] == {str(k): v for k, v in POST_SCAN_BODY["nsides"].items()}  # type: ignore[attr-defined]
+    assert sr_beta["nsides"] == {
+        str(k): v for k, v in cast(dict, POST_SCAN_BODY["nsides"]).items()
+    }
     assert sr_beta["request_clusters"] in (
         list([k, v] for k, v in orig_clusters.items()),
         orig_clusters,
@@ -1350,10 +1360,12 @@ async def test_210__post_with_get_fields__single_bad_field(
 
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: .*unrecognized.*scan_id.* for url: {rc.address}/scan",
-    ) as e:
+        match=(
+            rf"400 Client Error: Additional properties are not allowed "
+            rf"\('scan_id' was unexpected\) for url: {rc.address}/scan"
+        ),
+    ):
         await rc.request("POST", "/scan", bad_body)
-    print(e.value)
 
 
 async def test_215__post_with_get_fields__multiple_bad_fields(
@@ -1390,10 +1402,18 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
 
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=rf"400 Client Error: .*unrecognized.*(scan_id|rescan_ids).* for url: {rc.address}/scan",
-    ) as e:
+        match=(
+            # jsonschema sorts the extras alphabetically (rescan_ids < scan_id)
+            # and emits a single error for additionalProperties: false.
+            # NOTE: this body also has both event_i3live_json AND i3_event_id,
+            # which trips the oneOf mutex -> a second error is joined after via
+            # "; ". We allow anything between the two anchors.
+            rf"400 Client Error: Additional properties are not allowed "
+            rf"\('rescan_ids', 'scan_id' were unexpected\)"
+            rf".* for url: {rc.address}/scan"
+        ),
+    ):
         await rc.request("POST", "/scan", bad_body)
-    print(e.value)
 
 
 ########################################################################################
@@ -1403,31 +1423,23 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
 POST_SCAN_BODY_FOR_TEST_300 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
-def _get_required_field_missing_error(arg: str, address: str) -> str:
-    errs = {
-        "event_i3live_json": (
-            "400 Client Error: Must provide either 'event_i3live_json' or 'i3_event_id' (xor) "
-            f"for url: {address}/scan"
-        ),
-        "cluster": (  # 'cluster' is aliased w/ 'request_clusters'
-            "400 Client Error: Missing required argument: 'request_clusters' "
-            f"for url: {address}/scan"
-        ),
-    }
-
-    default = (
-        f"400 Client Error: the following arguments are required: {arg} "
-        f"for url: {address}/scan"
-    )
-
-    return errs.get(arg, default)
+_LINE_DELIMITER = f'{"#" * 100}\nNext set of asserts\n{"#" * 100}'
 
 
-async def test_300__bad_data(
+def _log_delimiter() -> None:
+    """Log a delimiting line so we can parse the logs."""
+    # not print-stderr b/c pytest separates
+    logging.getLogger().critical(_LINE_DELIMITER)
+    # also print
+    print(_LINE_DELIMITER)
+
+
+async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
     mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
@@ -1436,9 +1448,10 @@ async def test_300__bad_data(
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
-    ) as e:
+    ):
         await rc.request("GET", "/event")
-    print(e.value)
+
+    _log_delimiter()
 
     #
     # LAUNCH SCAN
@@ -1448,15 +1461,22 @@ async def test_300__bad_data(
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=re.escape(
-            f"400 Client Error: the following arguments are required: "
-            f"docker_tag, reco_algo, nsides, "
-            f"real_or_simulated_event, max_pixel_reco_time "
-            f"for url: {rc.address}/scan"
+        # openapi emits one "'<field>' is a required property" error per missing
+        # required field, joined via "; ". schema_errors order isn't guaranteed,
+        # so use lookaheads to assert all five expected fields appear.
+        match=(
+            rf"400 Client Error: "
+            rf"(?=.*'docker_tag' is a required property)"
+            rf"(?=.*'reco_algo' is a required property)"
+            rf"(?=.*'nsides' is a required property)"
+            rf"(?=.*'real_or_simulated_event' is a required property)"
+            rf"(?=.*'max_pixel_reco_time' is a required property)"
+            rf".* for url: {rc.address}/scan"
         ),
-    ) as e:
+    ):
         await rc.request("POST", "/scan", {})
-    print(e.value)
+    _log_delimiter()
+
     # # bad-type body-arg
     for arg in POST_SCAN_BODY_FOR_TEST_300:
         for bad_val in [
@@ -1468,12 +1488,18 @@ async def test_300__bad_data(
             print(f"{arg}: [{bad_val}]")
             with pytest.raises(
                 requests.exceptions.HTTPError,
-                match=rf"400 Client Error: argument {arg}: .+ for url: {rc.address}/scan",
-            ) as e:
+                # _schema_error_to_human_readable prepends the field path, so
+                # the reason starts with "'{arg}': ". The specific wording
+                # after that depends on which keyword fails (type / pattern /
+                # minLength / oneOf) -- we assert only on the field-name
+                # prefix here and let the reason be anything.
+                match=rf"400 Client Error: '{arg}': .+ for url: {rc.address}/scan",
+            ):
                 await rc.request(
                     "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, arg: bad_val}
                 )
-            print(e.value)
+            _log_delimiter()
+
     for bad_val in [  # type: ignore[assignment]
         {},
         {"collector": "a"},
@@ -1484,36 +1510,50 @@ async def test_300__bad_data(
         print(f"[{bad_val}]")
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=rf"400 Client Error: argument cluster: .+ for url: {rc.address}/scan",
-        ) as e:
+            # RequestClusters is a oneOf (object w/ int values OR array of
+            # [location, n_workers] tuples). All these malformed shapes fail
+            # both branches. _schema_error_to_human_readable prepends the
+            # field path and renders oneOf failures as "must match one of the
+            # accepted types".
+            match=(
+                rf"400 Client Error: 'cluster': must match one of the accepted types"
+                rf" for url: {rc.address}/scan"
+            ),
+        ):
             await rc.request(
                 "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "cluster": bad_val}
             )
-    print(e.value)
+        _log_delimiter()
+
     # # missing arg
-    for arg in POST_SCAN_BODY_FOR_TEST_300:
-        if arg in REQUIRED_FIELDS:
-            print(arg)
-            with pytest.raises(
-                requests.exceptions.HTTPError,
-                match=re.escape(_get_required_field_missing_error(arg, rc.address)),
-            ) as e:
-                # remove arg from body
-                await rc.request(
-                    "POST",
-                    "/scan",
-                    {k: v for k, v in POST_SCAN_BODY_FOR_TEST_300.items() if k != arg},
-                )
-        print(e.value)
-    # # bad docker tag
+    for arg in sorted(x for x in POST_SCAN_BODY_FOR_TEST_300 if x in REQUIRED_FIELDS):
+        print(arg)
+        if arg == "cluster":
+            # use alias for "cluster" -- not processed by openapi
+            match = rf"400 Client Error: 'request_clusters' is a required property for url: {rc.address}/scan"
+        elif arg == "event_i3live_json":
+            # xor logic -- not processed by openapi
+            match = rf"400 Client Error: Must provide either 'event_i3live_json' or 'i3_event_id' (xor) for url: {rc.address}/scan"
+        else:
+            match = rf"400 Client Error: '{arg}' is a required property for url: {rc.address}/scan"
+        with pytest.raises(requests.exceptions.HTTPError, match=re.escape(match)):
+            # remove arg from body
+            await rc.request(
+                "POST",
+                "/scan",
+                {k: v for k, v in POST_SCAN_BODY_FOR_TEST_300.items() if k != arg},
+            )
+        _log_delimiter()
+
+    # # bad docker tag -- not processed by openapi
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=rf"400 Client Error: argument docker_tag: image not found for url: {rc.address}/scan",
-    ) as e:
+    ):
         await rc.request(
             "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "docker_tag": "foo"}
         )
-    print(e.value)
+    _log_delimiter()
 
     # OK
     manifest = await _launch_scan(
@@ -1528,6 +1568,7 @@ async def test_300__bad_data(
     resp = await rc.request("GET", f"/scan/{scan_id}")
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
+    _log_delimiter()
 
     #
     # INITIAL UPDATES
@@ -1538,6 +1579,7 @@ async def test_300__bad_data(
     resp = await rc.request("GET", f"/scan/{scan_id}")
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
+    _log_delimiter()
 
     # ATTEMPT OVERWRITE
     with pytest.raises(
@@ -1545,7 +1587,7 @@ async def test_300__bad_data(
         match=re.escape(
             f"400 Client Error: Cannot change an existing event_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
-    ) as e:
+    ):
         await _do_patch(
             rc,
             scan_id,
@@ -1558,6 +1600,7 @@ async def test_300__bad_data(
                 is_real_event=IS_REAL_EVENT,
             ),
         )
+    _log_delimiter()
 
     #
     # ADD PROGRESS
@@ -1570,22 +1613,29 @@ async def test_300__bad_data(
     #     match=re.escape(
     #         f"422 Client Error: Attempted progress update with an empty object ({{}}) for url: {rc.address}/scan/{scan_id}/manifest"
     #     ),
-    # ) as e:
+    # ):
     #     await rc.request("PATCH", f"/scan/{scan_id}/manifest", {"progress": {}})
-    print(e.value)
     # # bad-type body-arg
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=rf"400 Client Error: argument progress: missing value for field .* for url: {rc.address}/scan/{scan_id}/manifest",
-        ) as e:
+            # progress is oneOf [object-with-required-fields, null]; a string
+            # or list fails both branches. _schema_error_to_human_readable
+            # prepends the field path and renders oneOf failures as "must
+            # match one of the accepted types".
+            match=(
+                rf"400 Client Error: 'progress': must match one of the accepted types"
+                rf" for url: {rc.address}/scan/{scan_id}/manifest"
+            ),
+        ):
             await rc.request(
                 "PATCH", f"/scan/{scan_id}/manifest", {"progress": bad_val}
             )
-        print(e.value)
+        _log_delimiter()
 
     # OK
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
+    _log_delimiter()
 
     # ATTEMPT OVERWRITE
     with pytest.raises(
@@ -1593,10 +1643,11 @@ async def test_300__bad_data(
         match=re.escape(
             f"400 Client Error: Cannot change an existing scan_metadata for url: {rc.address}/scan/{scan_id}/manifest"
         ),
-    ) as e:
+    ):
         await _do_patch(
             rc, scan_id, manifest, scan_metadata={"boo": "baz", "bot": "fox"}
         )
+    _log_delimiter()
 
     #
     # SEND RESULT
@@ -1606,35 +1657,45 @@ async def test_300__bad_data(
     # # empty body
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=re.escape(
-            f"400 Client Error: the following arguments are required: "
-            f"skyscan_result, is_final "
-            f"for url: {rc.address}/scan/{scan_id}/result"
+        # one "'<field>' is a required property" error per missing field,
+        # joined via "; ". Order isn't guaranteed.
+        match=(
+            rf"400 Client Error: "
+            rf"(?=.*'skyscan_result' is a required property)"
+            rf"(?=.*'is_final' is a required property)"
+            rf".* for url: {rc.address}/scan/{scan_id}/result"
         ),
-    ) as e:
+    ):
         await rc.request("PUT", f"/scan/{scan_id}/result", {})
-    print(e.value)
+    _log_delimiter()
+
     # # empty body-arg -- no error, doesn't do anything but return {}
     ret = await rc.request(
         "PUT", f"/scan/{scan_id}/result", {"skyscan_result": {}, "is_final": True}
     )
     assert ret == {}
-    print(e.value)
+    _log_delimiter()
+
     # # bad-type body-arg
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
             requests.exceptions.HTTPError,
-            match=re.escape(
-                f"400 Client Error: argument skyscan_result: arg must be a dict "
-                f"for url: {rc.address}/scan/{scan_id}/result"
+            # skyscan_result references FreeFormObject (type: object); a string
+            # or list fails the type check. _schema_error_to_human_readable
+            # prepends the field path and renders type failures as "must be
+            # type '<type>'" with a Python-equivalent hint in parens for the
+            # more abstract JSON types (object -> dict, array -> list, etc.).
+            match=(
+                rf"400 Client Error: 'skyscan_result': must be type 'object' \(dict\)"
+                rf" for url: {rc.address}/scan/{scan_id}/result"
             ),
-        ) as e:
+        ):
             await rc.request(
                 "PUT",
                 f"/scan/{scan_id}/result",
                 {"skyscan_result": bad_val, "is_final": True},
             )
-        print(e.value)
+        _log_delimiter()
 
     # OK
     result = await _send_result(rc, scan_id, manifest, True)
@@ -1642,6 +1703,7 @@ async def test_300__bad_data(
     await asyncio.sleep(test_wait_before_teardown + 1)
     manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
     assert await _is_scan_complete(rc, manifest["scan_id"])  # workforce is done
+    _log_delimiter()
 
     #
     # DELETE SCAN
@@ -1655,18 +1717,19 @@ async def test_300__bad_data(
             f"400 Client Error: Attempted to delete a completed scan "
             f"(must use `delete_completed_scan=True`) for url: {rc.address}/scan"
         ),
-    ) as e:
+    ):
         await rc.request("DELETE", f"/scan/{scan_id}", {"delete_completed_scan": False})
-    print(e.value)
+    _log_delimiter()
+
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
             f"400 Client Error: Attempted to delete a completed scan "
             f"(must use `delete_completed_scan=True`) for url: {rc.address}/scan"
         ),
-    ) as e:
+    ):
         await rc.request("DELETE", f"/scan/{scan_id}")
-    print(e.value)
+    _log_delimiter()
 
     # OK
     await _delete_scan(
@@ -1678,6 +1741,7 @@ async def test_300__bad_data(
         True,
         True,
     )
+    _log_delimiter()
 
     # also OK
     await _delete_scan(
@@ -1689,6 +1753,7 @@ async def test_300__bad_data(
         True,
         True,
     )
+    _log_delimiter()
 
 
 ########################################################################################

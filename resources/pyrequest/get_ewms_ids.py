@@ -15,7 +15,7 @@ import requests
 from rest_tools.client import RestClient
 from wipac_dev_tools import logging_tools
 
-from _connect import get_rest_client  # type: ignore[import-not-found]
+from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
 
 EWMS_HELPER_SCRIPT_URLS = [
     "https://raw.githubusercontent.com/Observation-Management-Service/ewms-workflow-management-service/refs/heads/main/resources/get_all_ids.py",
