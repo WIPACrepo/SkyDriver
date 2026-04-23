@@ -10,12 +10,15 @@ from typing import Any, Type, TypeVar, cast
 
 import humanfriendly  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
+import openapi_core
+import tornado
 from dacite import from_dict
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+from openapi_core.validation.exceptions import ValidationError
 from pymongo import ReturnDocument
-from rest_tools import openapi_tools
 from rest_tools.client import RestClient
+from rest_tools.openapi_tools import _http_server_request_to_openapi_request
 from rest_tools.server import RestHandler
 from tornado import web
 from wipac_dev_tools.container_registry_tools import ImageNotFoundException
@@ -49,6 +52,147 @@ from .utils import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
+    """Format a jsonschema ValidationError as 'path: reason'.
+
+    The offending value (err.instance) is intentionally NOT included in the
+    returned string: request bodies can contain secrets (tokens, auth URLs,
+    env-var values) or be very large (full event payloads), and a 400
+    response body is not the right place to reflect either back to the
+    client. The full value remains available server-side via LOGGER.error
+    for debugging.
+    """
+    field_path = ".".join(str(p) for p in err.absolute_path)
+
+    # Reconstruct the reason without including err.instance (the bad value).
+    # err.validator is the failing keyword ('type', 'pattern', 'required',
+    # 'oneOf', ...); err.validator_value is its schema value.
+    keyword, constraint = err.validator, err.validator_value
+
+    if keyword in ("required", "additionalProperties"):
+        # og: "'docker_tag' is a required property"
+        # og: "Additional properties are not allowed ('scan_id' was unexpected)"
+        return str(err).split("\n", 1)[0]
+    elif keyword == "type":
+        # og: "'' is not of type 'integer'"
+        _type_alias = {
+            # communicate python equivalents for the more abstract JSON types
+            "boolean": " (bool)",
+            "array": " (list)",
+            "object": " (dict)",
+            "null": " (None)",
+        }
+        reason = f"must be type {constraint!r}{_type_alias.get(constraint, '')}"
+    elif keyword == "pattern":
+        # og: "' ' does not match '\\S'"
+        reason = f"must match the pattern {constraint!r}"
+    elif keyword == "minLength":
+        # og: "'' is too short"
+        reason = f"must be at least {constraint} characters long"
+    elif keyword == "maxLength":
+        # og: "'aaaa...' is too long"
+        reason = f"must be no more than {constraint} characters long"
+    elif keyword == "minimum":
+        # og: "0 is less than the minimum of 1"
+        reason = f"must be at least {constraint}"
+    elif keyword == "maximum":
+        # og: "30 is greater than the maximum of 25"
+        reason = f"must be no more than {constraint}"
+    elif keyword == "enum":
+        # og: "'fake' is not one of ['real', 'real_event', ...]"
+        reason = f"must be one of: {', '.join(repr(v) for v in constraint)}"
+    elif keyword in ("oneOf", "anyOf"):
+        # og: "X is not valid under any of the given schemas"
+        # NOTE: 'oneOf' vs 'anyOf'
+        #   'anyOf' fires for both "matched 0 branches" and "matched multiple branches";
+        #   jsonschema's default message distinguishes the two, but from the user's
+        #   POV the fix is the same: send a value that fits exactly one form.
+        #   So -- this makes both keywords ('oneOf' and 'anyOf') practically the same,
+        #   using the following wording...
+        reason = "must match one of the accepted types"
+    elif keyword == "minItems":
+        # og: "[] is too short"
+        reason = f"must have at least {constraint} items"
+    elif keyword == "maxItems":
+        # og: "[...] is too long"
+        reason = f"must have no more than {constraint} items"
+    elif keyword == "minProperties":
+        # og: "{} does not have enough properties"
+        reason = f"must have at least {constraint} entries"
+    elif keyword == "maxProperties":
+        # og: "{...} has too many properties"
+        reason = f"must have no more than {constraint} entries"
+    elif keyword == "uniqueItems":
+        # og: "[1, 1] has non-unique elements"
+        reason = "items must be unique"
+    else:
+        # fall-through: future-proof new keywords
+        reason = f"failed {keyword!r} constraint"
+
+    return f"{field_path!r}: {reason}" if field_path else reason
+
+
+def validate_request(openapi_spec: "openapi_core.OpenAPI"):  # type: ignore
+    """A REST-endpoint wrapper to validate requests against an OpenAPI spec.
+
+    Example:
+    ```
+    class MyRestHandler(RestHandler):
+
+        @validate_request(config.OPENAPI_SPEC)
+        async def get(self) -> None: ...
+    ```
+    """
+    # TODO: restore on merge to rest-tools
+    # if not openapi_available:
+    #     raise RuntimeError(
+    #         "openapi cannot be imported! perhaps you meant to pip install it?"
+    #     )
+
+    def make_wrapper(method):  # type: ignore[no-untyped-def]
+        async def wrapper(zelf: tornado.web.RequestHandler, *args, **kwargs):  # type: ignore[no-untyped-def]
+            LOGGER.debug("validating with openapi spec")
+            # NOTE - don't change data (unmarshal) b/c we are downstream of data separation
+            try:
+                # https://openapi-core.readthedocs.io/en/latest/validation.html
+                openapi_spec.validate_request(
+                    _http_server_request_to_openapi_request(zelf.request),
+                )
+            except ValidationError as e:  # type: ignore
+                LOGGER.error(f"invalid request: {e.__class__.__name__} - {e}")
+                # get reason
+                if isinstance(  # look at the ORIGINAL exception that caused this error
+                    e.__context__,
+                    openapi_core.validation.schemas.exceptions.InvalidSchemaValue,  # type: ignore
+                ):
+                    reason = "; ".join(
+                        _schema_error_to_human_readable(x)
+                        for x in e.__context__.schema_errors
+                    )
+                else:
+                    reason = str(e)  # to client
+                # send 400
+                raise tornado.web.HTTPError(
+                    status_code=400,
+                    log_message=f"{e.__class__.__name__}: {e}",  # to stderr
+                    reason=reason,  # to client
+                )
+            except Exception as e:
+                LOGGER.error(f"unexpected exception: {e.__class__.__name__} - {e}")
+                LOGGER.exception(e)
+                raise tornado.web.HTTPError(
+                    status_code=400,
+                    log_message=f"{e.__class__.__name__}: {e}",  # to stderr
+                    reason=None,  # to client (don't send possibly sensitive info)
+                )
+
+            return await method(zelf, *args, **kwargs)
+
+        return wrapper
+
+    return make_wrapper
 
 
 # -----------------------------------------------------------------------------
@@ -142,7 +286,7 @@ class MainHandler(BaseSkyDriverHandler):
     ROUTE = r"/$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self) -> None:
         """Handle GET."""
         self.write({})
@@ -165,7 +309,7 @@ class ScansFindHandler(BaseSkyDriverHandler):
     DEFAULT_FIELDS = all_dc_fields(database.schema.Manifest) - DISALLOWED_FIELDS
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def post(self) -> None:
         """Get matching scan manifest(s) for the given search."""
         manifest_projection = self.get_argument("manifest_projection", "*")
@@ -207,7 +351,7 @@ class ScanBacklogHandler(BaseSkyDriverHandler):
     ROUTE = r"/scans/backlog$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self) -> None:
         """Get all scan id(s) in the backlog."""
         entries = [e async for e in self.scan_backlog.get_all()]
@@ -345,7 +489,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             return i3_event_id
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def post(self) -> None:
         """Start a new scan."""
         # Reject fully-deprecated 'memory' field (no canonical replacement to fall through to)
@@ -354,7 +498,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             raise web.HTTPError(400, reason=msg, log_message=msg)
 
         # 1. Make scan_request_obj while validating -- to go into DB
-        #    Note: type validation is done by OpenAPI spec, via '@openapi_tools.validate_request()'
+        #    Note: type validation is done by OpenAPI spec, via '@validate_request()'
         #    Deprecated aliases are coalesced inline via `or` chains.
         try:
             scan_request_obj = dict(
@@ -544,7 +688,7 @@ class ScanRequestHandler(BaseSkyDriverHandler):
     ROUTE = r"/scan-request/(?P<scan_id>\w+)$"
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """GET."""
         scan_request_obj = await self.scan_request_coll.find_one({"scan_id": scan_id})
@@ -574,7 +718,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def post(self, scan_id: str) -> None:
         abort_first = self.get_argument("abort_first", False)
         replace_scan = self.get_argument("replace_scan", False)
@@ -646,7 +790,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def post(self, scan_id: str) -> None:
         n_workers = self.get_argument("n_workers")  # required
         cluster_location = self.get_argument("cluster_location")  # required
@@ -804,7 +948,7 @@ class ScanHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def delete(self, scan_id: str) -> None:
         """Abort a scan and/or mark manifest & result as "deleted"."""
         delete_completed_scan = self.get_argument("delete_completed_scan", False)
@@ -840,7 +984,7 @@ class ScanHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get manifest & result."""
         include_deleted = self.get_argument("include_deleted", False)
@@ -870,7 +1014,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
         include_deleted = self.get_argument("include_deleted", False)
@@ -906,7 +1050,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         self.write(dict_projection(dc.asdict(manifest), projection))
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
         T = TypeVar("T")
@@ -949,7 +1093,7 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
         manifest = await self.manifests.get(scan_id, True)
@@ -993,7 +1137,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted result."""
         include_deleted = self.get_argument("include_deleted", False)
@@ -1008,7 +1152,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
         self.write(dc.asdict(result) if result else {})
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's result."""
         skyscan_result = self.get_argument("skyscan_result")  # required
@@ -1052,7 +1196,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
         manifest = await self.manifests.get(scan_id, incl_del=True)
@@ -1102,7 +1246,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
         manifest = await self.manifests.get(scan_id, incl_del=True)
@@ -1130,7 +1274,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
         manifest = await self.manifests.get(scan_id, incl_del=True)
@@ -1147,7 +1291,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
         )
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def post(self, scan_id: str) -> None:
         """Update the ewms workflow_id."""
         workflow_id = self.get_argument("workflow_id")  # required
@@ -1192,7 +1336,7 @@ class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """GET.
 
@@ -1218,7 +1362,7 @@ class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
-    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """GET.
 
