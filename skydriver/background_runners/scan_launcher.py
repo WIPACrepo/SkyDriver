@@ -43,7 +43,7 @@ async def get_next(
     scan_backlog: database.interface.ScanBacklogClient,
     manifests: database.interface.ManifestClient,
     scan_request_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
-    skyscan_k8s_job_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    skyscan_k8s_job_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
     include_low_priority_scans: bool,
 ) -> tuple[database.schema.ScanBacklogEntry, database.schema.Manifest, dict, dict]:
     """Get the next entry & remove any that have been cancelled."""
@@ -109,13 +109,13 @@ async def run(
     backlog_client = database.interface.ScanBacklogClient(mongo_client)
     scan_request_client = (
         AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-            mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
             database.utils._SCAN_REQUEST_COLL_NAME,
         )
     )
     skyscan_k8s_job_client = (
         AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-            mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
             database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
         )
     )
