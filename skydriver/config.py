@@ -68,8 +68,8 @@ class EnvConfig:
     REST_PORT: int = 8080
 
     CI: bool = False  # github actions sets this to 'true'
-    LOG_LEVEL: str = "DEBUG"
-    LOG_LEVEL_THIRD_PARTY: str = "WARNING"
+    LOG_LEVEL: logging_tools.LoggerLevel = "DEBUG"
+    LOG_LEVEL_THIRD_PARTY: logging_tools.LoggerLevel = "WARNING"
 
     SCAN_BACKLOG_MAX_ATTEMPTS: int = 3
     SCAN_BACKLOG_RUNNER_SHORT_DELAY: int = 15
@@ -217,9 +217,9 @@ def config_logging() -> None:
     testing environments.
     """
     logging_tools.set_level(
-        ENV.LOG_LEVEL,  # type: ignore[arg-type]
+        ENV.LOG_LEVEL,
         first_party_loggers=__name__.split(".", maxsplit=1)[0],
-        third_party_level=ENV.LOG_LEVEL_THIRD_PARTY,  # type: ignore[arg-type]
+        third_party_level=ENV.LOG_LEVEL_THIRD_PARTY,
         future_third_parties=[],
         specialty_loggers={"rest_tools": "INFO"},
         formatter=WIPACDevToolsFormatter(),
