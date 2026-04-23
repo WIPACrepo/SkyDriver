@@ -16,7 +16,7 @@ import json
 import logging
 from typing import Any
 
-from _connect import get_rest_client  # type: ignore[import-not-found]
+from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
 from stop_scan import stop_scan  # type: ignore[import-not-found]
 
 logging.getLogger().setLevel(logging.INFO)

@@ -331,7 +331,7 @@ def reconstruct_tests_from_sandbox(sandbox: Path) -> list[test_getter.TestParamS
             member = tar.getmember(
                 f"{config.SANDBOX_DIR.name}/{config.SANDBOX_MAP_FPATH.name}"
             )
-            with tar.extractfile(member) as f:  # type: ignore[union-attr]
+            with tar.extractfile(member) as f:  # type: ignore[union-attr]  # ty: ignore[invalid-context-manager]
                 json_data = json.loads(f.read())
 
     return [
