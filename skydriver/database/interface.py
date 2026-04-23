@@ -5,8 +5,7 @@ import logging
 import time
 from typing import Any, AsyncIterator
 
-from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo import ASCENDING, DESCENDING, ReturnDocument
+from pymongo import ASCENDING, AsyncMongoClient, DESCENDING, ReturnDocument
 from tornado import web
 
 from . import mongodc, schema
@@ -27,9 +26,9 @@ LOGGER = logging.getLogger(__name__)
 class ManifestClient:
     """Wraps the attribute for the metadata of a scan."""
 
-    def __init__(self, motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
+    def __init__(self, mongo_client: AsyncMongoClient) -> None:  # type: ignore[valid-type]
         self.collection = mongodc.MotorDataclassCollection(
-            motor_client[_DB_NAME],  # type: ignore[index]
+            mongo_client[_DB_NAME],  # type: ignore[index]
             _MANIFEST_COLL_NAME,
         )
 
@@ -213,11 +212,11 @@ class ManifestClient:
 class ResultClient:
     """Wraps the attribute for the result of a scan."""
 
-    def __init__(self, motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
+    def __init__(self, mongo_client: AsyncMongoClient) -> None:  # type: ignore[valid-type]
         self.collection: (
             mongodc.MotorDataclassCollection
         ) = mongodc.MotorDataclassCollection(
-            motor_client[_DB_NAME], _RESULTS_COLL_NAME  # type: ignore[index]
+            mongo_client[_DB_NAME], _RESULTS_COLL_NAME  # type: ignore[index]
         )
 
     async def get(self, scan_id: str) -> schema.Result:
@@ -275,11 +274,11 @@ class ResultClient:
 class ScanBacklogClient:
     """Wraps the attribute for the result of a scan."""
 
-    def __init__(self, motor_client: AsyncIOMotorClient) -> None:  # type: ignore[valid-type]
+    def __init__(self, mongo_client: AsyncMongoClient) -> None:  # type: ignore[valid-type]
         self.collection: (
             mongodc.MotorDataclassCollection
         ) = mongodc.MotorDataclassCollection(
-            motor_client[_DB_NAME], _SCAN_BACKLOG_COLL_NAME  # type: ignore[index]
+            mongo_client[_DB_NAME], _SCAN_BACKLOG_COLL_NAME  # type: ignore[index]
         )
 
     async def fetch_next_as_pending(

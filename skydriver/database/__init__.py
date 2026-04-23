@@ -2,7 +2,7 @@
 
 from urllib.parse import quote_plus
 
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient
 
 from . import interface, mongodc, schema, utils
 from ..config import ENV
@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 
-async def create_mongodb_client() -> AsyncIOMotorClient:  # type: ignore[valid-type]
+async def create_mongodb_client() -> AsyncMongoClient:  # type: ignore[valid-type]
     """Construct the MongoDB client."""
     auth_user = quote_plus(ENV.MONGODB_AUTH_USER)
     auth_pass = quote_plus(ENV.MONGODB_AUTH_PASS)
@@ -25,5 +25,5 @@ async def create_mongodb_client() -> AsyncIOMotorClient:  # type: ignore[valid-t
     else:
         url = f"mongodb://{ENV.MONGODB_HOST}:{ENV.MONGODB_PORT}"
 
-    mongo_client = AsyncIOMotorClient(url)  # type: ignore[var-annotated]
+    mongo_client = AsyncMongoClient(url)  # type: ignore[var-annotated]
     return mongo_client

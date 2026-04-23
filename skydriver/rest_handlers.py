@@ -12,8 +12,7 @@ import humanfriendly  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
 from dacite.exceptions import DaciteError
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
-from pymongo import ReturnDocument
+from pymongo import AsyncMongoClient, ReturnDocument
 from rest_tools import openapi_tools
 from rest_tools.client import RestClient
 from rest_tools.server import RestHandler
@@ -105,7 +104,7 @@ class BaseSkyDriverHandler(RestHandler):
 
     def initialize(  # type: ignore
         self,
-        mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+        mongo_client: AsyncMongoClient,  # type: ignore[valid-type]
         k8s_batch_api: kubernetes.client.BatchV1Api,
         ewms_rc: RestClient,
         *args: Any,

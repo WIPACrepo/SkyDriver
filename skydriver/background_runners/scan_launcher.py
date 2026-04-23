@@ -5,7 +5,7 @@ import logging
 import time
 
 import kubernetes.client  # type: ignore[import-untyped]
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+from pymongo import AsyncMongoClient
 from tenacity import retry, stop_never, wait_fixed
 from tornado import web
 from wipac_dev_tools.timing_tools import IntervalTimer
@@ -101,7 +101,7 @@ async def get_next(
     after=lambda x: LOGGER.info(f"Restarted {__name__}."),
 )
 async def run(
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,  # type: ignore[valid-type]
     k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
     """The main loop."""

@@ -5,7 +5,7 @@ import logging
 import time
 
 import kubernetes.client  # type: ignore[import-untyped]
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+from pymongo import AsyncMongoClient
 from rest_tools.client import RestClient
 from tenacity import retry, stop_never, wait_fixed
 from wipac_dev_tools.timing_tools import IntervalTimer
@@ -114,7 +114,7 @@ async def _request_replacement_rescan(skyd_rc: RestClient, scan_id: str) -> None
     after=lambda x: LOGGER.info(f"Restarted {__name__}."),
 )
 async def run(
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,  # type: ignore[valid-type]
     k8s_core_api: kubernetes.client.CoreV1Api,  # CoreV1Api(k8s_batch_api.api_client)
 ) -> None:
     """The main loop."""
