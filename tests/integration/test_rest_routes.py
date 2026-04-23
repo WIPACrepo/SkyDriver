@@ -1499,7 +1499,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                     "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, arg: bad_val}
                 )
             _log_delimiter()
-            assert 0
+    assert 0
 
     for bad_val in [  # type: ignore[assignment]
         {},
