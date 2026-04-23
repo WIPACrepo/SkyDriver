@@ -101,7 +101,7 @@ async def get_next(
     after=lambda x: LOGGER.info(f"Restarted {__name__}."),
 )
 async def run(
-    mongo_client: AsyncMongoClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
     k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
     """The main loop."""

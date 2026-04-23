@@ -15,7 +15,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 async def make(
-    mongo_client: AsyncMongoClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
     k8s_batch_api: kubernetes.client.BatchV1Api,
     ewms_rc: RestClient,
 ) -> RestServer:

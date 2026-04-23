@@ -104,7 +104,7 @@ class BaseSkyDriverHandler(RestHandler):
 
     def initialize(  # type: ignore
         self,
-        mongo_client: AsyncMongoClient,  # type: ignore[valid-type]
+        mongo_client: AsyncMongoClient,
         k8s_batch_api: kubernetes.client.BatchV1Api,
         ewms_rc: RestClient,
         *args: Any,
@@ -112,22 +112,7 @@ class BaseSkyDriverHandler(RestHandler):
     ) -> None:
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)  # type: ignore[no-untyped-call]
-
-        self.manifests = database.interface.ManifestClient(mongo_client)
-        self.results = database.interface.ResultClient(mongo_client)
-        self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
-        self.scan_request_coll = AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-            database.utils._SCAN_REQUEST_COLL_NAME,
-        )
-        self.i3_event_coll = AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-            database.utils._I3_EVENT_COLL_NAME,
-        )
-        self.skyscan_k8s_job_coll = AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-            database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
-        )
+        self.db = database.client.WMSMongoValidatedDatabase(mongo_client)
         self.k8s_batch_api = k8s_batch_api
         self.ewms_rc = ewms_rc
 
@@ -187,7 +172,7 @@ class ScansFindHandler(BaseSkyDriverHandler):
 
         manifests = [
             dict_projection(dc.asdict(m), manifest_projection)
-            async for m in self.manifests.find_all(filter_)
+            async for m in self.db.manifests.find_all(filter_)
         ]
 
         self.write({"manifests": manifests})
@@ -209,7 +194,7 @@ class ScanBacklogHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self) -> None:
         """Get all scan id(s) in the backlog."""
-        entries = [e async for e in self.scan_backlog.get_all()]
+        entries = [e async for e in self.db.scan_backlog.get_all()]
 
         self.write({"entries": entries})
 
@@ -322,7 +307,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 raise web.HTTPError(400, reason=msg, log_message=msg)
 
         if i3_event_id:
-            ret = await self.i3_event_coll.find_one({"i3_event_id": i3_event_id})
+            ret = await self.db.i3_events.find_one({"i3_event_id": i3_event_id})
             if not ret:
                 _msg = "i3 event not found"
                 raise web.HTTPError(
@@ -335,7 +320,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         else:
             # -> store the event in its own collection to reduce redundancy
             i3_event_id = uuid.uuid4().hex
-            await self.i3_event_coll.insert_one(
+            await self.db.i3_events.insert_one(
                 {
                     "i3_event_id": i3_event_id,
                     "json_dict": event_i3live_json,  # this was transformed into dict
@@ -449,12 +434,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
 
         # 4. Persist in DB
         manifest = await enqueue_scan(
-            self.manifests,
-            self.scan_backlog,
-            self.skyscan_k8s_job_coll,
+            self.db.manifests,
+            self.db.scan_backlog,
+            self.db.skyscan_k8s_jobs,
             scan_request_obj,
             insert_scan_request_obj=True,
-            scan_request_coll=self.scan_request_coll,
+            scan_request_coll=self.db.scan_requests,
         )
 
         # 5. Write response
@@ -546,7 +531,7 @@ class ScanRequestHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """GET."""
-        scan_request_obj = await self.scan_request_coll.find_one({"scan_id": scan_id})
+        scan_request_obj = await self.db.scan_requests.find_one({"scan_id": scan_id})
         if not scan_request_obj:
             msg = "Scan request not found"
             raise web.HTTPError(
@@ -581,13 +566,13 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         manifest_projection = self.get_argument("manifest_projection", "*")
 
         if abort_first:
-            await abort_scan(self.manifests, scan_id, self.ewms_rc)
+            await abort_scan(self.db.manifests, scan_id, self.ewms_rc)
 
         # generate unique scan_id
         new_scan_id = make_scan_id()
 
         # grab the 'scan_request_obj'
-        scan_request_obj = await self.scan_request_coll.find_one_and_update(
+        scan_request_obj = await self.db.scan_requests.find_one_and_update(
             get_scan_request_obj_filter(scan_id),
             {
                 # record linkage (discoverability)
@@ -605,9 +590,9 @@ class ScanRescanHandler(BaseSkyDriverHandler):
 
         # go!
         manifest = await enqueue_scan(
-            self.manifests,
-            self.scan_backlog,
-            self.skyscan_k8s_job_coll,
+            self.db.manifests,
+            self.db.scan_backlog,
+            self.db.skyscan_k8s_jobs,
             {
                 **scan_request_obj,
                 **{
@@ -624,7 +609,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         )
 
         if replace_scan:
-            await self.manifests.collection.find_one_and_update(
+            await self.db.manifests.collection.find_one_and_update(
                 {"scan_id": scan_id},
                 {"$set": {"replaced_by_scan_id": new_scan_id}},
                 return_dclass=dict,
@@ -650,7 +635,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
         n_workers = self.get_argument("n_workers")  # required
         cluster_location = self.get_argument("cluster_location")  # required
 
-        manifest = await self.manifests.get(scan_id, True)
+        manifest = await self.db.manifests.get(scan_id, True)
 
         # has it been deleted?
         if manifest.is_deleted:
@@ -670,7 +655,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
             )
         # is scan done?
         if await get_scan_state_if_final_result_received(
-            manifest.scan_id, self.results
+            manifest.scan_id, self.db.results
         ):
             msg = "this scan has a final result--cannot add workers"
             raise web.HTTPError(
@@ -812,7 +797,7 @@ class ScanHandler(BaseSkyDriverHandler):
 
         # check DB states
         if (not delete_completed_scan) and (
-            await get_scan_state_if_final_result_received(scan_id, self.results)
+            await get_scan_state_if_final_result_received(scan_id, self.db.results)
         ):
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
@@ -821,10 +806,10 @@ class ScanHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
 
-        manifest = await abort_scan(self.manifests, scan_id, self.ewms_rc)
+        manifest = await abort_scan(self.db.manifests, scan_id, self.ewms_rc)
 
         try:
-            result_dict = dc.asdict(await self.results.get(scan_id))
+            result_dict = dc.asdict(await self.db.results.get(scan_id))
         except web.HTTPError as e:
             if e.status_code != 404:
                 raise
@@ -845,8 +830,8 @@ class ScanHandler(BaseSkyDriverHandler):
         include_deleted = self.get_argument("include_deleted", False)
 
         result, manifest = await get_result_safely(
-            self.manifests,
-            self.results,
+            self.db.manifests,
+            self.db.results,
             scan_id,
             include_deleted,
         )
@@ -877,7 +862,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         projection = self.get_argument("projection", "*")  # pipe-delimited string
 
         # get manifest from db
-        manifest = await self.manifests.get(scan_id, include_deleted)
+        manifest = await self.db.manifests.get(scan_id, include_deleted)
 
         # Backward Compatibility for Skymap Scanner:
         #   Include the whole event dict in the response like the 'old' manifest.
@@ -887,7 +872,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
             and any(x in projection.split("|") for x in ["*", "event_i3live_json_dict"])
             and manifest.i3_event_id  # if no id, then event already in manifest
         ):
-            if i3event_doc := await self.i3_event_coll.find_one(
+            if i3event_doc := await self.db.i3_events.find_one(
                 {"i3_event_id": manifest.i3_event_id}
             ):
                 manifest.event_i3live_json_dict = i3event_doc["json_dict"]
@@ -928,7 +913,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         )
         scan_metadata = self.get_argument("scan_metadata", {})
 
-        manifest = await self.manifests.patch(
+        manifest = await self.db.manifests.patch(
             scan_id,
             progress,
             event_metadata,
@@ -951,11 +936,11 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
-        manifest = await self.manifests.get(scan_id, True)
+        manifest = await self.db.manifests.get(scan_id, True)
 
         # look up event in collection
         if manifest.i3_event_id:
-            doc = await self.i3_event_coll.find_one(
+            doc = await self.db.i3_events.find_one(
                 {"i3_event_id": manifest.i3_event_id}
             )
             if doc:
@@ -998,8 +983,8 @@ class ScanResultHandler(BaseSkyDriverHandler):
         include_deleted = self.get_argument("include_deleted", False)
 
         result, _ = await get_result_safely(
-            self.manifests,
-            self.results,
+            self.db.manifests,
+            self.db.results,
             scan_id,
             include_deleted,
         )
@@ -1017,7 +1002,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
             self.write({})
             return
 
-        result_dc = await self.results.put(
+        result_dc = await self.db.results.put(
             scan_id,
             skyscan_result,
             is_final,
@@ -1034,7 +1019,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
                 WAIT_BEFORE_TEARDOWN
             )  # regular time.sleep() sleeps the entire server
             await stop_skyscan_workers(
-                self.manifests,
+                self.db.manifests,
                 scan_id,
                 self.ewms_rc,
                 abort=False,
@@ -1054,10 +1039,10 @@ class ScanStatusHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
-        manifest = await self.manifests.get(scan_id, incl_del=True)
+        manifest = await self.db.manifests.get(scan_id, incl_del=True)
 
         # scan state
-        scan_state = await get_scan_state(manifest, self.ewms_rc, self.results)
+        scan_state = await get_scan_state(manifest, self.ewms_rc, self.db.results)
 
         # respond
         resp = {
@@ -1104,7 +1089,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
-        manifest = await self.manifests.get(scan_id, incl_del=True)
+        manifest = await self.db.manifests.get(scan_id, incl_del=True)
 
         self.write(
             {
@@ -1132,7 +1117,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
-        manifest = await self.manifests.get(scan_id, incl_del=True)
+        manifest = await self.db.manifests.get(scan_id, incl_del=True)
 
         self.write(
             {
@@ -1153,7 +1138,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
         ewms_address = self.get_argument("ewms_address")  # required
 
         try:
-            manifest = await self.manifests.collection.find_one_and_update(
+            manifest = await self.db.manifests.collection.find_one_and_update(
                 {
                     "scan_id": scan_id,
                     "ewms_workflow_id": _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
@@ -1197,7 +1182,7 @@ class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
 
         This is a high-level utility, which removes unnecessary EWMS semantics.
         """
-        manifest = await self.manifests.get(scan_id, incl_del=True)
+        manifest = await self.db.manifests.get(scan_id, incl_del=True)
 
         self.write(
             await ewms.get_workforce_statuses(
@@ -1223,7 +1208,7 @@ class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
 
         This is useful for debugging by seeing what was sent to condor.
         """
-        manifest = await self.manifests.get(scan_id, incl_del=True)
+        manifest = await self.db.manifests.get(scan_id, incl_del=True)
 
         self.write(
             {

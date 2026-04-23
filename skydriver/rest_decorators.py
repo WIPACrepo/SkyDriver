@@ -57,7 +57,7 @@ def maybe_redirect_scan_id(roles: list[str]):
                 return await method(self, scan_id, *args, **kwargs)
 
             # look in DB
-            manifest = await self.manifests.get(scan_id, incl_del=True)
+            manifest = await self.db.manifests.get(scan_id, incl_del=True)
             if manifest.replaced_by_scan_id:
                 # Reconstruct URL with replaced scan ID
                 # Full URL: scheme://host/path?query

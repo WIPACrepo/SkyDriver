@@ -114,7 +114,7 @@ async def _request_replacement_rescan(skyd_rc: RestClient, scan_id: str) -> None
     after=lambda x: LOGGER.info(f"Restarted {__name__}."),
 )
 async def run(
-    mongo_client: AsyncMongoClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
     k8s_core_api: kubernetes.client.CoreV1Api,  # CoreV1Api(k8s_batch_api.api_client)
 ) -> None:
     """The main loop."""
