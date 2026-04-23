@@ -8,7 +8,7 @@ import random
 import re
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import humanfriendly  # type: ignore[import-untyped]
 import pytest
@@ -374,12 +374,12 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     {
                                         "name": "EWMS_CLUSTERS",
                                         "value": " ".join(
-                                            list(post_scan_body["cluster"].keys())
+                                            [str(k) for k in post_scan_body["cluster"].keys()]
                                             if isinstance(
                                                 post_scan_body["cluster"], dict
                                             )
                                             else [
-                                                c[0] for c in post_scan_body["cluster"]
+                                                str(c[0]) for c in post_scan_body["cluster"]
                                             ]
                                         ),
                                     },
@@ -1247,7 +1247,7 @@ async def test_200__get_edit_launchdup(
     assert sr_alpha["reco_algo"] == POST_SCAN_BODY["reco_algo"]
     # nsides keys get stringified in storage:
     assert sr_alpha["nsides"] == {
-        str(k): v for k, v in POST_SCAN_BODY["nsides"].items()  # type: ignore[attr-defined]
+        str(k): v for k, v in cast(dict, POST_SCAN_BODY["nsides"]).items()
     }
     # request_clusters normalized (either list-of-pairs or dict accepted on input)
     assert sr_alpha["request_clusters"] in (
@@ -1266,7 +1266,7 @@ async def test_200__get_edit_launchdup(
         **{k: v for k, v in POST_SCAN_BODY.items() if k != "event_i3live_json"},
         "i3_event_id": i3_event_id_alpha,  # reuse the same event
         # other tweaks...
-        "reco_algo": POST_SCAN_BODY["reco_algo"] + "-dup",  # type: ignore[operator]
+        "reco_algo": cast(str, POST_SCAN_BODY["reco_algo"]) + "-dup",
         "cluster": orig_clusters,
         "docker_tag": "3.4.0",
     }
@@ -1293,7 +1293,7 @@ async def test_200__get_edit_launchdup(
     assert sr_beta["i3_event_id"] == i3_event_id_alpha
     assert sr_beta["docker_tag"] == "3.4.0"
     assert sr_beta["reco_algo"] == post_body_dup["reco_algo"]
-    assert sr_beta["nsides"] == {str(k): v for k, v in POST_SCAN_BODY["nsides"].items()}  # type: ignore[attr-defined]
+    assert sr_beta["nsides"] == {str(k): v for k, v in cast(dict, POST_SCAN_BODY["nsides"]).items()}
     assert sr_beta["request_clusters"] in (
         list([k, v] for k, v in orig_clusters.items()),
         orig_clusters,
