@@ -67,7 +67,7 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
     """
     if os.getenv("CI"):
         _logging_dict = {**vars(err), "instance": "<omitted for brevity>"}
-        LOGGER.error(f"{err.__class__.__name__}: details={_logging_dict}")
+        LOGGER.error(f"TEST-ONLY LOGGING: {err.__class__.__name__}: {_logging_dict}")
 
     field_path = ".".join(str(p) for p in err.absolute_path)
 
@@ -168,7 +168,9 @@ def validate_request(openapi_spec: "openapi_core.OpenAPI"):  # type: ignore
                     _http_server_request_to_openapi_request(zelf.request),
                 )
             except ValidationError as e:  # type: ignore
-                LOGGER.error(f"invalid request: {e.__class__.__name__} - {e}")
+                LOGGER.error(
+                    f"Invalid request: {e.__class__.__name__} (see validation details below)"
+                )
                 # get reason
                 if isinstance(  # look at the ORIGINAL exception that caused this error
                     e.__context__,
@@ -183,15 +185,18 @@ def validate_request(openapi_spec: "openapi_core.OpenAPI"):  # type: ignore
                 # send 400
                 raise tornado.web.HTTPError(
                     status_code=400,
-                    log_message=f"{e.__class__.__name__}: {reason}",  # to stderr -- omit request object
+                    log_message=f"{e.__class__.__name__}: {reason}",  # to stderr -- omit req obj
                     reason=reason,  # to client
                 )
             except Exception as e:
-                LOGGER.error(f"unexpected exception: {e.__class__.__name__} - {e}")
+                LOGGER.error(
+                    f"Unexpected exception! {e.__class__.__name__} (see trace below)"
+                )
                 LOGGER.exception(e)
+                # send 400
                 raise tornado.web.HTTPError(
                     status_code=400,
-                    log_message=f"{e.__class__.__name__}: {e}",  # to stderr
+                    log_message=e.__class__.__name__,  # to stderr -- omit req obj
                     reason=None,  # to client (don't send possibly sensitive info)
                 )
 
