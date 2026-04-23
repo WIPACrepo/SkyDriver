@@ -4,6 +4,7 @@ import asyncio
 import dataclasses as dc
 import json
 import logging
+import os
 import time
 import uuid
 from typing import Any, Type, TypeVar, cast
@@ -64,6 +65,10 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
     client. The full value remains available server-side via LOGGER.error
     for debugging.
     """
+    if os.getenv("CI"):
+        LOGGER.error(f"schema error: {str(err)}")
+        LOGGER.error(f"schema error: {vars(err)}")
+
     field_path = ".".join(str(p) for p in err.absolute_path)
 
     # Reconstruct the reason without including err.instance (the bad value).
@@ -79,6 +84,8 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
         # og: "'' is not of type 'integer'"
         _type_alias = {
             # communicate python equivalents for the more abstract JSON types
+            "number": " (float or int)",
+            "integer": " (int)",
             "boolean": " (bool)",
             "array": " (list)",
             "object": " (dict)",
@@ -145,7 +152,7 @@ def validate_request(openapi_spec: "openapi_core.OpenAPI"):  # type: ignore
         async def get(self) -> None: ...
     ```
     """
-    # TODO: restore on merge to rest-tools
+    # TODO
     # if not openapi_available:
     #     raise RuntimeError(
     #         "openapi cannot be imported! perhaps you meant to pip install it?"
