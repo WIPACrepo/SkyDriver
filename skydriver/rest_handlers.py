@@ -245,23 +245,17 @@ class BaseSkyDriverHandler(RestHandler):
         self.manifests = database.interface.ManifestClient(mongo_client)
         self.results = database.interface.ResultClient(mongo_client)
         self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
-        self.scan_request_coll = (
-            AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-                mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-                database.utils._SCAN_REQUEST_COLL_NAME,
-            )
+        self.scan_request_coll = AsyncIOMotorCollection(  # in contrast, this one is accessed directly
+            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
+            database.utils._SCAN_REQUEST_COLL_NAME,
         )
-        self.i3_event_coll = (
-            AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-                mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-                database.utils._I3_EVENT_COLL_NAME,
-            )
+        self.i3_event_coll = AsyncIOMotorCollection(  # in contrast, this one is accessed directly
+            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
+            database.utils._I3_EVENT_COLL_NAME,
         )
-        self.skyscan_k8s_job_coll = (
-            AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-                mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-                database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
-            )
+        self.skyscan_k8s_job_coll = AsyncIOMotorCollection(  # in contrast, this one is accessed directly
+            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
+            database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
         )
         self.k8s_batch_api = k8s_batch_api
         self.ewms_rc = ewms_rc
