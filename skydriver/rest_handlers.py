@@ -95,6 +95,12 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
     elif keyword == "enum":
         reason = f"must be one of: {', '.join(repr(v) for v in constraint)}"
     elif keyword in ("oneOf", "anyOf"):
+        # NOTE: 'oneOf' vs 'anyOf'
+        #   'anyOf' fires for both "matched 0 branches" and "matched multiple branches";
+        #   jsonschema's default message distinguishes the two, but from the user's
+        #   POV the fix is the same: send a value that fits exactly one form.
+        #   So -- this makes both keywords ('oneOf' and 'anyOf') practically the same,
+        #   using the following wording...
         reason = "must match one of the accepted types"
     elif keyword == "minItems":
         reason = f"must have at least {constraint} items"
