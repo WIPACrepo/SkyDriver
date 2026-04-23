@@ -72,8 +72,11 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
     keyword, constraint = err.validator, err.validator_value
 
     if keyword in ("required", "additionalProperties"):
+        # og: "'docker_tag' is a required property"
+        # og: "Additional properties are not allowed ('scan_id' was unexpected)"
         return str(err).split("\n", 1)[0]
     elif keyword == "type":
+        # og: "'' is not of type 'integer'"
         _type_alias = {
             # communicate python equivalents for the more abstract JSON types
             "boolean": " (bool)",
@@ -83,18 +86,25 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
         }
         reason = f"must be type {constraint!r}{_type_alias.get(constraint, '')}"
     elif keyword == "pattern":
+        # og: "' ' does not match '\\S'"
         reason = f"must match the pattern {constraint!r}"
     elif keyword == "minLength":
+        # og: "'' is too short"
         reason = f"must be at least {constraint} characters long"
     elif keyword == "maxLength":
+        # og: "'aaaa...' is too long"
         reason = f"must be no more than {constraint} characters long"
     elif keyword == "minimum":
+        # og: "0 is less than the minimum of 1"
         reason = f"must be at least {constraint}"
     elif keyword == "maximum":
+        # og: "30 is greater than the maximum of 25"
         reason = f"must be no more than {constraint}"
     elif keyword == "enum":
+        # og: "'fake' is not one of ['real', 'real_event', ...]"
         reason = f"must be one of: {', '.join(repr(v) for v in constraint)}"
     elif keyword in ("oneOf", "anyOf"):
+        # og: "X is not valid under any of the given schemas"
         # NOTE: 'oneOf' vs 'anyOf'
         #   'anyOf' fires for both "matched 0 branches" and "matched multiple branches";
         #   jsonschema's default message distinguishes the two, but from the user's
@@ -103,16 +113,22 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
         #   using the following wording...
         reason = "must match one of the accepted types"
     elif keyword == "minItems":
+        # og: "[] is too short"
         reason = f"must have at least {constraint} items"
     elif keyword == "maxItems":
+        # og: "[...] is too long"
         reason = f"must have no more than {constraint} items"
     elif keyword == "minProperties":
+        # og: "{} does not have enough properties"
         reason = f"must have at least {constraint} entries"
     elif keyword == "maxProperties":
+        # og: "{...} has too many properties"
         reason = f"must have no more than {constraint} entries"
     elif keyword == "uniqueItems":
+        # og: "[1, 1] has non-unique elements"
         reason = "items must be unique"
     else:
+        # fall-through: future-proof new keywords
         reason = f"failed {keyword!r} constraint"
 
     return f"{field_path!r}: {reason}" if field_path else reason
