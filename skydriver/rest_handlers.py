@@ -67,7 +67,10 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
     """
     if os.getenv("CI"):
         LOGGER.error(f"schema error: {str(err)}")
-        LOGGER.error(f"schema error: {vars(err)}")
+        LOGGER.error(
+            f"{err.__class__.__name__}: "
+            f"{json.dumps({**vars(err), "instance": "<omitted for brevity>"}, indent=4)}"
+        )
 
     field_path = ".".join(str(p) for p in err.absolute_path)
 
