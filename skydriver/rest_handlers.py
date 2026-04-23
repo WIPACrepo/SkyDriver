@@ -5,7 +5,6 @@ import dataclasses as dc
 import json
 import logging
 import os
-import pprint
 import time
 import uuid
 from typing import Any, Type, TypeVar, cast
@@ -67,11 +66,8 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
     for debugging.
     """
     if os.getenv("CI"):
-        LOGGER.error(f"schema error: {str(err)}")
-        LOGGER.error(
-            f"{err.__class__.__name__}: "
-            f"{pprint.pformat({**vars(err), "instance": "<omitted for brevity>"}, indent=1)}"
-        )
+        _logging_dict = {**vars(err), "instance": "<omitted for brevity>"}
+        LOGGER.error(f"{err.__class__.__name__}: details={_logging_dict}")
 
     field_path = ".".join(str(p) for p in err.absolute_path)
 
@@ -187,7 +183,7 @@ def validate_request(openapi_spec: "openapi_core.OpenAPI"):  # type: ignore
                 # send 400
                 raise tornado.web.HTTPError(
                     status_code=400,
-                    log_message=f"{e.__class__.__name__}: {e}",  # to stderr
+                    log_message=f"{e.__class__.__name__}: {reason}",  # to stderr -- omit request object
                     reason=reason,  # to client
                 )
             except Exception as e:
