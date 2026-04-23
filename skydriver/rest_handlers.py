@@ -70,7 +70,7 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
         LOGGER.error(f"schema error: {str(err)}")
         LOGGER.error(
             f"{err.__class__.__name__}: "
-            f"{pprint.pformat({**vars(err), "instance": "<omitted for brevity>"}, indent=4)}"
+            f"{pprint.pformat({**vars(err), "instance": "<omitted for brevity>"}, indent=1)}"
         )
 
     field_path = ".".join(str(p) for p in err.absolute_path)
