@@ -1480,10 +1480,12 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             print(f"{arg}: [{bad_val}]")
             with pytest.raises(
                 requests.exceptions.HTTPError,
-                # jsonschema errors describe the bad value (e.g. "'' is not of
-                # type 'object'", "'' does not match '\\S'") rather than naming
-                # the field, so we can't assert on {arg} here.
-                match=rf"400 Client Error: .+ for url: {rc.address}/scan",
+                # _schema_error_to_human_readable prepends the field path, so
+                # the reason starts with "'{arg}': ". The specific wording
+                # after that depends on which keyword fails (type / pattern /
+                # minLength / oneOf) -- we assert only on the field-name
+                # prefix here and let the reason be anything.
+                match=rf"400 Client Error: '{arg}': .+ for url: {rc.address}/scan",
             ):
                 await rc.request(
                     "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, arg: bad_val}
@@ -1502,10 +1504,12 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             requests.exceptions.HTTPError,
             # RequestClusters is a oneOf (object w/ int values OR array of
             # [location, n_workers] tuples). All these malformed shapes fail
-            # both branches.
+            # both branches. _schema_error_to_human_readable prepends the
+            # field path and renders oneOf failures as "does not match any
+            # allowed schema".
             match=(
-                rf"400 Client Error: .*is not valid under any of the given schemas"
-                rf".* for url: {rc.address}/scan"
+                rf"400 Client Error: 'cluster': does not match any of the accepted types"
+                rf" for url: {rc.address}/scan"
             ),
         ):
             await rc.request(
@@ -1608,18 +1612,18 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         with pytest.raises(
             requests.exceptions.HTTPError,
             # progress is oneOf [object-with-required-fields, null]; a string
-            # or list fails both branches.
+            # or list fails both branches. _schema_error_to_human_readable
+            # prepends the field path and renders oneOf failures as "does not
+            # match any allowed schema".
             match=(
-                rf"400 Client Error: .*is not valid under any of the given schemas"
-                rf".* for url: {rc.address}/scan/{scan_id}/manifest"
+                rf"400 Client Error: 'progress': does not match any of the accepted types"
+                rf" for url: {rc.address}/scan/{scan_id}/manifest"
             ),
         ):
             await rc.request(
                 "PATCH", f"/scan/{scan_id}/manifest", {"progress": bad_val}
             )
         _log_delimiter()
-
-    assert 0
 
     # OK
     manifest = await _patch_progress_and_scan_metadata(rc, scan_id, manifest, 10)
@@ -1669,10 +1673,12 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         with pytest.raises(
             requests.exceptions.HTTPError,
             # skyscan_result references FreeFormObject (type: object); a string
-            # or list fails the type check.
+            # or list fails the type check. _schema_error_to_human_readable
+            # prepends the field path and renders type failures as "not of
+            # type '<type>'".
             match=(
-                rf"400 Client Error: .*is not of type 'object'"
-                rf".* for url: {rc.address}/scan/{scan_id}/result"
+                rf"400 Client Error: 'skyscan_result': not of type 'object'"
+                rf" for url: {rc.address}/scan/{scan_id}/result"
             ),
         ):
             await rc.request(

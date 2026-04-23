@@ -72,34 +72,44 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
     keyword, constraint = err.validator, err.validator_value
 
     if keyword in ("required", "additionalProperties"):
-        # default messages name the field but don't echo any value
         return str(err).split("\n", 1)[0]
+
+    TYPE_NAMES = {
+        "string": "text",
+        "integer": "a whole number",
+        "number": "a number",
+        "boolean": "true or false",
+        "array": "a list",
+        "object": "a dictionary",
+        "null": "null",
+    }
+
     if keyword == "type":
-        reason = f"not of type {constraint!r}"
+        reason = f"must be {TYPE_NAMES.get(constraint, repr(constraint))}"
     elif keyword == "pattern":
-        reason = f"does not match pattern {constraint!r}"
+        reason = f"must match the pattern {constraint!r}"
     elif keyword == "minLength":
-        reason = f"shorter than minimum length {constraint}"
+        reason = f"must be at least {constraint} characters long"
     elif keyword == "maxLength":
-        reason = f"longer than maximum length {constraint}"
+        reason = f"must be no more than {constraint} characters long"
     elif keyword == "minimum":
-        reason = f"less than minimum {constraint}"
+        reason = f"must be at least {constraint}"
     elif keyword == "maximum":
-        reason = f"greater than maximum {constraint}"
+        reason = f"must be no more than {constraint}"
     elif keyword == "enum":
-        reason = f"not one of allowed values {constraint!r}"
+        reason = f"must be one of: {', '.join(repr(v) for v in constraint)}"
     elif keyword in ("oneOf", "anyOf"):
-        reason = "does not match any allowed schema"
+        reason = "does not match any of the accepted types"
     elif keyword == "minItems":
-        reason = f"fewer than minimum {constraint} items"
+        reason = f"must have at least {constraint} items"
     elif keyword == "maxItems":
-        reason = f"more than maximum {constraint} items"
+        reason = f"must have no more than {constraint} items"
     elif keyword == "minProperties":
-        reason = f"fewer than minimum {constraint} properties"
+        reason = f"must have at least {constraint} entries"
     elif keyword == "maxProperties":
-        reason = f"more than maximum {constraint} properties"
+        reason = f"must have no more than {constraint} entries"
     elif keyword == "uniqueItems":
-        reason = "items are not unique"
+        reason = "items must be unique"
     else:
         reason = f"failed {keyword!r} constraint"
 
