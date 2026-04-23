@@ -374,12 +374,18 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     {
                                         "name": "EWMS_CLUSTERS",
                                         "value": " ".join(
-                                            [str(k) for k in post_scan_body["cluster"].keys()]
+                                            [
+                                                str(k)
+                                                for k in post_scan_body[
+                                                    "cluster"
+                                                ].keys()
+                                            ]
                                             if isinstance(
                                                 post_scan_body["cluster"], dict
                                             )
                                             else [
-                                                str(c[0]) for c in post_scan_body["cluster"]
+                                                str(c[0])
+                                                for c in post_scan_body["cluster"]
                                             ]
                                         ),
                                     },
@@ -1293,7 +1299,9 @@ async def test_200__get_edit_launchdup(
     assert sr_beta["i3_event_id"] == i3_event_id_alpha
     assert sr_beta["docker_tag"] == "3.4.0"
     assert sr_beta["reco_algo"] == post_body_dup["reco_algo"]
-    assert sr_beta["nsides"] == {str(k): v for k, v in cast(dict, POST_SCAN_BODY["nsides"]).items()}
+    assert sr_beta["nsides"] == {
+        str(k): v for k, v in cast(dict, POST_SCAN_BODY["nsides"]).items()
+    }
     assert sr_beta["request_clusters"] in (
         list([k, v] for k, v in orig_clusters.items()),
         orig_clusters,

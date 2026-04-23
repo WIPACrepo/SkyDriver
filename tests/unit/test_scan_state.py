@@ -1,5 +1,6 @@
 """Test dynamically generating the scan state."""
 
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -26,7 +27,7 @@ async def test_00__scan_has_final_result(
     manifest = schema.Manifest(
         scan_id=MagicMock(),
         timestamp=MagicMock(),
-        is_deleted=MagicMock(),
+        is_deleted=cast(bool, MagicMock()),
         event_i3live_json_dict=MagicMock(),
         scanner_server_args=MagicMock(),
         #
@@ -60,7 +61,7 @@ async def test_10__partial_result_generated(ewms_dtype: str | None, state: str) 
     manifest = schema.Manifest(
         scan_id=MagicMock(),
         timestamp=MagicMock(),
-        is_deleted=MagicMock(),
+        is_deleted=cast(bool, MagicMock()),
         event_i3live_json_dict=MagicMock(),
         scanner_server_args=MagicMock(),
         #
@@ -101,7 +102,7 @@ async def test_20__waiting_on_first_pixel_reco(
     manifest = schema.Manifest(
         scan_id=MagicMock(),
         timestamp=MagicMock(),
-        is_deleted=MagicMock(),
+        is_deleted=cast(bool, MagicMock()),
         event_i3live_json_dict=MagicMock(),
         scanner_server_args=MagicMock(),
         #
@@ -142,7 +143,7 @@ async def test_40__waiting_on_scanner_server_startup(
     manifest = schema.Manifest(
         scan_id=MagicMock(),
         timestamp=MagicMock(),
-        is_deleted=MagicMock(),
+        is_deleted=cast(bool, MagicMock()),
         event_i3live_json_dict=MagicMock(),
         scanner_server_args=MagicMock(),
         #
@@ -171,7 +172,7 @@ async def test_50__prestartup(ewms_dtype: str | None, state: str) -> None:
     manifest = schema.Manifest(
         scan_id=MagicMock(),
         timestamp=MagicMock(),
-        is_deleted=MagicMock(),
+        is_deleted=cast(bool, MagicMock()),
         event_i3live_json_dict=MagicMock(),
         scanner_server_args=MagicMock(),
         #
