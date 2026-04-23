@@ -247,19 +247,19 @@ class BaseSkyDriverHandler(RestHandler):
         self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
         self.scan_request_coll = (
             AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-                mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+                mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
                 database.utils._SCAN_REQUEST_COLL_NAME,
             )
         )
         self.i3_event_coll = (
             AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-                mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+                mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
                 database.utils._I3_EVENT_COLL_NAME,
             )
         )
         self.skyscan_k8s_job_coll = (
             AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-                mongo_client[database.interface._DB_NAME],  # type: ignore[index]
+                mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
                 database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
             )
         )
@@ -571,9 +571,12 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
             )
 
         # 2. Validate args that require accesing multiple fields
+        # scan_request_obj values are union-typed from the freeform dict;
+        # cast to list since both fields are lists at this point (debug_mode
+        # normalized earlier, request_clusters from _validate_all_known_request_clusters)
         _validate_debug_mode_with_clusters(
-            scan_request_obj["debug_mode"],
-            scan_request_obj["request_clusters"],
+            cast(list, scan_request_obj["debug_mode"]),
+            cast(list, scan_request_obj["request_clusters"]),
         )
 
         # 3. Do this before we write anything in the off chance that grabbing the arg fails
@@ -687,6 +690,9 @@ class ScanRequestHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
 
+        # motor's find_one returns a generic _DocumentType; narrow to dict so
+        # we can call .pop and hand it to self.write
+        scan_request_obj = cast(dict, scan_request_obj)
         scan_request_obj.pop("_id", None)
 
         self.write(scan_request_obj)
