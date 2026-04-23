@@ -73,8 +73,7 @@ def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
 
     if keyword in ("required", "additionalProperties"):
         return str(err).split("\n", 1)[0]
-
-    if keyword == "type":
+    elif keyword == "type":
         _type_alias = {
             # communicate python equivalents for the more abstract JSON types
             "boolean": " (bool)",
