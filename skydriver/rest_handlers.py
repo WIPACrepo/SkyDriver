@@ -10,10 +10,12 @@ from typing import Any, Type, TypeVar, cast
 
 import humanfriendly  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
+import openapi_core
 import tornado
 from dacite import from_dict
 from dacite.exceptions import DaciteError
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+from openapi_core.validation.exceptions import ValidationError
 from pymongo import ReturnDocument
 from rest_tools.client import RestClient
 from rest_tools.openapi_tools import _http_server_request_to_openapi_request
@@ -52,7 +54,7 @@ from .utils import (
 LOGGER = logging.getLogger(__name__)
 
 
-def _schema_error_to_human_readable(err):
+def _schema_error_to_human_readable(err):  # noqa: C901  # ignore "too complex"
     """Format a jsonschema ValidationError as 'path: reason'.
 
     The offending value (err.instance) is intentionally NOT included in the
