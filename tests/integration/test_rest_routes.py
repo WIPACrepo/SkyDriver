@@ -1505,10 +1505,10 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             # RequestClusters is a oneOf (object w/ int values OR array of
             # [location, n_workers] tuples). All these malformed shapes fail
             # both branches. _schema_error_to_human_readable prepends the
-            # field path and renders oneOf failures as "does not match any
-            # allowed schema".
+            # field path and renders oneOf failures as "must match one of the
+            # accepted types".
             match=(
-                rf"400 Client Error: 'cluster': does not match any of the accepted types"
+                rf"400 Client Error: 'cluster': must match one of the accepted types"
                 rf" for url: {rc.address}/scan"
             ),
         ):
@@ -1613,10 +1613,10 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             requests.exceptions.HTTPError,
             # progress is oneOf [object-with-required-fields, null]; a string
             # or list fails both branches. _schema_error_to_human_readable
-            # prepends the field path and renders oneOf failures as "does not
-            # match any allowed schema".
+            # prepends the field path and renders oneOf failures as "must
+            # match one of the accepted types".
             match=(
-                rf"400 Client Error: 'progress': does not match any of the accepted types"
+                rf"400 Client Error: 'progress': must match one of the accepted types"
                 rf" for url: {rc.address}/scan/{scan_id}/manifest"
             ),
         ):
@@ -1674,10 +1674,11 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             requests.exceptions.HTTPError,
             # skyscan_result references FreeFormObject (type: object); a string
             # or list fails the type check. _schema_error_to_human_readable
-            # prepends the field path and renders type failures as "not of
-            # type '<type>'".
+            # prepends the field path and renders type failures as "must be
+            # type '<type>'" with a Python-equivalent hint in parens for the
+            # more abstract JSON types (object -> dict, array -> list, etc.).
             match=(
-                rf"400 Client Error: 'skyscan_result': not of type 'object'"
+                rf"400 Client Error: 'skyscan_result': must be type 'object' \(dict\)"
                 rf" for url: {rc.address}/scan/{scan_id}/result"
             ),
         ):
