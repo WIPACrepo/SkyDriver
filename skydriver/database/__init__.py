@@ -4,14 +4,15 @@ from urllib.parse import quote_plus
 
 from pymongo import AsyncMongoClient
 
-from . import interface, mongodc, schema, utils
+from . import interface, schema, utils
+from .client import SkyDriverMongoValidatedDatabase
 from ..config import ENV
 
 __all__ = [
     "interface",
-    "mongodc",
     "schema",
     "utils",
+    "SkyDriverMongoValidatedDatabase",
 ]
 
 

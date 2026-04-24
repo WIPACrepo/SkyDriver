@@ -2,6 +2,7 @@
 
 import copy
 import logging
+from typing import Any
 
 import tornado
 from pymongo import AsyncMongoClient
@@ -33,7 +34,7 @@ def get_jsonschema_subspec_from_openapi(object_name: str) -> dict[str, Any]:
     return subspec
 
 
-class MQSMongoValidatedDatabase:
+class SkyDriverMongoValidatedDatabase:
     """Wraps a MongoDB client and collection clients with json schema validation."""
 
     def __init__(

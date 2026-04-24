@@ -18,6 +18,7 @@ from rest_tools.client import RestClient
 from rest_tools.server import RestHandler
 from tornado import web
 from wipac_dev_tools.container_registry_tools import ImageNotFoundException
+from wipac_dev_tools.mongo_jsonschema_tools import MongoJSONSchemaValidatedCollection
 
 from . import config, database, ewms, images
 from .background_runners.scan_launcher import put_on_backlog
@@ -112,7 +113,7 @@ class BaseSkyDriverHandler(RestHandler):
     ) -> None:
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)  # type: ignore[no-untyped-call]
-        self.db = database.client.WMSMongoValidatedDatabase(mongo_client)
+        self.db = database.SkyDriverMongoValidatedDatabase(mongo_client)
         self.k8s_batch_api = k8s_batch_api
         self.ewms_rc = ewms_rc
 
