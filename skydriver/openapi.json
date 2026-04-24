@@ -1722,6 +1722,32 @@
                     }
                 }
             },
+            "SkyscanK8sJob": {
+                "type": "object",
+                "required": [
+                    "scan_id",
+                    "skyscan_k8s_job_dict",
+                    "k8s_started_ts"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "scan_id": {
+                        "$ref": "#/components/schemas/Manifest/properties/scan_id"
+                    },
+                    "skyscan_k8s_job_dict": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "Raw Kubernetes job manifest/dict for the skyscan job."
+                    },
+                    "k8s_started_ts": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "description": "Unix timestamp (float) when the K8s job started, or null if not yet started."
+                    }
+                }
+            },
             "ManifestAndResultResponse": {
                 "type": "object",
                 "description": "Common envelope used by GET and DELETE on `/scan/{scan_id}`: the manifest plus (optionally) the persisted result.",

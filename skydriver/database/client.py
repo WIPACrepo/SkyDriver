@@ -13,6 +13,7 @@ from .utils import (
     _RESULTS_COLL_NAME,
     _SCAN_BACKLOG_COLL_NAME,
     _SCAN_REQUEST_COLL_NAME,
+    _SKYSCAN_K8S_JOB_COLL_NAME,
 )
 from ..config import OPENAPI_DICT
 
@@ -73,7 +74,12 @@ class MQSMongoValidatedDatabase:
 
         _I3_EVENT_COLL_NAME = "I3Events"
 
-        _SKYSCAN_K8S_JOB_COLL_NAME = "SkyScanK8sJobs"
+        self.skyscan_k8s_jobs = MongoJSONSchemaValidatedCollection(
+            mongo_client[_DB_NAME][_SKYSCAN_K8S_JOB_COLL_NAME],
+            get_jsonschema_subspec_from_openapi("SkyscanK8sJob"),
+            parent_logger,
+            lambda e: self._db_error_callback(e, _MANIFEST_COLL_NAME),
+        )
 
     def _db_error_callback(self, exc: Exception, collection_name: str):
         if self.do_send_500s_to_client:
