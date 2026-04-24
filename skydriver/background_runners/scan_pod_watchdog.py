@@ -35,7 +35,7 @@ async def _get_recent_scans(
     max_ago: int,
 ) -> list[str]:
     scan_ids = []
-    async for d in skyscan_k8s_jobs.find(  # type: ignore[attr-defined]
+    async for d in skyscan_k8s_jobs.find(
         {
             "k8s_started_ts": {
                 "$gte": time.time() - max_ago,

@@ -40,16 +40,13 @@ async def put_on_backlog(
 
 
 async def get_next(
-    scan_backlog: MongoJSONSchemaValidatedCollection,
-    manifests: MongoJSONSchemaValidatedCollection,
-    scan_request_client: MongoJSONSchemaValidatedCollection,
-    skyscan_k8s_job_client: MongoJSONSchemaValidatedCollection,
+    db: database.SkyDriverMongoValidatedDatabase,
     include_low_priority_scans: bool,
 ) -> tuple[database.schema.ScanBacklogEntry, database.schema.Manifest, dict, dict]:
     """Get the next entry & remove any that have been cancelled."""
     while True:
         # get next up -- raises DocumentNotFoundException if none
-        entry = await scan_backlog.fetch_next_as_pending(include_low_priority_scans)
+        entry = await db.scan_backlog.fetch_next_as_pending(include_low_priority_scans)
         LOGGER.info(
             f"Got backlog entry "
             f"({entry.scan_id=}, {include_low_priority_scans=}, {entry.priority=})"
@@ -60,21 +57,21 @@ async def get_next(
                 f"Backlog entry was already attempted {ENV.SCAN_BACKLOG_MAX_ATTEMPTS} times "
                 f"-- backlog entry will now be removed ({entry.scan_id=})"
             )
-            await scan_backlog.remove(entry)
+            await db.scan_backlog.remove(entry)
             continue
 
         # check if scan was 'deleted'
-        manifest = await manifests.get(entry.scan_id, incl_del=True)
+        manifest = await db.manifests.get(entry.scan_id, incl_del=True)
         if manifest.is_deleted:
             LOGGER.info(
                 f"Scan is designated for deletion "
                 f"-- backlog entry will now be removed ({entry.scan_id=})"
             )
-            await scan_backlog.remove(entry)
+            await db.scan_backlog.remove(entry)
             continue
 
         # grab the scan request object--it has other info
-        scan_request_obj = await scan_request_client.find_one(  # type: ignore[attr-defined]
+        scan_request_obj = await db.scan_requests.find_one(
             {
                 "$or": [
                     {"scan_id": manifest.scan_id},
@@ -84,9 +81,7 @@ async def get_next(
         )
 
         # grab the k8s
-        doc = await skyscan_k8s_job_client.find_one(  # type: ignore[attr-defined]
-            {"scan_id": manifest.scan_id},
-        )
+        doc = await db.skyscan_k8s_jobs.find_one({"scan_id": manifest.scan_id})
         skyscan_k8s_job = doc["skyscan_k8s_job_dict"]
 
         # all good!
@@ -105,16 +100,7 @@ async def run(
     k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
     """The main loop."""
-    manifest_client = database.interface.ManifestClient(mongo_client)
-    backlog_client = database.interface.ScanBacklogClient(mongo_client)
-    scan_request_client = MongoJSONSchemaValidatedCollection(  # in contrast, this one is accessed directly
-        mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-        database.utils._SCAN_REQUEST_COLL_NAME,
-    )
-    skyscan_k8s_job_client = MongoJSONSchemaValidatedCollection(  # in contrast, this one is accessed directly
-        mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-        database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
-    )
+    db = database.SkyDriverMongoValidatedDatabase(mongo_client, raise_500=False)
 
     timer_for_any_priority_scans = IntervalTimer(
         ENV.SCAN_BACKLOG_RUNNER_DELAY, f"{LOGGER.name}.timer"
@@ -135,10 +121,7 @@ async def run(
         # get next entry
         try:
             entry, manifest, scan_request_obj, skyscan_k8s_job = await get_next(
-                backlog_client,
-                manifest_client,
-                scan_request_client,
-                skyscan_k8s_job_client,
+                db,
                 include_low_priority_scans=include_low_priority_scans,
             )
         except database.mongodc.DocumentNotFoundException:
@@ -174,9 +157,9 @@ async def run(
 
         # remove from backlog now that startup succeeded
         LOGGER.info(f"Scan successfully started: scan_id={manifest.scan_id}")
-        await backlog_client.remove(entry)
+        await db.scan_backlog.remove(entry)
         # and mark time on k8s job doc -- used by the scan pod watchdog
-        await skyscan_k8s_job_client.find_one_and_update(
+        await db.skyscan_k8s_jobs.find_one_and_update(
             {"scan_id": manifest.scan_id},
             {"$set": {"k8s_started_ts": int(time.time())}},
         )
