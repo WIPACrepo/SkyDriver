@@ -42,21 +42,17 @@ class MQSMongoValidatedDatabase:
 
         self.manifests = MongoJSONSchemaValidatedCollection(
             mongo_client[_DB_NAME][_MANIFEST_COLL_NAME],
-            get_jsonschema_subspec_from_openapi(
-                _MANIFEST_COLL_NAME.removesuffix("Coll") + "Object"  # TODO: check
-            ),
+            get_jsonschema_subspec_from_openapi("Manifest"),
             parent_logger,
-            validation_exception_callback=lambda e: self._validation_exception_callback(
-                e, _MANIFEST_COLL_NAME
-            ),
+            lambda e: self._db_error_callback(e, _MANIFEST_COLL_NAME),
         )
 
-    def _validation_exception_callback(self, e: Exception, collection_name: str):
+    def _db_error_callback(self, exc: Exception, collection_name: str):
         if self.do_send_500s_to_client:
             return tornado.web.HTTPError(
                 status_code=500,
-                log_message=f"{e.__class__.__name__}: {e}",  # to stderr
+                log_message=f"{exc.__class__.__name__}: {exc}",  # to stderr
                 reason=f"Internal database error for collection='{collection_name}'",  # to client
             )
         else:
-            raise e
+            return exc
