@@ -447,8 +447,8 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
 
 
 async def enqueue_scan(
-    manifests: database.interface.ManifestClient,
-    scan_backlog: database.interface.ScanBacklogClient,
+    manifests: MongoJSONSchemaValidatedCollection,
+    scan_backlog: MongoJSONSchemaValidatedCollection,
     skyscan_k8s_job_coll: AsyncIOMotorCollection,  # type: ignore[valid-type]
     scan_request_obj: dict,
     /,
@@ -703,7 +703,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
 
 
 async def abort_scan(
-    manifests: database.interface.ManifestClient,
+    manifests: MongoJSONSchemaValidatedCollection,
     scan_id: str,
     ewms_rc: RestClient,
 ) -> database.schema.Manifest:
@@ -721,7 +721,7 @@ async def abort_scan(
 
 
 async def stop_skyscan_workers(
-    manifests: database.interface.ManifestClient,
+    manifests: MongoJSONSchemaValidatedCollection,
     scan_id: str,
     ewms_rc: RestClient,
     abort: bool,
@@ -749,8 +749,8 @@ async def stop_skyscan_workers(
 
 
 async def get_result_safely(
-    manifests: database.interface.ManifestClient,
-    results: database.interface.ResultClient,
+    manifests: MongoJSONSchemaValidatedCollection,
+    results: MongoJSONSchemaValidatedCollection,
     scan_id: str,
     incl_del: bool,
 ) -> tuple[None | database.schema.Result, database.schema.Manifest]:

@@ -8,7 +8,7 @@ import uuid
 from rest_tools.client import RestClient
 from tornado import web
 
-from . import database, ewms
+from . import ewms
 from .database.schema import (
     DEPRECATED_EWMS_TASK,
     Manifest,
@@ -60,7 +60,7 @@ def does_scan_state_indicate_final_result_received(state: str) -> bool:
 
 async def get_scan_state_if_final_result_received(
     scan_id: str,
-    results: database.interface.ResultClient,
+    results: MongoJSONSchemaValidatedCollection,
 ) -> str | None:
     """Return the state string if the scan ended with a final result, else None."""
     try:
@@ -111,7 +111,7 @@ def _get_nonfinished_state(manifest: Manifest) -> _ScanState:
 async def get_scan_state(
     manifest: Manifest,
     ewms_rc: RestClient,
-    results: database.interface.ResultClient,
+    results: MongoJSONSchemaValidatedCollection,
 ) -> str:
     """Determine the state of the scan by parsing attributes and talking with EWMS.
 

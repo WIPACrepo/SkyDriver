@@ -72,7 +72,7 @@ async def _has_scan_been_rescanned(
 async def _has_scan_been_rescanned_too_many_times_too_recently(
     scan_id: str,
     scan_request_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
-    manifest_client: database.interface.ManifestClient,
+    manifest_client: MongoJSONSchemaValidatedCollection,
 ) -> bool:
     sro = await scan_request_client.find_one(  # type: ignore[attr-defined]
         get_scan_request_obj_filter(scan_id)

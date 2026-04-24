@@ -19,7 +19,7 @@ LOGGER = logging.getLogger(__name__)
 
 async def put_on_backlog(
     scan_id: str,
-    scan_backlog: database.interface.ScanBacklogClient,
+    scan_backlog: MongoJSONSchemaValidatedCollection,
     priority: int,
 ) -> None:
     """Enqueue k8s job to be started later by the scan launcher."""
@@ -40,8 +40,8 @@ async def put_on_backlog(
 
 
 async def get_next(
-    scan_backlog: database.interface.ScanBacklogClient,
-    manifests: database.interface.ManifestClient,
+    scan_backlog: MongoJSONSchemaValidatedCollection,
+    manifests: MongoJSONSchemaValidatedCollection,
     scan_request_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
     skyscan_k8s_job_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
     include_low_priority_scans: bool,
