@@ -44,42 +44,22 @@ class MQSMongoValidatedDatabase:
         self.mongo_client = mongo_client
         self.do_send_500s_to_client = do_send_500s_to_client
 
-        self.manifests = MongoJSONSchemaValidatedCollection(
-            mongo_client[_DB_NAME][_MANIFEST_COLL_NAME],
-            get_jsonschema_subspec_from_openapi("Manifest"),
-            parent_logger,
-            lambda e: self._db_error_callback(e, _MANIFEST_COLL_NAME),
-        )
+        def _make(_coll_name: str, _obj_name: str):
+            return MongoJSONSchemaValidatedCollection(
+                mongo_client[_DB_NAME][_coll_name],
+                get_jsonschema_subspec_from_openapi(_obj_name),
+                parent_logger,
+                lambda e: self._db_error_callback(e, _coll_name),
+            )
 
-        self.results = MongoJSONSchemaValidatedCollection(
-            mongo_client[_DB_NAME][_RESULTS_COLL_NAME],
-            get_jsonschema_subspec_from_openapi("Result"),
-            parent_logger,
-            lambda e: self._db_error_callback(e, _MANIFEST_COLL_NAME),
-        )
-
-        self.scan_backlog = MongoJSONSchemaValidatedCollection(
-            mongo_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME],
-            get_jsonschema_subspec_from_openapi("ScanBacklogEntry"),
-            parent_logger,
-            lambda e: self._db_error_callback(e, _MANIFEST_COLL_NAME),
-        )
-
-        self.scan_requests = MongoJSONSchemaValidatedCollection(
-            mongo_client[_DB_NAME][_SCAN_REQUEST_COLL_NAME],
-            get_jsonschema_subspec_from_openapi("ScanRequestObj"),
-            parent_logger,
-            lambda e: self._db_error_callback(e, _MANIFEST_COLL_NAME),
-        )
+        self.manifests = _make(_MANIFEST_COLL_NAME, "Manifest")
+        self.results = _make(_RESULTS_COLL_NAME, "Result")
+        self.scan_backlog = _make(_SCAN_BACKLOG_COLL_NAME, "ScanBacklogEntry")
+        self.scan_requests = _make(_SCAN_REQUEST_COLL_NAME, "ScanRequestObj")
 
         _I3_EVENT_COLL_NAME = "I3Events"
 
-        self.skyscan_k8s_jobs = MongoJSONSchemaValidatedCollection(
-            mongo_client[_DB_NAME][_SKYSCAN_K8S_JOB_COLL_NAME],
-            get_jsonschema_subspec_from_openapi("SkyscanK8sJob"),
-            parent_logger,
-            lambda e: self._db_error_callback(e, _MANIFEST_COLL_NAME),
-        )
+        self.skyscan_k8s_jobs = _make(_SKYSCAN_K8S_JOB_COLL_NAME, "SkyscanK8sJob")
 
     def _db_error_callback(self, exc: Exception, collection_name: str):
         if self.do_send_500s_to_client:
