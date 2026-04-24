@@ -7,6 +7,7 @@ import uuid
 
 from rest_tools.client import RestClient
 from tornado import web
+from wipac_dev_tools.mongo_jsonschema_tools import MongoJSONSchemaValidatedCollection
 
 from . import ewms
 from .database.schema import (

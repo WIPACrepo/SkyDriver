@@ -113,7 +113,7 @@ class BaseSkyDriverHandler(RestHandler):
     ) -> None:
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)  # type: ignore[no-untyped-call]
-        self.db = database.SkyDriverMongoValidatedDatabase(mongo_client)
+        self.db = database.SkyDriverMongoValidatedDatabase(mongo_client, raise_500=True)
         self.k8s_batch_api = k8s_batch_api
         self.ewms_rc = ewms_rc
 
@@ -450,11 +450,11 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
 async def enqueue_scan(
     manifests: MongoJSONSchemaValidatedCollection,
     scan_backlog: MongoJSONSchemaValidatedCollection,
-    skyscan_k8s_job_coll: AsyncIOMotorCollection,  # type: ignore[valid-type]
+    skyscan_k8s_job_coll: MongoJSONSchemaValidatedCollection,
     scan_request_obj: dict,
     /,
     insert_scan_request_obj: bool,  # False for rescans
-    scan_request_coll: AsyncIOMotorCollection | None = None,  # type: ignore[valid-type]
+    scan_request_coll: MongoJSONSchemaValidatedCollection | None = None,  # type: ignore[valid-type]
 ) -> schema.Manifest:
     """Create all need data for a new scan, then enqueue it on the backlog."""
     scan_id = scan_request_obj["scan_id"]

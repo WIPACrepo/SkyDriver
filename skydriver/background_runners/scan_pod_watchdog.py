@@ -8,6 +8,7 @@ import kubernetes.client  # type: ignore[import-untyped]
 from pymongo import AsyncMongoClient
 from rest_tools.client import RestClient
 from tenacity import retry, stop_never, wait_fixed
+from wipac_dev_tools.mongo_jsonschema_tools import MongoJSONSchemaValidatedCollection
 from wipac_dev_tools.timing_tools import IntervalTimer
 
 from .. import database
@@ -29,12 +30,12 @@ SCAN_POD_WATCHDOG_TOO_MANY_TOO_RECENT_N = 3
 
 
 async def _get_recent_scans(
-    skyscan_k8s_job_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
+    skyscan_k8s_jobs: MongoJSONSchemaValidatedCollection,
     min_ago: int,
     max_ago: int,
 ) -> list[str]:
     scan_ids = []
-    async for d in skyscan_k8s_job_client.find(  # type: ignore[attr-defined]
+    async for d in skyscan_k8s_jobs.find(  # type: ignore[attr-defined]
         {
             "k8s_started_ts": {
                 "$gte": time.time() - max_ago,
@@ -48,11 +49,9 @@ async def _get_recent_scans(
 
 async def _has_scan_been_rescanned(
     scan_id: str,
-    scan_request_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
+    scan_requests: MongoJSONSchemaValidatedCollection,
 ) -> bool:
-    sro = await scan_request_client.find_one(  # type: ignore[attr-defined]
-        get_scan_request_obj_filter(scan_id)
-    )
+    sro = await scan_requests.find_one(get_scan_request_obj_filter(scan_id))
 
     if not sro:
         # condition should never be met -- vacuously true
@@ -71,12 +70,10 @@ async def _has_scan_been_rescanned(
 
 async def _has_scan_been_rescanned_too_many_times_too_recently(
     scan_id: str,
-    scan_request_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
-    manifest_client: MongoJSONSchemaValidatedCollection,
+    scan_requests: MongoJSONSchemaValidatedCollection,
+    manifests: MongoJSONSchemaValidatedCollection,
 ) -> bool:
-    sro = await scan_request_client.find_one(  # type: ignore[attr-defined]
-        get_scan_request_obj_filter(scan_id)
-    )
+    sro = await scan_requests.find_one(get_scan_request_obj_filter(scan_id))
     if not sro:
         # condition should never be met -- vacuously true
         LOGGER.error(f"could not find scan request object for {scan_id=}")
@@ -85,7 +82,7 @@ async def _has_scan_been_rescanned_too_many_times_too_recently(
     all_scan_ids = [sro["scan_id"]] + sro["rescan_ids"]
 
     # count how many in last x mins
-    result = await manifest_client.collection.count_documents(
+    result = await manifests.collection.count_documents(
         {
             "scan_id": {"$in": all_scan_ids},
             "timestamp": {
@@ -118,16 +115,7 @@ async def run(
     k8s_core_api: kubernetes.client.CoreV1Api,  # CoreV1Api(k8s_batch_api.api_client)
 ) -> None:
     """The main loop."""
-    results_client = database.interface.ResultClient(mongo_client)
-    manifest_client = database.interface.ManifestClient(mongo_client)
-    scan_request_client = AsyncIOMotorCollection(
-        mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-        database.utils._SCAN_REQUEST_COLL_NAME,
-    )
-    skyscan_k8s_job_client = AsyncIOMotorCollection(
-        mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-        database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
-    )
+    db = database.SkyDriverMongoValidatedDatabase(mongo_client, raise_500=False)
     skyd_rc = RestClient(  # -- talk to self
         ENV.HERE_URL,
         EnvVarFactory.get_skydriver_rest_auth(),
@@ -149,7 +137,7 @@ async def run(
         # get list of scans that were k8s started recently
         if not (
             scan_ids := await _get_recent_scans(
-                skyscan_k8s_job_client,
+                db.skyscan_k8s_jobs,
                 ENV.SCAN_POD_WATCHDOG_DELAY - 1,  # at most 1 loop ago (1 sec cushion)
                 SCAN_POD_WATCHDOG_RECENCY_WINDOW,
             )
@@ -161,7 +149,7 @@ async def run(
         scan_ids = [
             s
             for s in scan_ids
-            if not await get_scan_state_if_final_result_received(s, results_client)
+            if not await get_scan_state_if_final_result_received(s, db.results)
         ]
         LOGGER.debug(f"filter #1 - non-finished     - {len(scan_ids)} {scan_ids}")
 
@@ -169,7 +157,7 @@ async def run(
         scan_ids = [
             s
             for s in scan_ids
-            if not await _has_scan_been_rescanned(s, scan_request_client)
+            if not await _has_scan_been_rescanned(s, db.scan_requests)
         ]
         LOGGER.debug(f"filter #2 - not rescanned yet - {len(scan_ids)} {scan_ids}")
 
@@ -178,7 +166,7 @@ async def run(
             s
             for s in scan_ids
             if not await _has_scan_been_rescanned_too_many_times_too_recently(
-                s, scan_request_client, manifest_client
+                s, db.scan_requests, db.manifests
             )
         ]
         LOGGER.debug(f"filter #3 - not throttled    - {len(scan_ids)} {scan_ids}")

@@ -40,11 +40,11 @@ class SkyDriverMongoValidatedDatabase:
     def __init__(
         self,
         mongo_client: AsyncMongoClient,
-        do_send_500s_to_client: bool,
+        raise_500: bool,
         parent_logger: logging.Logger | None = None,
     ):
         self.mongo_client = mongo_client
-        self.do_send_500s_to_client = do_send_500s_to_client
+        self.raise_500 = raise_500
 
         def _make(_coll_name: str, _obj_name: str):
             return MongoJSONSchemaValidatedCollection(
@@ -62,7 +62,13 @@ class SkyDriverMongoValidatedDatabase:
         self.skyscan_k8s_jobs = _make(_SKYSCAN_K8S_JOB_COLL_NAME, "SkyscanK8sJob")
 
     def _db_error_callback(self, exc: Exception, collection_name: str):
-        if self.do_send_500s_to_client:
+        """Handle a database error.
+
+        If `self.raise_500=True`, raise a 500 error. Otherwise, return the exception.
+           Technically, 500 errors are always raised when run in a tornado server, but
+           `self.raise_500` provides custom messaging and earlier raising.
+        """
+        if self.raise_500:
             return tornado.web.HTTPError(
                 status_code=500,
                 log_message=f"{exc.__class__.__name__}: {exc}",  # to stderr

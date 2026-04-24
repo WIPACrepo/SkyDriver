@@ -42,8 +42,8 @@ async def put_on_backlog(
 async def get_next(
     scan_backlog: MongoJSONSchemaValidatedCollection,
     manifests: MongoJSONSchemaValidatedCollection,
-    scan_request_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
-    skyscan_k8s_job_client: AsyncIOMotorCollection,  # type: ignore[valid-type]
+    scan_request_client: MongoJSONSchemaValidatedCollection,
+    skyscan_k8s_job_client: MongoJSONSchemaValidatedCollection,
     include_low_priority_scans: bool,
 ) -> tuple[database.schema.ScanBacklogEntry, database.schema.Manifest, dict, dict]:
     """Get the next entry & remove any that have been cancelled."""
@@ -107,17 +107,13 @@ async def run(
     """The main loop."""
     manifest_client = database.interface.ManifestClient(mongo_client)
     backlog_client = database.interface.ScanBacklogClient(mongo_client)
-    scan_request_client = (
-        AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-            database.utils._SCAN_REQUEST_COLL_NAME,
-        )
+    scan_request_client = MongoJSONSchemaValidatedCollection(  # in contrast, this one is accessed directly
+        mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
+        database.utils._SCAN_REQUEST_COLL_NAME,
     )
-    skyscan_k8s_job_client = (
-        AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-            database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
-        )
+    skyscan_k8s_job_client = MongoJSONSchemaValidatedCollection(  # in contrast, this one is accessed directly
+        mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
+        database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
     )
 
     timer_for_any_priority_scans = IntervalTimer(
