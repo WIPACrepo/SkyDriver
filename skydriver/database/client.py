@@ -9,6 +9,7 @@ from wipac_dev_tools.mongo_jsonschema_tools import MongoJSONSchemaValidatedColle
 
 from .utils import (
     _DB_NAME,
+    _I3_EVENT_COLL_NAME,
     _MANIFEST_COLL_NAME,
     _RESULTS_COLL_NAME,
     _SCAN_BACKLOG_COLL_NAME,
@@ -56,9 +57,7 @@ class MQSMongoValidatedDatabase:
         self.results = _make(_RESULTS_COLL_NAME, "Result")
         self.scan_backlog = _make(_SCAN_BACKLOG_COLL_NAME, "ScanBacklogEntry")
         self.scan_requests = _make(_SCAN_REQUEST_COLL_NAME, "ScanRequestObj")
-
-        _I3_EVENT_COLL_NAME = "I3Events"
-
+        self.i3_events = _make(_I3_EVENT_COLL_NAME, "I3Event")
         self.skyscan_k8s_jobs = _make(_SKYSCAN_K8S_JOB_COLL_NAME, "SkyscanK8sJob")
 
     def _db_error_callback(self, exc: Exception, collection_name: str):

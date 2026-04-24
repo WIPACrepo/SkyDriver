@@ -1748,6 +1748,22 @@
                     }
                 }
             },
+            "I3Event": {
+                "type": "object",
+                "required": [
+                    "i3_event_id",
+                    "json_dict"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "i3_event_id": {
+                        "$ref": "#/components/schemas/Manifest/properties/i3_event_id"
+                    },
+                    "json_dict": {
+                        "$ref": "#/components/schemas/FreeFormObject"
+                    }
+                }
+            },
             "ManifestAndResultResponse": {
                 "type": "object",
                 "description": "Common envelope used by GET and DELETE on `/scan/{scan_id}`: the manifest plus (optionally) the persisted result.",
