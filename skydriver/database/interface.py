@@ -3,7 +3,7 @@
 import dataclasses as dc
 import logging
 import time
-from typing import Any, AsyncIterator
+from typing import AsyncIterator
 
 from pymongo import ASCENDING, AsyncMongoClient, DESCENDING, ReturnDocument
 from tornado import web
@@ -132,19 +132,6 @@ class ManifestClient:
             ) from e
 
         return manifest
-
-    async def find_all(
-        self,
-        mongo_filter: dict[str, Any],
-    ) -> AsyncIterator[schema.Manifest]:
-        """Search over scans and find all matching `mongo_filter`."""
-        LOGGER.debug(f"finding: scans for {mongo_filter})")
-
-        async for manifests in self.collection.find(
-            mongo_filter, return_dclass=schema.Manifest
-        ):
-            LOGGER.debug(f"found: {manifests.scan_id=} for {mongo_filter})")
-            yield manifests
 
 
 # -----------------------------------------------------------------------------

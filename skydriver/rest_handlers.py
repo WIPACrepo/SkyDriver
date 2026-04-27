@@ -167,9 +167,9 @@ class ScansFindHandler(BaseSkyDriverHandler):
                 log_message=f"'manifest_projection' cannot include any of the following: {self.DISALLOWED_FIELDS}",
             )
 
+        # query
         if "is_deleted" not in filter_ and not include_deleted:
             filter_["is_deleted"] = False
-
         manifests = [
             dict_projection(dc.asdict(m), manifest_projection)
             async for m in self.db.manifests.find_all(filter_)
