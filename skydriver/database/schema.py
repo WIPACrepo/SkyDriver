@@ -3,20 +3,6 @@
 import wipac_dev_tools as wdt
 
 
-class ReadOnlyDotDict(dict):
-    """A dict subclass that allows recursive attribute-style read access."""
-
-    def __getattr__(self, name: str) -> object:
-        try:
-            value = self[name]
-        except KeyError:
-            raise AttributeError(name)
-        # Wrap nested dicts lazily on access
-        if isinstance(value, dict) and not isinstance(value, ReadOnlyDotDict):
-            return ReadOnlyDotDict(value)
-        return value
-
-
 def obfuscate_cl_args(args: str) -> str:
     """Obfuscate any sensitive strings in the command line arguments."""
     # first, check if any sensitive strings (searches using substrings)

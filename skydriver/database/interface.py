@@ -154,12 +154,12 @@ class ScanBacklogHelper:
                 ("timestamp", ASCENDING),  # then, oldest
             ],
         )
-        LOGGER.debug(f"got backlog entry & marked as pending ({entry.scan_id=})")
+        LOGGER.debug(f"got backlog entry & marked as pending ({entry['scan_id']=})")
 
         if (
             entry["pending_timestamp"]
             < time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
             # inequality should still be valid if revival time >> O(ms)
         ):
-            LOGGER.debug(f"backlog entry ready for revival ({entry.scan_id=})")
+            LOGGER.debug(f"backlog entry ready for revival ({entry['scan_id']=})")
         return entry

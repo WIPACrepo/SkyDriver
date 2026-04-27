@@ -18,7 +18,6 @@ from wipac_dev_tools.timing_tools import IntervalTimer
 from .. import database
 from ..config import ENV
 from ..database.interface import ScanBacklogHelper
-from ..database.schema import ReadOnlyDotDict
 from ..k8s.utils import KubeAPITools
 
 LOGGER = logging.getLogger(__name__)
@@ -52,52 +51,48 @@ async def put_on_backlog(
 async def get_next(
     db: database.SkyDriverMongoValidatedDatabase,
     include_low_priority_scans: bool,
-) -> tuple[ReadOnlyDotDict, ReadOnlyDotDict, MongoDoc, MongoDoc]:
+) -> tuple[MongoDoc, MongoDoc, MongoDoc, MongoDoc]:
     """Get the next entry & remove any that have been cancelled."""
     while True:
         # get next up -- raises DocumentNotFoundException if none
-        entry = ReadOnlyDotDict(
-            await ScanBacklogHelper.fetch_next_as_pending(
-                db.scan_backlog, include_low_priority_scans
-            )
+        entry = await ScanBacklogHelper.fetch_next_as_pending(
+            db.scan_backlog, include_low_priority_scans
         )
         LOGGER.info(
             f"Got backlog entry "
-            f"({entry.scan_id=}, {include_low_priority_scans=}, {entry.priority=})"
+            f"({entry['scan_id']=}, {include_low_priority_scans=}, {entry['priority']=})"
         )
 
-        if entry.next_attempt > ENV.SCAN_BACKLOG_MAX_ATTEMPTS:
+        if entry["next_attempt"] > ENV.SCAN_BACKLOG_MAX_ATTEMPTS:
             LOGGER.info(
                 f"Backlog entry was already attempted {ENV.SCAN_BACKLOG_MAX_ATTEMPTS} times "
-                f"-- backlog entry will now be removed ({entry.scan_id=})"
+                f"-- backlog entry will now be removed ({entry['scan_id']=})"
             )
-            await db.scan_backlog.delete_one({"scan_id": entry.scan_id})
+            await db.scan_backlog._collection.delete_one({"scan_id": entry["scan_id"]})
             continue
 
         # check if scan was 'deleted'
-        manifest = ReadOnlyDotDict(
-            await db.manifests.find_one({"scan_id": entry.scan_id})
-        )
-        if manifest.is_deleted:
+        manifest = await db.manifests.find_one({"scan_id": entry["scan_id"]})
+        if manifest["is_deleted"]:
             LOGGER.info(
                 f"Scan is designated for deletion "
-                f"-- backlog entry will now be removed ({entry.scan_id=})"
+                f"-- backlog entry will now be removed ({entry['scan_id']=})"
             )
-            await db.scan_backlog.delete_one({"scan_id": entry.scan_id})
+            await db.scan_backlog._collection.delete_one({"scan_id": entry["scan_id"]})
             continue
 
         # grab the scan request object--it has other info
         scan_request_obj = await db.scan_requests.find_one(
             {
                 "$or": [
-                    {"scan_id": manifest.scan_id},
-                    {"rescan_ids": manifest.scan_id},  # one in a list
+                    {"scan_id": manifest["scan_id"]},
+                    {"rescan_ids": manifest["scan_id"]},  # one in a list
                 ]
             }
         )
 
         # grab the k8s
-        doc = await db.skyscan_k8s_jobs.find_one({"scan_id": manifest.scan_id})
+        doc = await db.skyscan_k8s_jobs.find_one({"scan_id": manifest["scan_id"]})
         skyscan_k8s_job: MongoDoc = doc["skyscan_k8s_job_dict"]
 
         # all good!
@@ -148,12 +143,12 @@ async def run(
             continue  # there's no scan to start
 
         LOGGER.info(
-            f"Starting Scanner Instance: ({entry.scan_id=}) ({entry.timestamp})"
+            f"Starting Scanner Instance: ({entry['scan_id']=}) ({entry['timestamp']})"
         )
         # NOTE: the job_obj is enormous, so don't log it
 
         # start k8s job -- this could be any k8s job (pre- or post-ewms switchover)
-        LOGGER.info(f"Starting K8s job: scan_id={manifest.scan_id}")
+        LOGGER.info(f"Starting K8s job: scan_id={manifest['scan_id']}")
         try:
             await KubeAPITools.start_job(
                 k8s_batch_api,
@@ -172,11 +167,11 @@ async def run(
         # NOTE: DO NOT ADD ANYMORE ACTIONS THAT CAN POSSIBLY FAIL -- THINK STATELESSNESS
 
         # remove from backlog now that startup succeeded
-        LOGGER.info(f"Scan successfully started: scan_id={manifest.scan_id}")
-        await db.scan_backlog.delete_one({"scan_id": entry.scan_id})
+        LOGGER.info(f"Scan successfully started: scan_id={manifest['scan_id']}")
+        await db.scan_backlog._collection.delete_one({"scan_id": entry["scan_id"]})
         # and mark time on k8s job doc -- used by the scan pod watchdog
         await db.skyscan_k8s_jobs.find_one_and_update(
-            {"scan_id": manifest.scan_id},
+            {"scan_id": manifest["scan_id"]},
             {"$set": {"k8s_started_ts": int(time.time())}},
         )
 

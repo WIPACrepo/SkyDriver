@@ -36,7 +36,6 @@ from .database.interface import ManifestHelper
 from .database.schema import (
     DEPRECATED_EVENT_I3LIVE_JSON_DICT,
     DEPRECATED_EWMS_TASK,
-    ReadOnlyDotDict,
     _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
     has_skydriver_requested_ewms_workflow,
     obfuscate_cl_args,
@@ -684,12 +683,10 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
         n_workers = self.get_argument("n_workers")  # required
         cluster_location = self.get_argument("cluster_location")  # required
 
-        manifest = ReadOnlyDotDict(
-            await self.db.manifests.find_one({"scan_id": scan_id})
-        )
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         # has it been deleted?
-        if manifest.is_deleted:
+        if manifest["is_deleted"]:
             msg = "this scan has been deleted--cannot add workers"
             raise web.HTTPError(
                 422,
@@ -697,7 +694,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
         # is this in EWMS?
-        if not has_skydriver_requested_ewms_workflow(manifest.ewms_workflow_id):
+        if not has_skydriver_requested_ewms_workflow(manifest["ewms_workflow_id"]):
             msg = "an EWMS workflow has not been assigned--cannot add workers"
             raise web.HTTPError(
                 422,
@@ -706,7 +703,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
             )
         # is scan done?
         if await get_scan_state_if_final_result_received(
-            manifest.scan_id, self.db.results
+            manifest["scan_id"], self.db.results
         ):
             msg = "this scan has a final result--cannot add workers"
             raise web.HTTPError(
@@ -723,7 +720,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
                 "POST",
                 f"/{EWMS_URL_V_PREFIX}/query/task-directives",
                 {
-                    "query": {"workflow_id": manifest.ewms_workflow_id},
+                    "query": {"workflow_id": manifest["ewms_workflow_id"]},
                     "projection": ["task_id"],
                 },
             )
@@ -782,14 +779,14 @@ async def stop_skyscan_workers(
     abort: bool,
 ) -> MongoDoc:
     """Stop the scanner instance's workers on EWMS."""
-    manifest = ReadOnlyDotDict(await manifests.find_one({"scan_id": scan_id}))
+    manifest = await manifests.find_one({"scan_id": scan_id})
     LOGGER.info(f"stopping (ewms) workers for {scan_id=}...")
 
     # request to ewms
-    if has_skydriver_requested_ewms_workflow(manifest.ewms_workflow_id):
+    if has_skydriver_requested_ewms_workflow(manifest["ewms_workflow_id"]):
         await request_stop_on_ewms(
             ewms_rc,
-            cast(str, manifest.ewms_workflow_id),  # not None b/c above if-condition
+            cast(str, manifest["ewms_workflow_id"]),  # not None b/c above if-condition
             abort=abort,
         )
     else:
@@ -915,11 +912,8 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         projection = self.get_argument("projection", "*")  # pipe-delimited string
 
         # get manifest from db
-        manifest = ReadOnlyDotDict(
-            await self.db.manifests.find_one(
-                {"scan_id": scan_id}
-                | ({} if include_deleted else {"is_deleted": False})
-            )
+        manifest = await self.db.manifests.find_one(
+            {"scan_id": scan_id} | ({} if include_deleted else {"is_deleted": False})
         )
 
         # Backward Compatibility for Skymap Scanner:
@@ -928,17 +922,17 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         if (
             self.auth_roles[0] == INTERNAL_ACCT  # type: ignore
             and any(x in projection.split("|") for x in ["*", "event_i3live_json_dict"])
-            and manifest.i3_event_id  # if no id, then event already in manifest
+            and manifest["i3_event_id"]  # if no id, then event already in manifest
         ):
             try:
                 i3event_doc = await self.db.i3_events.find_one(
-                    {"i3_event_id": manifest.i3_event_id}
+                    {"i3_event_id": manifest["i3_event_id"]}
                 )
-                manifest.event_i3live_json_dict = i3event_doc["json_dict"]
+                manifest["event_i3live_json_dict"] = i3event_doc["json_dict"]
             except DocumentNotFoundException:
                 # this would mean the event was removed from the db
                 error_msg = (
-                    f"No i3 event document found with id '{manifest.i3_event_id}'"
+                    f"No i3 event document found with id '{manifest['i3_event_id']}'"
                     f"--if other fields are wanted, re-request using 'projection'"
                 )
                 raise web.HTTPError(
@@ -980,21 +974,19 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
-        manifest = ReadOnlyDotDict(
-            await self.db.manifests.find_one({"scan_id": scan_id})
-        )
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         # look up event in collection
-        if manifest.i3_event_id:
+        if manifest["i3_event_id"]:
             try:
                 doc = await self.db.i3_events.find_one(
-                    {"i3_event_id": manifest.i3_event_id}
+                    {"i3_event_id": manifest["i3_event_id"]}
                 )
                 i3_event = doc["json_dict"]
             except DocumentNotFoundException:
                 # this would mean the event was removed from the db
                 error_msg = (
-                    f"No i3 event document found with id '{manifest.i3_event_id}'"
+                    f"No i3 event document found with id '{manifest['i3_event_id']}'"
                 )
                 raise web.HTTPError(
                     404,
@@ -1003,7 +995,7 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
                 )
         # unless, this is an old scan -- where the whole dict was stored w/ the manifest
         else:
-            i3_event = manifest.event_i3live_json_dict
+            i3_event = manifest["event_i3live_json_dict"]
 
         self.write({"i3_event": i3_event})
 
@@ -1086,9 +1078,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
-        manifest = ReadOnlyDotDict(
-            await self.db.manifests.find_one({"scan_id": scan_id})
-        )
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         # scan state
         scan_state = await get_scan_state(manifest, self.ewms_rc, self.db.results)
@@ -1096,12 +1086,12 @@ class ScanStatusHandler(BaseSkyDriverHandler):
         # respond
         resp = {
             "scan_state": scan_state,
-            "is_deleted": manifest.is_deleted,
+            "is_deleted": manifest["is_deleted"],
             #
             # the scan is in a state where it cannot proceed further -- successful or otherwise
             # -> used by the scanner to prematurely quit in case of an abort (w/ 'is_deleted')
             "ewms_deactivated": await get_deactivated_type(
-                self.ewms_rc, manifest.ewms_workflow_id
+                self.ewms_rc, manifest["ewms_workflow_id"]
             ),
             #
             # the scan in effectively done, the physics has been finished
@@ -1115,7 +1105,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
             #
             # same as '/scan/<scan_id>/ewms/workforce'
             "ewms_workforce": await ewms.get_workforce_statuses(
-                self.ewms_rc, manifest.ewms_workflow_id
+                self.ewms_rc, manifest["ewms_workflow_id"]
             ),
         }
         self.write(resp)
@@ -1166,18 +1156,16 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
-        manifest = ReadOnlyDotDict(
-            await self.db.manifests.find_one({"scan_id": scan_id})
-        )
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         self.write(
             {
-                "workflow_id": manifest.ewms_workflow_id,
+                "workflow_id": manifest["ewms_workflow_id"],
                 "requested_ewms_workflow": has_skydriver_requested_ewms_workflow(
-                    manifest.ewms_workflow_id
+                    manifest["ewms_workflow_id"]
                 ),
-                "eligible_for_ewms": manifest.ewms_workflow_id is not None,
-                "ewms_address": manifest.ewms_address,
+                "eligible_for_ewms": manifest["ewms_workflow_id"] is not None,
+                "ewms_address": manifest["ewms_address"],
             }
         )
 
@@ -1230,14 +1218,12 @@ class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
 
         This is a high-level utility, which removes unnecessary EWMS semantics.
         """
-        manifest = ReadOnlyDotDict(
-            await self.db.manifests.find_one({"scan_id": scan_id})
-        )
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         self.write(
             await ewms.get_workforce_statuses(
                 self.ewms_rc,
-                manifest.ewms_workflow_id,
+                manifest["ewms_workflow_id"],
             )
         )
 
@@ -1258,15 +1244,13 @@ class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
 
         This is useful for debugging by seeing what was sent to condor.
         """
-        manifest = ReadOnlyDotDict(
-            await self.db.manifests.find_one({"scan_id": scan_id})
-        )
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         self.write(
             {
                 "taskforces": await ewms.get_taskforce_infos(
                     self.ewms_rc,
-                    manifest.ewms_workflow_id,
+                    manifest["ewms_workflow_id"],
                 )
             }
         )

@@ -22,7 +22,6 @@ from ..config import (
     SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS,
     sdict,
 )
-from ..database.schema import ReadOnlyDotDict
 from ..images import get_skyscan_cvmfs_apptainer_image_path
 
 LOGGER = logging.getLogger(__name__)
@@ -388,15 +387,15 @@ class LogWrangler:
     """Tools for retrieving logs."""
 
     @staticmethod
-    def get_scan_start_time(manifest: ReadOnlyDotDict) -> int:
+    def get_scan_start_time(manifest: MongoDoc) -> int:
         """Get the timestamp for when the scan started."""
-        if manifest.progress:  # the scan has started
-            if ret := manifest.progress.start:
+        if manifest["progress"]:  # the scan has started
+            if ret := manifest["progress"]["start"]:
                 return ret
             # 'ret==None' for a started scan probably indicates the scan is pre-v2
             try:
                 dt = parser.parse(
-                    manifest.progress.processing_stats.start["scanner start"]
+                    manifest["progress"]["processing_stats"]["start"]["scanner start"]
                 )
                 return int(dt.timestamp())
             except Exception as e:
@@ -404,7 +403,7 @@ class LogWrangler:
                 pass
 
         # fall-through
-        return int(manifest.timestamp)  # when the scan was requested
+        return int(manifest["timestamp"])  # when the scan was requested
 
     @staticmethod
     def _get_grafana_logs_url(scan_id: str, end_timestamp: int | None) -> str:
@@ -466,7 +465,7 @@ class LogWrangler:
     @staticmethod
     async def assemble_scanner_server_logs_url(manifest: MongoDoc) -> str:
         """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
-        start = LogWrangler.get_scan_start_time(ReadOnlyDotDict(manifest))
+        start = LogWrangler.get_scan_start_time(manifest)
         logs_end_ts = await LogWrangler._query_prometheus_for_timerange(
             manifest["scan_id"], start
         )

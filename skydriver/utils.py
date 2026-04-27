@@ -8,14 +8,13 @@ import uuid
 from rest_tools.client import RestClient
 from wipac_dev_tools.mongo_jsonschema_tools import (
     DocumentNotFoundException,
+    MongoDoc,
     MongoJSONSchemaValidatedCollection,
 )
 
 from . import ewms
 from .database.schema import (
     DEPRECATED_EWMS_TASK,
-    Manifest,
-    ReadOnlyDotDict,
     has_skydriver_requested_ewms_workflow,
 )
 
@@ -79,26 +78,26 @@ async def get_scan_state_if_final_result_received(
     return None
 
 
-def _has_cleared_backlog(manifest: ReadOnlyDotDict) -> bool:
+def _has_cleared_backlog(manifest: MongoDoc) -> bool:
     return bool(
-        has_skydriver_requested_ewms_workflow(manifest.ewms_workflow_id)
+        has_skydriver_requested_ewms_workflow(manifest["ewms_workflow_id"])
         or (  # backward compatibility...
-            manifest.ewms_task != DEPRECATED_EWMS_TASK
-            and isinstance(manifest.ewms_task, dict)
-            and manifest.ewms_task.get("clusters")
+            manifest["ewms_task"] != DEPRECATED_EWMS_TASK
+            and isinstance(manifest["ewms_task"], dict)
+            and manifest["ewms_task"].get("clusters")
         )
     )
 
 
-def _get_nonfinished_state(manifest: ReadOnlyDotDict) -> _ScanState:
+def _get_nonfinished_state(manifest: MongoDoc) -> _ScanState:
     """Get the ScanState of the scan, only by parsing attributes."""
     # has scan cleared the backlog? (aka, has been *submitted* EWMS?)
     if _has_cleared_backlog(manifest):
         # has the scanner server started?
-        if manifest.progress:
+        if manifest["progress"]:
             # how far along is the scanner server?
             # seen some pixels -> aka clients have processed pixels
-            if manifest.progress.processing_stats.rate:
+            if manifest["progress"]["processing_stats"]["rate"]:
                 return _ScanState.IN_PROGRESS__PARTIAL_RESULT_GENERATED
             # 0% -> aka clients haven't finished any pixels (yet)
             else:
@@ -112,7 +111,7 @@ def _get_nonfinished_state(manifest: ReadOnlyDotDict) -> _ScanState:
 
 
 async def get_scan_state(
-    manifest: ReadOnlyDotDict,
+    manifest: MongoDoc,
     ewms_rc: RestClient,
     results: MongoJSONSchemaValidatedCollection,
 ) -> str:
@@ -120,21 +119,25 @@ async def get_scan_state(
 
     Returns the state as a human-readable string
     """
-    if s := (await get_scan_state_if_final_result_received(manifest.scan_id, results)):
+    if s := (
+        await get_scan_state_if_final_result_received(manifest["scan_id"], results)
+    ):
         return s
 
     state = _get_nonfinished_state(manifest).name  # start here, augment if needed
 
     # AUGMENT STATUS...
     if (  # Backward Compatibility: is this an old/pre-ewms scan?
-        not manifest.ewms_workflow_id
-        and isinstance(manifest.ewms_task, dict)
-        and manifest.ewms_task.get("complete")
+        not manifest["ewms_workflow_id"]
+        and isinstance(manifest["ewms_task"], dict)
+        and manifest["ewms_task"].get("complete")
     ):
         # we didn't have info on what kind of stop
         return f"STOPPED__{state.split('__')[1]}"
     # has EWMS ceased running the scan workers?
-    elif dtype := await ewms.get_deactivated_type(ewms_rc, manifest.ewms_workflow_id):
+    elif dtype := await ewms.get_deactivated_type(
+        ewms_rc, manifest["ewms_workflow_id"]
+    ):
         # -> yes, the ewms workflow has been deactivated
         return f"{dtype.upper()}__{state.split('__')[1]}"
     else:
