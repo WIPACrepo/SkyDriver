@@ -104,7 +104,7 @@ async def run(
     k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
     """The main loop."""
-    db = database.SkyDriverMongoValidatedDatabase(mongo_client, raise_500=False)
+    db = database.SkyDriverMongoValidatedDatabase(mongo_client, send_web_errors=False)
 
     timer_for_any_priority_scans = IntervalTimer(
         ENV.SCAN_BACKLOG_RUNNER_DELAY, f"{LOGGER.name}.timer"

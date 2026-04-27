@@ -115,7 +115,7 @@ async def run(
     k8s_core_api: kubernetes.client.CoreV1Api,  # CoreV1Api(k8s_batch_api.api_client)
 ) -> None:
     """The main loop."""
-    db = database.SkyDriverMongoValidatedDatabase(mongo_client, raise_500=False)
+    db = database.SkyDriverMongoValidatedDatabase(mongo_client, send_web_errors=False)
     skyd_rc = RestClient(  # -- talk to self
         ENV.HERE_URL,
         EnvVarFactory.get_skydriver_rest_auth(),
