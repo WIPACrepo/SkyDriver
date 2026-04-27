@@ -8,6 +8,7 @@ import tornado
 from pymongo import AsyncMongoClient
 from wipac_dev_tools.mongo_jsonschema_tools import MongoJSONSchemaValidatedCollection
 
+from ..config import OPENAPI_DICT
 from .utils import (
     _DB_NAME,
     _I3_EVENT_COLL_NAME,
@@ -17,7 +18,6 @@ from .utils import (
     _SCAN_REQUEST_COLL_NAME,
     _SKYSCAN_K8S_JOB_COLL_NAME,
 )
-from ..config import OPENAPI_DICT
 
 
 def get_jsonschema_subspec_from_openapi(object_name: str) -> dict[str, Any]:
