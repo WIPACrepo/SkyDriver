@@ -6,19 +6,21 @@ import json
 import logging
 import time
 import uuid
-from typing import Any, Type, TypeVar, cast
+from typing import Any, cast
 
 import humanfriendly  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
-from dacite import from_dict
-from dacite.exceptions import DaciteError
 from pymongo import ASCENDING, ReturnDocument
 from rest_tools import openapi_tools
 from rest_tools.client import RestClient
 from rest_tools.server import RestHandler
 from tornado import web
 from wipac_dev_tools.container_registry_tools import ImageNotFoundException
-from wipac_dev_tools.mongo_jsonschema_tools import MongoJSONSchemaValidatedCollection
+from wipac_dev_tools.mongo_jsonschema_tools import (
+    DocumentNotFoundException,
+    MongoDoc,
+    MongoJSONSchemaValidatedCollection,
+)
 
 from . import config, database, ewms, images
 from .background_runners.scan_launcher import put_on_backlog
@@ -72,7 +74,7 @@ def all_dc_fields(class_or_instance: Any) -> set[str]:
     return set(f.name for f in dc.fields(class_or_instance))
 
 
-def dict_projection(dicto: dict, projection: list[str] | str) -> dict:
+def dict_projection(dicto: MongoDoc, projection: list[str] | str) -> dict:
     """Keep only the keys in the `projection`.
 
     Passing the field names as a list or pipe-delimited string (not both).
@@ -147,7 +149,7 @@ class ScansFindHandler(BaseSkyDriverHandler):
         "event_i3live_json_dict",
         "event_i3live_json_dict__hash",
     }
-    DEFAULT_FIELDS = all_dc_fields(database.schema.Manifest) - DISALLOWED_FIELDS
+    DEFAULT_FIELDS = all_dc_fields(MongoDoc) - DISALLOWED_FIELDS
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
@@ -451,7 +453,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         )
 
         # 5. Write response
-        self.write(dict_projection(dc.asdict(manifest), manifest_projection))
+        self.write(dict_projection(manifest, manifest_projection))
 
 
 async def enqueue_scan(
@@ -462,7 +464,7 @@ async def enqueue_scan(
     /,
     insert_scan_request_obj: bool,  # False for rescans
     scan_request_coll: MongoJSONSchemaValidatedCollection | None = None,  # type: ignore[valid-type]
-) -> schema.Manifest:
+) -> MongoDoc:
     """Create all need data for a new scan, then enqueue it on the backlog."""
     scan_id = scan_request_obj["scan_id"]
 
@@ -497,7 +499,7 @@ async def enqueue_scan(
 
     # put in db (do before k8s start so if k8s fail, we can debug using db's info)
     LOGGER.debug("creating new manifest")
-    manifest = schema.Manifest(
+    manifest = MongoDoc(
         scan_id=scan_id,
         timestamp=time.time(),
         is_deleted=False,
@@ -630,9 +632,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
                 return_dclass=dict,
             )
 
-        self.write(
-            dict_projection(dc.asdict(manifest), manifest_projection),
-        )
+        self.write(dict_projection(manifest, manifest_projection))
 
 
 # -----------------------------------------------------------------------------
@@ -721,7 +721,7 @@ async def abort_scan(
     manifests: MongoJSONSchemaValidatedCollection,
     scan_id: str,
     ewms_rc: RestClient,
-) -> database.schema.Manifest:
+) -> MongoDoc:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     # mark as deleted -> also stops backlog from starting
     manifest = await manifests.find_one_and_update(
@@ -744,16 +744,16 @@ async def stop_skyscan_workers(
     scan_id: str,
     ewms_rc: RestClient,
     abort: bool,
-) -> database.schema.Manifest:
+) -> MongoDoc:
     """Stop the scanner instance's workers on EWMS."""
     manifest = await manifests.find_one({"scan_id": scan_id})
     LOGGER.info(f"stopping (ewms) workers for {scan_id=}...")
 
     # request to ewms
-    if has_skydriver_requested_ewms_workflow(manifest.ewms_workflow_id):
+    if has_skydriver_requested_ewms_workflow(manifest["ewms_workflow_id"]):
         await request_stop_on_ewms(
             ewms_rc,
-            cast(str, manifest.ewms_workflow_id),  # not None b/c above if-condition
+            cast(str, manifest["ewms_workflow_id"]),  # not None b/c above if-condition
             abort=abort,
         )
     else:
@@ -772,7 +772,7 @@ async def get_result_safely(
     results: MongoJSONSchemaValidatedCollection,
     scan_id: str,
     incl_del: bool,
-) -> tuple[None | database.schema.Result, database.schema.Manifest]:
+) -> tuple[MongoDoc | None, MongoDoc]:
     """Get the Result (and Manifest) using the incl_del/is_deleted logic.
 
     Returns objects as dicts
@@ -782,10 +782,10 @@ async def get_result_safely(
     )
 
     # check if requestor allows a deleted scan's result
-    if (not incl_del) and manifest.is_deleted:
+    if (not incl_del) and manifest["is_deleted"]:
         raise web.HTTPError(
             404,
-            log_message=f"Requested result with deleted manifest: {manifest.scan_id}",
+            log_message=f"Requested result with deleted manifest: {manifest['scan_id']}",
         )
 
     # if we don't have a result yet, return {}
@@ -834,7 +834,7 @@ class ScanHandler(BaseSkyDriverHandler):
 
         self.write(
             {
-                "manifest": dict_projection(dc.asdict(manifest), manifest_projection),
+                "manifest": dict_projection(manifest, manifest_projection),
                 "result": result_dict,
             }
         )
@@ -855,8 +855,8 @@ class ScanHandler(BaseSkyDriverHandler):
 
         self.write(
             {
-                "manifest": dc.asdict(manifest),
-                "result": dc.asdict(result) if result else {},
+                "manifest": manifest,
+                "result": result if result else {},
             }
         )
 
@@ -914,25 +914,9 @@ class ScanManifestHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
-        T = TypeVar("T")
-
-        def from_dict_wrapper_or_none(data_class: Type[T], val: Any) -> T | None:
-            if not val:
-                return None
-            try:
-                return from_dict(data_class, val)
-            except DaciteError as e:
-                raise web.HTTPError(400, reason=str(e), log_message=str(e))
-
-        progress = from_dict_wrapper_or_none(
-            database.schema.Progress,
-            self.get_argument("progress", None),
-        )
-        event_metadata = from_dict_wrapper_or_none(
-            database.schema.EventMetadata,
-            self.get_argument("event_metadata", None),
-        )
-        scan_metadata = self.get_argument("scan_metadata", {})
+        progress = self.get_argument("progress", None) or None
+        event_metadata = self.get_argument("event_metadata", None) or None
+        scan_metadata = self.get_argument("scan_metadata", {}) or None
 
         manifest = await ManifestHelper.patch(
             self.db.manifests,
@@ -1011,7 +995,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
             include_deleted,
         )
 
-        self.write(dc.asdict(result) if result else {})
+        self.write(result if result else {})
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
