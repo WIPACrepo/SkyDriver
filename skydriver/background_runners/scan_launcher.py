@@ -34,7 +34,7 @@ async def put_on_backlog(
             timestamp=time.time(),
             priority=priority,
         )
-        await scan_backlog.insert(entry)
+        await scan_backlog.insert_one(entry)
     except Exception as e:
         LOGGER.exception(e)
         raise web.HTTPError(

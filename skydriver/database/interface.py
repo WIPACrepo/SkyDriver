@@ -1,6 +1,5 @@
 """Database interface for persisted scan data."""
 
-import dataclasses as dc
 import logging
 import time
 
@@ -200,11 +199,3 @@ class ScanBacklogClient:
         res = await self.collection.delete_one({"scan_id": entry.scan_id})
         LOGGER.debug(f"delete_one result: {res}")
         return entry
-
-    async def insert(self, entry: schema.ScanBacklogEntry) -> None:
-        """Insert entry, `schema.ScanBacklogEntry`."""
-        LOGGER.debug(f"inserting {entry=}")
-        doc = dc.asdict(entry)
-        res = await self.collection.insert_one(doc)
-        LOGGER.debug(f"insert result: {res}")
-        LOGGER.debug(f"Inserted backlog entry for {entry.scan_id=}")
