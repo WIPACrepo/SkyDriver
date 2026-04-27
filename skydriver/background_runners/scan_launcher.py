@@ -61,7 +61,7 @@ async def get_next(
                 f"Backlog entry was already attempted {ENV.SCAN_BACKLOG_MAX_ATTEMPTS} times "
                 f"-- backlog entry will now be removed ({entry.scan_id=})"
             )
-            await db.scan_backlog.remove(entry)
+            await db.scan_backlog.delete_one({"scan_id": entry.scan_id})
             continue
 
         # check if scan was 'deleted'
@@ -71,7 +71,7 @@ async def get_next(
                 f"Scan is designated for deletion "
                 f"-- backlog entry will now be removed ({entry.scan_id=})"
             )
-            await db.scan_backlog.remove(entry)
+            await db.scan_backlog.delete_one({"scan_id": entry.scan_id})
             continue
 
         # grab the scan request object--it has other info
@@ -161,7 +161,7 @@ async def run(
 
         # remove from backlog now that startup succeeded
         LOGGER.info(f"Scan successfully started: scan_id={manifest.scan_id}")
-        await db.scan_backlog.remove(entry)
+        await db.scan_backlog.delete_one({"scan_id": entry.scan_id})
         # and mark time on k8s job doc -- used by the scan pod watchdog
         await db.skyscan_k8s_jobs.find_one_and_update(
             {"scan_id": manifest.scan_id},

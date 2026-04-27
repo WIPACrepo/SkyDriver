@@ -192,10 +192,3 @@ class ScanBacklogClient:
         ):
             LOGGER.debug(f"backlog entry ready for revival ({entry.scan_id=})")
         return entry
-
-    async def remove(self, entry: schema.ScanBacklogEntry) -> schema.ScanBacklogEntry:
-        """Remove entry, `schema.ScanBacklogEntry`."""
-        LOGGER.debug("removing ScanBacklogEntry")
-        res = await self.collection.delete_one({"scan_id": entry.scan_id})
-        LOGGER.debug(f"delete_one result: {res}")
-        return entry
