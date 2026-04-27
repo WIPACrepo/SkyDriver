@@ -451,7 +451,10 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         )
 
         # 5. Write response
-        self.write(dict_projection(manifest, manifest_projection))
+        self.write(
+            # we project now b/c we may have needed fields the user didn't want
+            dict_projection(manifest, manifest_projection)
+        )
 
 
 async def enqueue_scan(
@@ -655,7 +658,10 @@ class ScanRescanHandler(BaseSkyDriverHandler):
                 {"$set": {"replaced_by_scan_id": new_scan_id}},
             )
 
-        self.write(dict_projection(manifest, manifest_projection))
+        self.write(
+            # we project now b/c we may have needed fields the user didn't want
+            dict_projection(manifest, manifest_projection)
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -857,6 +863,7 @@ class ScanHandler(BaseSkyDriverHandler):
 
         self.write(
             {
+                # we project now b/c we may have needed fields the user didn't want
                 "manifest": dict_projection(manifest, manifest_projection),
                 "result": result_dict,
             }
@@ -931,7 +938,10 @@ class ScanManifestHandler(BaseSkyDriverHandler):
                     reason=error_msg,
                 )
 
-        self.write(dict_projection(manifest, projection))
+        self.write(
+            # we project now b/c we may have needed fields the user didn't want
+            dict_projection(manifest, projection)
+        )
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
