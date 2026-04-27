@@ -532,8 +532,11 @@ class ScanRequestHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """GET."""
-        scan_request_obj = await self.db.scan_requests.find_one({"scan_id": scan_id})
-        if not scan_request_obj:
+        try:
+            scan_request_obj = await self.db.scan_requests.find_one(
+                {"scan_id": scan_id}
+            )
+        except DocumentNotFoundException:
             msg = "Scan request not found"
             raise web.HTTPError(
                 404,
@@ -573,17 +576,17 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         new_scan_id = make_scan_id()
 
         # grab the 'scan_request_obj'
-        scan_request_obj = await self.db.scan_requests.find_one_and_update(
-            get_scan_request_obj_filter(scan_id),
-            {
-                # record linkage (discoverability)
-                # NOTE: must preserve order here for history -- so push
-                "$push": {"rescan_ids": new_scan_id},
-            },
-            return_document=ReturnDocument.AFTER,
-        )
-        # -> error: couldn't find it anywhere
-        if not scan_request_obj:
+        try:
+            scan_request_obj = await self.db.scan_requests.find_one_and_update(
+                get_scan_request_obj_filter(scan_id),
+                {
+                    # record linkage (discoverability)
+                    # NOTE: must preserve order here for history -- so push
+                    "$push": {"rescan_ids": new_scan_id},
+                },
+                return_document=ReturnDocument.AFTER,
+            )
+        except DocumentNotFoundException:
             raise web.HTTPError(
                 404,
                 log_message="Could not find original scan-request information to start a rescan",
@@ -773,9 +776,7 @@ async def get_result_safely(
     # if we don't have a result yet, return {}
     try:
         result = await results.find_one({"scan_id": scan_id})
-    except web.HTTPError as e:
-        if e.status_code != 404:
-            raise
+    except DocumentNotFoundException:
         result = None
 
     return result, manifest
@@ -813,9 +814,7 @@ class ScanHandler(BaseSkyDriverHandler):
 
         try:
             result_dict = await self.db.results.find_one({"scan_id": scan_id})
-        except web.HTTPError as e:
-            if e.status_code != 404:
-                raise
+        except DocumentNotFoundException:
             result_dict = {}
 
         self.write(
@@ -877,11 +876,13 @@ class ScanManifestHandler(BaseSkyDriverHandler):
             and any(x in projection.split("|") for x in ["*", "event_i3live_json_dict"])
             and manifest.i3_event_id  # if no id, then event already in manifest
         ):
-            if i3event_doc := await self.db.i3_events.find_one(
-                {"i3_event_id": manifest.i3_event_id}
-            ):
+            try:
+                i3event_doc = await self.db.i3_events.find_one(
+                    {"i3_event_id": manifest.i3_event_id}
+                )
                 manifest.event_i3live_json_dict = i3event_doc["json_dict"]
-            else:  # this would mean the event was removed from the db
+            except DocumentNotFoundException:
+                # this would mean the event was removed from the db
                 error_msg = (
                     f"No i3 event document found with id '{manifest.i3_event_id}'"
                     f"--if other fields are wanted, re-request using 'projection'"
@@ -945,12 +946,13 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
 
         # look up event in collection
         if manifest.i3_event_id:
-            doc = await self.db.i3_events.find_one(
-                {"i3_event_id": manifest.i3_event_id}
-            )
-            if doc:
+            try:
+                doc = await self.db.i3_events.find_one(
+                    {"i3_event_id": manifest.i3_event_id}
+                )
                 i3_event = doc["json_dict"]
-            else:  # this would mean the event was removed from the db
+            except DocumentNotFoundException:
+                # this would mean the event was removed from the db
                 error_msg = (
                     f"No i3 event document found with id '{manifest.i3_event_id}'"
                 )

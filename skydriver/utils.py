@@ -6,8 +6,10 @@ import time
 import uuid
 
 from rest_tools.client import RestClient
-from tornado import web
-from wipac_dev_tools.mongo_jsonschema_tools import MongoJSONSchemaValidatedCollection
+from wipac_dev_tools.mongo_jsonschema_tools import (
+    DocumentNotFoundException,
+    MongoJSONSchemaValidatedCollection,
+)
 
 from . import ewms
 from .database.schema import (
@@ -69,10 +71,8 @@ async def get_scan_state_if_final_result_received(
         if result["is_final"]:
             # NOTE: see note on 'SCAN_HAS_FINAL_RESULT' above
             return _ScanState.SCAN_HAS_FINAL_RESULT.name
-    except web.HTTPError as e:
-        # get() raises 404 when no result found
-        if e.status_code != 404:
-            raise
+    except DocumentNotFoundException:
+        pass
 
     # fall-through
     return None
