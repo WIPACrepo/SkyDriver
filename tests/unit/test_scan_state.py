@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from skydriver.database import schema
 from skydriver.database.schema import _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
 from skydriver.utils import get_scan_state
 
@@ -24,7 +23,7 @@ async def test_00__scan_has_final_result(
     ewms_rc = MagicMock()
     results = MagicMock(get=AsyncMock(return_value=MagicMock(is_final=True)))
 
-    manifest = schema.Manifest(
+    manifest = dict(
         scan_id=MagicMock(),
         timestamp=MagicMock(),
         is_deleted=cast(bool, MagicMock()),
@@ -58,7 +57,7 @@ async def test_10__partial_result_generated(ewms_dtype: str | None, state: str) 
     ewms_rc = MagicMock()
     results = MagicMock(get=AsyncMock(return_value=MagicMock(is_final=False)))
 
-    manifest = schema.Manifest(
+    manifest = dict(
         scan_id=MagicMock(),
         timestamp=MagicMock(),
         is_deleted=cast(bool, MagicMock()),
@@ -99,7 +98,7 @@ async def test_20__waiting_on_first_pixel_reco(
     ewms_rc = MagicMock()
     results = MagicMock(get=AsyncMock(return_value=MagicMock(is_final=False)))
 
-    manifest = schema.Manifest(
+    manifest = dict(
         scan_id=MagicMock(),
         timestamp=MagicMock(),
         is_deleted=cast(bool, MagicMock()),
@@ -140,7 +139,7 @@ async def test_40__waiting_on_scanner_server_startup(
     ewms_rc = MagicMock()
     results = MagicMock(get=AsyncMock(return_value=MagicMock(is_final=False)))
 
-    manifest = schema.Manifest(
+    manifest = dict(
         scan_id=MagicMock(),
         timestamp=MagicMock(),
         is_deleted=cast(bool, MagicMock()),
@@ -169,7 +168,7 @@ async def test_50__prestartup(ewms_dtype: str | None, state: str) -> None:
     ewms_rc = MagicMock()
     results = MagicMock(get=AsyncMock(return_value=MagicMock(is_final=False)))
 
-    manifest = schema.Manifest(
+    manifest = dict(
         scan_id=MagicMock(),
         timestamp=MagicMock(),
         is_deleted=cast(bool, MagicMock()),

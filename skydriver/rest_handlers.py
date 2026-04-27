@@ -1,7 +1,6 @@
 """Handlers for the SkyDriver REST API server interface."""
 
 import asyncio
-import dataclasses as dc
 import json
 import logging
 import time
@@ -69,11 +68,6 @@ WAIT_BEFORE_TEARDOWN = 60
 
 # -----------------------------------------------------------------------------
 # utils
-
-
-def all_dc_fields(class_or_instance: Any) -> set[str]:
-    """Get all the field names for a dataclass (instance or class)."""
-    return set(f.name for f in dc.fields(class_or_instance))
 
 
 def dict_projection(dicto: MongoDoc, projection: list[str] | str) -> dict:
@@ -151,7 +145,6 @@ class ScansFindHandler(BaseSkyDriverHandler):
         "event_i3live_json_dict",
         "event_i3live_json_dict__hash",
     }
-    DEFAULT_FIELDS = all_dc_fields(MongoDoc) - DISALLOWED_FIELDS
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
@@ -164,20 +157,23 @@ class ScansFindHandler(BaseSkyDriverHandler):
         # "*" means "all allowed fields", which == DEFAULT_FIELDS for this endpoint
         # -- the full Manifest set would include too-large fields (data), aka DISALLOWED_FIELDS
         if manifest_projection == "*":
-            manifest_projection = list(self.DEFAULT_FIELDS)
-        # reject any explicit requests for disallowed (too-large) fields
-        if set(manifest_projection) & self.DISALLOWED_FIELDS:
-            raise web.HTTPError(
-                400,
-                log_message=f"'manifest_projection' cannot include any of the following: {self.DISALLOWED_FIELDS}",
-            )
+            _mongo_projection = {k: 0 for k in self.DISALLOWED_FIELDS}
+        else:
+            # reject any explicit requests for disallowed (too-large) fields
+            for k in self.DISALLOWED_FIELDS:
+                if k in manifest_projection:
+                    raise web.HTTPError(
+                        400,
+                        log_message=f"'manifest_projection' cannot include any of the following: {self.DISALLOWED_FIELDS}",
+                    )
+            # list -> dict
+            _mongo_projection = {k: 1 for k in manifest_projection}
 
         # query
         if "is_deleted" not in filter_ and not include_deleted:
             filter_["is_deleted"] = False
         manifests = [
-            dict_projection(dc.asdict(m), manifest_projection)
-            async for m in self.db.manifests.find_all(filter_)
+            m async for m in self.db.manifests.find_all(filter_, _mongo_projection)
         ]
 
         self.write({"manifests": manifests})
@@ -203,7 +199,7 @@ class ScanBacklogHandler(BaseSkyDriverHandler):
             x
             async for x in self.db.scan_backlog.find_all(
                 {},
-                {"_id": False, "pickled_k8s_job": False},
+                {"_id": 0, "pickled_k8s_job": 0},
                 sort=[("timestamp", ASCENDING)],
             )
         ]
@@ -590,11 +586,6 @@ class ScanRequestHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
 
-        # motor's find_one returns a generic _DocumentType; narrow to dict so
-        # we can call .pop and hand it to self.write
-        scan_request_obj = cast(dict, scan_request_obj)
-        scan_request_obj.pop("_id", None)
-
         self.write(scan_request_obj)
 
 
@@ -659,10 +650,9 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         )
 
         if replace_scan:
-            await self.db.manifests.collection.find_one_and_update(
+            await self.db.manifests.find_one_and_update(
                 {"scan_id": scan_id},
                 {"$set": {"replaced_by_scan_id": new_scan_id}},
-                return_dclass=dict,
             )
 
         self.write(dict_projection(manifest, manifest_projection))

@@ -13,7 +13,7 @@ from typing import Any, cast
 import humanfriendly  # type: ignore[import-untyped]
 import pytest
 import requests
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient
 from rest_tools.client import RestClient
 
 import skydriver.images  # noqa: F401  # export
@@ -75,7 +75,7 @@ REQUIRED_FIELDS = [
 
 async def _launch_scan(
     rc: RestClient,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
     post_scan_body: dict,
     docker_tag_expected: str,
 ) -> dict:
@@ -150,7 +150,7 @@ async def _launch_scan(
 
 
 async def _assert_db_scanrequests_coll(
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
     post_scan_body: dict,
     post_resp: dict,
     docker_tag_expected: str,
@@ -194,7 +194,7 @@ async def _assert_db_scanrequests_coll(
 
 
 async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
     post_scan_body: dict,
     post_resp: dict,
     scanner_server_args: str,
@@ -901,7 +901,7 @@ async def test_000(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
 ) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
@@ -1049,7 +1049,7 @@ async def test_100__rescan(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
 ) -> None:
     """Test rescan request w/o scan replacement."""
     rc = server()
@@ -1153,7 +1153,7 @@ async def test_110__rescan_replacement_redirect(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
 ) -> None:
     """Test rescan request w/ scan replacement -- and redirects."""
     rc = server()
@@ -1216,7 +1216,7 @@ async def test_200__get_edit_launchdup(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
 ) -> None:
     """Get the stored scan-request, 'edit' the inputs to reuse the same event via i3_event_id, then launch a duplicate."""
     rc = server()
@@ -1331,7 +1331,7 @@ async def test_210__post_with_get_fields__single_bad_field(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
 ) -> None:
     """User copies fields from GET /scan-request/{scan_id} back into POST /scan (single extra)."""
     rc = server()
@@ -1372,7 +1372,7 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
 ) -> None:
     """User copies several fields from GET /scan-request/{scan_id} back into POST /scan (multiple extras)."""
     rc = server()
@@ -1438,7 +1438,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Failure-test scan creation and retrieval."""
