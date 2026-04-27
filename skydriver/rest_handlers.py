@@ -772,7 +772,7 @@ async def get_result_safely(
 
     # if we don't have a result yet, return {}
     try:
-        result = await results.get(scan_id)
+        result = await results.find_one({"scan_id": scan_id})
     except web.HTTPError as e:
         if e.status_code != 404:
             raise
@@ -812,7 +812,7 @@ class ScanHandler(BaseSkyDriverHandler):
         manifest = await abort_scan(self.db.manifests, scan_id, self.ewms_rc)
 
         try:
-            result_dict = dc.asdict(await self.db.results.get(scan_id))
+            result_dict = await self.db.results.find_one({"scan_id": scan_id})
         except web.HTTPError as e:
             if e.status_code != 404:
                 raise
