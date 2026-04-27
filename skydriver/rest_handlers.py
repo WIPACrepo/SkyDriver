@@ -1013,12 +1013,12 @@ class ScanResultHandler(BaseSkyDriverHandler):
             self.write({})
             return
 
-        result_dc = await self.db.results.put(
-            scan_id,
-            skyscan_result,
-            is_final,
+        result = await self.db.results.find_one_and_update(
+            {"scan_id": scan_id},
+            {"$set": {"skyscan_result": skyscan_result, "is_final": is_final}},
+            upsert=True,
         )
-        self.write(dc.asdict(result_dc))
+        self.write(result)
 
         # END #
         await self.finish()

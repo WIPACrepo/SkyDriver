@@ -181,39 +181,6 @@ class ResultClient:
             mongo_client[_DB_NAME], _RESULTS_COLL_NAME  # type: ignore[index]
         )
 
-    async def put(
-        self, scan_id: str, skyscan_result: schema.StrDict, is_final: bool
-    ) -> schema.Result:
-        """Override `schema.Result` at doc matching `scan_id`."""
-        LOGGER.debug(f"overriding result for {scan_id=} {is_final=}")
-
-        # validate
-        if not skyscan_result:
-            msg = f"Attempted to add result with an empty object ({skyscan_result})"
-            raise web.HTTPError(
-                422,
-                log_message=msg + f" for {scan_id=}",
-                reason=msg,
-            )
-        result = schema.Result(scan_id, skyscan_result, is_final)  # validates data
-
-        # db
-        try:
-            result = await self.collection.find_one_and_update(
-                {"scan_id": result.scan_id},
-                {"$set": dc.asdict(result)},
-                upsert=True,
-                return_document=ReturnDocument.AFTER,
-                return_dclass=schema.Result,
-            )
-        except mongodc.DocumentNotFoundException as e:
-            raise web.HTTPError(
-                500,
-                log_message=f"Failed to put {self.collection.name} document ({scan_id})",
-            ) from e
-
-        return result
-
 
 # -----------------------------------------------------------------------------
 
