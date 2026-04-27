@@ -6,10 +6,7 @@ from typing import Any
 
 import tornado
 from pymongo import AsyncMongoClient
-from wipac_dev_tools.mongo_jsonschema_tools import (
-    DocumentNotFoundException,
-    MongoJSONSchemaValidatedCollection,
-)
+from wipac_dev_tools.mongo_jsonschema_tools import MongoJSONSchemaValidatedCollection
 
 from .utils import (
     _DB_NAME,
@@ -43,11 +40,11 @@ class SkyDriverMongoValidatedDatabase:
     def __init__(
         self,
         mongo_client: AsyncMongoClient,
-        send_web_errors: bool,
+        raise_500: bool,
         parent_logger: logging.Logger | None = None,
     ):
         self.mongo_client = mongo_client
-        self.send_web_errors = send_web_errors
+        self.raise_500 = raise_500
 
         def _make(_col_name: str, _obj_name: str) -> MongoJSONSchemaValidatedCollection:
             return MongoJSONSchemaValidatedCollection(
@@ -67,22 +64,15 @@ class SkyDriverMongoValidatedDatabase:
     def _db_error_callback(self, exc: Exception, collection_name: str):
         """Handle a database error.
 
-        If `self.send_web_errors=True`, raise a 400/500 errors. Otherwise, return the exception.
+        If `self.raise_500=True`, raise a 500 error. Otherwise, return the exception.
            Technically, 500 errors are always raised when run in a tornado server, but
-           this provides custom messaging and earlier raising.
+           `self.raise_500` provides custom messaging and earlier raising.
         """
-        if self.send_web_errors:
-            if isinstance(exc, DocumentNotFoundException):
-                return tornado.web.HTTPError(
-                    404,
-                    log_message=f"{exc.__class__.__name__}: {exc}",  # to stderr
-                    reason=f"Document Not Found: {collection_name} document",  # to client
-                )
-            else:
-                return tornado.web.HTTPError(
-                    status_code=500,
-                    log_message=f"{exc.__class__.__name__}: {exc}",  # to stderr
-                    reason=f"Internal database error for collection='{collection_name}'",  # to client
-                )
+        if self.raise_500:
+            return tornado.web.HTTPError(
+                status_code=500,
+                log_message=f"{exc.__class__.__name__}: {exc}",  # to stderr
+                reason=f"Internal database error for collection='{collection_name}'",  # to client
+            )
         else:
             return exc
