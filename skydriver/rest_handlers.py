@@ -32,11 +32,13 @@ from .config import (
     KNOWN_CLUSTERS,
     USER_ACCT,
 )
-from .database import schema
 from .database.interface import ManifestHelper
 from .database.schema import (
+    DEPRECATED_EVENT_I3LIVE_JSON_DICT,
+    DEPRECATED_EWMS_TASK,
     _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
     has_skydriver_requested_ewms_workflow,
+    obfuscate_cl_args,
 )
 from .ewms import get_deactivated_type, request_stop_on_ewms
 from .images import ImageTooOldException
@@ -499,16 +501,47 @@ async def enqueue_scan(
 
     # put in db (do before k8s start so if k8s fail, we can debug using db's info)
     LOGGER.debug("creating new manifest")
-    manifest = MongoDoc(
+    manifest = dict(
         scan_id=scan_id,
         timestamp=time.time(),
         is_deleted=False,
-        i3_event_id=scan_request_obj["i3_event_id"],
-        scanner_server_args=scanner_server_args,
-        ewms_workflow_id=schema._NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
-        # ^^^ set once the workflow request has been sent to EWMS (see scan launcher)
-        classifiers=scan_request_obj["classifiers"],
+        #
+        # args placed in k8s job obj
+        scanner_server_args=obfuscate_cl_args(scanner_server_args),
+        #
+        # EWMS interface
+        ewms_workflow_id=(  # id points to info in EWMS
+            _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
+            # ^^^ set once the workflow request has been sent to EWMS (see scan launcher)
+        ),
+        ewms_address=None,  # used to differentiate
+        ewms_task=(  # **DEPRECATED**
+            DEPRECATED_EWMS_TASK
+            # ^^^ was used in skydriver 1.x to use local k8s starter/stopper
+        ),
+        #
         priority=scan_request_obj["priority"],
+        #
+        # open to requestor
+        classifiers=scan_request_obj["classifiers"],
+        #
+        # i3 event -- grabbed by scanner central server
+        i3_event_id=scan_request_obj["i3_event_id"],  # id to i3_event coll
+        event_i3live_json_dict=DEPRECATED_EVENT_I3LIVE_JSON_DICT,  # **DEPRECATED**
+        event_i3live_json_dict__hash=None,  # **DEPRECATED**
+        #
+        # found/created during first few seconds of scanning
+        event_metadata=None,
+        scan_metadata=None,  # open to scanner
+        #
+        # updated during scanning, multiple times
+        progress=None,
+        #
+        # misc / meta
+        replaced_by_scan_id=(
+            None  # pointer -> if replaced by a different scan -- used by REST redirects
+        ),
+        last_updated=0.0,
     )
     manifest = await manifests.find_one_and_update(
         {"scan_id": manifest["scan_id"]},
