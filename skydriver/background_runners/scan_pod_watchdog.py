@@ -35,13 +35,14 @@ async def _get_recent_scans(
     max_ago: int,
 ) -> list[str]:
     scan_ids = []
-    async for d in skyscan_k8s_jobs.find(
+    async for d in skyscan_k8s_jobs.find_all(
         {
             "k8s_started_ts": {
                 "$gte": time.time() - max_ago,
                 "$lt": time.time() - min_ago,
             }
-        }
+        },
+        ["scan_id"],
     ):
         scan_ids.append(d["scan_id"])
     return scan_ids
@@ -82,7 +83,7 @@ async def _has_scan_been_rescanned_too_many_times_too_recently(
     all_scan_ids = [sro["scan_id"]] + sro["rescan_ids"]
 
     # count how many in last x mins
-    result = await manifests.collection.count_documents(
+    result = await manifests._collection.count_documents(  # there's no public method for this
         {
             "scan_id": {"$in": all_scan_ids},
             "timestamp": {
