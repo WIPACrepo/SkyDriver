@@ -501,7 +501,11 @@ async def enqueue_scan(
         classifiers=scan_request_obj["classifiers"],
         priority=scan_request_obj["priority"],
     )
-    manifest = await manifests.put(manifest)
+    manifest = await manifests.find_one_and_update(
+        {"scan_id": manifest.scan_id},
+        {"$set": manifest},
+        upsert=True,
+    )
     await skyscan_k8s_job_coll.insert_one(  # type: ignore[attr-defined]
         {
             "scan_id": scan_id,

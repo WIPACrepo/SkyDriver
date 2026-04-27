@@ -32,24 +32,6 @@ class ManifestClient:
             _MANIFEST_COLL_NAME,
         )
 
-    async def put(self, manifest: schema.Manifest) -> schema.Manifest:
-        """Put into db."""
-        try:
-            manifest = await self.collection.find_one_and_update(
-                {"scan_id": manifest.scan_id},
-                {"$set": dc.asdict(manifest)},
-                return_dclass=schema.Manifest,
-                upsert=True,
-                return_document=ReturnDocument.AFTER,
-            )
-        except mongodc.DocumentNotFoundException as e:
-            raise web.HTTPError(
-                500,
-                log_message=f"Failed to post {self.collection.name} document ({manifest.scan_id})",
-            ) from e
-
-        return manifest
-
     @staticmethod
     def _put_once_event_metadata(
         in_db: schema.Manifest,
