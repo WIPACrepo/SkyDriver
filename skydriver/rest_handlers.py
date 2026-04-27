@@ -716,7 +716,11 @@ async def abort_scan(
 ) -> database.schema.Manifest:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     # mark as deleted -> also stops backlog from starting
-    manifest = await manifests.mark_as_deleted(scan_id)
+    manifest = await manifests.find_one_and_update(
+        {"scan_id": scan_id},
+        {"$set": {"is_deleted": True}},
+        upsert=True,
+    )
     # stop ewms
     await stop_skyscan_workers(
         manifests,

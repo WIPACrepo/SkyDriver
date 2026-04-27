@@ -133,26 +133,6 @@ class ManifestClient:
 
         return manifest
 
-    async def mark_as_deleted(self, scan_id: str) -> schema.Manifest:
-        """Mark `schema.Manifest` at doc matching `scan_id` as deleted."""
-        LOGGER.debug(f"marking manifest as deleted for {scan_id=}")
-
-        try:
-            manifest = await self.collection.find_one_and_update(
-                {"scan_id": scan_id},
-                {"$set": {"is_deleted": True}},
-                upsert=True,
-                return_document=ReturnDocument.AFTER,
-                return_dclass=schema.Manifest,
-            )
-        except mongodc.DocumentNotFoundException as e:
-            raise web.HTTPError(
-                500,
-                log_message=f"Failed to mark_as_deleted {self.collection.name} document ({scan_id})",
-            ) from e
-
-        return manifest
-
     async def find_all(
         self,
         mongo_filter: dict[str, Any],
