@@ -19,26 +19,6 @@ class ScanIDDataclass:
 
 @typechecked
 @dc.dataclass
-class ScanBacklogEntry(ScanIDDataclass):
-    """An entry for the scan backlog used for rate-limiting."""
-
-    timestamp: float
-    pickled_k8s_job: bytes | None = None  # **DEPRECATED** replaced SkyScanK8sJob in db
-    priority: int = 0
-    pending_timestamp: float = 0.0
-    next_attempt: int = 0
-
-    def __repr__(self) -> str:
-        dicto = dc.asdict(self)
-        dicto.pop("pickled_k8s_job")
-        # shorten b/c this is a LARGE binary (that is, at least a large string)
-        dicto["pickled_k8s_job_HASH"] = hash(str(self.pickled_k8s_job))
-        rep = f"{self.__class__.__name__}{dicto}"
-        return rep
-
-
-@typechecked
-@dc.dataclass
 class ProgressProcessingStats:
     """Details about the scan processing."""
 

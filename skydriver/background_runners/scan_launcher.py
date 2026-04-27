@@ -30,10 +30,13 @@ async def put_on_backlog(
     """Enqueue k8s job to be started later by the scan launcher."""
     try:
         LOGGER.info(f"putting future scan on backlog ({scan_id=})")
-        entry = database.schema.ScanBacklogEntry(
+        entry = dict(
             scan_id=scan_id,
             timestamp=time.time(),
+            pickled_k8s_job=None,  # **DEPRECATED** replaced SkyScanK8sJob in db
             priority=priority,
+            pending_timestamp=0.0,
+            next_attempt=0,
         )
         await scan_backlog.insert_one(entry)
     except Exception as e:
