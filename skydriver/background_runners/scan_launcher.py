@@ -18,6 +18,7 @@ from wipac_dev_tools.timing_tools import IntervalTimer
 from .. import database
 from ..config import ENV
 from ..database.interface import ScanBacklogHelper
+from ..database.schema import ReadOnlyDotDict
 from ..k8s.utils import KubeAPITools
 
 LOGGER = logging.getLogger(__name__)
@@ -51,12 +52,14 @@ async def put_on_backlog(
 async def get_next(
     db: database.SkyDriverMongoValidatedDatabase,
     include_low_priority_scans: bool,
-) -> tuple[MongoDoc, MongoDoc, MongoDoc, MongoDoc]:
+) -> tuple[ReadOnlyDotDict, ReadOnlyDotDict, MongoDoc, MongoDoc]:
     """Get the next entry & remove any that have been cancelled."""
     while True:
         # get next up -- raises DocumentNotFoundException if none
-        entry = await ScanBacklogHelper.fetch_next_as_pending(
-            db.scan_backlog, include_low_priority_scans
+        entry = ReadOnlyDotDict(
+            await ScanBacklogHelper.fetch_next_as_pending(
+                db.scan_backlog, include_low_priority_scans
+            )
         )
         LOGGER.info(
             f"Got backlog entry "
@@ -72,7 +75,9 @@ async def get_next(
             continue
 
         # check if scan was 'deleted'
-        manifest = await db.manifests.find_one({"scan_id": entry.scan_id})
+        manifest = ReadOnlyDotDict(
+            await db.manifests.find_one({"scan_id": entry.scan_id})
+        )
         if manifest.is_deleted:
             LOGGER.info(
                 f"Scan is designated for deletion "

@@ -36,6 +36,7 @@ from .database.interface import ManifestHelper
 from .database.schema import (
     DEPRECATED_EVENT_I3LIVE_JSON_DICT,
     DEPRECATED_EWMS_TASK,
+    ReadOnlyDotDict,
     _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
     has_skydriver_requested_ewms_workflow,
     obfuscate_cl_args,
@@ -544,7 +545,7 @@ async def enqueue_scan(
         last_updated=0.0,
     )
     manifest = await manifests.find_one_and_update(
-        {"scan_id": manifest.scan_id},
+        {"scan_id": manifest["scan_id"]},
         {"$set": manifest},
         upsert=True,
     )
@@ -683,7 +684,9 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
         n_workers = self.get_argument("n_workers")  # required
         cluster_location = self.get_argument("cluster_location")  # required
 
-        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
+        manifest = ReadOnlyDotDict(
+            await self.db.manifests.find_one({"scan_id": scan_id})
+        )
 
         # has it been deleted?
         if manifest.is_deleted:
@@ -779,7 +782,7 @@ async def stop_skyscan_workers(
     abort: bool,
 ) -> MongoDoc:
     """Stop the scanner instance's workers on EWMS."""
-    manifest = await manifests.find_one({"scan_id": scan_id})
+    manifest = ReadOnlyDotDict(await manifests.find_one({"scan_id": scan_id}))
     LOGGER.info(f"stopping (ewms) workers for {scan_id=}...")
 
     # request to ewms
@@ -815,10 +818,10 @@ async def get_result_safely(
     )
 
     # check if requestor allows a deleted scan's result
-    if (not incl_del) and manifest.is_deleted:
+    if (not incl_del) and manifest["is_deleted"]:
         raise web.HTTPError(
             404,
-            log_message=f"Requested result with deleted manifest: {manifest.scan_id}",
+            log_message=f"Requested result with deleted manifest: {scan_id}",
         )
 
     # if we don't have a result yet, return {}
@@ -912,8 +915,11 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         projection = self.get_argument("projection", "*")  # pipe-delimited string
 
         # get manifest from db
-        manifest = await self.db.manifests.find_one(
-            {"scan_id": scan_id} | ({} if include_deleted else {"is_deleted": False})
+        manifest = ReadOnlyDotDict(
+            await self.db.manifests.find_one(
+                {"scan_id": scan_id}
+                | ({} if include_deleted else {"is_deleted": False})
+            )
         )
 
         # Backward Compatibility for Skymap Scanner:
@@ -941,7 +947,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
                     reason=error_msg,
                 )
 
-        self.write(dict_projection(dc.asdict(manifest), projection))
+        self.write(dict_projection(manifest, projection))
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
@@ -974,7 +980,9 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
-        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
+        manifest = ReadOnlyDotDict(
+            await self.db.manifests.find_one({"scan_id": scan_id})
+        )
 
         # look up event in collection
         if manifest.i3_event_id:
@@ -1078,7 +1086,9 @@ class ScanStatusHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
-        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
+        manifest = ReadOnlyDotDict(
+            await self.db.manifests.find_one({"scan_id": scan_id})
+        )
 
         # scan state
         scan_state = await get_scan_state(manifest, self.ewms_rc, self.db.results)
@@ -1156,7 +1166,9 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
-        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
+        manifest = ReadOnlyDotDict(
+            await self.db.manifests.find_one({"scan_id": scan_id})
+        )
 
         self.write(
             {
@@ -1177,7 +1189,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
         ewms_address = self.get_argument("ewms_address")  # required
 
         try:
-            manifest = await self.db.manifests.collection.find_one_and_update(
+            manifest = await self.db.manifests.find_one_and_update(
                 {
                     "scan_id": scan_id,
                     "ewms_workflow_id": _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
@@ -1189,10 +1201,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
                         "ewms_address": ewms_address,
                     }
                 },
-                return_document=ReturnDocument.AFTER,
-                return_dclass=dict,
             )
-            manifest.pop("_id")
         except DocumentNotFoundException:
             raise web.HTTPError(
                 404,
@@ -1221,7 +1230,9 @@ class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
 
         This is a high-level utility, which removes unnecessary EWMS semantics.
         """
-        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
+        manifest = ReadOnlyDotDict(
+            await self.db.manifests.find_one({"scan_id": scan_id})
+        )
 
         self.write(
             await ewms.get_workforce_statuses(
@@ -1247,7 +1258,9 @@ class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
 
         This is useful for debugging by seeing what was sent to condor.
         """
-        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
+        manifest = ReadOnlyDotDict(
+            await self.db.manifests.find_one({"scan_id": scan_id})
+        )
 
         self.write(
             {

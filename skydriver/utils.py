@@ -15,6 +15,7 @@ from . import ewms
 from .database.schema import (
     DEPRECATED_EWMS_TASK,
     Manifest,
+    ReadOnlyDotDict,
     has_skydriver_requested_ewms_workflow,
 )
 
@@ -78,7 +79,7 @@ async def get_scan_state_if_final_result_received(
     return None
 
 
-def _has_cleared_backlog(manifest: Manifest) -> bool:
+def _has_cleared_backlog(manifest: ReadOnlyDotDict) -> bool:
     return bool(
         has_skydriver_requested_ewms_workflow(manifest.ewms_workflow_id)
         or (  # backward compatibility...
@@ -89,7 +90,7 @@ def _has_cleared_backlog(manifest: Manifest) -> bool:
     )
 
 
-def _get_nonfinished_state(manifest: Manifest) -> _ScanState:
+def _get_nonfinished_state(manifest: ReadOnlyDotDict) -> _ScanState:
     """Get the ScanState of the scan, only by parsing attributes."""
     # has scan cleared the backlog? (aka, has been *submitted* EWMS?)
     if _has_cleared_backlog(manifest):
@@ -111,7 +112,7 @@ def _get_nonfinished_state(manifest: Manifest) -> _ScanState:
 
 
 async def get_scan_state(
-    manifest: Manifest,
+    manifest: ReadOnlyDotDict,
     ewms_rc: RestClient,
     results: MongoJSONSchemaValidatedCollection,
 ) -> str:

@@ -58,11 +58,11 @@ def maybe_redirect_scan_id(roles: list[str]):
 
             # look in DB
             manifest = await self.db.manifests.find_one({"scan_id": scan_id})
-            if manifest.replaced_by_scan_id:
+            if manifest["replaced_by_scan_id"]:
                 # Reconstruct URL with replaced scan ID
                 # Full URL: scheme://host/path?query
                 new_url = self.request.full_url().replace(
-                    scan_id, manifest.replaced_by_scan_id, 1
+                    scan_id, manifest["replaced_by_scan_id"], 1
                 )
                 LOGGER.warning(f"replying with redirect for {scan_id} to {new_url}")
                 return self.redirect(new_url)

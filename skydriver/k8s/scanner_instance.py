@@ -12,6 +12,7 @@ import aiocache  # type: ignore[import-untyped]
 import yaml
 from dateutil import parser
 from rest_tools.client import ClientCredentialsAuth, RestClient
+from wipac_dev_tools.mongo_jsonschema_tools import MongoDoc
 
 from .. import ewms, images
 from ..config import (
@@ -21,7 +22,7 @@ from ..config import (
     SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS,
     sdict,
 )
-from ..database.schema import Manifest
+from ..database.schema import ReadOnlyDotDict
 from ..images import get_skyscan_cvmfs_apptainer_image_path
 
 LOGGER = logging.getLogger(__name__)
@@ -387,7 +388,7 @@ class LogWrangler:
     """Tools for retrieving logs."""
 
     @staticmethod
-    def get_scan_start_time(manifest: Manifest) -> int:
+    def get_scan_start_time(manifest: ReadOnlyDotDict) -> int:
         """Get the timestamp for when the scan started."""
         if manifest.progress:  # the scan has started
             if ret := manifest.progress.start:
@@ -463,10 +464,10 @@ class LogWrangler:
             return None
 
     @staticmethod
-    async def assemble_scanner_server_logs_url(manifest: Manifest) -> str:
+    async def assemble_scanner_server_logs_url(manifest: MongoDoc) -> str:
         """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
-        start = LogWrangler.get_scan_start_time(manifest)
+        start = LogWrangler.get_scan_start_time(ReadOnlyDotDict(manifest))
         logs_end_ts = await LogWrangler._query_prometheus_for_timerange(
-            manifest.scan_id, start
+            manifest["scan_id"], start
         )
-        return LogWrangler._get_grafana_logs_url(manifest.scan_id, logs_end_ts)
+        return LogWrangler._get_grafana_logs_url(manifest["scan_id"], logs_end_ts)
