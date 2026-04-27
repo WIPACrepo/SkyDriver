@@ -12,7 +12,6 @@ from . import mongodc, schema
 from .utils import (
     _DB_NAME,
     _MANIFEST_COLL_NAME,
-    _RESULTS_COLL_NAME,
     _SCAN_BACKLOG_COLL_NAME,
 )
 from ..config import ENV, SCAN_MIN_PRIORITY_TO_START_ASAP
@@ -166,20 +165,6 @@ class ManifestClient:
         ):
             LOGGER.debug(f"found: {manifests.scan_id=} for {mongo_filter})")
             yield manifests
-
-
-# -----------------------------------------------------------------------------
-
-
-class ResultClient:
-    """Wraps the attribute for the result of a scan."""
-
-    def __init__(self, mongo_client: AsyncMongoClient) -> None:  # type: ignore[valid-type]
-        self.collection: (
-            mongodc.MotorDataclassCollection
-        ) = mongodc.MotorDataclassCollection(
-            mongo_client[_DB_NAME], _RESULTS_COLL_NAME  # type: ignore[index]
-        )
 
 
 # -----------------------------------------------------------------------------
