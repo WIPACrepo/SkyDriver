@@ -31,7 +31,6 @@ from .config import (
     USER_ACCT,
 )
 from .database import schema
-from .database.mongodc import DocumentNotFoundException
 from .database.schema import (
     _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
     has_skydriver_requested_ewms_workflow,

@@ -8,7 +8,7 @@ from typing import Any, AsyncIterator
 from pymongo import ASCENDING, AsyncMongoClient, DESCENDING, ReturnDocument
 from tornado import web
 
-from . import mongodc, schema
+from . import schema
 from .utils import (
     _DB_NAME,
     _MANIFEST_COLL_NAME,
