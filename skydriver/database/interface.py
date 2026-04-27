@@ -3,7 +3,6 @@
 import dataclasses as dc
 import logging
 import time
-from typing import AsyncIterator
 
 from pymongo import ASCENDING, AsyncMongoClient, DESCENDING, ReturnDocument
 from tornado import web
@@ -209,17 +208,3 @@ class ScanBacklogClient:
         res = await self.collection.insert_one(doc)
         LOGGER.debug(f"insert result: {res}")
         LOGGER.debug(f"Inserted backlog entry for {entry.scan_id=}")
-
-    async def get_all(self) -> AsyncIterator[dict]:
-        """Get all entries in backlog.
-
-        Doesn't include all fields.
-        """
-        LOGGER.debug("getting all entries in backlog")
-        async for entry in self.collection.find(
-            {},
-            {"_id": False, "pickled_k8s_job": False},
-            sort=[("timestamp", ASCENDING)],
-            return_dclass=dict,
-        ):
-            yield entry

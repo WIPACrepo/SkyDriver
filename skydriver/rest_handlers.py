@@ -12,7 +12,7 @@ import humanfriendly  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
 from dacite import from_dict
 from dacite.exceptions import DaciteError
-from pymongo import ReturnDocument
+from pymongo import ASCENDING, ReturnDocument
 from rest_tools import openapi_tools
 from rest_tools.client import RestClient
 from rest_tools.server import RestHandler
@@ -194,7 +194,14 @@ class ScanBacklogHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self) -> None:
         """Get all scan id(s) in the backlog."""
-        entries = [e async for e in self.db.scan_backlog.get_all()]
+        entries = [
+            x
+            async for x in self.db.scan_backlog.find_all(
+                {},
+                {"_id": False, "pickled_k8s_job": False},
+                sort=[("timestamp", ASCENDING)],
+            )
+        ]
 
         self.write({"entries": entries})
 
