@@ -10,6 +10,7 @@ from rest_tools.server import RestHandlerSetup, RestServer
 
 from . import rest_handlers
 from .config import ENV, is_testing
+from .database import SkyDriverMongoValidatedDatabase
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ async def make(
 
     #
     # Setup clients/apis
-    args["mongo_client"] = mongo_client
+    args["db"] = SkyDriverMongoValidatedDatabase(mongo_client, raise_500=True)
     args["k8s_batch_api"] = k8s_batch_api
     args["ewms_rc"] = ewms_rc
 
