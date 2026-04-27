@@ -467,6 +467,6 @@ class LogWrangler:
         """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
         start = LogWrangler.get_scan_start_time(manifest)
         logs_end_ts = await LogWrangler._query_prometheus_for_timerange(
-            manifest.scan_id, start
+            manifest["scan_id"], start
         )
-        return LogWrangler._get_grafana_logs_url(manifest.scan_id, logs_end_ts)
+        return LogWrangler._get_grafana_logs_url(manifest["scan_id"], logs_end_ts)

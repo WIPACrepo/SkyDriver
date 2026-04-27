@@ -119,7 +119,9 @@ async def get_scan_state(
 
     Returns the state as a human-readable string
     """
-    if s := (await get_scan_state_if_final_result_received(manifest.scan_id, results)):
+    if s := (
+        await get_scan_state_if_final_result_received(manifest["scan_id"], results)
+    ):
         return s
 
     state = _get_nonfinished_state(manifest).name  # start here, augment if needed

@@ -511,7 +511,7 @@ async def enqueue_scan(
         priority=scan_request_obj["priority"],
     )
     manifest = await manifests.find_one_and_update(
-        {"scan_id": manifest.scan_id},
+        {"scan_id": manifest["scan_id"]},
         {"$set": manifest},
         upsert=True,
     )
@@ -653,7 +653,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
         manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         # has it been deleted?
-        if manifest.is_deleted:
+        if manifest["is_deleted"]:
             msg = "this scan has been deleted--cannot add workers"
             raise web.HTTPError(
                 422,
@@ -670,7 +670,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
             )
         # is scan done?
         if await get_scan_state_if_final_result_received(
-            manifest.scan_id, self.db.results
+            manifest["scan_id"], self.db.results
         ):
             msg = "this scan has a final result--cannot add workers"
             raise web.HTTPError(
@@ -1053,7 +1053,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
         # respond
         resp = {
             "scan_state": scan_state,
-            "is_deleted": manifest.is_deleted,
+            "is_deleted": manifest["is_deleted"],
             #
             # the scan is in a state where it cannot proceed further -- successful or otherwise
             # -> used by the scanner to prematurely quit in case of an abort (w/ 'is_deleted')
