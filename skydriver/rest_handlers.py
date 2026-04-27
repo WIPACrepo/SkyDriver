@@ -544,7 +544,7 @@ async def enqueue_scan(
         last_updated=0.0,
     )
     manifest = await manifests.find_one_and_update(
-        {"scan_id": manifest["scan_id"]},
+        {"scan_id": manifest.scan_id},
         {"$set": manifest},
         upsert=True,
     )
@@ -686,7 +686,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
         manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         # has it been deleted?
-        if manifest["is_deleted"]:
+        if manifest.is_deleted:
             msg = "this scan has been deleted--cannot add workers"
             raise web.HTTPError(
                 422,
@@ -703,7 +703,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
             )
         # is scan done?
         if await get_scan_state_if_final_result_received(
-            manifest["scan_id"], self.db.results
+            manifest.scan_id, self.db.results
         ):
             msg = "this scan has a final result--cannot add workers"
             raise web.HTTPError(
@@ -783,10 +783,10 @@ async def stop_skyscan_workers(
     LOGGER.info(f"stopping (ewms) workers for {scan_id=}...")
 
     # request to ewms
-    if has_skydriver_requested_ewms_workflow(manifest["ewms_workflow_id"]):
+    if has_skydriver_requested_ewms_workflow(manifest.ewms_workflow_id):
         await request_stop_on_ewms(
             ewms_rc,
-            cast(str, manifest["ewms_workflow_id"]),  # not None b/c above if-condition
+            cast(str, manifest.ewms_workflow_id),  # not None b/c above if-condition
             abort=abort,
         )
     else:
@@ -815,10 +815,10 @@ async def get_result_safely(
     )
 
     # check if requestor allows a deleted scan's result
-    if (not incl_del) and manifest["is_deleted"]:
+    if (not incl_del) and manifest.is_deleted:
         raise web.HTTPError(
             404,
-            log_message=f"Requested result with deleted manifest: {manifest['scan_id']}",
+            log_message=f"Requested result with deleted manifest: {manifest.scan_id}",
         )
 
     # if we don't have a result yet, return {}
@@ -1086,7 +1086,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
         # respond
         resp = {
             "scan_state": scan_state,
-            "is_deleted": manifest["is_deleted"],
+            "is_deleted": manifest.is_deleted,
             #
             # the scan is in a state where it cannot proceed further -- successful or otherwise
             # -> used by the scanner to prematurely quit in case of an abort (w/ 'is_deleted')
