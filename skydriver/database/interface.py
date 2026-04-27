@@ -181,7 +181,7 @@ class ScanBacklogHelper:
         LOGGER.debug(f"got backlog entry & marked as pending ({entry.scan_id=})")
 
         if (
-            entry.pending_timestamp
+            entry["pending_timestamp"]
             < time.time() - ENV.SCAN_BACKLOG_PENDING_ENTRY_TTL_REVIVE
             # inequality should still be valid if revival time >> O(ms)
         ):
