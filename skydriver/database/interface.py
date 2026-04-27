@@ -199,21 +199,6 @@ class ResultClient:
             mongo_client[_DB_NAME], _RESULTS_COLL_NAME  # type: ignore[index]
         )
 
-    async def get(self, scan_id: str) -> schema.Result:
-        """Get `schema.Result` using `scan_id`."""
-        LOGGER.debug(f"getting result for {scan_id=}")
-        try:
-            result = await self.collection.find_one(
-                {"scan_id": scan_id},
-                return_dclass=schema.Result,
-            )
-        except mongodc.DocumentNotFoundException as e:
-            raise web.HTTPError(
-                404,
-                log_message=f"Document Not Found: {self.collection.name} document ({scan_id=})",
-            ) from e
-        return result
-
     async def put(
         self, scan_id: str, skyscan_result: schema.StrDict, is_final: bool
     ) -> schema.Result:
