@@ -26,5 +26,5 @@ async def create_mongodb_client() -> AsyncMongoClient:  # type: ignore[valid-typ
     else:
         url = f"mongodb://{ENV.MONGODB_HOST}:{ENV.MONGODB_PORT}"
 
-    mongo_client = AsyncMongoClient(url)
+    mongo_client: AsyncMongoClient = AsyncMongoClient(url)
     return mongo_client
