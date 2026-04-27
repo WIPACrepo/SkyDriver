@@ -514,7 +514,7 @@ async def enqueue_scan(
             _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
             # ^^^ set once the workflow request has been sent to EWMS (see scan launcher)
         ),
-        ewms_address=None,  # used to differentiate
+        ewms_address=None,  # used to differentiate EWMS instances/environments
         ewms_task=(  # **DEPRECATED**
             DEPRECATED_EWMS_TASK
             # ^^^ was used in skydriver 1.x to use local k8s starter/stopper

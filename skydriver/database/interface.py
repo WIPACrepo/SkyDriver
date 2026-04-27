@@ -76,6 +76,16 @@ class ManifestHelper:
 
         upserting: MongoDoc = {}
         if progress:
+            # fill in some defaults
+            progress["processing_stats"] = {
+                "rate": {},
+                "end": "",
+                "finished": False,
+                "predictions": {},  # open to requestor
+                **progress["processing_stats"],  # fyi: this overrides any defaults
+            }
+            progress["start"] = progress.get("start", None)
+            progress["end"] = progress.get("end", None)
             upserting["progress"] = progress
 
         # Validate, then store
