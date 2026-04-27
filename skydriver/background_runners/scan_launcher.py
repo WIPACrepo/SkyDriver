@@ -16,6 +16,7 @@ from wipac_dev_tools.timing_tools import IntervalTimer
 
 from .. import database
 from ..config import ENV
+from ..database.interface import ScanBacklogHelper
 from ..k8s.utils import KubeAPITools
 
 LOGGER = logging.getLogger(__name__)
@@ -50,7 +51,9 @@ async def get_next(
     """Get the next entry & remove any that have been cancelled."""
     while True:
         # get next up -- raises DocumentNotFoundException if none
-        entry = await db.scan_backlog.fetch_next_as_pending(include_low_priority_scans)
+        entry = await ScanBacklogHelper.fetch_next_as_pending(
+            db.scan_backlog, include_low_priority_scans
+        )
         LOGGER.info(
             f"Got backlog entry "
             f"({entry.scan_id=}, {include_low_priority_scans=}, {entry.priority=})"

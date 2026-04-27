@@ -5,12 +5,15 @@ import time
 
 from pymongo import ASCENDING, AsyncMongoClient, DESCENDING, ReturnDocument
 from tornado import web
+from wipac_dev_tools.mongo_jsonschema_tools import (
+    MongoDoc,
+    MongoJSONSchemaValidatedCollection,
+)
 
 from . import schema
 from .utils import (
     _DB_NAME,
     _MANIFEST_COLL_NAME,
-    _SCAN_BACKLOG_COLL_NAME,
 )
 from ..config import ENV, SCAN_MIN_PRIORITY_TO_START_ASAP
 
@@ -20,8 +23,8 @@ LOGGER = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 
 
-class ManifestClient:
-    """Wraps the attribute for the metadata of a scan."""
+class ManifestHelper:
+    """Houses advanced methods for interacting with the Manifest collection."""
 
     def __init__(self, mongo_client: AsyncMongoClient) -> None:  # type: ignore[valid-type]
         self.collection = mongodc.MotorDataclassCollection(
@@ -135,20 +138,14 @@ class ManifestClient:
 # -----------------------------------------------------------------------------
 
 
-class ScanBacklogClient:
-    """Wraps the attribute for the result of a scan."""
+class ScanBacklogHelper:
+    """Houses advanced methods for interacting with the ScanBacklog collection."""
 
-    def __init__(self, mongo_client: AsyncMongoClient) -> None:  # type: ignore[valid-type]
-        self.collection: (
-            mongodc.MotorDataclassCollection
-        ) = mongodc.MotorDataclassCollection(
-            mongo_client[_DB_NAME], _SCAN_BACKLOG_COLL_NAME  # type: ignore[index]
-        )
-
+    @staticmethod
     async def fetch_next_as_pending(
-        self,
+        collection: MongoJSONSchemaValidatedCollection,
         include_low_priority_scans: bool,
-    ) -> schema.ScanBacklogEntry:
+    ) -> MongoDoc:
         """Fetch the next ready entry and mark as pending.
 
         This for when the container is restarted (process is killed).
@@ -170,7 +167,7 @@ class ScanBacklogClient:
             mongo_filter.update({"priority": {"$gte": SCAN_MIN_PRIORITY_TO_START_ASAP}})
 
         # atomically find & update; raises DocumentNotFoundException if no match
-        entry = await self.collection.find_one_and_update(
+        entry = await collection.find_one_and_update(
             mongo_filter,
             {
                 "$set": {"pending_timestamp": time.time()},
@@ -180,8 +177,6 @@ class ScanBacklogClient:
                 ("priority", DESCENDING),  # highest first
                 ("timestamp", ASCENDING),  # then, oldest
             ],
-            return_document=ReturnDocument.AFTER,
-            return_dclass=schema.ScanBacklogEntry,
         )
         LOGGER.debug(f"got backlog entry & marked as pending ({entry.scan_id=})")
 
