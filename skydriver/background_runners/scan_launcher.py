@@ -8,6 +8,10 @@ import kubernetes.client  # type: ignore[import-untyped]
 from pymongo import AsyncMongoClient
 from tenacity import retry, stop_never, wait_fixed
 from tornado import web
+from wipac_dev_tools.mongo_jsonschema_tools import (
+    MongoDoc,
+    MongoJSONSchemaValidatedCollection,
+)
 from wipac_dev_tools.timing_tools import IntervalTimer
 
 from .. import database
@@ -42,7 +46,7 @@ async def put_on_backlog(
 async def get_next(
     db: database.SkyDriverMongoValidatedDatabase,
     include_low_priority_scans: bool,
-) -> tuple[database.schema.ScanBacklogEntry, database.schema.Manifest, dict, dict]:
+) -> tuple[MongoDoc, MongoDoc, MongoDoc, MongoDoc]:
     """Get the next entry & remove any that have been cancelled."""
     while True:
         # get next up -- raises DocumentNotFoundException if none

@@ -46,12 +46,12 @@ class SkyDriverMongoValidatedDatabase:
         self.mongo_client = mongo_client
         self.raise_500 = raise_500
 
-        def _make(_coll_name: str, _obj_name: str):
+        def _make(_col_name: str, _obj_name: str) -> MongoJSONSchemaValidatedCollection:
             return MongoJSONSchemaValidatedCollection(
-                mongo_client[_DB_NAME][_coll_name],
+                mongo_client[_DB_NAME][_col_name],
                 get_jsonschema_subspec_from_openapi(_obj_name),
                 parent_logger,
-                lambda e: self._db_error_callback(e, _coll_name),
+                lambda e: self._db_error_callback(e, _col_name),
             )
 
         self.manifests = _make(_MANIFEST_COLL_NAME, "Manifest")
