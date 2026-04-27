@@ -3,18 +3,13 @@
 import logging
 import time
 
-from pymongo import ASCENDING, AsyncMongoClient, DESCENDING, ReturnDocument
+from pymongo import ASCENDING, DESCENDING
 from tornado import web
 from wipac_dev_tools.mongo_jsonschema_tools import (
     MongoDoc,
     MongoJSONSchemaValidatedCollection,
 )
 
-from . import schema
-from .utils import (
-    _DB_NAME,
-    _MANIFEST_COLL_NAME,
-)
 from ..config import ENV, SCAN_MIN_PRIORITY_TO_START_ASAP
 
 LOGGER = logging.getLogger(__name__)
@@ -26,24 +21,18 @@ LOGGER = logging.getLogger(__name__)
 class ManifestHelper:
     """Houses advanced methods for interacting with the Manifest collection."""
 
-    def __init__(self, mongo_client: AsyncMongoClient) -> None:  # type: ignore[valid-type]
-        self.collection = mongodc.MotorDataclassCollection(
-            mongo_client[_DB_NAME],  # type: ignore[index]
-            _MANIFEST_COLL_NAME,
-        )
-
     @staticmethod
-    def _put_once_event_metadata(
-        in_db: schema.Manifest,
-        upserting: dict,
+    def _validate_event_metadata(
+        in_db: MongoDoc,
+        upserting: MongoDoc,
         scan_id: str,
-        event_metadata: schema.EventMetadata,
+        event_metadata: MongoDoc,
     ) -> None:
         if not event_metadata:
             raise ValueError("event_metadata cannot be falsy")
-        elif not in_db.event_metadata:
+        elif not in_db["event_metadata"]:
             upserting["event_metadata"] = event_metadata
-        elif in_db.event_metadata != event_metadata:
+        elif in_db["event_metadata"] != event_metadata:
             msg = "Cannot change an existing event_metadata"
             raise web.HTTPError(
                 400,
@@ -52,17 +41,17 @@ class ManifestHelper:
             )
 
     @staticmethod
-    def _put_once_scan_metadata(
-        in_db: schema.Manifest,
-        upserting: dict,
+    def _validate_scan_metadata(
+        in_db: MongoDoc,
+        upserting: MongoDoc,
         scan_id: str,
-        scan_metadata: schema.StrDict,
+        scan_metadata: MongoDoc,
     ) -> None:
         if not scan_metadata:
             raise ValueError("scan_metadata cannot be falsy")
-        elif not in_db.scan_metadata:
+        elif not in_db["scan_metadata"]:
             upserting["scan_metadata"] = scan_metadata
-        elif in_db.scan_metadata != scan_metadata:
+        elif in_db["scan_metadata"] != scan_metadata:
             msg = "Cannot change an existing scan_metadata"
             raise web.HTTPError(
                 400,
@@ -70,69 +59,46 @@ class ManifestHelper:
                 reason=msg,
             )
 
+    @staticmethod
     async def patch(
-        self,
+        collection: MongoJSONSchemaValidatedCollection,
         scan_id: str,
-        progress: schema.Progress | None = None,
-        event_metadata: schema.EventMetadata | None = None,
-        scan_metadata: schema.StrDict | None = None,
-    ) -> schema.Manifest:
+        progress: MongoDoc | None = None,
+        event_metadata: MongoDoc | None = None,
+        scan_metadata: MongoDoc | None = None,
+    ) -> MongoDoc:
         """Update `progress` at doc matching `scan_id`."""
         LOGGER.debug(f"patching manifest for {scan_id=}")
 
         if not (progress or event_metadata or scan_metadata):
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
-            return await self.get(scan_id, incl_del=True)
+            return await collection.find_one({"scan_id": scan_id})
 
-        upserting: schema.StrDict = {}
+        upserting: MongoDoc = {}
         if progress:
             upserting["progress"] = progress
 
         # Validate, then store
         # NOTE: in theory there's a race condition (get+upsert)
-        in_db = await self.get(scan_id, incl_del=True)
+        in_db = await collection.find_one({"scan_id": scan_id})
         if event_metadata:
-            self._put_once_event_metadata(in_db, upserting, scan_id, event_metadata)
+            ManifestHelper._validate_event_metadata(
+                in_db, upserting, scan_id, event_metadata
+            )
         if scan_metadata:
-            self._put_once_scan_metadata(in_db, upserting, scan_id, scan_metadata)
+            ManifestHelper._validate_scan_metadata(
+                in_db, upserting, scan_id, scan_metadata
+            )
 
         # Update db
         if not upserting:  # did we actually update anything?
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
             return in_db
         else:
-            return await self._patch(upserting, scan_id)
-
-    async def _patch(self, upserting: dict, scan_id: str) -> schema.Manifest:
-        """Update the doc in the DB."""
-        if not upserting:
-            raise ValueError("upserting cannot be empty")
-        try:
-            upserting = mongodc.typecheck_as_dc_fields(upserting, schema.Manifest)
-        except TypeError as e:
-            raise web.HTTPError(
-                422,
-                log_message=str(e),
-                reason=str(e),
-            )
-
-        # db
-        LOGGER.debug(f"patching manifest for {scan_id=} with {upserting=}")
-        try:
-            manifest = await self.collection.find_one_and_update(
+            return await collection.find_one_and_update(
                 {"scan_id": scan_id},
                 {"$set": upserting},
-                upsert=True,
-                return_document=ReturnDocument.AFTER,
-                return_dclass=schema.Manifest,
             )
-        except mongodc.DocumentNotFoundException as e:
-            raise web.HTTPError(
-                500,
-                log_message=f"Failed to patch {self.collection.name} document ({scan_id})",
-            ) from e
-
-        return manifest
 
 
 # -----------------------------------------------------------------------------

@@ -31,6 +31,7 @@ from .config import (
     USER_ACCT,
 )
 from .database import schema
+from .database.interface import ManifestHelper
 from .database.schema import (
     _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
     has_skydriver_requested_ewms_workflow,
@@ -933,14 +934,14 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         )
         scan_metadata = self.get_argument("scan_metadata", {})
 
-        manifest = await self.db.manifests.patch(
+        manifest = await ManifestHelper.patch(
+            self.db.manifests,
             scan_id,
             progress,
             event_metadata,
             scan_metadata,
         )
-
-        self.write(dc.asdict(manifest))  # don't use a projection
+        self.write(manifest)  # don't use a projection
 
 
 # -----------------------------------------------------------------------------
