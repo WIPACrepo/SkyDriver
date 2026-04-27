@@ -33,7 +33,7 @@ async def make(
 
     #
     # Setup clients/apis
-    args["db"] = SkyDriverMongoValidatedDatabase(mongo_client, raise_500=True)
+    args["db"] = SkyDriverMongoValidatedDatabase(mongo_client, send_web_errors=True)
     args["k8s_batch_api"] = k8s_batch_api
     args["ewms_rc"] = ewms_rc
 
