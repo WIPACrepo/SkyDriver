@@ -65,7 +65,7 @@ async def get_next(
             continue
 
         # check if scan was 'deleted'
-        manifest = await db.manifests.get(entry.scan_id, incl_del=True)
+        manifest = await db.manifests.find_one({"scan_id": entry.scan_id})
         if manifest.is_deleted:
             LOGGER.info(
                 f"Scan is designated for deletion "

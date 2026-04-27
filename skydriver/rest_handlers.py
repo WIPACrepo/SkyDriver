@@ -636,7 +636,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
         n_workers = self.get_argument("n_workers")  # required
         cluster_location = self.get_argument("cluster_location")  # required
 
-        manifest = await self.db.manifests.get(scan_id, True)
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         # has it been deleted?
         if manifest.is_deleted:
@@ -728,7 +728,7 @@ async def stop_skyscan_workers(
     abort: bool,
 ) -> database.schema.Manifest:
     """Stop the scanner instance's workers on EWMS."""
-    manifest = await manifests.get(scan_id, True)
+    manifest = await manifests.find_one({"scan_id": scan_id})
     LOGGER.info(f"stopping (ewms) workers for {scan_id=}...")
 
     # request to ewms
@@ -759,7 +759,9 @@ async def get_result_safely(
 
     Returns objects as dicts
     """
-    manifest = await manifests.get(scan_id, incl_del)  # 404 if missing
+    manifest = await manifests.find_one(
+        {"scan_id": scan_id} | ({} if incl_del else {"is_deleted": False})
+    )
 
     # check if requestor allows a deleted scan's result
     if (not incl_del) and manifest.is_deleted:
@@ -863,7 +865,9 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         projection = self.get_argument("projection", "*")  # pipe-delimited string
 
         # get manifest from db
-        manifest = await self.db.manifests.get(scan_id, include_deleted)
+        manifest = await self.db.manifests.find_one(
+            {"scan_id": scan_id} | ({} if include_deleted else {"is_deleted": False})
+        )
 
         # Backward Compatibility for Skymap Scanner:
         #   Include the whole event dict in the response like the 'old' manifest.
@@ -937,7 +941,7 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
-        manifest = await self.db.manifests.get(scan_id, True)
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         # look up event in collection
         if manifest.i3_event_id:
@@ -1040,7 +1044,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
-        manifest = await self.db.manifests.get(scan_id, incl_del=True)
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         # scan state
         scan_state = await get_scan_state(manifest, self.ewms_rc, self.db.results)
@@ -1090,7 +1094,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
-        manifest = await self.db.manifests.get(scan_id, incl_del=True)
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         self.write(
             {
@@ -1118,7 +1122,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
-        manifest = await self.db.manifests.get(scan_id, incl_del=True)
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         self.write(
             {
@@ -1183,7 +1187,7 @@ class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
 
         This is a high-level utility, which removes unnecessary EWMS semantics.
         """
-        manifest = await self.db.manifests.get(scan_id, incl_del=True)
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         self.write(
             await ewms.get_workforce_statuses(
@@ -1209,7 +1213,7 @@ class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
 
         This is useful for debugging by seeing what was sent to condor.
         """
-        manifest = await self.db.manifests.get(scan_id, incl_del=True)
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         self.write(
             {

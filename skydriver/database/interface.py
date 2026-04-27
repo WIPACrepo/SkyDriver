@@ -32,26 +32,6 @@ class ManifestClient:
             _MANIFEST_COLL_NAME,
         )
 
-    async def get(self, scan_id: str, incl_del: bool) -> schema.Manifest:
-        """Get `schema.Manifest` using `scan_id`."""
-        LOGGER.debug(f"getting manifest for {scan_id=}")
-
-        query: dict[str, Any] = {"scan_id": scan_id}
-        if not incl_del:  # if true, we don't care what 'is_deleted' value is
-            query["is_deleted"] = False
-
-        try:
-            manifest = await self.collection.find_one(
-                query,
-                return_dclass=schema.Manifest,
-            )
-        except mongodc.DocumentNotFoundException as e:
-            raise web.HTTPError(
-                404,
-                log_message=f"Document Not Found: {self.collection.name} document ({query})",
-            ) from e
-        return manifest
-
     async def put(self, manifest: schema.Manifest) -> schema.Manifest:
         """Put into db."""
         try:
