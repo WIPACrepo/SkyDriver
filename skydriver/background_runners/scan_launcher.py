@@ -92,8 +92,9 @@ async def get_next(
         )
 
         # grab the k8s
-        doc = await db.skyscan_k8s_jobs.find_one({"scan_id": manifest["scan_id"]})
-        skyscan_k8s_job: MongoDoc = doc["skyscan_k8s_job_dict"]
+        skyscan_k8s_job: MongoDoc = await db.skyscan_k8s_jobs.find_one_field(
+            {"scan_id": manifest["scan_id"]}, "skyscan_k8s_job_dict"
+        )
 
         # all good!
         return entry, manifest, scan_request_obj, skyscan_k8s_job

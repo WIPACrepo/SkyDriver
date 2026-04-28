@@ -67,8 +67,7 @@ async def get_scan_state_if_final_result_received(
 ) -> str | None:
     """Return the state string if the scan ended with a final result, else None."""
     try:
-        result = await results.find_one({"scan_id": scan_id})
-        if result["is_final"]:
+        if await results.find_one_field({"scan_id": scan_id}, "is_final"):
             # NOTE: see note on 'SCAN_HAS_FINAL_RESULT' above
             return _ScanState.SCAN_HAS_FINAL_RESULT.name
     except DocumentNotFoundException:
