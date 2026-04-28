@@ -31,6 +31,12 @@ async def ensure_indexes(mongo_client: AsyncMongoClient) -> None:  # type: ignor
         unique=True,
         background=True,
     )
+    await mongo_client[_DB_NAME][_SCAN_REQUEST_COLL_NAME].create_index(  # type: ignore[index]
+        "rescan_ids",
+        name="rescan_ids_index",
+        unique=False,  # this may be True but that's not important
+        background=True,
+    )
 
     # I3 EVENTS COLL
     await mongo_client[_DB_NAME][_I3_EVENT_COLL_NAME].create_index(  # type: ignore[index]
@@ -45,6 +51,12 @@ async def ensure_indexes(mongo_client: AsyncMongoClient) -> None:  # type: ignor
         "scan_id",
         name="scan_id_index",
         unique=True,
+        background=True,
+    )
+    await mongo_client[_DB_NAME][_SKYSCAN_K8S_JOB_COLL_NAME].create_index(  # type: ignore[index]
+        [("k8s_started_ts", DESCENDING)],  # search looks at latest first
+        name="k8s_started_ts_index",
+        unique=False,
         background=True,
     )
 
@@ -69,6 +81,15 @@ async def ensure_indexes(mongo_client: AsyncMongoClient) -> None:  # type: ignor
         name="event_run_index",
         background=True,
     )
+    await mongo_client[_DB_NAME][_MANIFEST_COLL_NAME].create_index(  # type: ignore[index]
+        [
+            ("timestamp", DESCENDING),  # search looks at latest first
+            ("scan_id", ASCENDING),
+        ],
+        name="scan_id_timestamp_index",
+        unique=False,  # this may be True but that's not important
+        background=True,
+    )
 
     # RESULTS COLL
     await mongo_client[_DB_NAME][_RESULTS_COLL_NAME].create_index(  # type: ignore[index]
@@ -86,7 +107,13 @@ async def ensure_indexes(mongo_client: AsyncMongoClient) -> None:  # type: ignor
         background=True,
     )
     await mongo_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(  # type: ignore[index]
-        [("priority", DESCENDING)],
+        [("pending_timestamp", ASCENDING)],  # search looks at earliest first
+        name="pending_timestamp_index",
+        unique=False,
+        background=True,
+    )
+    await mongo_client[_DB_NAME][_SCAN_BACKLOG_COLL_NAME].create_index(  # type: ignore[index]
+        [("priority", DESCENDING)],  # search looks at highest first
         name="priority_index",
         unique=False,
         background=True,
