@@ -2,12 +2,19 @@
 
 import functools
 import logging
+from collections.abc import Awaitable, Callable
+from typing import ParamSpec, TypeVar
 
+import tornado.web
 from rest_tools.server import token_attribute_role_mapping_auth
+from wipac_dev_tools.mongo_jsonschema_tools import DocumentNotFoundException
 
 from .config import INTERNAL_ACCT, USER_ACCT, is_testing
 
 LOGGER = logging.getLogger(__name__)
+
+P = ParamSpec("P")
+T = TypeVar("T")
 
 # -----------------------------------------------------------------------------
 # REST requestor auth
@@ -74,3 +81,27 @@ def maybe_redirect_scan_id(roles: list[str]):
         return wrapper
 
     return decorator
+
+
+# -----------------------------------------------------------------------------
+
+
+def http_404_on_document_not_found(
+    func: Callable[P, Awaitable[T]],
+) -> Callable[P, Awaitable[T]]:
+    """Decorator: catch `DocumentNotFoundException` from the wrapped async function
+    and re-raise as `HTTPError(404)`.
+    """
+
+    @functools.wraps(func)
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        try:
+            return await func(*args, **kwargs)
+        except DocumentNotFoundException as e:
+            raise tornado.web.HTTPError(
+                404,
+                log_message=f"{e.__class__.__name__}: {e}",  # to stderr
+                reason=f"Object not found in collection of {e.collection_name}.",  # to client
+            ) from e
+
+    return wrapper

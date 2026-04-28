@@ -42,7 +42,11 @@ from .database.schema import (
 from .ewms import get_deactivated_type, request_stop_on_ewms
 from .images import ImageTooOldException
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
-from .rest_decorators import maybe_redirect_scan_id, service_account_auth
+from .rest_decorators import (
+    http_404_on_document_not_found,
+    maybe_redirect_scan_id,
+    service_account_auth,
+)
 from .utils import (
     does_scan_state_indicate_final_result_received,
     get_scan_request_obj_filter,
@@ -126,6 +130,7 @@ class MainHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def get(self) -> None:
         """Handle GET."""
         self.write({})
@@ -148,6 +153,7 @@ class ScansFindHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def post(self) -> None:
         """Get matching scan manifest(s) for the given search."""
         manifest_projection = self.get_argument("manifest_projection", "*")
@@ -193,6 +199,7 @@ class ScanBacklogHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def get(self) -> None:
         """Get all scan id(s) in the backlog."""
         entries = [
@@ -339,6 +346,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def post(self) -> None:
         """Start a new scan."""
         # Reject fully-deprecated 'memory' field (no canonical replacement to fall through to)
@@ -576,19 +584,10 @@ class ScanRequestHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def get(self, scan_id: str) -> None:
         """GET."""
-        try:
-            scan_request_obj = await self.db.scan_requests.find_one(
-                {"scan_id": scan_id}
-            )
-        except DocumentNotFoundException:
-            msg = "Scan request not found"
-            raise web.HTTPError(
-                404,
-                log_message=msg + f" for {scan_id=}",
-                reason=msg,
-            )
+        scan_request_obj = await self.db.scan_requests.find_one({"scan_id": scan_id})
 
         self.write(scan_request_obj)
 
@@ -604,6 +603,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def post(self, scan_id: str) -> None:
         abort_first = self.get_argument("abort_first", False)
         replace_scan = self.get_argument("replace_scan", False)
@@ -676,6 +676,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def post(self, scan_id: str) -> None:
         n_workers = self.get_argument("n_workers")  # required
         cluster_location = self.get_argument("cluster_location")  # required
@@ -837,6 +838,7 @@ class ScanHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def delete(self, scan_id: str) -> None:
         """Abort a scan and/or mark manifest & result as "deleted"."""
         delete_completed_scan = self.get_argument("delete_completed_scan", False)
@@ -872,6 +874,7 @@ class ScanHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def get(self, scan_id: str) -> None:
         """Get manifest & result."""
         include_deleted = self.get_argument("include_deleted", False)
@@ -902,6 +905,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
         include_deleted = self.get_argument("include_deleted", False)
@@ -947,6 +951,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
         progress = self.get_argument("progress", None) or None
@@ -974,6 +979,7 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
         doc = await self.db.manifests.find_one(
@@ -1022,6 +1028,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted result."""
         include_deleted = self.get_argument("include_deleted", False)
@@ -1037,6 +1044,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's result."""
         skyscan_result = self.get_argument("skyscan_result")  # required
@@ -1081,6 +1089,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
         manifest = await self.db.manifests.find_one({"scan_id": scan_id})
@@ -1131,6 +1140,7 @@ class ScanLogsHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
         manifest = await self.db.manifests.find_one({"scan_id": scan_id})
@@ -1159,6 +1169,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
         doc = await self.db.manifests.find_one(
@@ -1181,6 +1192,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def post(self, scan_id: str) -> None:
         """Update the ewms workflow_id."""
         workflow_id = self.get_argument("workflow_id")  # required
@@ -1223,6 +1235,7 @@ class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def get(self, scan_id: str) -> None:
         """GET.
 
@@ -1248,6 +1261,7 @@ class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only except manually for custom handling/messages
     async def get(self, scan_id: str) -> None:
         """GET.
 
