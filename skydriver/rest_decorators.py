@@ -98,7 +98,7 @@ def http_404_on_document_not_found[**P, T](
             raise tornado.web.HTTPError(
                 404,
                 log_message=f"{e.__class__.__name__}: {e}",  # to stderr
-                reason=f"Object not found in collection of {e.collection_name}.",  # to client
+                reason=f"Object not found in '{e.collection_name}' collection",  # to client
             ) from e
 
     return wrapper

@@ -754,7 +754,7 @@ async def _delete_scan(
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}"
+            f"404 Client Error: Object not found in 'Manifests' collection for url: {rc.address}/scan/{scan_id}"
         ),
     ):
         await rc.request("GET", f"/scan/{scan_id}")
@@ -766,7 +766,7 @@ async def _delete_scan(
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/manifest"
+            f"404 Client Error: Object not found in 'Manifests' collection for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ):
         await rc.request("GET", f"/scan/{scan_id}/manifest")
@@ -780,7 +780,7 @@ async def _delete_scan(
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/result"
+            f"404 Client Error: Object not found in 'Manifests' collection for url: {rc.address}/scan/{scan_id}/result"
         ),
     ):
         await rc.request("GET", f"/scan/{scan_id}/result")
@@ -1449,7 +1449,9 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     # bad url
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
+            match=re.escape(
+                f"404 Client Error: Object not found in 'I3Events' collection for url: {rc.address}/event"
+            ),
     ):
         await rc.request("GET", "/event")
 
