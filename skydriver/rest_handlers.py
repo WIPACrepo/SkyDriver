@@ -659,6 +659,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         )
 
         if replace_scan:
+            # don't persist in variable -- this is the old scan, the response has the new one
             await self.db.manifests.find_one_and_update(
                 {"scan_id": scan_id},
                 {
