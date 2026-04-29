@@ -3,7 +3,6 @@
 import functools
 import logging
 from collections.abc import Awaitable, Callable
-from typing import ParamSpec, TypeVar
 
 import tornado.web
 from rest_tools.server import token_attribute_role_mapping_auth
@@ -12,9 +11,6 @@ from wipac_dev_tools.mongo_jsonschema_tools import DocumentNotFoundException
 from .config import INTERNAL_ACCT, USER_ACCT, is_testing
 
 LOGGER = logging.getLogger(__name__)
-
-P = ParamSpec("P")
-T = TypeVar("T")
 
 # -----------------------------------------------------------------------------
 # REST requestor auth
@@ -44,6 +40,7 @@ else:
             ],
         },
     )
+
 
 # -----------------------------------------------------------------------------
 
@@ -86,7 +83,7 @@ def maybe_redirect_scan_id(roles: list[str]):
 # -----------------------------------------------------------------------------
 
 
-def http_404_on_document_not_found(
+def http_404_on_document_not_found[**P, T](
     func: Callable[P, Awaitable[T]],
 ) -> Callable[P, Awaitable[T]]:
     """Decorator: catch `DocumentNotFoundException` from the wrapped async function
