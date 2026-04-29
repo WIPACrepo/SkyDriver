@@ -1446,12 +1446,10 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     """Failure-test scan creation and retrieval."""
     rc = server()
 
-    # bad url
+    # bad url -- generic 404 error because this endpoint does not exits (no handler)
     with pytest.raises(
         requests.exceptions.HTTPError,
-            match=re.escape(
-                f"404 Client Error: Object not found in 'I3Events' collection for url: {rc.address}/event"
-            ),
+            match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
     ):
         await rc.request("GET", "/event")
 
