@@ -1,4 +1,4 @@
-"""Collection of dataclass-based schema for the database."""
+"""Tools for interacting with the database data in complex schematic ways."""
 
 import wipac_dev_tools as wdt
 
