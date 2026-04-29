@@ -787,7 +787,11 @@ async def stop_skyscan_workers(
 
     # request to ewms
     if has_skydriver_requested_ewms_workflow(ewms_workflow_id):
-        await request_stop_on_ewms(ewms_rc, ewms_workflow_id, abort=abort)
+        await request_stop_on_ewms(
+            ewms_rc,
+            cast(str, ewms_workflow_id),  # not None b/c above if-condition
+            abort=abort,
+        )
     else:
         LOGGER.info(
             "OK: attempted to stop skyscan workers but scan has not been sent to EWMS"
