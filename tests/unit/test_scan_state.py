@@ -21,7 +21,7 @@ async def test_00__scan_has_final_result(
     `processing_stats.is_finished` does not affect "SCAN_HAS_FINAL_RESULT"
     """
     ewms_rc = MagicMock()
-    results = MagicMock(find_one=AsyncMock(return_value=MagicMock(is_final=True)))
+    results = MagicMock(find_one=AsyncMock(return_value={"is_final": True}))
 
     manifest = dict(
         scan_id=MagicMock(),
