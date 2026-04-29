@@ -3,7 +3,7 @@
 import copy
 import logging
 
-import jsonref
+import jsonref  # type: ignore[import-untyped]
 import tornado
 from pymongo import AsyncMongoClient
 from wipac_dev_tools.mongo_jsonschema_tools import (
