@@ -61,7 +61,7 @@ class ManifestHelper:
 
     @staticmethod
     async def patch_from_skyscanner(
-        collection: MongoJSONSchemaValidatedCollection,
+            manifests: MongoJSONSchemaValidatedCollection,
         scan_id: str,
         progress: MongoDoc | None = None,
         event_metadata: MongoDoc | None = None,
@@ -76,7 +76,7 @@ class ManifestHelper:
 
         if not (progress or event_metadata or scan_metadata):
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
-            return await collection.find_one({"scan_id": scan_id})
+            return await manifests.find_one({"scan_id": scan_id})
 
         upserting: MongoDoc = {}
         if progress:
@@ -94,7 +94,7 @@ class ManifestHelper:
 
         # Validate, then store
         # NOTE: in theory there's a race condition (get+upsert)
-        in_db = await collection.find_one({"scan_id": scan_id})
+        in_db = await manifests.find_one({"scan_id": scan_id})
         if event_metadata:
             ManifestHelper._validate_event_metadata(
                 in_db, upserting, scan_id, event_metadata
@@ -109,7 +109,7 @@ class ManifestHelper:
             LOGGER.debug(f"nothing to patch for manifest ({scan_id=})")
             return in_db
         else:
-            return await collection.find_one_and_update(
+            return await manifests.find_one_and_update(
                 {"scan_id": scan_id},
                 {"$set": {**upserting, "last_updated": time.time()}},
             )
@@ -123,7 +123,7 @@ class ScanBacklogHelper:
 
     @staticmethod
     async def fetch_next_as_pending(
-        collection: MongoJSONSchemaValidatedCollection,
+            scan_backlog: MongoJSONSchemaValidatedCollection,
         include_low_priority_scans: bool,
     ) -> MongoDoc:
         """Fetch the next ready entry and mark as pending.
@@ -147,7 +147,7 @@ class ScanBacklogHelper:
             mongo_filter.update({"priority": {"$gte": SCAN_MIN_PRIORITY_TO_START_ASAP}})
 
         # atomically find & update; raises DocumentNotFoundException if no match
-        entry = await collection.find_one_and_update(
+        entry = await scan_backlog.find_one_and_update(
             mongo_filter,
             {
                 "$set": {"pending_timestamp": time.time()},

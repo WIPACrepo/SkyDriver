@@ -557,8 +557,8 @@ async def enqueue_scan(
         last_updated=0.0,
     )
     manifest = await manifests.find_one_and_update(
-        {"scan_id": manifest["scan_id"], "last_updated": time.time()},
-        {"$set": manifest},
+        {"scan_id": manifest["scan_id"]},
+        {"$set": {**manifest, "last_updated": time.time()}},
         upsert=True,
     )
     await skyscan_k8s_job_coll.insert_one(  # type: ignore[attr-defined]
@@ -1217,12 +1217,12 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
                     "scan_id": scan_id,
                     "ewms_workflow_id": _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
                     "is_deleted": False,
-                    "last_updated": time.time(),
                 },
                 {
                     "$set": {
                         "ewms_workflow_id": workflow_id,
                         "ewms_address": ewms_address,
+                        "last_updated": time.time(),
                     }
                 },
             )
