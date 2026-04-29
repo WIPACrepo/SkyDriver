@@ -2,11 +2,14 @@
 
 import copy
 import logging
-from typing import Any
 
+import jsonref
 import tornado
 from pymongo import AsyncMongoClient
-from wipac_dev_tools.mongo_jsonschema_tools import MongoJSONSchemaValidatedCollection
+from wipac_dev_tools.mongo_jsonschema_tools import (
+    JSON,
+    MongoJSONSchemaValidatedCollection,
+)
 
 from ..config import OPENAPI_DICT
 from .utils import (
@@ -20,18 +23,29 @@ from .utils import (
 )
 
 
-def get_jsonschema_subspec_from_openapi(object_name: str) -> dict[str, Any]:
-    """Get a deep-copy of the JSONSchema spec for an 'component.schemas' object.
+class OpenAPIToJSONSchema:
+    """For plucking a JSONSchema subspec from an OpenAPI spec."""
 
-    Makes all root fields required.
-    """
-    try:
-        subspec = copy.deepcopy(OPENAPI_DICT["components"]["schemas"][object_name])
-    except KeyError as e:
-        raise ValueError(f"no JSONSchema spec found: {object_name}") from e
+    def __init__(self, openapi_dict: JSON):
+        # resolve all $refs against the full doc once, so each plucked subspec is self-contained
+        self.resolved_openapi_dict: JSON = jsonref.replace_refs(
+            openapi_dict, proxies=False
+        )
 
-    subspec["required"] = list(subspec["properties"].keys())
-    return subspec
+    def get_subspec(self, object_name: str) -> JSON:
+        """Get a deep-copy of the JSONSchema spec for an 'component.schemas' object.
+
+        Makes all root fields required.
+        """
+        try:
+            subspec = copy.deepcopy(
+                self.resolved_openapi_dict["components"]["schemas"][object_name]  # ty:ignore[not-subscriptable, invalid-argument-type]
+            )
+        except KeyError as e:
+            raise ValueError(f"no JSONSchema spec found: {object_name}") from e
+
+        subspec["required"] = list(subspec["properties"].keys())
+        return subspec
 
 
 class SkyDriverMongoValidatedDatabase:
@@ -46,10 +60,13 @@ class SkyDriverMongoValidatedDatabase:
         self.mongo_client = mongo_client
         self.raise_500 = raise_500
 
+        # don't persist this -- the subspecs are individually persisted
+        openapi_to_jsonschema = OpenAPIToJSONSchema(OPENAPI_DICT)
+
         def _make(_col_name: str, _obj_name: str) -> MongoJSONSchemaValidatedCollection:
             return MongoJSONSchemaValidatedCollection(
                 mongo_client[_DB_NAME][_col_name],
-                get_jsonschema_subspec_from_openapi(_obj_name),
+                openapi_to_jsonschema.get_subspec(_obj_name),
                 parent_logger,
                 lambda e: self._db_error_callback(e, _col_name),
             )
