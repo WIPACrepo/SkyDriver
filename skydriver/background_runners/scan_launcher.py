@@ -177,16 +177,23 @@ async def run(
             # fastforward to avoid idling after failure -- treat as "nothing started"
             timer_for_any_priority_scans.fastforward()
             continue  # 'get_next()' has built-in retry logic
+        except Exception as e:
+            LOGGER.exception(e)
+            raise
 
         # NOTE: DO NOT ADD ANYMORE ACTIONS THAT CAN POSSIBLY FAIL -- THINK STATELESSNESS
 
         # remove from backlog now that startup succeeded
         LOGGER.info(f"Scan successfully started: scan_id={manifest['scan_id']}")
-        await db.scan_backlog._collection.delete_one({"scan_id": entry["scan_id"]})
-        # and mark time on k8s job doc -- used by the scan pod watchdog
-        await db.skyscan_k8s_jobs.find_one_and_update(
-            {"scan_id": manifest["scan_id"]},
-            {"$set": {"k8s_started_ts": int(time.time())}},
-        )
+        try:
+            await db.scan_backlog._collection.delete_one({"scan_id": entry["scan_id"]})
+            # and mark time on k8s job doc -- used by the scan pod watchdog
+            await db.skyscan_k8s_jobs.find_one_and_update(
+                {"scan_id": manifest["scan_id"]},
+                {"$set": {"k8s_started_ts": int(time.time())}},
+            )
+        except Exception as e:
+            LOGGER.exception(e)
+            raise
 
         # NOTE: no need to sleep here (sleep at top of loop), also see `include_low_priority_scans` logic
