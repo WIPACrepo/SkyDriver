@@ -152,6 +152,9 @@ async def run(
                 )
                 LOGGER.critical("(CI verbose) ^^^^ THIS ERROR IS OKAY ^^^^")
             continue  # there's no scan to start
+        except Exception as e:
+            LOGGER.exception(e)
+            raise
 
         LOGGER.info(
             f"Starting Scanner Instance: ({entry['scan_id']=}) ({entry['timestamp']})"
