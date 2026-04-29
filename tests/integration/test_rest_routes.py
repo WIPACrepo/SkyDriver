@@ -129,6 +129,8 @@ async def _launch_scan(
         < post_resp["timestamp"]
         < post_resp["last_updated"]
         < post_launch_ts
+    ), (  # have pytest print out each timestamp
+        f"{launch_time=} < {post_resp['timestamp']=} < {post_resp['last_updated']=} < {post_launch_ts=}"
     )
 
     # check database
