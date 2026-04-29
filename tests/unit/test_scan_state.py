@@ -21,7 +21,7 @@ async def test_00__scan_has_final_result(
     `processing_stats.is_finished` does not affect "SCAN_HAS_FINAL_RESULT"
     """
     ewms_rc = MagicMock()
-    results = MagicMock(find_one_field=AsyncMock(return_value={"is_final": True}))
+    results = MagicMock(find_one_field=AsyncMock(return_value=True))
 
     manifest = dict(
         scan_id=MagicMock(),
@@ -55,7 +55,7 @@ async def test_00__scan_has_final_result(
 async def test_10__partial_result_generated(ewms_dtype: str | None, state: str) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
-    results = MagicMock(find_one_field=AsyncMock(return_value={"is_final": False}))
+    results = MagicMock(find_one_field=AsyncMock(return_value=False))
 
     manifest = dict(
         scan_id=MagicMock(),
@@ -96,7 +96,7 @@ async def test_20__waiting_on_first_pixel_reco(
 ) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
-    results = MagicMock(find_one_field=AsyncMock(return_value={"is_final": False}))
+    results = MagicMock(find_one_field=AsyncMock(return_value=False))
 
     manifest = dict(
         scan_id=MagicMock(),
@@ -137,7 +137,7 @@ async def test_40__waiting_on_scanner_server_startup(
 ) -> None:
     """Test normal and stopped variants."""
     ewms_rc = MagicMock()
-    results = MagicMock(find_one_field=AsyncMock(return_value={"is_final": False}))
+    results = MagicMock(find_one_field=AsyncMock(return_value=False))
 
     manifest = dict(
         scan_id=MagicMock(),
@@ -166,7 +166,7 @@ async def test_40__waiting_on_scanner_server_startup(
 async def test_50__prestartup(ewms_dtype: str | None, state: str) -> None:
     """Test normal and stopped varriants."""
     ewms_rc = MagicMock()
-    results = MagicMock(find_one_field=AsyncMock(return_value={"is_final": False}))
+    results = MagicMock(find_one_field=AsyncMock(return_value=False))
 
     manifest = dict(
         scan_id=MagicMock(),
