@@ -130,6 +130,11 @@ async def run(
         # include low priority scans only when enough time has passed
         include_low_priority_scans = timer_for_any_priority_scans.has_interval_elapsed()
 
+        if ENV.CI:
+            LOGGER.info(
+                f"(CI verbose) Looking for scans to start: {include_low_priority_scans=}"
+            )
+
         # get next entry
         try:
             entry, manifest, scan_request_obj, skyscan_k8s_job = await get_next(
@@ -141,6 +146,11 @@ async def run(
             if include_low_priority_scans:
                 # reset the timer only if this last search included any-priority scans
                 timer_for_any_priority_scans.fastforward()
+            if ENV.CI:
+                LOGGER.exception(
+                    "(CI verbose) OK: Did not find any scans to start -- sleeping"
+                )
+                LOGGER.critical("(CI verbose) ^^^^ THIS ERROR IS OKAY ^^^^")
             continue  # there's no scan to start
 
         LOGGER.info(
