@@ -1,4 +1,4 @@
-"""Tools for interacting with the database data in complex schematic ways."""
+"""Tools for interacting with database data in complex schematic ways."""
 
 import wipac_dev_tools as wdt
 

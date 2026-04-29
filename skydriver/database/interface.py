@@ -1,4 +1,4 @@
-"""Database interface for persisted scan data."""
+"""Tools for interfacing with the database in complex ways."""
 
 import logging
 import time
