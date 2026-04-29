@@ -970,7 +970,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         event_metadata = self.get_argument("event_metadata", None) or None
         scan_metadata = self.get_argument("scan_metadata", {}) or None
 
-        manifest = await ManifestHelper.patch(
+        manifest = await ManifestHelper.patch_from_skyscanner(
             self.db.manifests,
             scan_id,
             progress,

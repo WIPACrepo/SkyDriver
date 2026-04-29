@@ -60,14 +60,18 @@ class ManifestHelper:
             )
 
     @staticmethod
-    async def patch(
+    async def patch_from_skyscanner(
         collection: MongoJSONSchemaValidatedCollection,
         scan_id: str,
         progress: MongoDoc | None = None,
         event_metadata: MongoDoc | None = None,
         scan_metadata: MongoDoc | None = None,
     ) -> MongoDoc:
-        """Update `progress` at doc matching `scan_id`."""
+        """Apply the skymap scanner's patch to the manifest.
+
+        Updates the manifest's `progress`, `event_metadata`, and/or `scan_metadata`
+        fields.
+        """
         LOGGER.debug(f"patching manifest for {scan_id=}")
 
         if not (progress or event_metadata or scan_metadata):
@@ -107,7 +111,7 @@ class ManifestHelper:
         else:
             return await collection.find_one_and_update(
                 {"scan_id": scan_id},
-                {"$set": upserting},
+                {"$set": {**upserting, "last_updated": time.time()}},
             )
 
 
