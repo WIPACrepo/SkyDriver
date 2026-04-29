@@ -33,8 +33,8 @@ from .config import (
 )
 from .database.interface import ManifestHelper
 from .database.schema import (
-    DEPRECATED_EVENT_I3LIVE_JSON_DICT,
-    DEPRECATED_EWMS_TASK,
+    DEPRECATED_EVENT_I3LIVE_JSON_DICT__FIELD_PLACEHOLDER,
+    DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER,
     _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
     has_skydriver_requested_ewms_workflow,
     obfuscate_cl_args,
@@ -524,7 +524,7 @@ async def enqueue_scan(
         ),
         ewms_address=None,  # used to differentiate EWMS instances/environments
         ewms_task=(  # **DEPRECATED**
-            DEPRECATED_EWMS_TASK
+            DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER
             # ^^^ was used in skydriver 1.x to use local k8s starter/stopper
         ),
         #
@@ -535,7 +535,7 @@ async def enqueue_scan(
         #
         # i3 event -- grabbed by scanner central server
         i3_event_id=scan_request_obj["i3_event_id"],  # id to i3_event coll
-        event_i3live_json_dict=DEPRECATED_EVENT_I3LIVE_JSON_DICT,  # **DEPRECATED**
+        event_i3live_json_dict=DEPRECATED_EVENT_I3LIVE_JSON_DICT__FIELD_PLACEHOLDER,  # **DEPRECATED**
         event_i3live_json_dict__hash=None,  # **DEPRECATED**
         #
         # found/created during first few seconds of scanning
@@ -930,12 +930,10 @@ class ScanManifestHandler(BaseSkyDriverHandler):
             and manifest["i3_event_id"]  # if no id, then event already in manifest
         ):
             try:
-                manifest["event_i3live_json_dict"] = (
-                    await self.db.i3_events.find_one_field(
-                        {"i3_event_id": manifest["i3_event_id"]},
-                        "json_dict",
-                    )
-                )
+                manifest["event_i3live_json_dict"] = await self.db.i3_events.find_one_field(
+                    {"i3_event_id": manifest["i3_event_id"]},
+                    "json_dict",
+                )  # fmt: skip
             except DocumentNotFoundException:
                 # this would mean the event was removed from the db
                 error_msg = (

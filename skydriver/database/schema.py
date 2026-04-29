@@ -27,8 +27,8 @@ def obfuscate_cl_args(args: str) -> str:
 _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS = "not-yet-requested"
 # ^^^ don't use in boolean logic directly -- use 'has_skydriver_requested_ewms_workflow()'
 
-DEPRECATED_EVENT_I3LIVE_JSON_DICT = "use 'i3_event_id'"
-DEPRECATED_EWMS_TASK = "use 'ewms_workflow_id'"
+DEPRECATED_EVENT_I3LIVE_JSON_DICT__FIELD_PLACEHOLDER = "use 'i3_event_id'"
+DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER = "use 'ewms_workflow_id'"
 
 
 def has_skydriver_requested_ewms_workflow(ewms_workflow_id: str | None) -> bool:

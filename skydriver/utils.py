@@ -14,7 +14,7 @@ from wipac_dev_tools.mongo_jsonschema_tools import (
 
 from . import ewms
 from .database.schema import (
-    DEPRECATED_EWMS_TASK,
+    DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER,
     has_skydriver_requested_ewms_workflow,
 )
 
@@ -81,7 +81,7 @@ def _has_cleared_backlog(manifest: MongoDoc) -> bool:
     return bool(
         has_skydriver_requested_ewms_workflow(manifest["ewms_workflow_id"])
         or (  # backward compatibility...
-            manifest["ewms_task"] != DEPRECATED_EWMS_TASK
+            manifest["ewms_task"] != DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER
             and isinstance(manifest["ewms_task"], dict)
             and manifest["ewms_task"].get("clusters")
         )

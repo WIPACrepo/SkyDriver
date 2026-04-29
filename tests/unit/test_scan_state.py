@@ -5,7 +5,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from skydriver.database.schema import _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
+from skydriver.database.schema import (
+    DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER,
+    _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+)
 from skydriver.utils import get_scan_state
 
 
@@ -177,6 +180,7 @@ async def test_50__prestartup(ewms_dtype: str | None, state: str) -> None:
         #
         # now, args that actually matter:
         ewms_workflow_id=_NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+        ewms_task=DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER,  # backward-compat
         progress=None,
     )
 
