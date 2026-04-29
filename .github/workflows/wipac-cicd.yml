@@ -177,6 +177,7 @@ jobs:
           file: Dockerfile
           tags: ${{ env.CI_DOCKER_IMAGE_W_TAG }}
           load: true
+          build-args: PY_VERSION=${{ matrix.py3 }}
 
       - name: setup mock CVMFS directory
         run: |
