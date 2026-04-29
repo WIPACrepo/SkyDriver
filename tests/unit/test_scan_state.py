@@ -33,9 +33,9 @@ async def test_00__scan_has_final_result(
         # now, args that actually matter:
         ewms_workflow_id="ewms123",
         progress=dict(
-            spec_set=["processing_stats"],  # no magic strict attrs -- kind of like dict
+            spec_set=["processing_stats"],
             processing_stats=dict(
-                spec_set=["finished"],  # no magic strict attrs -- kind of like dict
+                spec_set=["finished"],
                 finished=processing_stats_is_finished,
             ),
         ),
@@ -67,9 +67,9 @@ async def test_10__partial_result_generated(ewms_dtype: str | None, state: str) 
         # now, args that actually matter:
         ewms_workflow_id="ewms123",
         progress=dict(
-            spec_set=["processing_stats"],  # no magic strict attrs -- kind of like dict
+            spec_set=["processing_stats"],
             processing_stats=dict(
-                spec_set=[  # no magic strict attrs -- kind of like dict
+                spec_set=[
                     "finished",
                     "rate",
                 ],
@@ -108,9 +108,9 @@ async def test_20__waiting_on_first_pixel_reco(
         # now, args that actually matter:
         ewms_workflow_id="ewms123",
         progress=dict(
-            spec_set=["processing_stats"],  # no magic strict attrs -- kind of like dict
+            spec_set=["processing_stats"],
             processing_stats=dict(
-                spec_set=[  # no magic strict attrs -- kind of like dict
+                spec_set=[
                     "finished",
                     "rate",
                 ],
