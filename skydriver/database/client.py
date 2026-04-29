@@ -69,25 +69,12 @@ class SkyDriverMongoValidatedDatabase:
                 lambda e: self._db_error_callback(e, _col_name),
             )
 
-        # note: explicit typehints are only included so pycharm can pick these up
-        self.manifests: MongoJSONSchemaValidatedCollection = _make(
-            _MANIFEST_COLL_NAME, "Manifest"
-        )
-        self.results: MongoJSONSchemaValidatedCollection = _make(
-            _RESULTS_COLL_NAME, "Result"
-        )
-        self.scan_backlog: MongoJSONSchemaValidatedCollection = _make(
-            _SCAN_BACKLOG_COLL_NAME, "ScanBacklogEntry"
-        )
-        self.scan_requests: MongoJSONSchemaValidatedCollection = _make(
-            _SCAN_REQUEST_COLL_NAME, "ScanRequestObj"
-        )
-        self.i3_events: MongoJSONSchemaValidatedCollection = _make(
-            _I3_EVENT_COLL_NAME, "I3Event"
-        )
-        self.skyscan_k8s_jobs: MongoJSONSchemaValidatedCollection = _make(
-            _SKYSCAN_K8S_JOB_COLL_NAME, "SkyscanK8sJob"
-        )
+        self.manifests = _make(_MANIFEST_COLL_NAME, "Manifest")
+        self.results = _make(_RESULTS_COLL_NAME, "Result")
+        self.scan_backlog = _make(_SCAN_BACKLOG_COLL_NAME, "ScanBacklogEntry")
+        self.scan_requests = _make(_SCAN_REQUEST_COLL_NAME, "ScanRequestObj")
+        self.i3_events = _make(_I3_EVENT_COLL_NAME, "I3Event")
+        self.skyscan_k8s_jobs = _make(_SKYSCAN_K8S_JOB_COLL_NAME, "SkyscanK8sJob")
 
     def _db_error_callback(self, exc: Exception, collection_name: str):
         """Handle a database error.
