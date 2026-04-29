@@ -112,6 +112,17 @@ async def run(
     k8s_batch_api: kubernetes.client.BatchV1Api,
 ) -> None:
     """The main loop."""
+    try:  # we're only wrapping so we can add logging for any exception
+        await _run(mongo_client, k8s_batch_api)
+    except Exception as e:
+        LOGGER.exception(e)
+        raise
+
+
+async def _run(
+    mongo_client: AsyncMongoClient,
+    k8s_batch_api: kubernetes.client.BatchV1Api,
+) -> None:
     db = database.SkyDriverMongoValidatedDatabase(mongo_client, raise_500=False)
 
     timer_for_any_priority_scans = IntervalTimer(
@@ -152,9 +163,6 @@ async def run(
                 )
                 LOGGER.critical("(CI verbose) ^^^^ THIS ERROR IS OKAY ^^^^")
             continue  # there's no scan to start
-        except Exception as e:
-            LOGGER.exception(e)
-            raise
 
         LOGGER.info(
             f"Starting Scanner Instance: ({entry['scan_id']=}) ({entry['timestamp']})"
@@ -177,23 +185,16 @@ async def run(
             # fastforward to avoid idling after failure -- treat as "nothing started"
             timer_for_any_priority_scans.fastforward()
             continue  # 'get_next()' has built-in retry logic
-        except Exception as e:
-            LOGGER.exception(e)
-            raise
 
         # NOTE: DO NOT ADD ANYMORE ACTIONS THAT CAN POSSIBLY FAIL -- THINK STATELESSNESS
 
         # remove from backlog now that startup succeeded
         LOGGER.info(f"Scan successfully started: scan_id={manifest['scan_id']}")
-        try:
-            await db.scan_backlog._collection.delete_one({"scan_id": entry["scan_id"]})
-            # and mark time on k8s job doc -- used by the scan pod watchdog
-            await db.skyscan_k8s_jobs.find_one_and_update(
-                {"scan_id": manifest["scan_id"]},
-                {"$set": {"k8s_started_ts": int(time.time())}},
-            )
-        except Exception as e:
-            LOGGER.exception(e)
-            raise
+        await db.scan_backlog._collection.delete_one({"scan_id": entry["scan_id"]})
+        # and mark time on k8s job doc -- used by the scan pod watchdog
+        await db.skyscan_k8s_jobs.find_one_and_update(
+            {"scan_id": manifest["scan_id"]},
+            {"$set": {"k8s_started_ts": int(time.time())}},
+        )
 
         # NOTE: no need to sleep here (sleep at top of loop), also see `include_low_priority_scans` logic

@@ -116,6 +116,17 @@ async def run(
     k8s_core_api: kubernetes.client.CoreV1Api,  # CoreV1Api(k8s_batch_api.api_client)
 ) -> None:
     """The main loop."""
+    try:  # we're only wrapping so we can add logging for any exception
+        await _run(mongo_client, k8s_core_api)
+    except Exception as e:
+        LOGGER.exception(e)
+        raise
+
+
+async def _run(
+    mongo_client: AsyncMongoClient,
+    k8s_core_api: kubernetes.client.CoreV1Api,  # CoreV1Api(k8s_batch_api.api_client)
+) -> None:
     db = database.SkyDriverMongoValidatedDatabase(mongo_client, raise_500=False)
     skyd_rc = RestClient(  # -- talk to self
         ENV.HERE_URL,
