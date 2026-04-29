@@ -28,9 +28,7 @@ class OpenAPIToJSONSchema:
 
     def __init__(self, openapi_dict: JSON):
         # resolve all $refs against the full doc once, so each plucked subspec is self-contained
-        self.resolved_openapi_dict: JSON = jsonref.replace_refs(
-            openapi_dict, proxies=False
-        )
+        self.resolved_openapi_dict = jsonref.replace_refs(openapi_dict, proxies=False)
 
     def get_subspec(self, object_name: str) -> JSON:
         """Get a deep-copy of the JSONSchema spec for an 'component.schemas' object.
@@ -39,7 +37,7 @@ class OpenAPIToJSONSchema:
         """
         try:
             subspec = copy.deepcopy(
-                self.resolved_openapi_dict["components"]["schemas"][object_name]  # ty:ignore[not-subscriptable, invalid-argument-type]
+                self.resolved_openapi_dict["components"]["schemas"][object_name]
             )
         except KeyError as e:
             raise ValueError(f"no JSONSchema spec found: {object_name}") from e
