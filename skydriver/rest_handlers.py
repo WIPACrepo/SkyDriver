@@ -557,7 +557,7 @@ async def enqueue_scan(
         last_updated=0.0,
     )
     manifest = await manifests.find_one_and_update(
-        {"scan_id": manifest["scan_id"]},
+        {"scan_id": manifest["scan_id"], "last_updated": time.time()},
         {"$set": manifest},
         upsert=True,
     )
@@ -661,7 +661,12 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         if replace_scan:
             await self.db.manifests.find_one_and_update(
                 {"scan_id": scan_id},
-                {"$set": {"replaced_by_scan_id": new_scan_id}},
+                {
+                    "$set": {
+                        "replaced_by_scan_id": new_scan_id,
+                        "last_updated": time.time(),
+                    }
+                },
             )
 
         self.write(
@@ -765,7 +770,7 @@ async def abort_scan(
     # mark as deleted -> also stops backlog from starting
     manifest = await manifests.find_one_and_update(
         {"scan_id": scan_id},
-        {"$set": {"is_deleted": True}},
+        {"$set": {"is_deleted": True, "last_updated": time.time()}},
         upsert=True,
     )
     # stop ewms
@@ -1211,6 +1216,7 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
                     "scan_id": scan_id,
                     "ewms_workflow_id": _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
                     "is_deleted": False,
+                    "last_updated": time.time(),
                 },
                 {
                     "$set": {
