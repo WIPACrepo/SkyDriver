@@ -261,11 +261,16 @@ def _validate_debug_mode_with_clusters(debug_mode: list, request_clusters: list)
 
 def _validate_all_known_request_clusters(
     request_clusters: list | dict,
-) -> list[tuple[str, int]]:
-    """Normalize dict-form to list of 2-tuples and validate cluster names against known list."""
-    # spec allows {'osg': 1500} OR [['osg', 1500], ...]; handler needs list form
+) -> list[list[str | int]]:
+    """Validate that all clusters in `request_clusters` are known.
+
+    Return a list of 2-entry lists (with cluster name and worker count).
+
+    Note: JSONSchema does not accept tuples, so each entry is a list instead.
+    """
+    # spec allows {'osg': 1500, ...} OR [['osg', 1500], ...]; database needs list form
     if isinstance(request_clusters, dict):
-        request_clusters = list(request_clusters.items())
+        request_clusters = list([k, v] for k, v in request_clusters.items())
     for name, _ in request_clusters:
         if name not in KNOWN_CLUSTERS:
             msg = f"requested unknown cluster: {name} (available: {', '.join(KNOWN_CLUSTERS.keys())})"

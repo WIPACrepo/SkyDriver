@@ -94,7 +94,7 @@ async def _launch_scan(
         f"--reco-algo {post_scan_body['reco_algo']} "
         f"--cache-dir /common-space "
         f"--client-startup-json /common-space/startup.json "
-        f"--nsides {' '.join(f'{k}:{v}' for k,v in post_scan_body['nsides'].items())} "
+        f"--nsides {' '.join(f'{k}:{v}' for k, v in post_scan_body['nsides'].items())} "
         f"--{post_scan_body['real_or_simulated_event']}-event "
         f"--predictive-scanning-threshold 1.0 "  # the default
     )
@@ -215,7 +215,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
             "metadata": {
                 "annotations": {
                     "argocd.argoproj.io/sync-options": "Prune=false",
-                    "argocd.argoproj.io/tracking-id": f"{os.getenv("K8S_APPLICATION_NAME")}:apps/Job:{os.getenv("K8S_NAMESPACE")}/skyscan-{post_resp['scan_id']}",
+                    "argocd.argoproj.io/tracking-id": f"{os.getenv('K8S_APPLICATION_NAME')}:apps/Job:{os.getenv('K8S_NAMESPACE')}/skyscan-{post_resp['scan_id']}",
                 },
                 "labels": {
                     "app.kubernetes.io/instance": os.getenv("K8S_APPLICATION_NAME"),
@@ -263,7 +263,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     ].items()
                                 ],
                                 "image": f"icecube/skymap_scanner:{docker_tag_expected}",
-                                "name": f'skyscan-server-{post_resp["scan_id"]}',
+                                "name": f"skyscan-server-{post_resp['scan_id']}",
                                 "resources": {
                                     "limits": {"cpu": "1.0", "memory": "1024000000"},
                                     "requests": {
@@ -1423,7 +1423,7 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
 POST_SCAN_BODY_FOR_TEST_300 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
-_LINE_DELIMITER = f'{"#" * 100}\nNext set of asserts\n{"#" * 100}'
+_LINE_DELIMITER = f"{'#' * 100}\nNext set of asserts\n{'#' * 100}"
 
 
 def _log_delimiter() -> None:
@@ -1511,7 +1511,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         with pytest.raises(
             requests.exceptions.HTTPError,
             # RequestClusters is a oneOf (object w/ int values OR array of
-            # [location, n_workers] tuples). All these malformed shapes fail
+            # [location, n_workers]). All these malformed shapes fail
             # both branches. _schema_error_to_human_readable prepends the
             # field path and renders oneOf failures as "must match one of the
             # accepted types".
