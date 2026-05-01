@@ -24,18 +24,18 @@ from wipac_dev_tools.mongo_jsonschema_tools import (
 from . import config, database, ewms, images
 from .background_runners.scan_launcher import put_on_backlog
 from .config import (
-    DebugMode,
     ENV,
     EWMS_URL_V_PREFIX,
     INTERNAL_ACCT,
     KNOWN_CLUSTERS,
     USER_ACCT,
+    DebugMode,
 )
 from .database.interface import ManifestHelper
 from .database.schema import (
+    _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
     DEPRECATED_EVENT_I3LIVE_JSON_DICT__FIELD_PLACEHOLDER,
     DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER,
-    _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
     has_skydriver_requested_ewms_workflow,
     obfuscate_cl_args,
 )
@@ -630,7 +630,6 @@ class ScanRescanHandler(BaseSkyDriverHandler):
                     # NOTE: must preserve order here for history -- so push
                     "$push": {"rescan_ids": new_scan_id},
                 },
-                return_document=ReturnDocument.AFTER,
             )
         except DocumentNotFoundException:
             raise web.HTTPError(
