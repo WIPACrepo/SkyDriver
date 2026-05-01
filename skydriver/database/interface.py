@@ -6,6 +6,7 @@ import time
 from pymongo import ASCENDING, DESCENDING
 from tornado import web
 from wipac_dev_tools.mongo_jsonschema_tools import (
+    DocumentNotFoundException,
     MongoDoc,
     MongoJSONSchemaValidatedCollection,
 )
@@ -61,7 +62,7 @@ class ManifestHelper:
 
     @staticmethod
     async def patch_from_skyscanner(
-            manifests: MongoJSONSchemaValidatedCollection,
+        manifests: MongoJSONSchemaValidatedCollection,
         scan_id: str,
         progress: MongoDoc | None = None,
         event_metadata: MongoDoc | None = None,
@@ -123,7 +124,7 @@ class ScanBacklogHelper:
 
     @staticmethod
     async def fetch_next_as_pending(
-            scan_backlog: MongoJSONSchemaValidatedCollection,
+        scan_backlog: MongoJSONSchemaValidatedCollection,
         include_low_priority_scans: bool,
     ) -> MongoDoc:
         """Fetch the next ready entry and mark as pending.
@@ -147,7 +148,9 @@ class ScanBacklogHelper:
             mongo_filter.update({"priority": {"$gte": SCAN_MIN_PRIORITY_TO_START_ASAP}})
 
         # atomically find & update; raises DocumentNotFoundException if no match
-        entry = await scan_backlog.find_one_and_update(
+        # TODO: don't use `_collection` once PR is closed:
+        #   https://github.com/WIPACrepo/wipac-dev-tools/pull/182
+        entry: MongoDoc | None = await scan_backlog._collection.find_one_and_update(
             mongo_filter,
             {
                 "$set": {"pending_timestamp": time.time()},
@@ -158,6 +161,8 @@ class ScanBacklogHelper:
                 ("timestamp", ASCENDING),  # then, oldest
             ],
         )
+        if not entry:  # TODO: remove when we're no longer using `_collection`
+            raise DocumentNotFoundException("No backlog entries found")
         LOGGER.debug(f"got backlog entry & marked as pending ({entry['scan_id']=})")
 
         if (
