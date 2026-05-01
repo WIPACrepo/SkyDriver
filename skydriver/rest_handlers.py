@@ -9,7 +9,7 @@ from typing import Any, cast
 
 import humanfriendly  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
-from pymongo import ASCENDING, ReturnDocument
+from pymongo import ASCENDING
 from rest_tools import openapi_tools
 from rest_tools.client import RestClient
 from rest_tools.server import RestHandler
