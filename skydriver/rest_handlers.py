@@ -996,7 +996,7 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
         """Get scan's i3 event."""
         doc = await self.db.manifests.find_one(
             {"scan_id": scan_id},
-            projection=["i3_event_id", "ewms_workflow_id"],
+            projection=["i3_event_id", "event_i3live_json_dict"],
         )
         i3_event_id = doc["i3_event_id"]
         event_i3live_json_dict = doc["event_i3live_json_dict"]
