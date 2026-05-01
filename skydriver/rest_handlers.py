@@ -1,44 +1,52 @@
 """Handlers for the SkyDriver REST API server interface."""
 
 import asyncio
-import dataclasses as dc
 import json
 import logging
 import time
 import uuid
-from typing import Any, Type, TypeVar, cast
+from typing import Any, cast
 
 import humanfriendly  # type: ignore[import-untyped]
 import kubernetes.client  # type: ignore[import-untyped]
-from dacite import from_dict
-from dacite.exceptions import DaciteError
-from pymongo import AsyncMongoClient, ReturnDocument
+from pymongo import ASCENDING
 from rest_tools import openapi_tools
 from rest_tools.client import RestClient
 from rest_tools.server import RestHandler
 from tornado import web
 from wipac_dev_tools.container_registry_tools import ImageNotFoundException
+from wipac_dev_tools.mongo_jsonschema_tools import (
+    DocumentNotFoundException,
+    MongoDoc,
+    MongoJSONSchemaValidatedCollection,
+)
 
 from . import config, database, ewms, images
 from .background_runners.scan_launcher import put_on_backlog
 from .config import (
-    DebugMode,
     ENV,
     EWMS_URL_V_PREFIX,
     INTERNAL_ACCT,
     KNOWN_CLUSTERS,
     USER_ACCT,
+    DebugMode,
 )
-from .database import schema
-from .database.mongodc import DocumentNotFoundException
+from .database.interface import ManifestHelper
 from .database.schema import (
     _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+    DEPRECATED_EVENT_I3LIVE_JSON_DICT__FIELD_PLACEHOLDER,
+    DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER,
     has_skydriver_requested_ewms_workflow,
+    obfuscate_cl_args,
 )
 from .ewms import get_deactivated_type, request_stop_on_ewms
 from .images import ImageTooOldException
 from .k8s.scanner_instance import LogWrangler, SkyScanK8sJobFactory
-from .rest_decorators import maybe_redirect_scan_id, service_account_auth
+from .rest_decorators import (
+    http_404_on_document_not_found,
+    maybe_redirect_scan_id,
+    service_account_auth,
+)
 from .utils import (
     does_scan_state_indicate_final_result_received,
     get_scan_request_obj_filter,
@@ -66,12 +74,7 @@ WAIT_BEFORE_TEARDOWN = 60
 # utils
 
 
-def all_dc_fields(class_or_instance: Any) -> set[str]:
-    """Get all the field names for a dataclass (instance or class)."""
-    return set(f.name for f in dc.fields(class_or_instance))
-
-
-def dict_projection(dicto: dict, projection: list[str] | str) -> dict:
+def dict_projection(dicto: MongoDoc, projection: list[str] | str) -> dict:
     """Keep only the keys in the `projection`.
 
     Passing the field names as a list or pipe-delimited string (not both).
@@ -104,7 +107,7 @@ class BaseSkyDriverHandler(RestHandler):
 
     def initialize(  # type: ignore
         self,
-        mongo_client: AsyncMongoClient,  # type: ignore[valid-type]
+        db: database.SkyDriverMongoValidatedDatabase,
         k8s_batch_api: kubernetes.client.BatchV1Api,
         ewms_rc: RestClient,
         *args: Any,
@@ -112,22 +115,7 @@ class BaseSkyDriverHandler(RestHandler):
     ) -> None:
         """Initialize a BaseSkyDriverHandler object."""
         super().initialize(*args, **kwargs)  # type: ignore[no-untyped-call]
-
-        self.manifests = database.interface.ManifestClient(mongo_client)
-        self.results = database.interface.ResultClient(mongo_client)
-        self.scan_backlog = database.interface.ScanBacklogClient(mongo_client)
-        self.scan_request_coll = AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-            database.utils._SCAN_REQUEST_COLL_NAME,
-        )
-        self.i3_event_coll = AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-            database.utils._I3_EVENT_COLL_NAME,
-        )
-        self.skyscan_k8s_job_coll = AsyncIOMotorCollection(  # in contrast, this one is accessed directly
-            mongo_client[database.interface._DB_NAME],  # type: ignore[index,arg-type]
-            database.utils._SKYSCAN_K8S_JOB_COLL_NAME,
-        )
+        self.db = db
         self.k8s_batch_api = k8s_batch_api
         self.ewms_rc = ewms_rc
 
@@ -142,6 +130,7 @@ class MainHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def get(self) -> None:
         """Handle GET."""
         self.write({})
@@ -161,10 +150,10 @@ class ScansFindHandler(BaseSkyDriverHandler):
         "event_i3live_json_dict",
         "event_i3live_json_dict__hash",
     }
-    DEFAULT_FIELDS = all_dc_fields(database.schema.Manifest) - DISALLOWED_FIELDS
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def post(self) -> None:
         """Get matching scan manifest(s) for the given search."""
         manifest_projection = self.get_argument("manifest_projection", "*")
@@ -174,20 +163,23 @@ class ScansFindHandler(BaseSkyDriverHandler):
         # "*" means "all allowed fields", which == DEFAULT_FIELDS for this endpoint
         # -- the full Manifest set would include too-large fields (data), aka DISALLOWED_FIELDS
         if manifest_projection == "*":
-            manifest_projection = list(self.DEFAULT_FIELDS)
-        # reject any explicit requests for disallowed (too-large) fields
-        if set(manifest_projection) & self.DISALLOWED_FIELDS:
-            raise web.HTTPError(
-                400,
-                log_message=f"'manifest_projection' cannot include any of the following: {self.DISALLOWED_FIELDS}",
-            )
+            _mongo_projection = {k: 0 for k in self.DISALLOWED_FIELDS}
+        else:
+            # reject any explicit requests for disallowed (too-large) fields
+            for k in self.DISALLOWED_FIELDS:
+                if k in manifest_projection:
+                    raise web.HTTPError(
+                        400,
+                        log_message=f"'manifest_projection' cannot include any of the following: {self.DISALLOWED_FIELDS}",
+                    )
+            # list -> dict
+            _mongo_projection = {k: 1 for k in manifest_projection}
 
+        # query
         if "is_deleted" not in filter_ and not include_deleted:
             filter_["is_deleted"] = False
-
         manifests = [
-            dict_projection(dc.asdict(m), manifest_projection)
-            async for m in self.manifests.find_all(filter_)
+            m async for m in self.db.manifests.find_all(filter_, _mongo_projection)
         ]
 
         self.write({"manifests": manifests})
@@ -207,9 +199,17 @@ class ScanBacklogHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def get(self) -> None:
         """Get all scan id(s) in the backlog."""
-        entries = [e async for e in self.scan_backlog.get_all()]
+        entries = [
+            x
+            async for x in self.db.scan_backlog.find_all(
+                {},
+                {"_id": 0, "pickled_k8s_job": 0},
+                sort=[("timestamp", ASCENDING)],
+            )
+        ]
 
         self.write({"entries": entries})
 
@@ -261,11 +261,16 @@ def _validate_debug_mode_with_clusters(debug_mode: list, request_clusters: list)
 
 def _validate_all_known_request_clusters(
     request_clusters: list | dict,
-) -> list[tuple[str, int]]:
-    """Normalize dict-form to list of 2-tuples and validate cluster names against known list."""
-    # spec allows {'osg': 1500} OR [['osg', 1500], ...]; handler needs list form
+) -> list[list[str | int]]:
+    """Validate that all clusters in `request_clusters` are known.
+
+    Return a list of 2-entry lists (with cluster name and worker count).
+
+    Note: JSONSchema does not accept tuples, so each entry is a list instead.
+    """
+    # spec allows {'osg': 1500, ...} OR [['osg', 1500], ...]; database needs list form
     if isinstance(request_clusters, dict):
-        request_clusters = list(request_clusters.items())
+        request_clusters = list([k, v] for k, v in request_clusters.items())
     for name, _ in request_clusters:
         if name not in KNOWN_CLUSTERS:
             msg = f"requested unknown cluster: {name} (available: {', '.join(KNOWN_CLUSTERS.keys())})"
@@ -322,8 +327,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 raise web.HTTPError(400, reason=msg, log_message=msg)
 
         if i3_event_id:
-            ret = await self.i3_event_coll.find_one({"i3_event_id": i3_event_id})
-            if not ret:
+            if not await self.db.i3_events._collection.count_documents(
+                {"i3_event_id": i3_event_id}
+            ):
                 _msg = "i3 event not found"
                 raise web.HTTPError(
                     400,
@@ -335,7 +341,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         else:
             # -> store the event in its own collection to reduce redundancy
             i3_event_id = uuid.uuid4().hex
-            await self.i3_event_coll.insert_one(
+            await self.db.i3_events.insert_one(
                 {
                     "i3_event_id": i3_event_id,
                     "json_dict": event_i3live_json,  # this was transformed into dict
@@ -345,6 +351,7 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def post(self) -> None:
         """Start a new scan."""
         # Reject fully-deprecated 'memory' field (no canonical replacement to fall through to)
@@ -449,27 +456,30 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
 
         # 4. Persist in DB
         manifest = await enqueue_scan(
-            self.manifests,
-            self.scan_backlog,
-            self.skyscan_k8s_job_coll,
+            self.db.manifests,
+            self.db.scan_backlog,
+            self.db.skyscan_k8s_jobs,
             scan_request_obj,
             insert_scan_request_obj=True,
-            scan_request_coll=self.scan_request_coll,
+            scan_request_coll=self.db.scan_requests,
         )
 
         # 5. Write response
-        self.write(dict_projection(dc.asdict(manifest), manifest_projection))
+        self.write(
+            # we project now b/c we may have needed fields the user didn't want
+            dict_projection(manifest, manifest_projection)
+        )
 
 
 async def enqueue_scan(
-    manifests: database.interface.ManifestClient,
-    scan_backlog: database.interface.ScanBacklogClient,
-    skyscan_k8s_job_coll: AsyncIOMotorCollection,  # type: ignore[valid-type]
+    manifests: MongoJSONSchemaValidatedCollection,
+    scan_backlog: MongoJSONSchemaValidatedCollection,
+    skyscan_k8s_job_coll: MongoJSONSchemaValidatedCollection,
     scan_request_obj: dict,
     /,
     insert_scan_request_obj: bool,  # False for rescans
-    scan_request_coll: AsyncIOMotorCollection | None = None,  # type: ignore[valid-type]
-) -> schema.Manifest:
+    scan_request_coll: MongoJSONSchemaValidatedCollection | None = None,  # type: ignore[valid-type]
+) -> MongoDoc:
     """Create all need data for a new scan, then enqueue it on the backlog."""
     scan_id = scan_request_obj["scan_id"]
 
@@ -504,18 +514,53 @@ async def enqueue_scan(
 
     # put in db (do before k8s start so if k8s fail, we can debug using db's info)
     LOGGER.debug("creating new manifest")
-    manifest = schema.Manifest(
+    manifest = dict(
         scan_id=scan_id,
         timestamp=time.time(),
         is_deleted=False,
-        i3_event_id=scan_request_obj["i3_event_id"],
-        scanner_server_args=scanner_server_args,
-        ewms_workflow_id=schema._NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
-        # ^^^ set once the workflow request has been sent to EWMS (see scan launcher)
-        classifiers=scan_request_obj["classifiers"],
+        #
+        # args placed in k8s job obj
+        scanner_server_args=obfuscate_cl_args(scanner_server_args),
+        #
+        # EWMS interface
+        ewms_workflow_id=(  # id points to info in EWMS
+            _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
+            # ^^^ set once the workflow request has been sent to EWMS (see scan launcher)
+        ),
+        ewms_address=None,  # used to differentiate EWMS instances/environments
+        ewms_task=(  # **DEPRECATED**
+            DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER
+            # ^^^ was used in skydriver 1.x to use local k8s starter/stopper
+        ),
+        #
         priority=scan_request_obj["priority"],
+        #
+        # open to requestor
+        classifiers=scan_request_obj["classifiers"],
+        #
+        # i3 event -- grabbed by scanner central server
+        i3_event_id=scan_request_obj["i3_event_id"],  # id to i3_event coll
+        event_i3live_json_dict=DEPRECATED_EVENT_I3LIVE_JSON_DICT__FIELD_PLACEHOLDER,  # **DEPRECATED**
+        event_i3live_json_dict__hash=None,  # **DEPRECATED**
+        #
+        # found/created during first few seconds of scanning
+        event_metadata=None,
+        scan_metadata=None,  # open to scanner
+        #
+        # updated during scanning, multiple times
+        progress=None,
+        #
+        # misc / meta
+        replaced_by_scan_id=(
+            None  # pointer -> if replaced by a different scan -- used by REST redirects
+        ),
+        last_updated=0.0,
     )
-    manifest = await manifests.put(manifest)
+    manifest = await manifests.find_one_and_update(
+        {"scan_id": manifest["scan_id"]},
+        {"$set": {**manifest, "last_updated": time.time()}},
+        upsert=True,
+    )
     await skyscan_k8s_job_coll.insert_one(  # type: ignore[attr-defined]
         {
             "scan_id": scan_id,
@@ -544,21 +589,10 @@ class ScanRequestHandler(BaseSkyDriverHandler):
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def get(self, scan_id: str) -> None:
         """GET."""
-        scan_request_obj = await self.scan_request_coll.find_one({"scan_id": scan_id})
-        if not scan_request_obj:
-            msg = "Scan request not found"
-            raise web.HTTPError(
-                404,
-                log_message=msg + f" for {scan_id=}",
-                reason=msg,
-            )
-
-        # motor's find_one returns a generic _DocumentType; narrow to dict so
-        # we can call .pop and hand it to self.write
-        scan_request_obj = cast(dict, scan_request_obj)
-        scan_request_obj.pop("_id", None)
+        scan_request_obj = await self.db.scan_requests.find_one({"scan_id": scan_id})
 
         self.write(scan_request_obj)
 
@@ -574,6 +608,7 @@ class ScanRescanHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def post(self, scan_id: str) -> None:
         abort_first = self.get_argument("abort_first", False)
         replace_scan = self.get_argument("replace_scan", False)
@@ -581,23 +616,22 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         manifest_projection = self.get_argument("manifest_projection", "*")
 
         if abort_first:
-            await abort_scan(self.manifests, scan_id, self.ewms_rc)
+            await abort_scan(self.db.manifests, scan_id, self.ewms_rc)
 
         # generate unique scan_id
         new_scan_id = make_scan_id()
 
         # grab the 'scan_request_obj'
-        scan_request_obj = await self.scan_request_coll.find_one_and_update(
-            get_scan_request_obj_filter(scan_id),
-            {
-                # record linkage (discoverability)
-                # NOTE: must preserve order here for history -- so push
-                "$push": {"rescan_ids": new_scan_id},
-            },
-            return_document=ReturnDocument.AFTER,
-        )
-        # -> error: couldn't find it anywhere
-        if not scan_request_obj:
+        try:
+            scan_request_obj = await self.db.scan_requests.find_one_and_update(
+                get_scan_request_obj_filter(scan_id),
+                {
+                    # record linkage (discoverability)
+                    # NOTE: must preserve order here for history -- so push
+                    "$push": {"rescan_ids": new_scan_id},
+                },
+            )
+        except DocumentNotFoundException:
             raise web.HTTPError(
                 404,
                 log_message="Could not find original scan-request information to start a rescan",
@@ -605,9 +639,9 @@ class ScanRescanHandler(BaseSkyDriverHandler):
 
         # go!
         manifest = await enqueue_scan(
-            self.manifests,
-            self.scan_backlog,
-            self.skyscan_k8s_job_coll,
+            self.db.manifests,
+            self.db.scan_backlog,
+            self.db.skyscan_k8s_jobs,
             {
                 **scan_request_obj,
                 **{
@@ -624,14 +658,20 @@ class ScanRescanHandler(BaseSkyDriverHandler):
         )
 
         if replace_scan:
-            await self.manifests.collection.find_one_and_update(
+            # don't persist in variable -- this is the old scan, the response has the new one
+            await self.db.manifests.find_one_and_update(
                 {"scan_id": scan_id},
-                {"$set": {"replaced_by_scan_id": new_scan_id}},
-                return_dclass=dict,
+                {
+                    "$set": {
+                        "replaced_by_scan_id": new_scan_id,
+                        "last_updated": time.time(),
+                    }
+                },
             )
 
         self.write(
-            dict_projection(dc.asdict(manifest), manifest_projection),
+            # we project now b/c we may have needed fields the user didn't want
+            dict_projection(manifest, manifest_projection)
         )
 
 
@@ -646,14 +686,20 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def post(self, scan_id: str) -> None:
         n_workers = self.get_argument("n_workers")  # required
         cluster_location = self.get_argument("cluster_location")  # required
 
-        manifest = await self.manifests.get(scan_id, True)
+        doc = await self.db.manifests.find_one(
+            {"scan_id": scan_id}, projection=["is_deleted", "ewms_workflow_id"]
+        )
+        is_deleted = doc["is_deleted"]
+        ewms_workflow_id = doc["ewms_workflow_id"]
+        del doc
 
         # has it been deleted?
-        if manifest.is_deleted:
+        if is_deleted:
             msg = "this scan has been deleted--cannot add workers"
             raise web.HTTPError(
                 422,
@@ -661,7 +707,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
         # is this in EWMS?
-        if not has_skydriver_requested_ewms_workflow(manifest.ewms_workflow_id):
+        if not has_skydriver_requested_ewms_workflow(ewms_workflow_id):
             msg = "an EWMS workflow has not been assigned--cannot add workers"
             raise web.HTTPError(
                 422,
@@ -669,9 +715,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
         # is scan done?
-        if await get_scan_state_if_final_result_received(
-            manifest.scan_id, self.results
-        ):
+        if await get_scan_state_if_final_result_received(scan_id, self.db.results):
             msg = "this scan has a final result--cannot add workers"
             raise web.HTTPError(
                 422,
@@ -687,7 +731,7 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
                 "POST",
                 f"/{EWMS_URL_V_PREFIX}/query/task-directives",
                 {
-                    "query": {"workflow_id": manifest.ewms_workflow_id},
+                    "query": {"workflow_id": ewms_workflow_id},
                     "projection": ["task_id"],
                 },
             )
@@ -718,13 +762,17 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
 
 
 async def abort_scan(
-    manifests: database.interface.ManifestClient,
+    manifests: MongoJSONSchemaValidatedCollection,
     scan_id: str,
     ewms_rc: RestClient,
-) -> database.schema.Manifest:
+) -> MongoDoc:
     """Stop all parts of the Scanner instance (if running) and mark in DB."""
     # mark as deleted -> also stops backlog from starting
-    manifest = await manifests.mark_as_deleted(scan_id)
+    manifest = await manifests.find_one_and_update(
+        {"scan_id": scan_id},
+        {"$set": {"is_deleted": True, "last_updated": time.time()}},
+        upsert=True,
+    )
     # stop ewms
     await stop_skyscan_workers(
         manifests,
@@ -736,20 +784,22 @@ async def abort_scan(
 
 
 async def stop_skyscan_workers(
-    manifests: database.interface.ManifestClient,
+    manifests: MongoJSONSchemaValidatedCollection,
     scan_id: str,
     ewms_rc: RestClient,
     abort: bool,
-) -> database.schema.Manifest:
+) -> None:
     """Stop the scanner instance's workers on EWMS."""
-    manifest = await manifests.get(scan_id, True)
+    ewms_workflow_id: str | None = await manifests.find_one_field(
+        {"scan_id": scan_id}, "ewms_workflow_id"
+    )
     LOGGER.info(f"stopping (ewms) workers for {scan_id=}...")
 
     # request to ewms
-    if has_skydriver_requested_ewms_workflow(manifest.ewms_workflow_id):
+    if has_skydriver_requested_ewms_workflow(ewms_workflow_id):
         await request_stop_on_ewms(
             ewms_rc,
-            cast(str, manifest.ewms_workflow_id),  # not None b/c above if-condition
+            cast(str, ewms_workflow_id),  # not None b/c above if-condition
             abort=abort,
         )
     else:
@@ -757,37 +807,35 @@ async def stop_skyscan_workers(
             "OK: attempted to stop skyscan workers but scan has not been sent to EWMS"
         )
 
-    return manifest
-
 
 # -----------------------------------------------------------------------------
 
 
 async def get_result_safely(
-    manifests: database.interface.ManifestClient,
-    results: database.interface.ResultClient,
+    manifests: MongoJSONSchemaValidatedCollection,
+    results: MongoJSONSchemaValidatedCollection,
     scan_id: str,
     incl_del: bool,
-) -> tuple[None | database.schema.Result, database.schema.Manifest]:
+) -> tuple[MongoDoc | None, MongoDoc]:
     """Get the Result (and Manifest) using the incl_del/is_deleted logic.
 
     Returns objects as dicts
     """
-    manifest = await manifests.get(scan_id, incl_del)  # 404 if missing
+    manifest = await manifests.find_one(
+        {"scan_id": scan_id} | ({} if incl_del else {"is_deleted": False})
+    )
 
     # check if requestor allows a deleted scan's result
-    if (not incl_del) and manifest.is_deleted:
+    if (not incl_del) and manifest["is_deleted"]:
         raise web.HTTPError(
             404,
-            log_message=f"Requested result with deleted manifest: {manifest.scan_id}",
+            log_message=f"Requested result with deleted manifest: {scan_id}",
         )
 
     # if we don't have a result yet, return {}
     try:
-        result = await results.get(scan_id)
-    except web.HTTPError as e:
-        if e.status_code != 404:
-            raise
+        result = await results.find_one({"scan_id": scan_id})
+    except DocumentNotFoundException:
         result = None
 
     return result, manifest
@@ -804,6 +852,7 @@ class ScanHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def delete(self, scan_id: str) -> None:
         """Abort a scan and/or mark manifest & result as "deleted"."""
         delete_completed_scan = self.get_argument("delete_completed_scan", False)
@@ -812,7 +861,7 @@ class ScanHandler(BaseSkyDriverHandler):
 
         # check DB states
         if (not delete_completed_scan) and (
-            await get_scan_state_if_final_result_received(scan_id, self.results)
+            await get_scan_state_if_final_result_received(scan_id, self.db.results)
         ):
             msg = "Attempted to delete a completed scan (must use `delete_completed_scan=True`)"
             raise web.HTTPError(
@@ -821,18 +870,17 @@ class ScanHandler(BaseSkyDriverHandler):
                 reason=msg,
             )
 
-        manifest = await abort_scan(self.manifests, scan_id, self.ewms_rc)
+        manifest = await abort_scan(self.db.manifests, scan_id, self.ewms_rc)
 
         try:
-            result_dict = dc.asdict(await self.results.get(scan_id))
-        except web.HTTPError as e:
-            if e.status_code != 404:
-                raise
+            result_dict = await self.db.results.find_one({"scan_id": scan_id})
+        except DocumentNotFoundException:
             result_dict = {}
 
         self.write(
             {
-                "manifest": dict_projection(dc.asdict(manifest), manifest_projection),
+                # we project now b/c we may have needed fields the user didn't want
+                "manifest": dict_projection(manifest, manifest_projection),
                 "result": result_dict,
             }
         )
@@ -840,21 +888,22 @@ class ScanHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def get(self, scan_id: str) -> None:
         """Get manifest & result."""
         include_deleted = self.get_argument("include_deleted", False)
 
         result, manifest = await get_result_safely(
-            self.manifests,
-            self.results,
+            self.db.manifests,
+            self.db.results,
             scan_id,
             include_deleted,
         )
 
         self.write(
             {
-                "manifest": dc.asdict(manifest),
-                "result": dc.asdict(result) if result else {},
+                "manifest": manifest,
+                "result": result if result else {},
             }
         )
 
@@ -870,6 +919,7 @@ class ScanManifestHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def get(self, scan_id: str) -> None:
         """Get scan progress."""
         include_deleted = self.get_argument("include_deleted", False)
@@ -877,7 +927,9 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         projection = self.get_argument("projection", "*")  # pipe-delimited string
 
         # get manifest from db
-        manifest = await self.manifests.get(scan_id, include_deleted)
+        manifest = await self.db.manifests.find_one(
+            {"scan_id": scan_id} | ({} if include_deleted else {"is_deleted": False})
+        )
 
         # Backward Compatibility for Skymap Scanner:
         #   Include the whole event dict in the response like the 'old' manifest.
@@ -885,15 +937,17 @@ class ScanManifestHandler(BaseSkyDriverHandler):
         if (
             self.auth_roles[0] == INTERNAL_ACCT  # type: ignore
             and any(x in projection.split("|") for x in ["*", "event_i3live_json_dict"])
-            and manifest.i3_event_id  # if no id, then event already in manifest
+            and manifest["i3_event_id"]  # if no id, then event already in manifest
         ):
-            if i3event_doc := await self.i3_event_coll.find_one(
-                {"i3_event_id": manifest.i3_event_id}
-            ):
-                manifest.event_i3live_json_dict = i3event_doc["json_dict"]
-            else:  # this would mean the event was removed from the db
+            try:
+                manifest["event_i3live_json_dict"] = await self.db.i3_events.find_one_field(
+                    {"i3_event_id": manifest["i3_event_id"]},
+                    "json_dict",
+                )  # fmt: skip
+            except DocumentNotFoundException:
+                # this would mean the event was removed from the db
                 error_msg = (
-                    f"No i3 event document found with id '{manifest.i3_event_id}'"
+                    f"No i3 event document found with id '{manifest['i3_event_id']}'"
                     f"--if other fields are wanted, re-request using 'projection'"
                 )
                 raise web.HTTPError(
@@ -902,40 +956,28 @@ class ScanManifestHandler(BaseSkyDriverHandler):
                     reason=error_msg,
                 )
 
-        self.write(dict_projection(dc.asdict(manifest), projection))
+        self.write(
+            # we project now b/c we may have needed fields the user didn't want
+            dict_projection(manifest, projection)
+        )
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def patch(self, scan_id: str) -> None:
         """Update scan progress."""
-        T = TypeVar("T")
+        progress = self.get_argument("progress", None) or None
+        event_metadata = self.get_argument("event_metadata", None) or None
+        scan_metadata = self.get_argument("scan_metadata", {}) or None
 
-        def from_dict_wrapper_or_none(data_class: Type[T], val: Any) -> T | None:
-            if not val:
-                return None
-            try:
-                return from_dict(data_class, val)
-            except DaciteError as e:
-                raise web.HTTPError(400, reason=str(e), log_message=str(e))
-
-        progress = from_dict_wrapper_or_none(
-            database.schema.Progress,
-            self.get_argument("progress", None),
-        )
-        event_metadata = from_dict_wrapper_or_none(
-            database.schema.EventMetadata,
-            self.get_argument("event_metadata", None),
-        )
-        scan_metadata = self.get_argument("scan_metadata", {})
-
-        manifest = await self.manifests.patch(
+        manifest = await ManifestHelper.patch_from_skyscanner(
+            self.db.manifests,
             scan_id,
             progress,
             event_metadata,
             scan_metadata,
         )
-
-        self.write(dc.asdict(manifest))  # don't use a projection
+        self.write(manifest)  # don't use a projection
 
 
 # -----------------------------------------------------------------------------
@@ -949,21 +991,26 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def get(self, scan_id: str) -> None:
         """Get scan's i3 event."""
-        manifest = await self.manifests.get(scan_id, True)
+        doc = await self.db.manifests.find_one(
+            {"scan_id": scan_id},
+            projection=["i3_event_id", "event_i3live_json_dict"],
+        )
+        i3_event_id = doc["i3_event_id"]
+        event_i3live_json_dict = doc["event_i3live_json_dict"]
+        del doc
 
         # look up event in collection
-        if manifest.i3_event_id:
-            doc = await self.i3_event_coll.find_one(
-                {"i3_event_id": manifest.i3_event_id}
-            )
-            if doc:
-                i3_event = doc["json_dict"]
-            else:  # this would mean the event was removed from the db
-                error_msg = (
-                    f"No i3 event document found with id '{manifest.i3_event_id}'"
+        if i3_event_id:
+            try:
+                i3_event = await self.db.i3_events.find_one_field(
+                    {"i3_event_id": i3_event_id}, "json_dict"
                 )
+            except DocumentNotFoundException:
+                # this would mean the event was removed from the db
+                error_msg = f"No i3 event document found with id '{i3_event_id}'"
                 raise web.HTTPError(
                     404,
                     log_message=error_msg,
@@ -971,7 +1018,7 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
                 )
         # unless, this is an old scan -- where the whole dict was stored w/ the manifest
         else:
-            i3_event = manifest.event_i3live_json_dict
+            i3_event = event_i3live_json_dict
 
         self.write({"i3_event": i3_event})
 
@@ -993,21 +1040,23 @@ class ScanResultHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def get(self, scan_id: str) -> None:
         """Get a scan's persisted result."""
         include_deleted = self.get_argument("include_deleted", False)
 
         result, _ = await get_result_safely(
-            self.manifests,
-            self.results,
+            self.db.manifests,
+            self.db.results,
             scan_id,
             include_deleted,
         )
 
-        self.write(dc.asdict(result) if result else {})
+        self.write(result if result else {})
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def put(self, scan_id: str) -> None:
         """Put (persist) a scan's result."""
         skyscan_result = self.get_argument("skyscan_result")  # required
@@ -1017,12 +1066,12 @@ class ScanResultHandler(BaseSkyDriverHandler):
             self.write({})
             return
 
-        result_dc = await self.results.put(
-            scan_id,
-            skyscan_result,
-            is_final,
+        result = await self.db.results.find_one_and_update(
+            {"scan_id": scan_id},
+            {"$set": {"skyscan_result": skyscan_result, "is_final": is_final}},
+            upsert=True,
         )
-        self.write(dc.asdict(result_dc))
+        self.write(result)
 
         # END #
         await self.finish()
@@ -1034,7 +1083,7 @@ class ScanResultHandler(BaseSkyDriverHandler):
                 WAIT_BEFORE_TEARDOWN
             )  # regular time.sleep() sleeps the entire server
             await stop_skyscan_workers(
-                self.manifests,
+                self.db.manifests,
                 scan_id,
                 self.ewms_rc,
                 abort=False,
@@ -1052,22 +1101,23 @@ class ScanStatusHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def get(self, scan_id: str) -> None:
         """Get a scan's status."""
-        manifest = await self.manifests.get(scan_id, incl_del=True)
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         # scan state
-        scan_state = await get_scan_state(manifest, self.ewms_rc, self.results)
+        scan_state = await get_scan_state(manifest, self.ewms_rc, self.db.results)
 
         # respond
         resp = {
             "scan_state": scan_state,
-            "is_deleted": manifest.is_deleted,
+            "is_deleted": manifest["is_deleted"],
             #
             # the scan is in a state where it cannot proceed further -- successful or otherwise
             # -> used by the scanner to prematurely quit in case of an abort (w/ 'is_deleted')
             "ewms_deactivated": await get_deactivated_type(
-                self.ewms_rc, manifest.ewms_workflow_id
+                self.ewms_rc, manifest["ewms_workflow_id"]
             ),
             #
             # the scan in effectively done, the physics has been finished
@@ -1081,7 +1131,7 @@ class ScanStatusHandler(BaseSkyDriverHandler):
             #
             # same as '/scan/<scan_id>/ewms/workforce'
             "ewms_workforce": await ewms.get_workforce_statuses(
-                self.ewms_rc, manifest.ewms_workflow_id
+                self.ewms_rc, manifest["ewms_workflow_id"]
             ),
         }
         self.write(resp)
@@ -1102,9 +1152,10 @@ class ScanLogsHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def get(self, scan_id: str) -> None:
         """Get a scan's logs."""
-        manifest = await self.manifests.get(scan_id, incl_del=True)
+        manifest = await self.db.manifests.find_one({"scan_id": scan_id})
 
         self.write(
             {
@@ -1130,30 +1181,37 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def get(self, scan_id: str) -> None:
         """Get the ewms workflow_id."""
-        manifest = await self.manifests.get(scan_id, incl_del=True)
+        doc = await self.db.manifests.find_one(
+            {"scan_id": scan_id}, projection=["ewms_workflow_id", "ewms_address"]
+        )
+        ewms_workflow_id = doc["ewms_workflow_id"]
+        ewms_address = doc["ewms_address"]
+        del doc
 
         self.write(
             {
-                "workflow_id": manifest.ewms_workflow_id,
+                "workflow_id": ewms_workflow_id,
                 "requested_ewms_workflow": has_skydriver_requested_ewms_workflow(
-                    manifest.ewms_workflow_id
+                    ewms_workflow_id
                 ),
-                "eligible_for_ewms": manifest.ewms_workflow_id is not None,
-                "ewms_address": manifest.ewms_address,
+                "eligible_for_ewms": ewms_workflow_id is not None,
+                "ewms_address": ewms_address,
             }
         )
 
     @service_account_auth(roles=[INTERNAL_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def post(self, scan_id: str) -> None:
         """Update the ewms workflow_id."""
         workflow_id = self.get_argument("workflow_id")  # required
         ewms_address = self.get_argument("ewms_address")  # required
 
         try:
-            manifest = await self.manifests.collection.find_one_and_update(
+            manifest = await self.db.manifests.find_one_and_update(
                 {
                     "scan_id": scan_id,
                     "ewms_workflow_id": _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
@@ -1163,12 +1221,10 @@ class ScanEWMSWorkflowIDHandler(BaseSkyDriverHandler):
                     "$set": {
                         "ewms_workflow_id": workflow_id,
                         "ewms_address": ewms_address,
+                        "last_updated": time.time(),
                     }
                 },
-                return_document=ReturnDocument.AFTER,
-                return_dclass=dict,
             )
-            manifest.pop("_id")
         except DocumentNotFoundException:
             raise web.HTTPError(
                 404,
@@ -1192,18 +1248,18 @@ class ScanEWMSWorkforceHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def get(self, scan_id: str) -> None:
         """GET.
 
         This is a high-level utility, which removes unnecessary EWMS semantics.
         """
-        manifest = await self.manifests.get(scan_id, incl_del=True)
+        ewms_workflow_id = await self.db.manifests.find_one_field(
+            {"scan_id": scan_id}, "ewms_workflow_id"
+        )
 
         self.write(
-            await ewms.get_workforce_statuses(
-                self.ewms_rc,
-                manifest.ewms_workflow_id,
-            )
+            await ewms.get_workforce_statuses(self.ewms_rc, ewms_workflow_id),
         )
 
 
@@ -1218,18 +1274,20 @@ class ScanEWMSTaskforcesHandler(BaseSkyDriverHandler):
     @service_account_auth(roles=[USER_ACCT, INTERNAL_ACCT])  # type: ignore
     @maybe_redirect_scan_id(roles=[USER_ACCT])
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
     async def get(self, scan_id: str) -> None:
         """GET.
 
         This is useful for debugging by seeing what was sent to condor.
         """
-        manifest = await self.manifests.get(scan_id, incl_del=True)
+        ewms_workflow_id = await self.db.manifests.find_one_field(
+            {"scan_id": scan_id}, "ewms_workflow_id"
+        )
 
         self.write(
             {
                 "taskforces": await ewms.get_taskforce_infos(
-                    self.ewms_rc,
-                    manifest.ewms_workflow_id,
+                    self.ewms_rc, ewms_workflow_id
                 )
             }
         )

@@ -13,7 +13,7 @@ from typing import Any, cast
 import humanfriendly  # type: ignore[import-untyped]
 import pytest
 import requests
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient
 from rest_tools.client import RestClient
 
 import skydriver.images  # noqa: F401  # export
@@ -75,7 +75,7 @@ REQUIRED_FIELDS = [
 
 async def _launch_scan(
     rc: RestClient,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
     post_scan_body: dict,
     docker_tag_expected: str,
 ) -> dict:
@@ -94,7 +94,7 @@ async def _launch_scan(
         f"--reco-algo {post_scan_body['reco_algo']} "
         f"--cache-dir /common-space "
         f"--client-startup-json /common-space/startup.json "
-        f"--nsides {' '.join(f'{k}:{v}' for k,v in post_scan_body['nsides'].items())} "
+        f"--nsides {' '.join(f'{k}:{v}' for k, v in post_scan_body['nsides'].items())} "
         f"--{post_scan_body['real_or_simulated_event']}-event "
         f"--predictive-scanning-threshold 1.0 "  # the default
     )
@@ -129,6 +129,8 @@ async def _launch_scan(
         < post_resp["timestamp"]
         < post_resp["last_updated"]
         < post_launch_ts
+    ), (  # have pytest print out each timestamp
+        f"{launch_time=} < {post_resp['timestamp']=} < {post_resp['last_updated']=} < {post_launch_ts=}"
     )
 
     # check database
@@ -150,7 +152,7 @@ async def _launch_scan(
 
 
 async def _assert_db_scanrequests_coll(
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
     post_scan_body: dict,
     post_resp: dict,
     docker_tag_expected: str,
@@ -194,7 +196,7 @@ async def _assert_db_scanrequests_coll(
 
 
 async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
     post_scan_body: dict,
     post_resp: dict,
     scanner_server_args: str,
@@ -215,7 +217,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
             "metadata": {
                 "annotations": {
                     "argocd.argoproj.io/sync-options": "Prune=false",
-                    "argocd.argoproj.io/tracking-id": f"{os.getenv("K8S_APPLICATION_NAME")}:apps/Job:{os.getenv("K8S_NAMESPACE")}/skyscan-{post_resp['scan_id']}",
+                    "argocd.argoproj.io/tracking-id": f"{os.getenv('K8S_APPLICATION_NAME')}:apps/Job:{os.getenv('K8S_NAMESPACE')}/skyscan-{post_resp['scan_id']}",
                 },
                 "labels": {
                     "app.kubernetes.io/instance": os.getenv("K8S_APPLICATION_NAME"),
@@ -263,7 +265,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                     ].items()
                                 ],
                                 "image": f"icecube/skymap_scanner:{docker_tag_expected}",
-                                "name": f'skyscan-server-{post_resp["scan_id"]}',
+                                "name": f"skyscan-server-{post_resp['scan_id']}",
                                 "resources": {
                                     "limits": {"cpu": "1.0", "memory": "1024000000"},
                                     "requests": {
@@ -752,7 +754,7 @@ async def _delete_scan(
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}"
+            f"404 Client Error: Object not found in 'Manifests' collection for url: {rc.address}/scan/{scan_id}"
         ),
     ):
         await rc.request("GET", f"/scan/{scan_id}")
@@ -764,7 +766,7 @@ async def _delete_scan(
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/manifest"
+            f"404 Client Error: Object not found in 'Manifests' collection for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ):
         await rc.request("GET", f"/scan/{scan_id}/manifest")
@@ -778,7 +780,7 @@ async def _delete_scan(
     with pytest.raises(
         requests.exceptions.HTTPError,
         match=re.escape(
-            f"404 Client Error: Not Found for url: {rc.address}/scan/{scan_id}/result"
+            f"404 Client Error: Object not found in 'Manifests' collection for url: {rc.address}/scan/{scan_id}/result"
         ),
     ):
         await rc.request("GET", f"/scan/{scan_id}/result")
@@ -901,7 +903,7 @@ async def test_000(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
 ) -> None:
     """Test normal scan creation and retrieval."""
     rc = server()
@@ -1049,7 +1051,7 @@ async def test_100__rescan(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
 ) -> None:
     """Test rescan request w/o scan replacement."""
     rc = server()
@@ -1153,7 +1155,7 @@ async def test_110__rescan_replacement_redirect(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
 ) -> None:
     """Test rescan request w/ scan replacement -- and redirects."""
     rc = server()
@@ -1216,7 +1218,7 @@ async def test_200__get_edit_launchdup(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
 ) -> None:
     """Get the stored scan-request, 'edit' the inputs to reuse the same event via i3_event_id, then launch a duplicate."""
     rc = server()
@@ -1331,7 +1333,7 @@ async def test_210__post_with_get_fields__single_bad_field(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
 ) -> None:
     """User copies fields from GET /scan-request/{scan_id} back into POST /scan (single extra)."""
     rc = server()
@@ -1372,7 +1374,7 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
 ) -> None:
     """User copies several fields from GET /scan-request/{scan_id} back into POST /scan (multiple extras)."""
     rc = server()
@@ -1423,7 +1425,7 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
 POST_SCAN_BODY_FOR_TEST_300 = dict(**POST_SCAN_BODY, cluster={"foobar": 1})
 
 
-_LINE_DELIMITER = f'{"#" * 100}\nNext set of asserts\n{"#" * 100}'
+_LINE_DELIMITER = f"{'#' * 100}\nNext set of asserts\n{'#' * 100}"
 
 
 def _log_delimiter() -> None:
@@ -1438,16 +1440,16 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     server: Callable[[], RestClient],
     known_clusters: dict,
     test_wait_before_teardown: float,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Failure-test scan creation and retrieval."""
     rc = server()
 
-    # bad url
+    # bad url -- generic 404 error because this endpoint does not exits (no handler)
     with pytest.raises(
         requests.exceptions.HTTPError,
-        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
+            match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
     ):
         await rc.request("GET", "/event")
 
@@ -1511,7 +1513,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         with pytest.raises(
             requests.exceptions.HTTPError,
             # RequestClusters is a oneOf (object w/ int values OR array of
-            # [location, n_workers] tuples). All these malformed shapes fail
+            # [location, n_workers]). All these malformed shapes fail
             # both branches. _schema_error_to_human_readable prepends the
             # field path and renders oneOf failures as "must match one of the
             # accepted types".

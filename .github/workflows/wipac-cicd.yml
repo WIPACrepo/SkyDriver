@@ -81,7 +81,7 @@ jobs:
       - uses: WIPACrepo/wipac-dev-py-setup-action@v5.12
         with:
           mode: PACKAGING
-          python_min: 3.13
+          python_min: 3.14
           author: WIPAC Developers
           author_email: developers@icecube.wisc.edu
           keywords_comma: "WIPAC, IceCube, Skymap Scanner, Reconstruction, IceTray, EWMS"
@@ -177,6 +177,7 @@ jobs:
           file: Dockerfile
           tags: ${{ env.CI_DOCKER_IMAGE_W_TAG }}
           load: true
+          build-args: PY_VERSION=${{ matrix.py3 }}
 
       - name: setup mock CVMFS directory
         run: |

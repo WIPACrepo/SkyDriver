@@ -9,7 +9,7 @@ from unittest.mock import Mock
 import kubernetes.client  # type: ignore[import-untyped]
 import pytest
 import pytest_asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient
 from rest_tools.client import RestClient
 
 import skydriver.images  # noqa: F401  # export
@@ -33,12 +33,12 @@ def port() -> int:
 @pytest_asyncio.fixture
 async def mongo_clear() -> AsyncIterator[None]:
     """Clear the MongoDB after test completes."""
-    motor_client = await create_mongodb_client()
+    mongo_client = await create_mongodb_client()
     try:
-        await drop_database(motor_client)
+        await drop_database(mongo_client)
         yield
     finally:
-        await drop_database(motor_client)
+        await drop_database(mongo_client)
 
 
 ########################################################################################
@@ -116,7 +116,7 @@ def test_wait_before_teardown() -> float:
 
 
 @pytest_asyncio.fixture
-async def mongo_client() -> AsyncIOMotorClient:  # type: ignore[valid-type]
+async def mongo_client() -> AsyncMongoClient:
     """A fixture to keep number of mongo connections to a minimum (aka 1)."""
     return await create_mongodb_client()
 
@@ -125,7 +125,7 @@ async def mongo_client() -> AsyncIOMotorClient:  # type: ignore[valid-type]
 async def server(
     monkeypatch: Any,
     port: int,
-    mongo_client: AsyncIOMotorClient,  # type: ignore[valid-type]
+    mongo_client: AsyncMongoClient,
     mongo_clear: Any,  # just to ensure DB is cleared
 ) -> AsyncIterator[Callable[[], RestClient]]:
     """Start the Skydriver server with all necessary patches and yield a REST client."""

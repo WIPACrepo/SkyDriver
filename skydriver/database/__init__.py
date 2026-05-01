@@ -4,14 +4,15 @@ from urllib.parse import quote_plus
 
 from pymongo import AsyncMongoClient
 
-from . import interface, mongodc, schema, utils
+from . import interface, schema, utils
+from .client import SkyDriverMongoValidatedDatabase
 from ..config import ENV
 
 __all__ = [
     "interface",
-    "mongodc",
     "schema",
     "utils",
+    "SkyDriverMongoValidatedDatabase",
 ]
 
 
@@ -25,5 +26,5 @@ async def create_mongodb_client() -> AsyncMongoClient:  # type: ignore[valid-typ
     else:
         url = f"mongodb://{ENV.MONGODB_HOST}:{ENV.MONGODB_PORT}"
 
-    mongo_client = AsyncMongoClient(url)  # type: ignore[var-annotated]
+    mongo_client: AsyncMongoClient = AsyncMongoClient(url)
     return mongo_client
