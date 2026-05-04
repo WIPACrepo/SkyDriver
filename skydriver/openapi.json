@@ -14,6 +14,9 @@
             "name": "root"
         },
         {
+            "name": "openapi"
+        },
+        {
             "name": "scans"
         },
         {
@@ -44,6 +47,27 @@
                             "application/json": {
                                 "schema": {
                                     "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/openapi.json": {
+            "get": {
+                "tags": [
+                    "openapi"
+                ],
+                "summary": "Endpoint for retrieving the OpenAPI spec",
+                "operationId": "getOpenAPISpec",
+                "responses": {
+                    "200": {
+                        "description": "The OpenAPI spec",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FreeFormObject"
                                 }
                             }
                         }
