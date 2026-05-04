@@ -139,6 +139,22 @@ class MainHandler(BaseSkyDriverHandler):
 # -----------------------------------------------------------------------------
 
 
+class OpenAPIHandler(BaseSkyDriverHandler):
+    """Handle requests for the OpenAPI spec."""
+
+    ROUTE = r"/openapi.json$"
+
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
+    async def get(self) -> None:
+        """Handle GET."""
+        self.write(config.OPENAPI_DICT)
+
+
+# -----------------------------------------------------------------------------
+
+
 class ScansFindHandler(BaseSkyDriverHandler):
     """Handles finding scans by attributes."""
 

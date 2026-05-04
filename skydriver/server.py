@@ -44,6 +44,7 @@ async def make(
         rest_handlers.ScansFindHandler,
         rest_handlers.ScanBacklogHandler,
         rest_handlers.MainHandler,
+        rest_handlers.OpenAPIHandler,
         rest_handlers.ScanHandler,
         rest_handlers.ScanRequestHandler,
         rest_handlers.ScanManifestHandler,
