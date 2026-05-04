@@ -1536,7 +1536,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         requests.exceptions.HTTPError,
         match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
     ):
-        await request_and_validate(rc, OPENAPI_SPEC, "GET", "/event")
+        await rc.request("GET", "/event")
 
     _log_delimiter()
 
