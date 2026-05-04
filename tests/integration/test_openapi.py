@@ -1,11 +1,13 @@
 """Integration tests for the openapi endpoint and spec."""
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from rest_tools.client import RestClient
 from rest_tools.openapi_tools import request_and_validate
+
 from skydriver.config import OPENAPI_DICT, OPENAPI_PATH, OPENAPI_SPEC
 
 
