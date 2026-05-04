@@ -57,6 +57,7 @@ tests = [
     'pytest',
     'pytest-asyncio',
     'pytest-mock',
+    'pytest-order',
 ]
 prod-test = [
     'texttable',

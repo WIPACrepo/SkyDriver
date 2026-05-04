@@ -13,11 +13,12 @@ from typing import Any, cast
 import humanfriendly  # type: ignore[import-untyped]
 import pytest
 import requests
+import skydriver.images  # noqa: F401  # export
 from pymongo import AsyncMongoClient
 from rest_tools.client import RestClient
-
-import skydriver.images  # noqa: F401  # export
+from rest_tools.openapi_tools import request_and_validate
 from skydriver.__main__ import setup_ewms_client
+from skydriver.config import OPENAPI_SPEC
 
 NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS = "not-yet-requested"
 
@@ -82,7 +83,9 @@ async def _launch_scan(
     # launch scan
     launch_time = time.time()
     print(f"now: {launch_time}")
-    post_resp = await rc.request(
+    post_resp = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "POST",
         "/scan",
         {**post_scan_body, "manifest_projection": ["*"]},
@@ -512,7 +515,9 @@ async def _do_patch(
 
     now = time.time()
 
-    resp = await rc.request("PATCH", f"/scan/{scan_id}/manifest", body)
+    resp = await request_and_validate(
+        rc, OPENAPI_SPEC, "PATCH", f"/scan/{scan_id}/manifest", body
+    )
     assert resp == dict(
         scan_id=scan_id,
         is_deleted=False,
@@ -553,7 +558,9 @@ async def _do_patch(
 
     manifest = resp  # keep around
     # query progress
-    resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    resp = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/manifest"
+    )
     assert resp == manifest
     return manifest  # type: ignore[no-any-return]
 
@@ -623,7 +630,9 @@ async def _server_reply_with_event_metadata(
     manifest = await _do_patch(rc, scan_id, manifest, event_metadata=event_metadata)
 
     # query by run+event id
-    resp = await rc.request(
+    resp = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "POST",
         "/scans/find",
         {
@@ -635,7 +644,9 @@ async def _server_reply_with_event_metadata(
         },
     )
     assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
-    resp = await rc.request(
+    resp = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "POST",
         "/scans/find",
         {
@@ -648,7 +659,9 @@ async def _server_reply_with_event_metadata(
         },
     )
     assert [m["scan_id"] for m in resp["manifests"]] == [scan_id]
-    resp = await rc.request(
+    resp = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "POST",
         "/scans/find",
         {
@@ -678,7 +691,9 @@ async def _send_result(
     }
     if is_final:
         result["gamma"] = 5
-    resp = await rc.request(
+    resp = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "PUT",
         f"/scan/{scan_id}/result",
         {"skyscan_result": result, "is_final": is_final},
@@ -691,15 +706,19 @@ async def _send_result(
     result = resp  # keep around
 
     # query progress
-    resp = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    resp = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/manifest"
+    )
     assert resp == manifest
 
     # query result
-    resp = await rc.request("GET", f"/scan/{scan_id}/result")
+    resp = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/result"
+    )
     assert resp == result
 
     # query scan
-    resp = await rc.request("GET", f"/scan/{scan_id}")
+    resp = await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}")
     assert resp["manifest"] == manifest
     assert resp["result"] == result
 
@@ -722,7 +741,9 @@ async def _delete_scan(
 
     now = time.time()
 
-    resp = await rc.request("DELETE", f"/scan/{scan_id}", body)
+    resp = await request_and_validate(
+        rc, OPENAPI_SPEC, "DELETE", f"/scan/{scan_id}", body
+    )
     assert resp == {
         "manifest": {
             **resp["manifest"],
@@ -757,9 +778,11 @@ async def _delete_scan(
             f"404 Client Error: Object not found in 'Manifests' collection for url: {rc.address}/scan/{scan_id}"
         ),
     ):
-        await rc.request("GET", f"/scan/{scan_id}")
+        await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}")
     # query w/ incl_del
-    resp = await rc.request("GET", f"/scan/{scan_id}", {"include_deleted": True})
+    resp = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}", {"include_deleted": True}
+    )
     assert resp == del_resp
 
     # MANIFEST: query w/ scan id (fails)
@@ -769,10 +792,10 @@ async def _delete_scan(
             f"404 Client Error: Object not found in 'Manifests' collection for url: {rc.address}/scan/{scan_id}/manifest"
         ),
     ):
-        await rc.request("GET", f"/scan/{scan_id}/manifest")
+        await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/manifest")
     # query w/ incl_del
-    resp = await rc.request(
-        "GET", f"/scan/{scan_id}/manifest", {"include_deleted": True}
+    resp = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/manifest", {"include_deleted": True}
     )
     assert resp == del_resp["manifest"]
 
@@ -783,15 +806,19 @@ async def _delete_scan(
             f"404 Client Error: Object not found in 'Manifests' collection for url: {rc.address}/scan/{scan_id}/result"
         ),
     ):
-        await rc.request("GET", f"/scan/{scan_id}/result")
+        await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/result")
     # query w/ incl_del
-    resp = await rc.request("GET", f"/scan/{scan_id}/result", {"include_deleted": True})
+    resp = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/result", {"include_deleted": True}
+    )
     assert resp == del_resp["result"]
 
     #
 
     # query by run+event id (none)
-    resp = await rc.request(
+    resp = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "POST",
         "/scans/find",
         {
@@ -803,7 +830,9 @@ async def _delete_scan(
         },
     )
     assert not resp["manifests"]  # no matches
-    resp = await rc.request(
+    resp = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "POST",
         "/scans/find",
         {
@@ -816,7 +845,9 @@ async def _delete_scan(
         },
     )
     assert not resp["manifests"]  # no matches
-    resp = await rc.request(
+    resp = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "POST",
         "/scans/find",
         {
@@ -831,7 +862,9 @@ async def _delete_scan(
     assert not resp["manifests"]  # no matches
 
     # query by run+event id w/ incl_del
-    resp = await rc.request(
+    resp = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "POST",
         "/scans/find",
         {
@@ -845,7 +878,9 @@ async def _delete_scan(
     )
     assert scan_id in [m["scan_id"] for m in resp["manifests"]]
     # ^^^ not testing that this is unique b/c the event could've been re-ran (rescan)
-    resp = await rc.request(
+    resp = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "POST",
         "/scans/find",
         {
@@ -862,7 +897,9 @@ async def _delete_scan(
 
 
 async def _is_scan_complete(rc: RestClient, scan_id: str) -> bool:
-    resp = await rc.request("GET", f"/scan/{scan_id}/status")
+    resp = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/status"
+    )
     pprint.pprint(resp)
     return resp["scan_complete"]
 
@@ -935,23 +972,32 @@ async def _after_scan_start_logic(
     scan_id = manifest["scan_id"]
 
     # follow-up query
-    assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
-    resp = await rc.request("GET", f"/scan/{scan_id}")
+    assert (
+        await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/result")
+        == {}
+    )
+    resp = await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}")
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
 
     # wait scan launcher to request to ewms
     assert int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"])
     await asyncio.sleep(int(os.environ["SCAN_BACKLOG_RUNNER_DELAY"]) * 5)  # extra
-    resp = await rc.request("GET", "/scans/backlog")
+    resp = await request_and_validate(rc, OPENAPI_SPEC, "GET", "/scans/backlog")
     assert not any(x["scan_id"] == manifest["scan_id"] for x in resp["entries"])
 
     # mimic the ewms-init container...
     # -> before
-    manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    manifest = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/manifest"
+    )
     assert manifest["ewms_workflow_id"] == NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
     assert manifest["ewms_address"] is None
-    assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
+    assert (
+        await request_and_validate(
+            rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/ewms/workflow-id"
+        )
+    ) == {
         "workflow_id": NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
         "requested_ewms_workflow": False,
         "eligible_for_ewms": True,
@@ -962,16 +1008,24 @@ async def _after_scan_start_logic(
         "POST", f"/{_EWMS_URL_V_PREFIX}/workflows", {"foo": "bar"}
     )
     workflow_id = resp["workflow"]["workflow_id"]
-    await rc.request(
+    await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "POST",
         f"/scan/{scan_id}/ewms/workflow-id",
         {"workflow_id": workflow_id, "ewms_address": "ewms.foo.aq"},
     )
     # -> after
-    manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    manifest = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/manifest"
+    )
     assert manifest["ewms_workflow_id"] == workflow_id
     assert manifest["ewms_address"] == "ewms.foo.aq"
-    assert (await rc.request("GET", f"/scan/{scan_id}/ewms/workflow-id")) == {
+    assert (
+        await request_and_validate(
+            rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/ewms/workflow-id"
+        )
+    ) == {
         "workflow_id": workflow_id,
         "requested_ewms_workflow": True,
         "eligible_for_ewms": True,
@@ -983,8 +1037,11 @@ async def _after_scan_start_logic(
     #
     manifest = await _server_reply_with_event_metadata(rc, scan_id, manifest)
     # follow-up query
-    assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
-    resp = await rc.request("GET", f"/scan/{scan_id}")
+    assert (
+        await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/result")
+        == {}
+    )
+    resp = await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}")
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
 
@@ -1010,7 +1067,9 @@ async def _after_scan_start_logic(
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown + 1)
-    manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    manifest = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/manifest"
+    )
     assert await _is_scan_complete(rc, manifest["scan_id"])  # workforce is done
 
     #
@@ -1074,7 +1133,9 @@ async def test_100__rescan(
     )
 
     # RESCAN
-    manifest_beta = await rc.request(
+    manifest_beta = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "POST",
         f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
     )
@@ -1110,8 +1171,12 @@ async def _assert_scan_id_redirects(
         # w/ redirect
         #
 
-        resp_a = await rc.request("GET", p.format(scan_id=manifest_alpha["scan_id"]))
-        resp_b = await rc.request("GET", p.format(scan_id=manifest_beta["scan_id"]))
+        resp_a = await request_and_validate(
+            rc, OPENAPI_SPEC, "GET", p.format(scan_id=manifest_alpha["scan_id"])
+        )
+        resp_b = await request_and_validate(
+            rc, OPENAPI_SPEC, "GET", p.format(scan_id=manifest_beta["scan_id"])
+        )
         assert resp_a == resp_b  # 100% -- both point to the same scan
 
         if p == "/scan/{scan_id}/manifest":
@@ -1123,12 +1188,16 @@ async def _assert_scan_id_redirects(
 
         print("now no redirect")
 
-        resp_a2 = await rc.request(
+        resp_a2 = await request_and_validate(
+            rc,
+            OPENAPI_SPEC,
             "GET",
             p.format(scan_id=manifest_alpha["scan_id"]),
             {"no_redirect": True},
         )
-        resp_b2 = await rc.request(
+        resp_b2 = await request_and_validate(
+            rc,
+            OPENAPI_SPEC,
             "GET",
             p.format(scan_id=manifest_beta["scan_id"]),
             {"no_redirect": True},
@@ -1179,7 +1248,9 @@ async def test_110__rescan_replacement_redirect(
     )
 
     # RESCAN
-    manifest_beta = await rc.request(
+    manifest_beta = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
         "POST",
         f"/scan/{manifest_alpha['scan_id']}/actions/rescan",
         {"replace_scan": True},
@@ -1203,7 +1274,7 @@ async def test_110__rescan_replacement_redirect(
 
 async def _get_scan_request(rc: RestClient, scan_id: str) -> sdict:
     """Helper to GET /scan-request/{scan_id} and return the stored scan request object."""
-    sr = await rc.request("GET", f"/scan-request/{scan_id}")
+    sr = await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan-request/{scan_id}")
     # sanity checks on a few required fields that should always be present
     assert sr["scan_id"] == scan_id
     assert isinstance(sr["i3_event_id"], str) and len(sr["i3_event_id"]) > 0
@@ -1241,7 +1312,7 @@ async def test_200__get_edit_launchdup(
     i3_event_id_alpha = manifest_alpha["i3_event_id"]
 
     # (optional light sanity path; we don't need the whole _after_scan_start_logic)
-    resp = await rc.request("GET", f"/scan/{scan_id_alpha}")
+    resp = await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id_alpha}")
     assert resp["manifest"]["scan_id"] == scan_id_alpha
     assert resp["result"] == {}
 
@@ -1313,20 +1384,34 @@ async def test_200__get_edit_launchdup(
     # 5) (LIGHT) FOLLOW-UPS: ensure both scans are queryable and distinct
     #
     # original
-    resp_a = await rc.request("GET", f"/scan/{scan_id_alpha}")
+    resp_a = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id_alpha}"
+    )
     assert resp_a["manifest"]["scan_id"] == scan_id_alpha
     assert resp_a["manifest"]["i3_event_id"] == i3_event_id_alpha
     # duplicate
-    resp_b = await rc.request("GET", f"/scan/{scan_id_beta}")
+    resp_b = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id_beta}"
+    )
     assert resp_b["manifest"]["scan_id"] == scan_id_beta
     assert resp_b["manifest"]["i3_event_id"] == i3_event_id_alpha
 
     # mild clean-up path to keep environment tidy (don’t assert workforce completion here)
     # delete both (these are not completed; allow deletion)
-    await rc.request(
-        "DELETE", f"/scan/{scan_id_alpha}", {"delete_completed_scan": True}
+    await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
+        "DELETE",
+        f"/scan/{scan_id_alpha}",
+        {"delete_completed_scan": True},
     )
-    await rc.request("DELETE", f"/scan/{scan_id_beta}", {"delete_completed_scan": True})
+    await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
+        "DELETE",
+        f"/scan/{scan_id_beta}",
+        {"delete_completed_scan": True},
+    )
 
 
 async def test_210__post_with_get_fields__single_bad_field(
@@ -1348,7 +1433,7 @@ async def test_210__post_with_get_fields__single_bad_field(
     scan_id = manifest["scan_id"]
 
     # Pull the stored request
-    sr = await rc.request("GET", f"/scan-request/{scan_id}")
+    sr = await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan-request/{scan_id}")
 
     # Re-post with one *extraneous* field copied from GET (scan_id)
     bad_body = {
@@ -1367,7 +1452,7 @@ async def test_210__post_with_get_fields__single_bad_field(
             rf"\('scan_id' was unexpected\) for url: {rc.address}/scan"
         ),
     ):
-        await rc.request("POST", "/scan", bad_body)
+        await request_and_validate(rc, OPENAPI_SPEC, "POST", "/scan", bad_body)
 
 
 async def test_215__post_with_get_fields__multiple_bad_fields(
@@ -1387,7 +1472,7 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
         "3.4.0",
     )
     scan_id = manifest["scan_id"]
-    sr = await rc.request("GET", f"/scan-request/{scan_id}")
+    sr = await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan-request/{scan_id}")
 
     # Build a body that reuses the same event via i3_event_id (valid),
     # but also injects *extraneous* GET-resp fields that should be rejected.
@@ -1415,7 +1500,7 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
             rf".* for url: {rc.address}/scan"
         ),
     ):
-        await rc.request("POST", "/scan", bad_body)
+        await request_and_validate(rc, OPENAPI_SPEC, "POST", "/scan", bad_body)
 
 
 ########################################################################################
@@ -1449,9 +1534,9 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     # bad url -- generic 404 error because this endpoint does not exits (no handler)
     with pytest.raises(
         requests.exceptions.HTTPError,
-            match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
+        match=re.escape(f"404 Client Error: Not Found for url: {rc.address}/event"),
     ):
-        await rc.request("GET", "/event")
+        await request_and_validate(rc, OPENAPI_SPEC, "GET", "/event")
 
     _log_delimiter()
 
@@ -1476,7 +1561,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             rf".* for url: {rc.address}/scan"
         ),
     ):
-        await rc.request("POST", "/scan", {})
+        await request_and_validate(rc, OPENAPI_SPEC, "POST", "/scan", {})
     _log_delimiter()
 
     # # bad-type body-arg
@@ -1497,8 +1582,12 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                 # prefix here and let the reason be anything.
                 match=rf"400 Client Error: '{arg}': .+ for url: {rc.address}/scan",
             ):
-                await rc.request(
-                    "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, arg: bad_val}
+                await request_and_validate(
+                    rc,
+                    OPENAPI_SPEC,
+                    "POST",
+                    "/scan",
+                    {**POST_SCAN_BODY_FOR_TEST_300, arg: bad_val},
                 )
             _log_delimiter()
 
@@ -1522,8 +1611,12 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                 rf" for url: {rc.address}/scan"
             ),
         ):
-            await rc.request(
-                "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "cluster": bad_val}
+            await request_and_validate(
+                rc,
+                OPENAPI_SPEC,
+                "POST",
+                "/scan",
+                {**POST_SCAN_BODY_FOR_TEST_300, "cluster": bad_val},
             )
         _log_delimiter()
 
@@ -1540,7 +1633,9 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             match = rf"400 Client Error: '{arg}' is a required property for url: {rc.address}/scan"
         with pytest.raises(requests.exceptions.HTTPError, match=re.escape(match)):
             # remove arg from body
-            await rc.request(
+            await request_and_validate(
+                rc,
+                OPENAPI_SPEC,
                 "POST",
                 "/scan",
                 {k: v for k, v in POST_SCAN_BODY_FOR_TEST_300.items() if k != arg},
@@ -1552,8 +1647,12 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
         requests.exceptions.HTTPError,
         match=rf"400 Client Error: argument docker_tag: image not found for url: {rc.address}/scan",
     ):
-        await rc.request(
-            "POST", "/scan", {**POST_SCAN_BODY_FOR_TEST_300, "docker_tag": "foo"}
+        await request_and_validate(
+            rc,
+            OPENAPI_SPEC,
+            "POST",
+            "/scan",
+            {**POST_SCAN_BODY_FOR_TEST_300, "docker_tag": "foo"},
         )
     _log_delimiter()
 
@@ -1566,8 +1665,11 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     )
     scan_id = manifest["scan_id"]
     # follow-up query
-    assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
-    resp = await rc.request("GET", f"/scan/{scan_id}")
+    assert (
+        await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/result")
+        == {}
+    )
+    resp = await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}")
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
     _log_delimiter()
@@ -1577,8 +1679,11 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     #
     manifest = await _server_reply_with_event_metadata(rc, scan_id, manifest)
     # follow-up query
-    assert await rc.request("GET", f"/scan/{scan_id}/result") == {}
-    resp = await rc.request("GET", f"/scan/{scan_id}")
+    assert (
+        await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/result")
+        == {}
+    )
+    resp = await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}")
     assert resp["manifest"] == manifest
     assert resp["result"] == {}
     _log_delimiter()
@@ -1616,7 +1721,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     #         f"422 Client Error: Attempted progress update with an empty object ({{}}) for url: {rc.address}/scan/{scan_id}/manifest"
     #     ),
     # ):
-    #     await rc.request("PATCH", f"/scan/{scan_id}/manifest", {"progress": {}})
+    #     await request_and_validate(rc, OPENAPI_SPEC, "PATCH", f"/scan/{scan_id}/manifest", {"progress": {}})
     # # bad-type body-arg
     for bad_val in ["Done", ["a", "b", "c"]]:  # type: ignore[assignment]
         with pytest.raises(
@@ -1630,8 +1735,12 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                 rf" for url: {rc.address}/scan/{scan_id}/manifest"
             ),
         ):
-            await rc.request(
-                "PATCH", f"/scan/{scan_id}/manifest", {"progress": bad_val}
+            await request_and_validate(
+                rc,
+                OPENAPI_SPEC,
+                "PATCH",
+                f"/scan/{scan_id}/manifest",
+                {"progress": bad_val},
             )
         _log_delimiter()
 
@@ -1668,12 +1777,18 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             rf".* for url: {rc.address}/scan/{scan_id}/result"
         ),
     ):
-        await rc.request("PUT", f"/scan/{scan_id}/result", {})
+        await request_and_validate(
+            rc, OPENAPI_SPEC, "PUT", f"/scan/{scan_id}/result", {}
+        )
     _log_delimiter()
 
     # # empty body-arg -- no error, doesn't do anything but return {}
-    ret = await rc.request(
-        "PUT", f"/scan/{scan_id}/result", {"skyscan_result": {}, "is_final": True}
+    ret = await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
+        "PUT",
+        f"/scan/{scan_id}/result",
+        {"skyscan_result": {}, "is_final": True},
     )
     assert ret == {}
     _log_delimiter()
@@ -1692,7 +1807,9 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
                 rf" for url: {rc.address}/scan/{scan_id}/result"
             ),
         ):
-            await rc.request(
+            await request_and_validate(
+                rc,
+                OPENAPI_SPEC,
                 "PUT",
                 f"/scan/{scan_id}/result",
                 {"skyscan_result": bad_val, "is_final": True},
@@ -1703,7 +1820,9 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     result = await _send_result(rc, scan_id, manifest, True)
     # wait as long as the server, so it'll mark as complete
     await asyncio.sleep(test_wait_before_teardown + 1)
-    manifest = await rc.request("GET", f"/scan/{scan_id}/manifest")
+    manifest = await request_and_validate(
+        rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/manifest"
+    )
     assert await _is_scan_complete(rc, manifest["scan_id"])  # workforce is done
     _log_delimiter()
 
@@ -1720,7 +1839,13 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             f"(must use `delete_completed_scan=True`) for url: {rc.address}/scan"
         ),
     ):
-        await rc.request("DELETE", f"/scan/{scan_id}", {"delete_completed_scan": False})
+        await request_and_validate(
+            rc,
+            OPENAPI_SPEC,
+            "DELETE",
+            f"/scan/{scan_id}",
+            {"delete_completed_scan": False},
+        )
     _log_delimiter()
 
     with pytest.raises(
@@ -1730,7 +1855,7 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             f"(must use `delete_completed_scan=True`) for url: {rc.address}/scan"
         ),
     ):
-        await rc.request("DELETE", f"/scan/{scan_id}")
+        await request_and_validate(rc, OPENAPI_SPEC, "DELETE", f"/scan/{scan_id}")
     _log_delimiter()
 
     # OK

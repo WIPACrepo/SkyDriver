@@ -6,10 +6,11 @@ from typing import Any, Callable
 from unittest import mock
 from unittest.mock import AsyncMock
 
-from rest_tools.client import RestClient
-
 import skydriver
 import skydriver.images  # noqa: F401  # export
+from rest_tools.client import RestClient
+from rest_tools.openapi_tools import request_and_validate
+from skydriver.config import OPENAPI_SPEC
 
 skydriver.config.config_logging()
 
@@ -42,16 +43,16 @@ async def test_00(
 ) -> None:
     """Test backlog job starting."""
     rc = server()
-    await rc.request("POST", "/scan", POST_SCAN_BODY)
+    await request_and_validate(rc, OPENAPI_SPEC, "POST", "/scan", POST_SCAN_BODY)
 
-    print_it(await rc.request("GET", "/scans/backlog"))
+    print_it(await request_and_validate(rc, OPENAPI_SPEC, "GET", "/scans/backlog"))
 
     await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
 
     # call counts
     kapitsj_mock.assert_called_once()
 
-    print_it(await rc.request("GET", "/scans/backlog"))
+    print_it(await request_and_validate(rc, OPENAPI_SPEC, "GET", "/scans/backlog"))
 
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
@@ -65,13 +66,13 @@ async def test_01(
     # request workers
     for _ in range(N_JOBS):
         await asyncio.sleep(0)  # allow backlog runner to do its thing
-        await rc.request("POST", "/scan", POST_SCAN_BODY)
+        await request_and_validate(rc, OPENAPI_SPEC, "POST", "/scan", POST_SCAN_BODY)
 
     # inspect
-    print_it(await rc.request("GET", "/scans/backlog"))
+    print_it(await request_and_validate(rc, OPENAPI_SPEC, "GET", "/scans/backlog"))
     for i in range(N_JOBS):
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
-        print_it(await rc.request("GET", "/scans/backlog"))
+        print_it(await request_and_validate(rc, OPENAPI_SPEC, "GET", "/scans/backlog"))
         # call counts
         assert kapitsj_mock.call_count >= i + 1  # in case runner is faster
     # call counts
@@ -82,7 +83,7 @@ async def test_01(
     # any extra calls?
     assert kapitsj_mock.call_count == N_JOBS
 
-    print_it(await rc.request("GET", "/scans/backlog"))
+    print_it(await request_and_validate(rc, OPENAPI_SPEC, "GET", "/scans/backlog"))
 
 
 @mock.patch("skydriver.k8s.utils.KubeAPITools.start_job")
@@ -96,22 +97,28 @@ async def test_10(
     # request workers
     for i in range(N_JOBS):
         await asyncio.sleep(0)  # allow backlog runner to do its thing
-        resp = await rc.request("POST", "/scan", POST_SCAN_BODY)
+        resp = await request_and_validate(
+            rc, OPENAPI_SPEC, "POST", "/scan", POST_SCAN_BODY
+        )
         # not asserting len in case runner is faster
-        print_it(await rc.request("GET", "/scans/backlog"))
+        print_it(await request_and_validate(rc, OPENAPI_SPEC, "GET", "/scans/backlog"))
         # delete
         if i in [1, 3]:
-            print_it(await rc.request("DELETE", f"/scan/{resp['scan_id']}"))
+            print_it(
+                await request_and_validate(
+                    rc, OPENAPI_SPEC, "DELETE", f"/scan/{resp['scan_id']}"
+                )
+            )
 
     # NOTE: KubeAPITools.start_job() should be called:
     #   1x for each scan POST and 1x for each DELETE,
     #   *unless* the scan is deleted before the backlog starts it (then, just 1x)
 
     # inspect
-    print_it(await rc.request("GET", "/scans/backlog"))
+    print_it(await request_and_validate(rc, OPENAPI_SPEC, "GET", "/scans/backlog"))
     for i in range(N_JOBS - 2):
         await asyncio.sleep(skydriver.config.ENV.SCAN_BACKLOG_RUNNER_DELAY * 1.01)
-        print_it(await rc.request("GET", "/scans/backlog"))
+        print_it(await request_and_validate(rc, OPENAPI_SPEC, "GET", "/scans/backlog"))
         # call counts
         assert kapitsj_mock.call_count >= i + 1  # in case runner is faster
     # call counts
@@ -122,5 +129,7 @@ async def test_10(
     # any extra calls?
     assert kapitsj_mock.call_count == N_JOBS - 2
 
-    print_it(await rc.request("GET", "/scans/backlog"))
-    assert not (await rc.request("GET", "/scans/backlog"))["entries"]
+    print_it(await request_and_validate(rc, OPENAPI_SPEC, "GET", "/scans/backlog"))
+    assert not (await request_and_validate(rc, OPENAPI_SPEC, "GET", "/scans/backlog"))[
+        "entries"
+    ]
