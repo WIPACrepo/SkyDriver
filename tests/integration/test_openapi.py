@@ -1,18 +1,13 @@
 """Integration tests for the openapi endpoint and spec."""
 
+import copy
 import json
 from collections.abc import Callable
-from typing import Any
 
 import pytest
 from rest_tools.client import RestClient
 from rest_tools.openapi_tools import request_and_validate
-
 from skydriver.config import OPENAPI_DICT, OPENAPI_PATH, OPENAPI_SPEC
-
-
-def print_it(obj: Any) -> None:
-    print(json.dumps(obj, indent=4))
 
 
 @pytest.mark.order("first")  # check any issues with the spec before other route tests
@@ -22,22 +17,20 @@ async def test_00(server: Callable[[], RestClient]) -> None:
 
     # get spec from server endpoint
     spec_from_resp = await rc.request("GET", "/openapi.json")
-    for k in list(spec_from_resp["info"].keys()):  # so to change size during iteration
-        # check that the schema was populated correctly
-        assert spec_from_resp["info"][k], (
-            f"full info fields: {spec_from_resp['info']!r}"
-        )
-        # don't include extra 'info' fields populated @ runtime
-        if k not in ("title", "version"):
-            spec_from_resp["info"].pop(k)
+    spec_from_resp.pop("info")  # exists but server adds to it -- remove to compare
 
     # get spec from disk
     with open(OPENAPI_PATH, "rb") as f:
         spec_on_disk = json.load(f)
+        spec_on_disk.pop("info")  # exists but server adds to it -- remove to compare
+
+    # get spec from (server) in-memory
+    spec_server_memory = copy.deepcopy(OPENAPI_DICT)
+    spec_server_memory.pop("info")  # exists but server adds to it -- remove to compare
 
     # assert all the specs are the same
     assert spec_on_disk == spec_from_resp  # disk vs response
-    assert spec_on_disk == OPENAPI_DICT  # disk vs (server) in-memory
+    assert spec_on_disk == spec_server_memory  # disk vs (server) in-memory
 
     # now, for fun, let's validate the getter's response
     await request_and_validate(rc, OPENAPI_SPEC, "GET", "/openapi.json")
