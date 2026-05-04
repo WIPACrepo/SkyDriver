@@ -7,6 +7,7 @@ from collections.abc import Callable
 import pytest
 from rest_tools.client import RestClient
 from rest_tools.openapi_tools import request_and_validate
+
 from skydriver.config import OPENAPI_DICT, OPENAPI_PATH, OPENAPI_SPEC
 
 
