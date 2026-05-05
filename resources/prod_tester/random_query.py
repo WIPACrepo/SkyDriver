@@ -5,10 +5,41 @@ This will makes sure everything that should be accessible is accessible.
 
 import argparse
 import asyncio
+import logging
 import pprint
 import random
+from pathlib import Path
 
-from . import test_runner
+from rest_tools.client import RestClient, SavedDeviceGrantAuth
+
+
+def get_rest_client(skydriver_type: str) -> RestClient:
+    """Get REST client for talking to SkyDriver.
+
+    This will present a QR code in the terminal for initial validation.
+    """
+    match skydriver_type:
+        case "prod":
+            name = "skydriver"
+        case "dev":
+            name = "skydriver-dev"
+        case _:
+            raise ValueError(f"Unknown skydriver type {skydriver_type}")
+
+    skydriver_url = f"https://{name}.icecube.aq"
+    logging.info(f"connecting to {skydriver_url}...")
+
+    # NOTE: If your script will not be interactive (like a cron job),
+    # then you need to first run your script manually to validate using
+    # the QR code in the terminal.
+
+    return SavedDeviceGrantAuth(
+        skydriver_url,
+        token_url="https://keycloak.icecube.wisc.edu/auth/realms/IceCube",
+        filename=str(Path(f"~/device-refresh-token-{name}").expanduser().resolve()),
+        client_id="skydriver-external",
+        retries=0,
+    )
 
 
 # Function to split list into chunks
@@ -34,7 +65,7 @@ async def main():
     )
     args = parser.parse_args()
 
-    rc = test_runner.get_rest_client(args.skydriver_type)
+    rc = get_rest_client(args.skydriver_type)
 
     # 1: get all the scan_ids (not too large)
     print("POST @ /scans/find ...")
@@ -56,7 +87,7 @@ async def main():
 
     # 2: re-find
     total = 0
-    versions = {"v1.0": [], "v1.1": []}
+    versions = {"v1.0": [], "v1.1": [], "v1.2": [], "other": []}
     for chunk_scan_ids in chunk_list(scan_ids, 10):
         print("POST @ /scans/find ...")
         resp = await rc.request(
@@ -64,7 +95,8 @@ async def main():
             "/scans/find",
             {
                 "filter": {"scan_id": {"$in": chunk_scan_ids}},
-                "include_deleted": True,
+                # "include_deleted": True,
+                "manifest_projection": "*",
             },
         )
         pprint.pprint(resp)
@@ -93,7 +125,7 @@ async def main():
 
     # 4. query each scan
     for i, scan_id in enumerate(scan_ids):
-        print(f"various queries for {scan_id} ({i+1}/{len(scan_ids)}) ...")
+        print(f"various queries for {scan_id} ({i + 1}/{len(scan_ids)}) ...")
         #
         print(f"GET @ /scan/{scan_id} ...")
         resp = await rc.request("GET", f"/scan/{scan_id}", {"include_deleted": True})
