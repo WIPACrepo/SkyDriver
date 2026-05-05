@@ -1014,12 +1014,9 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
             {"scan_id": scan_id},
             projection=["i3_event_id", "event_i3live_json_dict"],
         )
-        i3_event_id = doc["i3_event_id"]
-        event_i3live_json_dict = doc["event_i3live_json_dict"]
-        del doc
 
-        # look up event in collection
-        if i3_event_id:
+        # look up event in collection -- see caveat in 'else'
+        if i3_event_id := doc.get("i3_event_id"):
             try:
                 i3_event = await self.db.i3_events.find_one_field(
                     {"i3_event_id": i3_event_id}, "json_dict"
@@ -1034,7 +1031,7 @@ class ScanI3EventHandler(BaseSkyDriverHandler):
                 )
         # unless, this is an old scan -- where the whole dict was stored w/ the manifest
         else:
-            i3_event = event_i3live_json_dict
+            i3_event = doc["event_i3live_json_dict"]
 
         self.write({"i3_event": i3_event})
 

@@ -8,6 +8,7 @@ import asyncio
 import logging
 import pprint
 import random
+from collections import defaultdict
 from pathlib import Path
 
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
@@ -87,7 +88,7 @@ async def main():
 
     # 2: re-find
     total = 0
-    versions = {"v1.0": [], "v1.1": [], "v1.2": [], "other": []}
+    versions = defaultdict(list)
     for chunk_scan_ids in chunk_list(scan_ids, 10):
         print("POST @ /scans/find ...")
         resp = await rc.request(
@@ -95,17 +96,16 @@ async def main():
             "/scans/find",
             {
                 "filter": {"scan_id": {"$in": chunk_scan_ids}},
-                # "include_deleted": True,
-                "manifest_projection": "*",
+                "include_deleted": True,
             },
         )
         pprint.pprint(resp)
         print(f"found {len(resp['manifests'])}/{len(chunk_scan_ids)} scans (subset)")
         total += len(resp["manifests"])
         for m in resp["manifests"]:
-            if m["i3_event_id"]:
+            if m.get("i3_event_id"):
                 versions["v1.2"].append(m["scan_id"])
-            elif isinstance(m["event_i3live_json_dict"], dict):
+            elif "i3_event_id" not in m:
                 versions["<=v1.1"].append(m["scan_id"])
             else:
                 versions["other"].append(m["scan_id"])
