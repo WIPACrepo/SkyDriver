@@ -6,7 +6,6 @@ import time
 from pymongo import ASCENDING, DESCENDING
 from tornado import web
 from wipac_dev_tools.mongo_jsonschema_tools import (
-    DocumentNotFoundException,
     MongoDoc,
     MongoJSONSchemaValidatedCollection,
 )
