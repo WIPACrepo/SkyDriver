@@ -159,8 +159,6 @@ class ScanBacklogHelper:
                 ("timestamp", ASCENDING),  # then, oldest
             ],
         )
-        if not entry:  # TODO: remove when we're no longer using `_collection`
-            raise DocumentNotFoundException("No backlog entries found")
         LOGGER.debug(f"got backlog entry & marked as pending ({entry['scan_id']=})")
 
         if (
