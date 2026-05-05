@@ -148,9 +148,7 @@ class ScanBacklogHelper:
             mongo_filter.update({"priority": {"$gte": SCAN_MIN_PRIORITY_TO_START_ASAP}})
 
         # atomically find & update; raises DocumentNotFoundException if no match
-        # TODO: don't use `_collection` once PR is closed:
-        #   https://github.com/WIPACrepo/wipac-dev-tools/pull/182
-        entry: MongoDoc | None = await scan_backlog._collection.find_one_and_update(
+        entry: MongoDoc | None = await scan_backlog.find_one_and_update(
             mongo_filter,
             {
                 "$set": {"pending_timestamp": time.time()},
