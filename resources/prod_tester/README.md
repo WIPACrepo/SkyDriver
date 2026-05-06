@@ -1,11 +1,10 @@
 # `resources/prod_tester/`
 
-Manual testing tools for validating a live SkyDriver instance.
-Neither script is part of CI — they require a human, a real cluster, and
-real Keycloak credentials.
+> Manual testing tools for validating a live SkyDriver instance.
+> Neither script is part of CI — they require a human, a real cluster, and
+> real Keycloak credentials.
 
-Both scripts accept `--skydriver dev|prod` to target the dev or prod
-instance respectively.
+Both scripts accept `--skydriver dev|prod` to target the dev or prod instance respectively.
 
 ---
 
@@ -44,10 +43,9 @@ instance and compares results against upstream expected outputs.
 | `--compare-only`             | Skip launching; just diff results from the last sandbox   |
 | `--dry-run`                  | Build the test plan but don't send anything to SkyDriver  |
 
-**Sandbox:** `prod_tester.py` creates a `test-suite-sandbox/` directory
-alongside itself. Each run rotates the previous sandbox to a `.tar` archive.
-Cached upstream files (events, expected results, compare script) are preserved
-across rotations.
+> 📦 **Sandbox:** `prod_tester.py` creates a `test-suite-sandbox/` directory alongside itself.
+> Each run rotates the previous sandbox to a `.tar` archive. Cached upstream files
+> (events, expected results, compare script) are preserved across rotations.
 
 **Example:**
 
@@ -118,3 +116,6 @@ Both scripts use `SavedDeviceGrantAuth` (device grant flow via Keycloak).
 On first run, a QR code is presented in the terminal for validation.
 The refresh token is cached at `~/device-refresh-token-skydriver[-dev]`
 for subsequent runs.
+
+> ⚠️ If running non-interactively (cron, CI), authenticate manually first to
+> prime the token cache.
