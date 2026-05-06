@@ -60,6 +60,7 @@ tests = [
     'pytest-order',
 ]
 prod-test = [
+    'rich',
     'texttable',
 ]
 mypy = [
