@@ -435,7 +435,7 @@ class SingleScanToolbox:
         return manifest  # type: ignore[no-any-return]
 
     @staticmethod
-    async def monitor(rc: RestClient, test: TestParamSet) -> dict:  # noqa: C901
+    async def monitor(rc: RestClient, test: TestParamSet) -> dict:  # noqa: C901, PLR0915
         """Monitor an event scan until done; return the result."""
         if test.log_file is not None:
             out_cm: contextlib.AbstractContextManager = open(test.log_file, "w")

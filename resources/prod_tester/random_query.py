@@ -68,7 +68,7 @@ def chunk_list(data, size):
         yield data[i : i + size]
 
 
-async def main():
+async def main():  # noqa: PLR0915
     parser = argparse.ArgumentParser(
         description="Launch and monitor a scan for an event",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
