@@ -47,6 +47,11 @@ jobs:
           set -euo pipefail
           python -m pip install -r docs/requirements.txt
 
+      - name: "Post-process openapi.json — multi-type arrays to anyOf"
+        run: |
+          set -euo pipefail
+          python docs/openapi_postprocess.py skydriver/openapi.json skydriver/openapi.json
+
       - name: "Generate SkyDriver schemas RST"
         run: |
           set -euo pipefail
