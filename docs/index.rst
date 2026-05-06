@@ -6,13 +6,7 @@
 
 .. toctree::
    :hidden:
-   :caption: API — Endpoints
+   :caption: API
 
    apis/skydriver
-
-
-.. toctree::
-   :hidden:
-   :caption: API — Objects
-
    apis/_generated/skydriver-objects
