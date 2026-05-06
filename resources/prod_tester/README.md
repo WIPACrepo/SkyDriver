@@ -102,6 +102,16 @@ python random_query.py --skydriver dev --sample 0.05
 
 ---
 
+## Setup
+
+```bash
+pip install -r requirements.txt
+```
+
+Dependencies for both scripts are combined in the single `requirements.txt` in this directory.
+
+---
+
 ## Auth
 
 Both scripts use `SavedDeviceGrantAuth` (device grant flow via Keycloak).
