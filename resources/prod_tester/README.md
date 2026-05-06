@@ -7,6 +7,7 @@
 Both scripts accept `--skydriver dev|prod` to target the dev or prod instance respectively.
 
 ---
+<br>
 
 ## Scripts
 
@@ -58,6 +59,7 @@ python prod_tester.py \
 ```
 
 ---
+<br>
 
 ### 🔍 `random_query.py` — REST API smoke test
 
@@ -99,6 +101,7 @@ python random_query.py --skydriver dev --sample 0.05
 ```
 
 ---
+<br>
 
 ## 🛠️ Setup
 
@@ -109,6 +112,7 @@ pip install -r requirements.txt
 Dependencies for both scripts are combined in the single `requirements.txt` in this directory.
 
 ---
+<br>
 
 ## 🔐 Auth
 
