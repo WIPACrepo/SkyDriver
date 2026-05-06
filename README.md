@@ -15,7 +15,7 @@ A SaaS Solution for Neutrino Event Reconstruction using the Skymap Scanner
     <dt><sub>Keywords</sub></dt>
     <dd><sub>WIPAC&nbsp;&nbsp;·&nbsp;&nbsp;IceCube&nbsp;&nbsp;·&nbsp;&nbsp;Skymap Scanner&nbsp;&nbsp;·&nbsp;&nbsp;Reconstruction&nbsp;&nbsp;·&nbsp;&nbsp;IceTray&nbsp;&nbsp;·&nbsp;&nbsp;EWMS</sub></dd>
     <dt><sub>URLs</sub></dt>
-    <dd><sub><a href='https://github.com/WIPACrepo/SkyDriver'>Homepage</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href='https://github.com/WIPACrepo/SkyDriver/issues'>Tracker</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href='https://github.com/WIPACrepo/SkyDriver'>Source</a></sub></dd>
+    <dd><sub><a href='https://github.com/WIPACrepo/SkyDriver'>Homepage</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href='https://github.com/WIPACrepo/SkyDriver/issues'>Tracker</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href='https://github.com/WIPACrepo/SkyDriver'>Source</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href='https://wipacrepo.github.io/SkyDriver'>Documentation</a></sub></dd>
 </dl>
 
 <br>
