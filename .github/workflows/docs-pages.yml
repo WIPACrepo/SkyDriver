@@ -1,0 +1,82 @@
+name: Build SkyDriver docs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skydriver-docs-pages
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '**'
+  workflow_dispatch:
+
+env:
+  PAGES_ARTIFACT_NAME: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+  EWMS_DOCS_RAW: https://raw.githubusercontent.com/Observation-Management-Service/ewms-docs/main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+        with:
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: "Fetch shared docs files from ewms-docs"
+        run: |
+          set -euo pipefail
+          curl -sSL --fail "$EWMS_DOCS_RAW/docs/requirements.txt" -o docs/requirements.txt
+          curl -sSL --fail "$EWMS_DOCS_RAW/scripts/generate_api_objects_rst.py" -o /tmp/generate_api_objects_rst.py
+
+      - name: Install docs dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install -r docs/requirements.txt
+
+      - name: "Generate SkyDriver schemas RST"
+        run: |
+          set -euo pipefail
+          python /tmp/generate_api_objects_rst.py \
+              skydriver/openapi.json \
+              docs/apis/_generated/skydriver-objects.rst \
+              --title "Object Glossary"
+
+      - name: Build docs
+        run: |
+          set -euo pipefail
+          sphinx-build -b html docs docs/_build/html
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          name: ${{ env.PAGES_ARTIFACT_NAME }}
+          path: docs/_build/html
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: ${{ env.PAGES_ARTIFACT_NAME }}

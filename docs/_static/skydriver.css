@@ -1,0 +1,4 @@
+/* Widen the main content area — RTD default is 800px */
+.wy-nav-content {
+    max-width: 1000px !important;
+}
