@@ -20,9 +20,10 @@ import shutil
 import subprocess
 import sys
 import tarfile
+from collections.abc import Iterator
 from datetime import date, datetime
 from pathlib import Path
-from typing import Iterator, TextIO
+from typing import TextIO
 
 import requests
 import texttable  # type: ignore[import-untyped]
@@ -113,7 +114,7 @@ class DryRunException(Exception):
 class TestException(Exception):
     """Raised for any per-test error; carries the offending TestParamSet."""
 
-    def __init__(self, message: str, test: "TestParamSet"):
+    def __init__(self, message: str, test: TestParamSet):
         super().__init__(message)
         self.test = test
 
