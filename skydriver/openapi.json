@@ -905,7 +905,7 @@
                                     "properties": {
                                         "scan_state": {
                                             "type": "string",
-                                            "description": "The computed state of the scan. Successful: `SCAN_HAS_FINAL_RESULT`. In-progress codes (in reverse order of occurrence): `IN_PROGRESS__PARTIAL_RESULT_GENERATED`, `IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO`, `PENDING__WAITING_ON_CLUSTER_STARTUP` or `PENDING__WAITING_ON_SCANNER_SERVER_STARTUP`, `PENDING__PRESTARTUP`. Stopped/aborted equivalents are the matching `STOPPED__*` codes. NOTE: A failed scan may not transition to a `STOPPED__*` code automatically and may need a `DELETE` request to transition; until then, it retains its non-finished state code.",
+                                            "description": "The computed state of the scan. Successful: `SCAN_HAS_FINAL_RESULT`. In-progress codes (in reverse order of occurrence): `IN_PROGRESS__PARTIAL_RESULT_GENERATED`, `IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO`, `PENDING__WAITING_ON_CLUSTER_STARTUP` or `PENDING__WAITING_ON_SCANNER_SERVER_STARTUP`, `PENDING__PRESTARTUP`. Stopped/aborted equivalents are the matching `STOPPED__*` codes. NOTE: A failed scan may not transition to a `STOPPED__*` code automatically and may need a `DELETE` request to transition; until then, it retains its non-finished state code."
                                         },
                                         "is_deleted": {
                                             "$ref": "#/components/schemas/Manifest/properties/is_deleted"
