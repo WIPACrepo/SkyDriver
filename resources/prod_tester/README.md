@@ -53,7 +53,7 @@ instance and compares results against upstream expected outputs.
 python prod_tester.py \
   --skydriver dev \
   --cluster osg \
-  --n-workers 10 \
+  --n-workers 1000 \
   --repull-tests false
 ```
 
@@ -116,6 +116,3 @@ Both scripts use `SavedDeviceGrantAuth` (device grant flow via Keycloak).
 On first run, a QR code is presented in the terminal for validation.
 The refresh token is cached at `~/device-refresh-token-skydriver[-dev]`
 for subsequent runs.
-
-> ⚠️ If running non-interactively (cron, CI), authenticate manually first to
-> prime the token cache.
