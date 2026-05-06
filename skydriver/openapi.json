@@ -201,7 +201,8 @@
                                         "description": "Any tag on Docker Hub (including `latest`). Must also be on CVMFS (not checked here). Cannot be empty / whitespace-only."
                                     },
                                     "scanner_server_memory_bytes": {
-                                        "$ref": "#/components/schemas/DataSize"
+                                        "$ref": "#/components/schemas/DataSize",
+                                        "description": "How much memory (in bytes) to request for the scanner server."
                                     },
                                     "scanner_server_memory": {
                                         "$ref": "#/components/schemas/DataSize",
@@ -209,7 +210,8 @@
                                         "description": "Alias for `scanner_server_memory_bytes`."
                                     },
                                     "worker_memory_bytes": {
-                                        "$ref": "#/components/schemas/DataSize"
+                                        "$ref": "#/components/schemas/DataSize",
+                                        "description": "How much memory (in bytes) to request per client worker."
                                     },
                                     "worker_memory": {
                                         "$ref": "#/components/schemas/DataSize",
@@ -227,7 +229,8 @@
                                         "description": "DEPRECATED -- use `worker_memory_bytes`. Server will reject any truthy value."
                                     },
                                     "worker_disk_bytes": {
-                                        "$ref": "#/components/schemas/DataSize"
+                                        "$ref": "#/components/schemas/DataSize",
+                                        "description": "How much disk (in bytes) to request per client worker."
                                     },
                                     "worker_disk": {
                                         "$ref": "#/components/schemas/DataSize",
@@ -235,7 +238,8 @@
                                         "description": "Alias for `worker_disk_bytes`."
                                     },
                                     "request_clusters": {
-                                        "$ref": "#/components/schemas/RequestClusters"
+                                        "$ref": "#/components/schemas/RequestClusters",
+                                        "description": "The worker cluster(s) to use, along with the number of workers for each. Example: `{\"osg\": 1234}`. To request a cluster more than once, provide a list of 2-lists instead, e.g. `[[\"osg\", 56], [\"osg\", 1234]]`."
                                     },
                                     "cluster": {
                                         "$ref": "#/components/schemas/RequestClusters",
@@ -272,15 +276,18 @@
                                         "description": "Nside configuration for the scan (strict dict)."
                                     },
                                     "real_or_simulated_event": {
-                                        "$ref": "#/components/schemas/RealOrSimulatedEvent"
+                                        "$ref": "#/components/schemas/RealOrSimulatedEvent",
+                                        "description": "Whether this event is real or simulated. Allowed values: `real`, `simulated`."
                                     },
                                     "predictive_scanning_threshold": {
                                         "$ref": "#/components/schemas/Manifest/properties/progress/oneOf/0/properties/predictive_scanning_threshold",
-                                        "default": 1.0
+                                        "default": 1.0,
+                                        "description": "The predictive scanning threshold, in `[0.1, 1.0]`. See https://github.com/icecube/skymap_scanner."
                                     },
                                     "max_pixel_reco_time": {
                                         "type": "integer",
-                                        "minimum": 1
+                                        "minimum": 1,
+                                        "description": "The maximum time (in seconds) each pixel's reco should take. Accurate values evict pixels from slow workers and re-deliver them to faster workers; slow workers are unavoidable due to non-deterministic errors."
                                     },
                                     "debug_mode": {
                                         "description": "DebugMode flag. Accepts a single value or a list of values. Currently `client-logs` is the only defined value; extend the enum as the `DebugMode` Python enum grows.",
@@ -329,7 +336,8 @@
                                         }
                                     },
                                     "priority": {
-                                        "$ref": "#/components/schemas/Manifest/properties/priority"
+                                        "$ref": "#/components/schemas/Manifest/properties/priority",
+                                        "description": "Relative priority of this scan; higher values indicate higher priority. Values `>= 100` are reserved for Realtime alert scans (these scan requests are not throttled). See https://htcondor.readthedocs.io/en/latest/users-manual/priorities-and-preemption.html#job-priority for HTCondor priority semantics."
                                     },
                                     "scanner_server_env_from_user": {
                                         "$ref": "#/components/schemas/ScannerServerEnvFromUser",
@@ -342,7 +350,8 @@
                                         "description": "Alias for `scanner_server_env_from_user`."
                                     },
                                     "manifest_projection": {
-                                        "$ref": "#/components/schemas/ManifestProjection"
+                                        "$ref": "#/components/schemas/ManifestProjection",
+                                        "description": "Which `Manifest` fields to include in the response. Include `*` to include all fields."
                                     }
                                 }
                             }
@@ -896,7 +905,7 @@
                                     "properties": {
                                         "scan_state": {
                                             "type": "string",
-                                            "description": "Computed scan state (see `get_scan_state`)."
+                                            "description": "The computed state of the scan. Successful: `SCAN_HAS_FINAL_RESULT`. In-progress codes (in reverse order of occurrence): `IN_PROGRESS__PARTIAL_RESULT_GENERATED`, `IN_PROGRESS__WAITING_ON_FIRST_PIXEL_RECO`, `PENDING__WAITING_ON_CLUSTER_STARTUP` or `PENDING__WAITING_ON_SCANNER_SERVER_STARTUP`, `PENDING__PRESTARTUP`. Stopped/aborted equivalents are the matching `STOPPED__*` codes. NOTE: A failed scan may not transition to a `STOPPED__*` code automatically and may need a `DELETE` request to transition; until then, it retains its non-finished state code.",
                                         },
                                         "is_deleted": {
                                             "$ref": "#/components/schemas/Manifest/properties/is_deleted"
