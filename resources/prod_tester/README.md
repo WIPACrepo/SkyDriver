@@ -10,7 +10,7 @@ Both scripts accept `--skydriver dev|prod` to target the dev or prod instance re
 
 ## Scripts
 
-### 🧪 `prod_tester.py` — Full integration test suite
+### 🏋️ `prod_tester.py` — Full integration test suite
 
 Runs (or re-runs) the `skymap_scanner` test suite against a live SkyDriver
 instance and compares results against upstream expected outputs.
