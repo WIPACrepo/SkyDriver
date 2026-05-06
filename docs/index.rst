@@ -2,3 +2,17 @@
 
 .. include:: ../README.md
    :parser: myst_parser.sphinx_
+
+
+.. toctree::
+   :hidden:
+   :caption: API — Endpoints
+
+   apis/skydriver
+
+
+.. toctree::
+   :hidden:
+   :caption: API — Objects
+
+   apis/_generated/skydriver-objects
