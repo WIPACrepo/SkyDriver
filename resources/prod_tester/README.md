@@ -10,7 +10,7 @@ Both scripts accept `--skydriver dev|prod` to target the dev or prod instance re
 
 ## Scripts
 
-### `prod_tester.py` — Full integration test suite
+### 🧪 `prod_tester.py` — Full integration test suite
 
 Runs (or re-runs) the `skymap_scanner` test suite against a live SkyDriver
 instance and compares results against upstream expected outputs.
@@ -59,7 +59,7 @@ python prod_tester.py \
 
 ---
 
-### `random_query.py` — REST API smoke test
+### 🔍 `random_query.py` — REST API smoke test
 
 Walks the SkyDriver REST API broadly and confirms everything that should be
 accessible is accessible. No scan launches, no result comparison — purely a
@@ -100,7 +100,7 @@ python random_query.py --skydriver dev --sample 0.05
 
 ---
 
-## Setup
+## 🛠️ Setup
 
 ```bash
 pip install -r requirements.txt
@@ -110,7 +110,7 @@ Dependencies for both scripts are combined in the single `requirements.txt` in t
 
 ---
 
-## Auth
+## 🔐 Auth
 
 Both scripts use `SavedDeviceGrantAuth` (device grant flow via Keycloak).
 On first run, a QR code is presented in the terminal for validation.
