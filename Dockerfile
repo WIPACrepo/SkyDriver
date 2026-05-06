@@ -1,4 +1,5 @@
-FROM python:3.13
+ARG PY_VERSION=3.14
+FROM python:$PY_VERSION
 
 RUN useradd -m -U app
 

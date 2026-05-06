@@ -12,6 +12,7 @@ import aiocache  # type: ignore[import-untyped]
 import yaml
 from dateutil import parser
 from rest_tools.client import ClientCredentialsAuth, RestClient
+from wipac_dev_tools.mongo_jsonschema_tools import MongoDoc
 
 from .. import ewms, images
 from ..config import (
@@ -21,7 +22,6 @@ from ..config import (
     SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS,
     sdict,
 )
-from ..database.schema import Manifest
 from ..images import get_skyscan_cvmfs_apptainer_image_path
 
 LOGGER = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class SkyScanK8sJobFactory:
         debug_mode: list[DebugMode],
         # env
         scanner_server_env_from_user: dict,
-        request_clusters: list,
+        request_clusters: list[list[str | int]],
         max_pixel_reco_time: int,
         priority: int,
         worker_disk_bytes: int,
@@ -244,7 +244,7 @@ class SkyScanK8sJobFactory:
             f" --cache-dir {SkyScanK8sJobFactory.COMMON_SPACE_VOLUME_PATH} "
             # f" --output-dir {common_space_volume_path} "  # output is sent to skydriver
             f" --client-startup-json {SkyScanK8sJobFactory._STARTUP_JSON_FPATH} "
-            f" --nsides {' '.join(f'{n}:{x}' for n,x in nsides.items())} "  # k1:v1 k2:v2
+            f" --nsides {' '.join(f'{n}:{x}' for n, x in nsides.items())} "  # k1:v1 k2:v2
             f" {'--real-event' if is_real_event else '--simulated-event'} "
             f" --predictive-scanning-threshold {predictive_scanning_threshold} "
         )
@@ -258,7 +258,7 @@ class EnvVarFactory:
     def make_ewms_envvars(
         docker_tag: str,
         #
-        request_clusters: list,
+        request_clusters: list[list[str | int]],
         #
         max_pixel_reco_time: int,
         debug_mode: list[DebugMode],
@@ -275,7 +275,7 @@ class EnvVarFactory:
                 "EWMS_CLIENT_ID": ENV.EWMS_CLIENT_ID,
                 "EWMS_CLIENT_SECRET": ENV.EWMS_CLIENT_SECRET,
                 #
-                "EWMS_CLUSTERS": " ".join(cname for cname, _ in request_clusters),
+                "EWMS_CLUSTERS": " ".join(str(c[0]) for c in request_clusters),  # names
                 "EWMS_N_WORKERS": request_clusters[0][1],
                 #
                 "EWMS_TASK_IMAGE": str(
@@ -387,15 +387,15 @@ class LogWrangler:
     """Tools for retrieving logs."""
 
     @staticmethod
-    def get_scan_start_time(manifest: Manifest) -> int:
+    def get_scan_start_time(manifest: MongoDoc) -> int:
         """Get the timestamp for when the scan started."""
-        if manifest.progress:  # the scan has started
-            if ret := manifest.progress.start:
+        if manifest["progress"]:  # the scan has started
+            if ret := manifest["progress"]["start"]:
                 return ret
             # 'ret==None' for a started scan probably indicates the scan is pre-v2
             try:
                 dt = parser.parse(
-                    manifest.progress.processing_stats.start["scanner start"]
+                    manifest["progress"]["processing_stats"]["start"]["scanner start"]
                 )
                 return int(dt.timestamp())
             except Exception as e:
@@ -403,7 +403,7 @@ class LogWrangler:
                 pass
 
         # fall-through
-        return int(manifest.timestamp)  # when the scan was requested
+        return int(manifest["timestamp"])  # when the scan was requested
 
     @staticmethod
     def _get_grafana_logs_url(scan_id: str, end_timestamp: int | None) -> str:
@@ -414,8 +414,8 @@ class LogWrangler:
         )
         if end_timestamp:
             url += (
-                f"&from={(end_timestamp-SCANNER_LOGS_GRAFANA_WINDOW_SEC)*1000}"
-                f"&to={end_timestamp*1000}"
+                f"&from={(end_timestamp - SCANNER_LOGS_GRAFANA_WINDOW_SEC) * 1000}"
+                f"&to={end_timestamp * 1000}"
             )
         return url
 
@@ -463,10 +463,10 @@ class LogWrangler:
             return None
 
     @staticmethod
-    async def assemble_scanner_server_logs_url(manifest: Manifest) -> str:
+    async def assemble_scanner_server_logs_url(manifest: MongoDoc) -> str:
         """Get the URL pointing to a web dashboard for viewing the scanner server's logs."""
         start = LogWrangler.get_scan_start_time(manifest)
         logs_end_ts = await LogWrangler._query_prometheus_for_timerange(
-            manifest.scan_id, start
+            manifest["scan_id"], start
         )
-        return LogWrangler._get_grafana_logs_url(manifest.scan_id, logs_end_ts)
+        return LogWrangler._get_grafana_logs_url(manifest["scan_id"], logs_end_ts)
