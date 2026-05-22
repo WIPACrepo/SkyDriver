@@ -136,7 +136,8 @@
                     "400": {
                         "$ref": "#/components/responses/Error400"
                     }
-                }
+                },
+                "description": "See `Manifest <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#manifest>`__."
             }
         },
         "/scans/backlog": {
@@ -168,7 +169,8 @@
                             }
                         }
                     }
-                }
+                },
+                "description": "See `ScanBacklogEntry <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#scanbacklogentry>`__."
             }
         },
         "/scan": {
@@ -372,7 +374,8 @@
                     "400": {
                         "$ref": "#/components/responses/Error400"
                     }
-                }
+                },
+                "description": "See `Manifest <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#manifest>`__, `ScanRequestObj <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#scanrequestobj>`__."
             }
         },
         "/scan-request/{scan_id}": {
@@ -401,7 +404,8 @@
                     "404": {
                         "$ref": "#/components/responses/Error404"
                     }
-                }
+                },
+                "description": "See `ScanRequestObj <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#scanrequestobj>`__."
             }
         },
         "/scan/{scan_id}/actions/rescan": {
@@ -460,7 +464,8 @@
                     "404": {
                         "$ref": "#/components/responses/Error404"
                     }
-                }
+                },
+                "description": "See `Manifest <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#manifest>`__."
             }
         },
         "/scan/{scan_id}/actions/add-workers": {
@@ -584,7 +589,8 @@
                     "404": {
                         "$ref": "#/components/responses/Error404"
                     }
-                }
+                },
+                "description": "See `ManifestAndResultResponse <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#manifestandresultresponse>`__."
             },
             "delete": {
                 "tags": [
@@ -634,7 +640,8 @@
                     "404": {
                         "$ref": "#/components/responses/Error404"
                     }
-                }
+                },
+                "description": "See `ManifestAndResultResponse <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#manifestandresultresponse>`__."
             }
         },
         "/scan/{scan_id}/manifest": {
@@ -683,7 +690,8 @@
                     "404": {
                         "$ref": "#/components/responses/Error404"
                     }
-                }
+                },
+                "description": "See `Manifest <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#manifest>`__."
             },
             "patch": {
                 "tags": [
@@ -733,7 +741,8 @@
                     "404": {
                         "$ref": "#/components/responses/Error404"
                     }
-                }
+                },
+                "description": "See `Manifest <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#manifest>`__."
             }
         },
         "/scan/{scan_id}/i3-event": {
@@ -771,7 +780,8 @@
                     "404": {
                         "$ref": "#/components/responses/Error404"
                     }
-                }
+                },
+                "description": "See `I3Event <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#i3event>`__."
             }
         },
         "/scan/{scan_id}/result": {
@@ -817,7 +827,8 @@
                     "404": {
                         "$ref": "#/components/responses/Error404"
                     }
-                }
+                },
+                "description": "See `Result <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#result>`__."
             },
             "put": {
                 "tags": [
@@ -872,7 +883,8 @@
                     "400": {
                         "$ref": "#/components/responses/Error400"
                     }
-                }
+                },
+                "description": "See `Result <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#result>`__."
             }
         },
         "/scan/{scan_id}/status": {
@@ -936,7 +948,8 @@
                     "404": {
                         "$ref": "#/components/responses/Error404"
                     }
-                }
+                },
+                "description": "See `Manifest <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#manifest>`__."
             }
         },
         "/scan/{scan_id}/logs": {
@@ -973,7 +986,8 @@
                     "404": {
                         "$ref": "#/components/responses/Error404"
                     }
-                }
+                },
+                "description": "See `LogUrlLink <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#logurllink>`__."
             }
         },
         "/scan/{scan_id}/ewms/workflow-id": {
@@ -1025,7 +1039,8 @@
                     "404": {
                         "$ref": "#/components/responses/Error404"
                     }
-                }
+                },
+                "description": "See `Manifest <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#manifest>`__."
             },
             "post": {
                 "tags": [
@@ -1076,7 +1091,8 @@
                     "404": {
                         "$ref": "#/components/responses/Error404"
                     }
-                }
+                },
+                "description": "See `Manifest <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#manifest>`__."
             }
         },
         "/scan/{scan_id}/ewms/workforce": {
