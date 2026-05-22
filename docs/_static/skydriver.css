@@ -2,3 +2,8 @@
 .wy-nav-content {
     max-width: 1000px !important;
 }
+
+/* word wrap table cells */
+.rst-content table.docutils td {
+    word-break: break-word;
+}
