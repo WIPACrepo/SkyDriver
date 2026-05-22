@@ -210,7 +210,7 @@ class SkymapScannerRepoFileFetcher:
             return
         except requests.exceptions.HTTPError as e:
             # only fall back on 404; any other HTTP error is a real error
-            if e.response.status_code != 404:
+            if e.response and e.response.status_code != 404:
                 raise
 
         # Fallback: try .pkl upstream, then convert -> .json
