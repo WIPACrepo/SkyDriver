@@ -58,7 +58,8 @@ jobs:
           python /tmp/generate_api_objects_rst.py \
               skydriver/openapi.json \
               docs/apis/_generated/skydriver-objects.rst \
-              --title "Object Glossary"
+              --title "Object Glossary" \
+              --endpoints-url "https://wipacrepo.github.io/SkyDriver/apis/skydriver.html"
 
       - name: Build docs
         run: |
