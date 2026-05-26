@@ -1225,7 +1225,7 @@
         "schemas": {
             "Manifest": {
                 "type": "object",
-                "description": "The central scan data object (represents the `Manifest` dataclass from `schema.py`). All deeply nested sub-shapes (progress, event_metadata, classifiers, processing stats) live inline here; other schemas `$ref` into them via JSON pointer.",
+                "description": "The central scan data object.",
                 "required": [
                     "scan_id",
                     "timestamp",
@@ -1494,7 +1494,7 @@
             },
             "Result": {
                 "type": "object",
-                "description": "Physics results for a scan (represents the `Result` dataclass). Shares `scan_id` with Manifest.",
+                "description": "Physics results for a scan.",
                 "required": [
                     "scan_id",
                     "skyscan_result",
@@ -1515,7 +1515,7 @@
             },
             "ScanBacklogEntry": {
                 "type": "object",
-                "description": "An entry for the scan backlog used for rate-limiting (represents the `ScanBacklogEntry` dataclass). Shares `scan_id` and `priority` with Manifest.",
+                "description": "An entry for the scan backlog used for rate-limiting.",
                 "required": [
                     "scan_id",
                     "timestamp"
@@ -1553,7 +1553,7 @@
             },
             "ScanRequestObj": {
                 "type": "object",
-                "description": "Persisted scan-request object (the input used to start a scan). Returned by GET /scan-request/{scan_id}. Not a dataclass in Python; this schema is used by DB-validation tooling. Fields shared with Manifest `$ref` into Manifest.",
+                "description": "Persisted scan-request object (the input used to start a scan).",
                 "additionalProperties": true,
                 "required": [
                     "scan_id",
@@ -1670,7 +1670,7 @@
             },
             "ManifestAndResultResponse": {
                 "type": "object",
-                "description": "Common envelope used by GET and DELETE on `/scan/{scan_id}`: the manifest plus (optionally) the persisted result.",
+                "description": "The manifest plus (optionally) the persisted result.",
                 "required": [
                     "manifest",
                     "result"
