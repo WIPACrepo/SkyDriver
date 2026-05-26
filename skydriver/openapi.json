@@ -1223,151 +1223,6 @@
             }
         },
         "schemas": {
-            "Error": {
-                "type": "object",
-                "properties": {
-                    "error": {
-                        "type": "string"
-                    },
-                    "reason": {
-                        "type": "string"
-                    },
-                    "message": {
-                        "type": "string"
-                    }
-                },
-                "additionalProperties": true
-            },
-            "FreeFormObject": {
-                "type": "object",
-                "additionalProperties": true,
-                "description": "Open-ended JSON object (keys and values unrestricted). Used wherever the shape is owned by an external system or the requestor."
-            },
-            "RealOrSimulatedEvent": {
-                "type": "string",
-                "enum": [
-                    "real",
-                    "real_event",
-                    "sim",
-                    "simulated",
-                    "simulated_event"
-                ],
-                "description": "Event-type classification. `real*` values map to real events; `sim*` to simulation."
-            },
-            "LogUrlLink": {
-                "type": "object",
-                "description": "A `{url}` wrapper pointing at a log endpoint. The URL is nullable while the log source is unavailable.",
-                "required": [
-                    "url"
-                ],
-                "properties": {
-                    "url": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    }
-                }
-            },
-            "DataSize": {
-                "description": "Human-friendly size string (e.g. `'1GB'`, `'512MB'`) parseable by `humanfriendly.parse_size`, or raw integer bytes.",
-                "oneOf": [
-                    {
-                        "type": "string",
-                        "minLength": 1,
-                        "pattern": "\\S",
-                        "description": "Cannot be empty / whitespace-only. Must be parseable by `humanfriendly.parse_size` (more detailed validation is performed server-side)."
-                    },
-                    {
-                        "type": "integer",
-                        "minimum": 0
-                    }
-                ]
-            },
-            "ManifestProjection": {
-                "description": "Fields to include in the returned manifest. Either `\"*\"` (all allowed fields) or an explicit array of field names. Omit the field entirely for the default (all fields, minus the disallowed ones on /scans/find). NOTE: under the legacy arghandler implementation, array values were silently broken (stringified via `type=str`); the OpenAPI-validated implementation is expected to accept both forms and normalize to a set server-side before the disallowed-fields check and `dict_projection`.",
-                "oneOf": [
-                    {
-                        "type": "string",
-                        "enum": [
-                            "*"
-                        ]
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string",
-                            "minLength": 1,
-                            "pattern": "\\S",
-                            "description": "Field name. Cannot be empty / whitespace-only. (Pattern is intentionally permissive to allow Mongo-style dotted keys.)"
-                        },
-                        "uniqueItems": true
-                    }
-                ]
-            },
-            "RequestClusters": {
-                "description": "Either a dict `{cluster_location: n_workers}` OR a list of `[cluster_location, n_workers]` 2-tuples. Use the list form to request the same cluster more than once.",
-                "oneOf": [
-                    {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "integer",
-                            "minimum": 1
-                        },
-                        "minProperties": 1,
-                        "propertyNames": {
-                            "minLength": 1,
-                            "pattern": "\\S"
-                        }
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "array",
-                            "minItems": 2,
-                            "maxItems": 2,
-                            "prefixItems": [
-                                {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "pattern": "\\S",
-                                    "description": "cluster_location. Cannot be empty / whitespace-only."
-                                },
-                                {
-                                    "type": "integer",
-                                    "minimum": 1
-                                }
-                            ]
-                        },
-                        "minItems": 1
-                    }
-                ]
-            },
-            "ScannerServerEnvFromUser": {
-                "type": "object",
-                "description": "User-provided env-vars injected into the scanner server k8s job. Scalar values only. Limits are intentionally looser than the classifier input shape because env-var values (URLs, PATHs, tokens, etc.) routinely exceed 25 chars.",
-                "additionalProperties": {
-                    "oneOf": [
-                        {
-                            "type": "string",
-                            "maxLength": 4096
-                        },
-                        {
-                            "type": "boolean"
-                        },
-                        {
-                            "type": "number"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "maxProperties": 25,
-                "propertyNames": {
-                    "maxLength": 128
-                }
-            },
             "Manifest": {
                 "type": "object",
                 "description": "The central scan data object (represents the `Manifest` dataclass from `schema.py`). All deeply nested sub-shapes (progress, event_metadata, classifiers, processing stats) live inline here; other schemas `$ref` into them via JSON pointer.",
@@ -1836,6 +1691,151 @@
                             }
                         ]
                     }
+                }
+            },
+            "Error": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "string"
+                    },
+                    "reason": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": true
+            },
+            "FreeFormObject": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "Open-ended JSON object (keys and values unrestricted). Used wherever the shape is owned by an external system or the requestor."
+            },
+            "RealOrSimulatedEvent": {
+                "type": "string",
+                "enum": [
+                    "real",
+                    "real_event",
+                    "sim",
+                    "simulated",
+                    "simulated_event"
+                ],
+                "description": "Event-type classification. `real*` values map to real events; `sim*` to simulation."
+            },
+            "LogUrlLink": {
+                "type": "object",
+                "description": "A `{url}` wrapper pointing at a log endpoint. The URL is nullable while the log source is unavailable.",
+                "required": [
+                    "url"
+                ],
+                "properties": {
+                    "url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                }
+            },
+            "DataSize": {
+                "description": "Human-friendly size string (e.g. `'1GB'`, `'512MB'`) parseable by `humanfriendly.parse_size`, or raw integer bytes.",
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S",
+                        "description": "Cannot be empty / whitespace-only. Must be parseable by `humanfriendly.parse_size` (more detailed validation is performed server-side)."
+                    },
+                    {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                ]
+            },
+            "ManifestProjection": {
+                "description": "Fields to include in the returned manifest. Either `\"*\"` (all allowed fields) or an explicit array of field names. Omit the field entirely for the default (all fields, minus the disallowed ones on /scans/find). NOTE: under the legacy arghandler implementation, array values were silently broken (stringified via `type=str`); the OpenAPI-validated implementation is expected to accept both forms and normalize to a set server-side before the disallowed-fields check and `dict_projection`.",
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "enum": [
+                            "*"
+                        ]
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "pattern": "\\S",
+                            "description": "Field name. Cannot be empty / whitespace-only. (Pattern is intentionally permissive to allow Mongo-style dotted keys.)"
+                        },
+                        "uniqueItems": true
+                    }
+                ]
+            },
+            "RequestClusters": {
+                "description": "Either a dict `{cluster_location: n_workers}` OR a list of `[cluster_location, n_workers]` 2-tuples. Use the list form to request the same cluster more than once.",
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "minProperties": 1,
+                        "propertyNames": {
+                            "minLength": 1,
+                            "pattern": "\\S"
+                        }
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "pattern": "\\S",
+                                    "description": "cluster_location. Cannot be empty / whitespace-only."
+                                },
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            ]
+                        },
+                        "minItems": 1
+                    }
+                ]
+            },
+            "ScannerServerEnvFromUser": {
+                "type": "object",
+                "description": "User-provided env-vars injected into the scanner server k8s job. Scalar values only. Limits are intentionally looser than the classifier input shape because env-var values (URLs, PATHs, tokens, etc.) routinely exceed 25 chars.",
+                "additionalProperties": {
+                    "oneOf": [
+                        {
+                            "type": "string",
+                            "maxLength": 4096
+                        },
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "maxProperties": 25,
+                "propertyNames": {
+                    "maxLength": 128
                 }
             }
         }
