@@ -6,6 +6,9 @@ on:
     branches: [ '**' ]
     tags-ignore: [ '**' ]
 
+permissions:  # default for all jobs (GITHUB_TOKEN) -- jobs widen as needed
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   # don't cancel on main/master/default
@@ -90,6 +93,9 @@ jobs:
 
   py-dependencies:
     runs-on: ubuntu-latest
+    permissions:  # for GITHUB_TOKEN
+      contents: read
+      actions: read  # look up prior runs' artifacts
     steps:
       - uses: actions/checkout@v7
         with:
@@ -318,7 +324,8 @@ jobs:
       - release-version
     uses: WIPACrepo/wipac-dev-workflows/.github/workflows/tag-and-release.yml@v1.35
     permissions:  # for GITHUB_TOKEN
-      contents: write
+      contents: write  # push git tag, create GitHub release
+      actions: read  # download this run's artifacts for the release
     with:
       project-type: python
       python-version: "${{ fromJSON(needs.py-versions.outputs.matrix)[0] }}"
@@ -333,7 +340,8 @@ jobs:
       - release-version
     uses: WIPACrepo/wipac-dev-workflows/.github/workflows/image-publish.yml@v1.35
     permissions:  # for GITHUB_TOKEN
-      packages: write
+      contents: read
+      packages: write  # push image to ghcr.io
     with:
       image_namespace: wipacrepo
       image_name: skydriver

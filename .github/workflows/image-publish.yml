@@ -11,11 +11,15 @@ on:
         default: 'dev'
         required: false
 
+permissions:  # default for all jobs (GITHUB_TOKEN) -- jobs widen as needed
+  contents: read
+
 jobs:
   image-publish:
     uses: WIPACrepo/wipac-dev-workflows/.github/workflows/image-publish.yml@v1.35
-    permissions: # for GITHUB_TOKEN
-      packages: write
+    permissions:  # for GITHUB_TOKEN
+      contents: read
+      packages: write  # push image to ghcr.io
     with:
       image_namespace: wipacrepo
       image_name: skydriver
