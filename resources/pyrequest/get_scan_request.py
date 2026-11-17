@@ -10,9 +10,10 @@ import json
 import logging
 from typing import Any
 
-from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
+from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[import-not-found]
 
-logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
 
 
 async def main() -> None:
@@ -38,7 +39,7 @@ async def main() -> None:
     rc = get_rest_client(args.skydriver_type)
 
     for scan_id in args.scan_ids:
-        logging.info(f"Fetching stored request for scan_id={scan_id}")
+        LOGGER.info(f"Fetching stored request for scan_id={scan_id}")
         source: dict[str, Any] = await rc.request("GET", f"/scan-request/{scan_id}")
         print(f"\n=== scan {scan_id} ===", flush=True)
         print(json.dumps(source, indent=4), flush=True)
@@ -46,4 +47,4 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-    logging.info("Done.")
+    LOGGER.info("Done.")

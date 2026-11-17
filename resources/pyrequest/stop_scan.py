@@ -8,19 +8,20 @@ import asyncio
 import json
 import logging
 
-from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
+from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[import-not-found]
 
-logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
 
 
 async def stop_scan(rc, scan_id):
     """Request a stop for a single scan."""
     try:
-        logging.info(f"Requesting scan to be stopped: {scan_id}")
+        LOGGER.info(f"Requesting scan to be stopped: {scan_id}")
         resp = await rc.request("DELETE", f"/scan/{scan_id}")
         print(f"Scan {scan_id} response:\n{json.dumps(resp, indent=4)}", flush=True)
-    except Exception as e:
-        logging.error(f"Failed to stop scan {scan_id}: {e}")
+    except Exception as e:  # noqa: BLE001  # report failure for this scan, then continue
+        LOGGER.error(f"Failed to stop scan {scan_id}: {e}")
 
 
 async def main():
@@ -54,4 +55,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-    logging.info("Done.")
+    LOGGER.info("Done.")

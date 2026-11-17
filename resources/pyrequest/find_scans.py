@@ -8,9 +8,10 @@ import asyncio
 import json
 import logging
 
-from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
+from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[import-not-found]
 
-logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
 
 
 async def main():
@@ -37,7 +38,7 @@ async def main():
 
     rc = get_rest_client(args.skydriver_type)
 
-    logging.info(f"getting manifest for scans w/ {args.query}")
+    LOGGER.info(f"getting manifest for scans w/ {args.query}")
     resp = await rc.request(
         "POST",
         "/scans/find",
@@ -48,10 +49,10 @@ async def main():
     )
     print(json.dumps(resp, indent=4), flush=True)
     print(len(resp), flush=True)
-    for key in resp.keys():
+    for key in resp:
         print(f"{key}: {len(resp[key])}")
 
 
 if __name__ == "__main__":
     asyncio.run(main())
-    logging.info("Done.")
+    LOGGER.info("Done.")

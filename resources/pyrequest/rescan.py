@@ -5,11 +5,11 @@ import asyncio
 import logging
 
 import wipac_dev_tools
+from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[import-not-found]
 from rest_tools.client import RestClient
 
-from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
-
-logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
 
 
 async def rescan(
@@ -28,10 +28,10 @@ async def rescan(
                 "replace_scan": replace_scan,
             },
         )
-        logging.info(f"Requested rescan: old={scan_id} | new={manifest['scan_id']}")
+        LOGGER.info(f"Requested rescan: old={scan_id} | new={manifest['scan_id']}")
         return manifest["scan_id"]
-    except Exception as e:
-        logging.error(f"Failed to rescan {scan_id}: {e}")
+    except Exception as e:  # noqa: BLE001  # report failure for this scan, then continue
+        LOGGER.error(f"Failed to rescan {scan_id}: {e}")
         return "error"
 
 
@@ -76,10 +76,10 @@ async def main():
     for scan_id in args.scan_ids:
         new_ids.append(await rescan(rc, scan_id, args.abort_first, args.replace_scan))
 
-    logging.info(f"new ids: {" ".join(new_ids)}")
-    logging.info(f"n={len(new_ids)}")
+    LOGGER.info(f"new ids: {" ".join(new_ids)}")
+    LOGGER.info(f"n={len(new_ids)}")
 
 
 if __name__ == "__main__":
     asyncio.run(main())
-    logging.info("Done.")
+    LOGGER.info("Done.")

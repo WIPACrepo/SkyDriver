@@ -23,8 +23,8 @@ def _kube_test_credentials(k8s_batch_api: kubernetes.client.BatchV1Api) -> None:
     try:
         api_response = k8s_batch_api.get_api_resources()
         LOGGER.debug(api_response)
-    except ApiException as e:
-        LOGGER.exception(e)
+    except ApiException:
+        LOGGER.exception("k8s credentials test failed")
         raise
 
 

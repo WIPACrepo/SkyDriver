@@ -160,12 +160,14 @@ class ScansFindHandler(BaseSkyDriverHandler):
 
     ROUTE = r"/scans/find$"
 
-    DISALLOWED_FIELDS = {
-        # these can be so large that it can blow up memory
-        "ewms_task",
-        "event_i3live_json_dict",
-        "event_i3live_json_dict__hash",
-    }
+    DISALLOWED_FIELDS = frozenset(
+        {
+            # these can be so large that it can blow up memory
+            "ewms_task",
+            "event_i3live_json_dict",
+            "event_i3live_json_dict__hash",
+        }
+    )
 
     @service_account_auth(roles=[USER_ACCT])  # type: ignore
     @openapi_tools.validate_request(config.OPENAPI_SPEC)
@@ -286,7 +288,7 @@ def _validate_all_known_request_clusters(
     """
     # spec allows {'osg': 1500, ...} OR [['osg', 1500], ...]; database needs list form
     if isinstance(request_clusters, dict):
-        request_clusters = list([k, v] for k, v in request_clusters.items())
+        request_clusters = [[k, v] for k, v in request_clusters.items()]
     for name, _ in request_clusters:
         if name not in KNOWN_CLUSTERS:
             msg = f"requested unknown cluster: {name} (available: {', '.join(KNOWN_CLUSTERS.keys())})"
@@ -379,64 +381,62 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
         #    Note: type validation is done by OpenAPI spec, via '@openapi_tools.validate_request()'
         #    Deprecated aliases are coalesced inline via `or` chains.
         try:
-            scan_request_obj = dict(
-                scan_id=make_scan_id(),
-                rescan_ids=[],
-                #
-                docker_tag=await images.resolve_docker_tag(
+            scan_request_obj = {
+                "scan_id": make_scan_id(),
+                "rescan_ids": [],
+                "docker_tag": await images.resolve_docker_tag(
                     self.get_argument("docker_tag")
                 ),
                 #
                 # skyscan server config
-                scanner_server_memory_bytes=_to_bytes(
+                "scanner_server_memory_bytes": _to_bytes(
                     self.get_argument("scanner_server_memory_bytes", None)
                     or self.get_argument("scanner_server_memory", None)  # DEPRECATED
                     or ENV.K8S_SCANNER_MEM_REQUEST__DEFAULT  # default
                 ),
-                reco_algo=self.get_argument("reco_algo"),
-                nsides=self.get_argument("nsides"),
-                real_or_simulated_event=self.get_argument("real_or_simulated_event"),
-                predictive_scanning_threshold=self.get_argument(
+                "reco_algo": self.get_argument("reco_algo"),
+                "nsides": self.get_argument("nsides"),
+                "real_or_simulated_event": self.get_argument("real_or_simulated_event"),
+                "predictive_scanning_threshold": self.get_argument(
                     "predictive_scanning_threshold", 1.0
                 ),
-                #
-                classifiers=_validate_classifiers_fields(
+                "classifiers": _validate_classifiers_fields(
                     self.get_argument("classifiers", {})
                 ),
                 #
                 # cluster (condor) config
-                request_clusters=_validate_all_known_request_clusters(
+                "request_clusters": _validate_all_known_request_clusters(
                     self.get_argument("request_clusters", None)  # see last 'or'
                     or self.get_argument("cluster", None)  # DEPRECATED
                     or _raise_missing_argument_400("request_clusters")  # it's required
                 ),
-                worker_memory_bytes=_to_bytes(
+                "worker_memory_bytes": _to_bytes(
                     self.get_argument("worker_memory_bytes", None)
                     or self.get_argument("worker_memory", None)  # DEPRECATED
                     or ENV.EWMS_WORKER_MEMORY__DEFAULT  # default
                 ),
-                worker_disk_bytes=_to_bytes(
+                "worker_disk_bytes": _to_bytes(
                     self.get_argument("worker_disk_bytes", None)
                     or self.get_argument("worker_disk", None)  # DEPRECATED
                     or ENV.EWMS_WORKER_DISK__DEFAULT  # default
                 ),
-                max_pixel_reco_time=self.get_argument("max_pixel_reco_time"),
-                priority=self.get_argument("priority", 0),
-                debug_mode=[
+                "max_pixel_reco_time": self.get_argument("max_pixel_reco_time"),
+                "priority": self.get_argument("priority", 0),
+                "debug_mode": [
                     d.value for d in _debug_mode(self.get_argument("debug_mode", []))
                 ],
                 #
                 # misc
-                i3_event_id=await self._get_i3_event_id(  # foreign key to i3_event collection
+                "i3_event_id": await self._get_i3_event_id(  # foreign key to i3_event collection
                     self.get_argument("i3_event_id", ""),
                     self.get_argument("event_i3live_json", {}),  # str | object
                 ),
-                scanner_server_env_from_user=(
+                "scanner_server_env_from_user": (
                     self.get_argument("scanner_server_env_from_user", None)
                     or self.get_argument("scanner_server_env", None)  # DEPRECATED
                     or {}  # default
                 ),
-            )
+            }
         except ImageNotFoundException as e:
             raise web.HTTPError(
                 400,
@@ -449,9 +449,9 @@ class ScanLauncherHandler(BaseSkyDriverHandler):
                 reason=f"argument docker_tag: {e}",
                 log_message=repr(e),
             )
-        except web.HTTPError as e:
-            raise e
-        except Exception as e:
+        except web.HTTPError:
+            raise
+        except Exception as e:  # noqa: BLE001  # any other failure here is a bad request
             raise web.HTTPError(
                 400,
                 reason="unspecified validation error",
@@ -530,48 +530,47 @@ async def enqueue_scan(
 
     # put in db (do before k8s start so if k8s fail, we can debug using db's info)
     LOGGER.debug("creating new manifest")
-    manifest = dict(
-        scan_id=scan_id,
-        timestamp=time.time(),
-        is_deleted=False,
+    manifest = {
+        "scan_id": scan_id,
+        "timestamp": time.time(),
+        "is_deleted": False,
         #
         # args placed in k8s job obj
-        scanner_server_args=obfuscate_cl_args(scanner_server_args),
+        "scanner_server_args": obfuscate_cl_args(scanner_server_args),
         #
         # EWMS interface
-        ewms_workflow_id=(  # id points to info in EWMS
+        "ewms_workflow_id": (  # id points to info in EWMS
             _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS
             # ^^^ set once the workflow request has been sent to EWMS (see scan launcher)
         ),
-        ewms_address=None,  # used to differentiate EWMS instances/environments
-        ewms_task=(  # **DEPRECATED**
+        "ewms_address": None,  # used to differentiate EWMS instances/environments
+        "ewms_task": (  # **DEPRECATED**
             DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER
             # ^^^ was used in skydriver 1.x to use local k8s starter/stopper
         ),
-        #
-        priority=scan_request_obj["priority"],
+        "priority": scan_request_obj["priority"],
         #
         # open to requestor
-        classifiers=scan_request_obj["classifiers"],
+        "classifiers": scan_request_obj["classifiers"],
         #
         # i3 event -- grabbed by scanner central server
-        i3_event_id=scan_request_obj["i3_event_id"],  # id to i3_event coll
-        event_i3live_json_dict=DEPRECATED_EVENT_I3LIVE_JSON_DICT__FIELD_PLACEHOLDER,  # **DEPRECATED**
-        event_i3live_json_dict__hash=None,  # **DEPRECATED**
+        "i3_event_id": scan_request_obj["i3_event_id"],  # id to i3_event coll
+        "event_i3live_json_dict": DEPRECATED_EVENT_I3LIVE_JSON_DICT__FIELD_PLACEHOLDER,  # **DEPRECATED**
+        "event_i3live_json_dict__hash": None,  # **DEPRECATED**
         #
         # found/created during first few seconds of scanning
-        event_metadata=None,
-        scan_metadata=None,  # open to scanner
+        "event_metadata": None,
+        "scan_metadata": None,  # open to scanner
         #
         # updated during scanning, multiple times
-        progress=None,
+        "progress": None,
         #
         # misc / meta
-        replaced_by_scan_id=(
+        "replaced_by_scan_id": (
             None  # pointer -> if replaced by a different scan -- used by REST redirects
         ),
-        last_updated=0.0,
-    )
+        "last_updated": 0.0,
+    }
     manifest = await manifests.find_one_and_update(
         {"scan_id": manifest["scan_id"]},
         {"$set": {**manifest, "last_updated": time.time()}},
@@ -660,14 +659,13 @@ class ScanRescanHandler(BaseSkyDriverHandler):
             self.db.skyscan_k8s_jobs,
             {
                 **scan_request_obj,
-                **{
-                    # set id
-                    "scan_id": new_scan_id,
-                    # add to 'classifiers' so the user has provenance info
-                    "classifiers": {
-                        **scan_request_obj["classifiers"],
-                        **{"rescan": True, "origin_scan_id": scan_id},
-                    },
+                # set id
+                "scan_id": new_scan_id,
+                # add to 'classifiers' so the user has provenance info
+                "classifiers": {
+                    **scan_request_obj["classifiers"],
+                    "rescan": True,
+                    "origin_scan_id": scan_id,
                 },
             },
             insert_scan_request_obj=False,
@@ -760,8 +758,8 @@ class ScanMoreWorkersHandler(BaseSkyDriverHandler):
                     "n_workers": n_workers,
                 },
             )
-        except Exception as e:  # broad b/c ewms is abstracted from user
-            LOGGER.exception(e)
+        except Exception:  # broad b/c ewms is abstracted from user
+            LOGGER.exception(f"failed to request additional workers on EWMS for {scan_id=}")
             msg = "failed to request additional workers on EWMS--contact admins"
             raise web.HTTPError(
                 500,

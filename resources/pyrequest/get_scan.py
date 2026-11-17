@@ -9,11 +9,11 @@ import json
 import logging
 from typing import Any
 
+from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[import-not-found]
 from rest_tools.client import RestClient
 
-from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
-
-logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
 
 
 def extract_keys(obj: dict[str, Any], keys: list[str] | None) -> dict[str, Any]:
@@ -53,10 +53,10 @@ async def fetch_scan_info(
     status_keys: list[str] | None,
     log_keys: list[str] | None,
 ) -> None:
-    logging.info(f"Processing scan {scan_id}")
+    LOGGER.info(f"Processing scan {scan_id}")
 
     if scan_request_keys is not None:
-        logging.info(f"Getting scan request object for scan {scan_id}")
+        LOGGER.info(f"Getting scan request object for scan {scan_id}")
         resp = await rc.request("GET", f"/scan-request/{scan_id}")
         subset = extract_keys(resp, scan_request_keys)
         print(f"\n=== Scan Request Object for scan {scan_id} ===")
@@ -64,7 +64,7 @@ async def fetch_scan_info(
         print()
 
     if manifest_keys is not None:
-        logging.info(f"Getting manifest for scan {scan_id}")
+        LOGGER.info(f"Getting manifest for scan {scan_id}")
         resp = await rc.request(
             "GET", f"/scan/{scan_id}/manifest", {"include_deleted": True}
         )
@@ -74,7 +74,7 @@ async def fetch_scan_info(
         print()
 
     if status_keys is not None:
-        logging.info(f"Getting status for scan {scan_id}")
+        LOGGER.info(f"Getting status for scan {scan_id}")
         resp = await rc.request("GET", f"/scan/{scan_id}/status")
         subset = extract_keys(resp, status_keys)
         print(f"\n=== Status for scan {scan_id} ===")
@@ -82,7 +82,7 @@ async def fetch_scan_info(
         print()
 
     if log_keys is not None:
-        logging.info(f"Getting logs for scan {scan_id}")
+        LOGGER.info(f"Getting logs for scan {scan_id}")
         resp = await rc.request("GET", f"/scan/{scan_id}/logs")
         subset = extract_keys(resp, log_keys)
         print(f"\n=== Logs for scan {scan_id} ===")
@@ -168,7 +168,7 @@ async def main() -> None:
             args.logs,
         )
 
-    logging.info("Done.")
+    LOGGER.info("Done.")
 
 
 if __name__ == "__main__":

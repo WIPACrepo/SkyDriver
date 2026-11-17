@@ -5,6 +5,8 @@ from pathlib import Path
 
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
+LOGGER = logging.getLogger(__name__)
+
 
 def get_rest_client(skydriver_type: str) -> RestClient:
     """Get REST client for talking to SkyDriver.
@@ -20,7 +22,7 @@ def get_rest_client(skydriver_type: str) -> RestClient:
             raise ValueError(f"Unknown skydriver type {skydriver_type}")
 
     skydriver_url = f"https://{name}.icecube.aq"
-    logging.info(f"connecting to {skydriver_url}...")
+    LOGGER.info(f"connecting to {skydriver_url}...")
 
     # NOTE: If your script will not be interactive (like a cron job),
     # then you need to first run your script manually to validate using

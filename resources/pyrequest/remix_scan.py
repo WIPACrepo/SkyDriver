@@ -16,10 +16,11 @@ import json
 import logging
 from typing import Any
 
-from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
-from stop_scan import stop_scan  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
+from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[import-not-found]
+from stop_scan import stop_scan  # type: ignore[import-not-found]  # ty: ignore[import-not-found]
 
-logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
 
 EXCLUDE_KEYS = ["scan_id", "rescan_ids"]
 
@@ -34,7 +35,7 @@ def init_new_scanreq(override_list: list[str]) -> dict[str, Any]:
         key, val = entry.split("=", 1)
         try:
             body[key] = json.loads(val)
-        except Exception:
+        except Exception:  # noqa: BLE001  # report failure for this scan, then continue
             body[key] = val
 
     return body
@@ -80,9 +81,9 @@ async def main():
     rc = get_rest_client(args.skydriver_type)
 
     # get source scan request object
-    logging.info(f"Fetching stored request for scan_id={args.scan_id}")
+    LOGGER.info(f"Fetching stored request for scan_id={args.scan_id}")
     source = await rc.request("GET", f"/scan-request/{args.scan_id}")
-    logging.info(f"GET '/scan-request/{args.scan_id}' resp:")
+    LOGGER.info(f"GET '/scan-request/{args.scan_id}' resp:")
     print(json.dumps(source, indent=4), flush=True)
     # -- make edits
     new_scanreq = {
@@ -90,12 +91,12 @@ async def main():
         **init_new_scanreq(args.override),
         "i3_event_id": source["i3_event_id"],
     }
-    logging.info("Constructed POST '/scan' body:")
+    LOGGER.info("Constructed POST '/scan' body:")
     print(json.dumps(new_scanreq, indent=4), flush=True)
 
     # dry run?
     if args.dry_run:
-        logging.info("Dry-run enabled; not posting.")
+        LOGGER.info("Dry-run enabled; not posting.")
         return
 
     # stop the original?
@@ -103,7 +104,7 @@ async def main():
         await stop_scan(rc, args.scan_id)
 
     # launch new scan
-    logging.info("Launching new scan...")
+    LOGGER.info("Launching new scan...")
     resp = await rc.request("POST", "/scan", new_scanreq)
     print(json.dumps(resp, indent=4), flush=True)
 
@@ -116,4 +117,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-    logging.info("Done.")
+    LOGGER.info("Done.")

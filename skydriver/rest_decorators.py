@@ -73,7 +73,7 @@ def maybe_redirect_scan_id(roles: list[str]):
                     )
                     LOGGER.warning(f"replying with redirect for {scan_id} to {new_url}")
                     return self.redirect(new_url)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # redirect is best-effort, never fatal
                 LOGGER.warning(f"failed to check for replaced_by_scan_id: {e!r}")
             # fall-through
             return await method(self, scan_id, *args, **kwargs)

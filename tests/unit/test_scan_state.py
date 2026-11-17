@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from skydriver.database.schema import (
-    DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER,
     _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+    DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER,
 )
 from skydriver.utils import get_scan_state
 
@@ -26,23 +26,23 @@ async def test_00__scan_has_final_result(
     ewms_rc = MagicMock()
     results = MagicMock(find_one_field=AsyncMock(return_value=True))
 
-    manifest = dict(
-        scan_id=MagicMock(),
-        timestamp=MagicMock(),
-        is_deleted=cast(bool, MagicMock()),
-        event_i3live_json_dict=MagicMock(),
-        scanner_server_args=MagicMock(),
+    manifest = {
+        "scan_id": MagicMock(),
+        "timestamp": MagicMock(),
+        "is_deleted": cast(bool, MagicMock()),
+        "event_i3live_json_dict": MagicMock(),
+        "scanner_server_args": MagicMock(),
         #
         # now, args that actually matter:
-        ewms_workflow_id="ewms123",
-        progress=dict(
-            spec_set=["processing_stats"],
-            processing_stats=dict(
-                spec_set=["finished"],
-                finished=processing_stats_is_finished,
-            ),
-        ),
-    )
+        "ewms_workflow_id": "ewms123",
+        "progress": {
+            "spec_set": ["processing_stats"],
+            "processing_stats": {
+                "spec_set": ["finished"],
+                "finished": processing_stats_is_finished,
+            },
+        },
+    }
 
     assert await get_scan_state(manifest, ewms_rc, results) == "SCAN_HAS_FINAL_RESULT"
 
@@ -60,27 +60,27 @@ async def test_10__partial_result_generated(ewms_dtype: str | None, state: str) 
     ewms_rc = MagicMock()
     results = MagicMock(find_one_field=AsyncMock(return_value=False))
 
-    manifest = dict(
-        scan_id=MagicMock(),
-        timestamp=MagicMock(),
-        is_deleted=cast(bool, MagicMock()),
-        event_i3live_json_dict=MagicMock(),
-        scanner_server_args=MagicMock(),
+    manifest = {
+        "scan_id": MagicMock(),
+        "timestamp": MagicMock(),
+        "is_deleted": cast(bool, MagicMock()),
+        "event_i3live_json_dict": MagicMock(),
+        "scanner_server_args": MagicMock(),
         #
         # now, args that actually matter:
-        ewms_workflow_id="ewms123",
-        progress=dict(
-            spec_set=["processing_stats"],
-            processing_stats=dict(
-                spec_set=[
+        "ewms_workflow_id": "ewms123",
+        "progress": {
+            "spec_set": ["processing_stats"],
+            "processing_stats": {
+                "spec_set": [
                     "finished",
                     "rate",
                 ],
-                finished=False,
-                rate={"abc": 123},
-            ),
-        ),
-    )
+                "finished": False,
+                "rate": {"abc": 123},
+            },
+        },
+    }
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
         assert await get_scan_state(manifest, ewms_rc, results) == state
@@ -101,27 +101,27 @@ async def test_20__waiting_on_first_pixel_reco(
     ewms_rc = MagicMock()
     results = MagicMock(find_one_field=AsyncMock(return_value=False))
 
-    manifest = dict(
-        scan_id=MagicMock(),
-        timestamp=MagicMock(),
-        is_deleted=cast(bool, MagicMock()),
-        event_i3live_json_dict=MagicMock(),
-        scanner_server_args=MagicMock(),
+    manifest = {
+        "scan_id": MagicMock(),
+        "timestamp": MagicMock(),
+        "is_deleted": cast(bool, MagicMock()),
+        "event_i3live_json_dict": MagicMock(),
+        "scanner_server_args": MagicMock(),
         #
         # now, args that actually matter:
-        ewms_workflow_id="ewms123",
-        progress=dict(
-            spec_set=["processing_stats"],
-            processing_stats=dict(
-                spec_set=[
+        "ewms_workflow_id": "ewms123",
+        "progress": {
+            "spec_set": ["processing_stats"],
+            "processing_stats": {
+                "spec_set": [
                     "finished",
                     "rate",
                 ],
-                finished=False,
-                rate=None,
-            ),
-        ),
-    )
+                "finished": False,
+                "rate": None,
+            },
+        },
+    }
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
         assert await get_scan_state(manifest, ewms_rc, results) == state
@@ -142,17 +142,17 @@ async def test_40__waiting_on_scanner_server_startup(
     ewms_rc = MagicMock()
     results = MagicMock(find_one_field=AsyncMock(return_value=False))
 
-    manifest = dict(
-        scan_id=MagicMock(),
-        timestamp=MagicMock(),
-        is_deleted=cast(bool, MagicMock()),
-        event_i3live_json_dict=MagicMock(),
-        scanner_server_args=MagicMock(),
+    manifest = {
+        "scan_id": MagicMock(),
+        "timestamp": MagicMock(),
+        "is_deleted": cast(bool, MagicMock()),
+        "event_i3live_json_dict": MagicMock(),
+        "scanner_server_args": MagicMock(),
         #
         # now, args that actually matter:
-        ewms_workflow_id="ewms123",
-        progress=None,
-    )
+        "ewms_workflow_id": "ewms123",
+        "progress": None,
+    }
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
         assert await get_scan_state(manifest, ewms_rc, results) == state
@@ -171,18 +171,18 @@ async def test_50__prestartup(ewms_dtype: str | None, state: str) -> None:
     ewms_rc = MagicMock()
     results = MagicMock(find_one_field=AsyncMock(return_value=False))
 
-    manifest = dict(
-        scan_id=MagicMock(),
-        timestamp=MagicMock(),
-        is_deleted=cast(bool, MagicMock()),
-        event_i3live_json_dict=MagicMock(),
-        scanner_server_args=MagicMock(),
+    manifest = {
+        "scan_id": MagicMock(),
+        "timestamp": MagicMock(),
+        "is_deleted": cast(bool, MagicMock()),
+        "event_i3live_json_dict": MagicMock(),
+        "scanner_server_args": MagicMock(),
         #
         # now, args that actually matter:
-        ewms_workflow_id=_NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
-        ewms_task=DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER,  # backward-compat
-        progress=None,
-    )
+        "ewms_workflow_id": _NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+        "ewms_task": DEPRECATED_EWMS_TASK__FIELD_PLACEHOLDER,  # backward-compat
+        "progress": None,
+    }
 
     with patch("skydriver.ewms.get_deactivated_type", return_value=ewms_dtype):
         assert await get_scan_state(manifest, ewms_rc, results) == state

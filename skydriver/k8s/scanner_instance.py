@@ -16,10 +16,10 @@ from wipac_dev_tools.mongo_jsonschema_tools import MongoDoc
 
 from .. import ewms, images
 from ..config import (
-    DebugMode,
     ENV,
     SCANNER_LOGS_GRAFANA_WINDOW_SEC,
     SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS,
+    DebugMode,
     sdict,
 )
 from ..images import get_skyscan_cvmfs_apptainer_image_path
@@ -49,7 +49,6 @@ class SkyScanK8sJobFactory:
 
     @staticmethod
     def make(
-        #
         docker_tag: str,
         scan_id: str,
         # scanner
@@ -88,12 +87,9 @@ class SkyScanK8sJobFactory:
 
         ewms_envvars = EnvVarFactory.make_ewms_envvars(
             docker_tag,
-            #
             request_clusters,
-            #
             max_pixel_reco_time,
             debug_mode,
-            #
             priority,
             worker_disk_bytes,
             worker_memory_bytes,
@@ -257,12 +253,9 @@ class EnvVarFactory:
     @staticmethod
     def make_ewms_envvars(
         docker_tag: str,
-        #
         request_clusters: list[list[str | int]],
-        #
         max_pixel_reco_time: int,
         debug_mode: list[DebugMode],
-        #
         priority: int,
         worker_disk_bytes: int,
         worker_memory_bytes: int,
@@ -274,21 +267,17 @@ class EnvVarFactory:
                 "EWMS_TOKEN_URL": ENV.EWMS_TOKEN_URL,
                 "EWMS_CLIENT_ID": ENV.EWMS_CLIENT_ID,
                 "EWMS_CLIENT_SECRET": ENV.EWMS_CLIENT_SECRET,
-                #
                 "EWMS_CLUSTERS": " ".join(str(c[0]) for c in request_clusters),  # names
                 "EWMS_N_WORKERS": request_clusters[0][1],
-                #
                 "EWMS_TASK_IMAGE": str(
                     get_skyscan_cvmfs_apptainer_image_path(docker_tag)
                 ),
-                #
                 "EWMS_PILOT_TIMEOUT_QUEUE_INCOMING": ENV.EWMS_PILOT_TIMEOUT_QUEUE_INCOMING,
                 "EWMS_PILOT_TASK_TIMEOUT": max_pixel_reco_time,
                 "EWMS_PILOT_QUARANTINE_TIME": max_pixel_reco_time,  # piggy-back
                 "EWMS_PILOT_DUMP_TASK_OUTPUT": bool(
                     DebugMode.CLIENT_LOGS in debug_mode
                 ),
-                #
                 "EWMS_WORKER_MAX_WORKER_RUNTIME": ENV.EWMS_MAX_WORKER_RUNTIME__DEFAULT,
                 "EWMS_WORKER_PRIORITY": priority,
                 "EWMS_WORKER_DISK_BYTES": worker_disk_bytes,
@@ -360,12 +349,9 @@ class EnvVarFactory:
         prefiltered = {
             "SKYSCAN_PROGRESS_INTERVAL_SEC": ENV.SKYSCAN_PROGRESS_INTERVAL_SEC,
             "SKYSCAN_RESULT_INTERVAL_SEC": ENV.SKYSCAN_RESULT_INTERVAL_SEC,
-            #
             "SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS": ENV.SKYSCAN_MQ_TIMEOUT_FROM_CLIENTS,
-            #
             "SKYSCAN_LOG": ENV.SKYSCAN_LOG,
             "SKYSCAN_LOG_THIRD_PARTY": ENV.SKYSCAN_LOG_THIRD_PARTY,
-            #
             "SKYSCAN_EWMS_PILOT_LOG": "WARNING",  # default is too low
             "SKYSCAN_MQ_CLIENT_LOG": "WARNING",  # default is too low
         }
@@ -398,9 +384,8 @@ class LogWrangler:
                     manifest["progress"]["processing_stats"]["start"]["scanner start"]
                 )
                 return int(dt.timestamp())
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # best-effort -- fall back to request time
                 LOGGER.error(f"could not parse scan start time: {e}")
-                pass
 
         # fall-through
         return int(manifest["timestamp"])  # when the scan was requested
@@ -438,7 +423,7 @@ class LogWrangler:
                 "last_over_time(timestamp(changes(kube_pod_container_status_running{container="
                 f'"{get_skyscan_server_container_name(scan_id)}"'
                 "}[1m])>=0)["
-                f"{str(SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS)}"
+                f"{SCANNER_LOGS_PROMETHEUS_SEARCH_WINDOW_HRS!s}"
                 "h:])"
             ),
             "start": str(search_start_ts),
@@ -456,7 +441,7 @@ class LogWrangler:
             )
             response = await rc.request("GET", "")
             return int(response.json()["data"]["result"][0]["values"][-1][-1])
-        except Exception as e:  # this is all or nothing, so except and move on
+        except Exception as e:  # noqa: BLE001  # this is all or nothing, so except and move on
             LOGGER.error(
                 f"could not get end time for scanner logs using prometheus query ({url}): {e}"
             )

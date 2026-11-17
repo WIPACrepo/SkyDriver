@@ -61,7 +61,7 @@ async def make(
         rest_handlers.ScanEWMSTaskforcesHandler,
     ]:
         try:
-            rs.add_route(getattr(klass, "ROUTE"), klass, args)
+            rs.add_route(klass.ROUTE, klass, args)
             LOGGER.info(f"Added handler: {klass.__name__}")
         except AttributeError:
             continue

@@ -17,6 +17,8 @@ import rich.progress
 import wipac_dev_tools
 from rest_tools.client import RestClient, SavedDeviceGrantAuth
 
+LOGGER = logging.getLogger(__name__)
+
 CHUNK_SIZE = 50
 
 
@@ -34,7 +36,7 @@ def get_rest_client(skydriver_type: str) -> RestClient:
             raise ValueError(f"Unknown skydriver type {skydriver_type}")
 
     skydriver_url = f"https://{name}.icecube.aq"
-    logging.info(f"connecting to {skydriver_url}...")
+    LOGGER.info(f"connecting to {skydriver_url}...")
 
     # NOTE: If your script will not be interactive (like a cron job),
     # then you need to first run your script manually to validate using
@@ -263,8 +265,6 @@ async def main():  # noqa: PLR0915
                 console,
             )
             p.advance(p_scan_indiv_breakdown["result"])
-            #
-            #
             console.rule()
             p.advance(p_scan_indiv)
 

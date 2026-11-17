@@ -13,10 +13,11 @@ from typing import Any, cast
 import humanfriendly  # type: ignore[import-untyped]
 import pytest
 import requests
-import skydriver.images  # noqa: F401  # export
 from pymongo import AsyncMongoClient
 from rest_tools.client import RestClient
 from rest_tools.openapi_tools import request_and_validate
+
+import skydriver.images  # export
 from skydriver.__main__ import setup_ewms_client
 from skydriver.config import OPENAPI_SPEC
 
@@ -102,26 +103,26 @@ async def _launch_scan(
         f"--predictive-scanning-threshold 1.0 "  # the default
     )
 
-    assert post_resp == dict(
-        scan_id=post_resp["scan_id"],  # see below
-        is_deleted=False,
-        timestamp=post_resp["timestamp"],  # see below
-        event_i3live_json_dict__hash=None,  # field has been deprecated, always 'None'
-        event_i3live_json_dict="use 'i3_event_id'",  # field has been deprecated
-        i3_event_id=post_resp["i3_event_id"],  # see below
-        event_metadata=None,
-        scan_metadata=None,
-        progress=None,
-        scanner_server_args=post_resp["scanner_server_args"],  # see below
-        ewms_task="use 'ewms_workflow_id'",
-        ewms_workflow_id=NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
-        ewms_address=None,
-        classifiers=post_scan_body["classifiers"],
-        last_updated=post_resp["last_updated"],  # see below
-        priority=0,
-        replaced_by_scan_id=None,
+    assert post_resp == {
+        "scan_id": post_resp["scan_id"],  # see below
+        "is_deleted": False,
+        "timestamp": post_resp["timestamp"],  # see below
+        "event_i3live_json_dict__hash": None,  # field has been deprecated, always 'None'
+        "event_i3live_json_dict": "use 'i3_event_id'",  # field has been deprecated
+        "i3_event_id": post_resp["i3_event_id"],  # see below
+        "event_metadata": None,
+        "scan_metadata": None,
+        "progress": None,
+        "scanner_server_args": post_resp["scanner_server_args"],  # see below
+        "ewms_task": "use 'ewms_workflow_id'",
+        "ewms_workflow_id": NOT_YET_SENT_WORKFLOW_REQUEST_TO_EWMS,
+        "ewms_address": None,
+        "classifiers": post_scan_body["classifiers"],
+        "last_updated": post_resp["last_updated"],  # see below
+        "priority": 0,
+        "replaced_by_scan_id": None,
         # TODO: check more fields in future (hint: ctrl+F this comment)
-    )
+    }
     assert RE_SCANID.fullmatch(post_resp["scan_id"])
     assert RE_UUID4HEX.fullmatch(post_resp["i3_event_id"])
     # check timestamps
@@ -165,37 +166,35 @@ async def _assert_db_scanrequests_coll(
         {"scan_id": post_resp["scan_id"]}, {"_id": 0}
     )
     pprint.pprint(doc_sr)
-    assert doc_sr == dict(
-        scan_id=post_resp["scan_id"],
-        rescan_ids=[],
-        #
-        docker_tag=docker_tag_expected,
+    assert doc_sr == {
+        "scan_id": post_resp["scan_id"],
+        "rescan_ids": [],
+        "docker_tag": docker_tag_expected,
         #
         # skyscan server config
-        scanner_server_memory_bytes=humanfriendly.parse_size("1024M"),
-        reco_algo=post_scan_body["reco_algo"],
-        nsides={str(k): v for k, v in post_scan_body["nsides"].items()},
-        real_or_simulated_event=post_scan_body["real_or_simulated_event"],
-        predictive_scanning_threshold=1.0,
-        #
-        classifiers=post_scan_body["classifiers"],
+        "scanner_server_memory_bytes": humanfriendly.parse_size("1024M"),
+        "reco_algo": post_scan_body["reco_algo"],
+        "nsides": {str(k): v for k, v in post_scan_body["nsides"].items()},
+        "real_or_simulated_event": post_scan_body["real_or_simulated_event"],
+        "predictive_scanning_threshold": 1.0,
+        "classifiers": post_scan_body["classifiers"],
         #
         # cluster (condor) config
-        request_clusters=(
-            list([k, v] for k, v in post_scan_body["cluster"].items())
+        "request_clusters": (
+            [[k, v] for k, v in post_scan_body["cluster"].items()]
             if isinstance(post_scan_body["cluster"], dict)
             else post_scan_body["cluster"]
         ),
-        worker_memory_bytes=humanfriendly.parse_size("8GB"),
-        worker_disk_bytes=humanfriendly.parse_size("1GB"),
-        max_pixel_reco_time=post_scan_body["max_pixel_reco_time"],
-        priority=0,
-        debug_mode=[post_scan_body["debug_mode"]],
+        "worker_memory_bytes": humanfriendly.parse_size("8GB"),
+        "worker_disk_bytes": humanfriendly.parse_size("1GB"),
+        "max_pixel_reco_time": post_scan_body["max_pixel_reco_time"],
+        "priority": 0,
+        "debug_mode": [post_scan_body["debug_mode"]],
         #
         # misc
-        i3_event_id=post_resp["i3_event_id"],
-        scanner_server_env_from_user=post_scan_body["scanner_server_env"],
-    )
+        "i3_event_id": post_resp["i3_event_id"],
+        "scanner_server_env_from_user": post_scan_body["scanner_server_env"],
+    }
 
 
 async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
@@ -383,7 +382,7 @@ async def _assert_db_skyscank8sjobs_coll(  # noqa: MFL000
                                                 str(k)
                                                 for k in post_scan_body[
                                                     "cluster"
-                                                ].keys()
+                                                ]
                                             ]
                                             if isinstance(
                                                 post_scan_body["cluster"], dict
@@ -518,20 +517,20 @@ async def _do_patch(
     resp = await request_and_validate(
         rc, OPENAPI_SPEC, "PATCH", f"/scan/{scan_id}/manifest", body
     )
-    assert resp == dict(
-        scan_id=scan_id,
-        is_deleted=False,
-        timestamp=resp["timestamp"],  # see below
-        i3_event_id=manifest["i3_event_id"],  # should not change
-        event_i3live_json_dict=manifest["event_i3live_json_dict"],  # should not change
-        event_i3live_json_dict__hash=manifest[
+    assert resp == {
+        "scan_id": scan_id,
+        "is_deleted": False,
+        "timestamp": resp["timestamp"],  # see below
+        "i3_event_id": manifest["i3_event_id"],  # should not change
+        "event_i3live_json_dict": manifest["event_i3live_json_dict"],  # should not change
+        "event_i3live_json_dict__hash": manifest[
             "event_i3live_json_dict__hash"
         ],  # should not change
-        event_metadata=(
+        "event_metadata": (
             event_metadata if event_metadata else manifest["event_metadata"]
         ),
-        scan_metadata=(scan_metadata if scan_metadata else manifest["scan_metadata"]),
-        progress=(
+        "scan_metadata": (scan_metadata if scan_metadata else manifest["scan_metadata"]),
+        "progress": (
             {  # inject the auto-filled args
                 **progress,
                 "processing_stats": {
@@ -544,16 +543,16 @@ async def _do_patch(
             if progress
             else manifest["progress"]  # should not change
         ),
-        scanner_server_args=manifest["scanner_server_args"],  # should not change
-        ewms_task="use 'ewms_workflow_id'",
-        ewms_workflow_id=manifest["ewms_workflow_id"],  # should not change
-        ewms_address=manifest["ewms_address"],  # should not change
-        classifiers=manifest["classifiers"],  # should not change
-        last_updated=resp["last_updated"],  # see below
-        priority=0,
-        replaced_by_scan_id=None,
+        "scanner_server_args": manifest["scanner_server_args"],  # should not change
+        "ewms_task": "use 'ewms_workflow_id'",
+        "ewms_workflow_id": manifest["ewms_workflow_id"],  # should not change
+        "ewms_address": manifest["ewms_address"],  # should not change
+        "classifiers": manifest["classifiers"],  # should not change
+        "last_updated": resp["last_updated"],  # see below
+        "priority": 0,
+        "replaced_by_scan_id": None,
         # TODO: check more fields in future (hint: ctrl+F this comment)
-    )
+    }
     assert 0.0 < resp["timestamp"] < now < resp["last_updated"] < time.time()
 
     manifest = resp  # keep around
@@ -573,24 +572,24 @@ async def _patch_progress_and_scan_metadata(
 ) -> sdict:
     # send progress updates
     for i in range(n):
-        progress = dict(
-            summary="it's a summary",
-            epilogue="and that's all folks",
-            tallies={"edgar": i, "tombo": 2 * i},
-            processing_stats=dict(
-                start={"the_beginning": 0.01},
-                runtime={"from_the_beginning": 13.7 + i},
-                rate={"hanks/hour": 1.5 / (i + 1)},
+        progress = {
+            "summary": "it's a summary",
+            "epilogue": "and that's all folks",
+            "tallies": {"edgar": i, "tombo": 2 * i},
+            "processing_stats": {
+                "start": {"the_beginning": 0.01},
+                "runtime": {"from_the_beginning": 13.7 + i},
+                "rate": {"hanks/hour": 1.5 / (i + 1)},
                 # NOTE: these args below aren't needed but they'll be auto-filled in response
                 # end: str = ""
                 # finished: bool = False
                 # predictions: StrDict = dc.field(default_factory=dict)  # open to requestor)
-            ),
-            predictive_scanning_threshold=1.0,
-            last_updated="now!",
-            start=123,
-            end=456,
-        )
+            },
+            "predictive_scanning_threshold": 1.0,
+            "last_updated": "now!",
+            "start": 123,
+            "end": 456,
+        }
         # update progress (update `scan_metadata` sometimes--not as important)
         if i % 2:  # odd
             manifest = await _do_patch(
@@ -619,13 +618,13 @@ async def _server_reply_with_event_metadata(
     event_id = 123
     run_id = 456
 
-    event_metadata = dict(
-        run_id=run_id,
-        event_id=event_id,
-        event_type="groovy",
-        mjd=9876543.21,
-        is_real_event=IS_REAL_EVENT,
-    )
+    event_metadata = {
+        "run_id": run_id,
+        "event_id": event_id,
+        "event_type": "groovy",
+        "mjd": 9876543.21,
+        "is_real_event": IS_REAL_EVENT,
+    }
 
     manifest = await _do_patch(rc, scan_id, manifest, event_metadata=event_metadata)
 
@@ -769,7 +768,6 @@ async def _delete_scan(
     )
     del_resp = resp  # keep around
 
-    #
 
     # SCAN: query w/ scan id (fails)
     with pytest.raises(
@@ -813,7 +811,6 @@ async def _delete_scan(
     )
     assert resp == del_resp["result"]
 
-    #
 
     # query by run+event id (none)
     resp = await request_and_validate(
@@ -1096,7 +1093,8 @@ def _assert_rescan_response(manifest_alpha: dict, manifest_beta: dict) -> None:
     # compare manifests
     assert manifest_beta["classifiers"] == {
         **manifest_alpha["classifiers"],
-        **{"rescan": True, "origin_scan_id": manifest_alpha["scan_id"]},
+        "rescan": True,
+        "origin_scan_id": manifest_alpha["scan_id"],
     }
     skip_keys = ["classifiers", "scan_id", "last_updated", "timestamp"]
     assert {k: v for k, v in manifest_beta.items() if k not in skip_keys} == {
@@ -1489,7 +1487,7 @@ async def test_200__get_edit_launchdup(
     }
     # request_clusters normalized (either list-of-pairs or dict accepted on input)
     assert sr_alpha["request_clusters"] in (
-        list([k, v] for k, v in orig_clusters.items()),
+        [[k, v] for k, v in orig_clusters.items()],
         orig_clusters,
     )
     assert sr_alpha["classifiers"] == POST_SCAN_BODY["classifiers"]
@@ -1535,7 +1533,7 @@ async def test_200__get_edit_launchdup(
         str(k): v for k, v in cast(dict, POST_SCAN_BODY["nsides"]).items()
     }
     assert sr_beta["request_clusters"] in (
-        list([k, v] for k, v in orig_clusters.items()),
+        [[k, v] for k, v in orig_clusters.items()],
         orig_clusters,
     )
 
@@ -1600,7 +1598,6 @@ async def test_210__post_with_get_fields__single_bad_field(
         "docker_tag": "3.4.0",
         "cluster": {"foobar": 1},
         "event_i3live_json": {"a": 22},  # valid xor usage
-        #
         "scan_id": sr["scan_id"],  # <-- not allowed in POST
     }
 
@@ -1641,7 +1638,6 @@ async def test_215__post_with_get_fields__multiple_bad_fields(
         "cluster": {"foobar": 1},
         "event_i3live_json": {},  # xor -> empty
         "i3_event_id": sr["i3_event_id"],  # valid field for POST
-        #
         "scan_id": sr["scan_id"],  # <-- not allowed in POST
         "rescan_ids": sr.get("rescan_ids", []),  # <-- not allowed in POST
     }
@@ -1724,12 +1720,12 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
     _log_delimiter()
 
     # # bad-type body-arg
-    for arg in POST_SCAN_BODY_FOR_TEST_300:
+    for arg, good_val in POST_SCAN_BODY_FOR_TEST_300.items():
         for bad_val in [
             "",
             "  ",
             "\t",
-            "string" if not isinstance(POST_SCAN_BODY_FOR_TEST_300[arg], str) else None,
+            "string" if not isinstance(good_val, str) else None,
         ]:
             print(f"{arg}: [{bad_val}]")
             with pytest.raises(
@@ -1858,13 +1854,13 @@ async def test_300__bad_data(  # noqa: PLR0915  # too-many-statements
             rc,
             scan_id,
             manifest,
-            event_metadata=dict(
-                run_id=manifest["event_metadata"]["run_id"],
-                event_id=manifest["event_metadata"]["event_id"],
-                event_type="funky",
-                mjd=23423432.3,
-                is_real_event=IS_REAL_EVENT,
-            ),
+            event_metadata={
+                "run_id": manifest["event_metadata"]["run_id"],
+                "event_id": manifest["event_metadata"]["event_id"],
+                "event_type": "funky",
+                "mjd": 23423432.3,
+                "is_real_event": IS_REAL_EVENT,
+            },
         )
     _log_delimiter()
 

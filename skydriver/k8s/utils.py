@@ -21,13 +21,9 @@ def was_denied_by_job_quota(e: Exception) -> bool:
 
     # did the job exceed the job quota? if so, there will be fewer jobs in the future
     # ex: kubernetes.utils.create_from_yaml.FailToCreateError: Error from server (Forbidden): {"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"jobs.batch \"skyscan-67af75da614147fe8a740bb96f4be08e\" is forbidden: exceeded quota: skydriver-dev-job-quota, requested: count/jobs.batch=1, used: count/jobs.batch=100, limited: count/jobs.batch=100","reason":"Forbidden","details":{"name":"skyscan-67af75da614147fe8a740bb96f4be08e","group":"batch","kind":"jobs"},"code":403}
-    if isinstance(e, kubernetes.utils.FailToCreateError) and bool(
+    return isinstance(e, kubernetes.utils.FailToCreateError) and (
         f"exceeded quota: {ENV.K8S_APPLICATION_NAME}-job-quota" in str(e)
-    ):
-        return True
-
-    # fall-through
-    return False
+    )
 
 
 class KubeAPITools:
@@ -64,7 +60,7 @@ class KubeAPITools:
                         f"k8s job request was denied b/c the k8s namespace's job quota "
                         f"is currently at max (attempt #{i+1}) -- "
                         f"trying again in {ENV.K8S_START_JOB_RETRY_FOR_JOB_QUOTA_DELAY}s"
-                        f": {repr(e)} -> {str(e)}"
+                        f": {e!r} -> {e!s}"
                     )
                     # maybe next time, it'll be ok
                     await asyncio.sleep(ENV.K8S_START_JOB_RETRY_FOR_JOB_QUOTA_DELAY)
@@ -89,11 +85,16 @@ class KubeAPITools:
 
     @staticmethod
     def pod_transiently_killed(pod: V1Pod) -> str | None:
-        """Return True if the pod failed due to a transient, system-level issue that justifies a retry."""
-        if not pod.status.container_statuses:
+        """Return the reason if the pod failed due to a transient, system-level issue that justifies a retry.
+
+        Returns `None` otherwise.
+        """
+        if not pod.status or not pod.status.container_statuses:
             return None
 
         for cs in pod.status.container_statuses:
+            if not cs.state:
+                continue
 
             if t := cs.state.terminated:
                 LOGGER.debug(f"pod container 'terminated' {t.reason=} {t.exit_code=}")
@@ -106,7 +107,7 @@ class KubeAPITools:
                 }:
                     return t.reason
                 if t.exit_code in {137, 143}:  # SIGKILL or SIGTERM
-                    return t.exit_code
+                    return f"exit code {t.exit_code}"
 
             elif w := cs.state.waiting:
                 LOGGER.debug(f"pod container 'waiting' {w.reason=}")
