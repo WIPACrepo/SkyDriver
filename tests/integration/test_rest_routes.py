@@ -1268,6 +1268,165 @@ async def test_110__rescan_replacement_redirect(
 
 
 ########################################################################################
+# CLASSIFIERS UPDATE TEST
+########################################################################################
+
+
+async def _patch_classifiers(rc: RestClient, scan_id: str, body: sdict) -> sdict:
+    """Helper to PATCH /scan/{scan_id}/classifiers."""
+    resp = await request_and_validate(
+        rc, OPENAPI_SPEC, "PATCH", f"/scan/{scan_id}/classifiers", body
+    )
+    pprint.pprint(resp)
+    return resp  # type: ignore[no-any-return]
+
+
+async def test_120__update_classifiers(
+    server: Callable[[], RestClient],
+    known_clusters: dict,
+    mongo_client: AsyncMongoClient,
+) -> None:
+    """Test merging classifiers into an existing scan (see GitHub issue #186)."""
+    rc = server()
+
+    manifest_alpha = await _launch_scan(
+        rc,
+        mongo_client,
+        {
+            **POST_SCAN_BODY,
+            "docker_tag": "3.4.0",
+            "cluster": {"foobar": 1},
+        },
+        "3.4.0",
+    )
+    scan_id = manifest_alpha["scan_id"]
+
+    #
+    # OK: add a new key + overwrite an existing key -- others are untouched
+    #
+    update = {"additional_tag": "autoscan_official", "foo": 2}
+    expected_classifiers = {**CLASSIFIERS, **update}
+    manifest = await _patch_classifiers(rc, scan_id, {"classifiers": update})
+    assert manifest["classifiers"] == expected_classifiers
+    assert manifest["last_updated"] > manifest_alpha["last_updated"]
+    # only 'classifiers' & 'last_updated' changed
+    skip_keys = ["classifiers", "last_updated"]
+    assert {k: v for k, v in manifest.items() if k not in skip_keys} == {
+        k: v for k, v in manifest_alpha.items() if k not in skip_keys
+    }
+    # persisted in manifest + scan-request object
+    assert (
+        await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/manifest")
+    ) == manifest
+    assert (await _get_scan_request(rc, scan_id))["classifiers"] == expected_classifiers
+
+    #
+    # OK: manifest_projection
+    #
+    #   NOTE: use plain request -- a projected manifest lacks the spec's required fields
+    resp = await rc.request(
+        "PATCH",
+        f"/scan/{scan_id}/classifiers",
+        {"classifiers": {"bar bat": False}, "manifest_projection": ["classifiers"]},
+    )
+    expected_classifiers["bar bat"] = False
+    assert resp == {"classifiers": expected_classifiers}
+
+    _log_delimiter()
+
+    #
+    # ERRORS: 400s
+    #
+    url = re.escape(f"{rc.address}/scan/{scan_id}/classifiers")
+    for bad_body, err_regex in [
+        ({}, r"'classifiers' is a required property"),
+        ({"classifiers": {}}, r".+"),  # minProperties
+        ({"classifiers": {"x": [1, 2]}}, r".+"),  # lists not allowed on input
+        ({"classifiers": {"x": "y" * 26}}, r".+"),  # string value too long
+        ({"classifiers": {"y" * 26: 1}}, r".+"),  # key too long
+        ({"classifiers": {"rescan": True}}, r"classifier cannot contain 'rescan'"),
+        (
+            {"classifiers": {"origin_scan_id": "abc"}},
+            r"classifier cannot contain 'origin_scan_id'",
+        ),
+        ({"classifiers": {"a.b": 1}}, r"classifier key cannot contain '\.'"),
+        ({"classifiers": {"$ab": 1}}, r"classifier key cannot contain '\.'"),
+        (
+            # 5 existing + 21 new = 26 > 25
+            {"classifiers": {f"new{i}": i for i in range(21)}},
+            r"too many classifiers after merging",
+        ),
+    ]:
+        print(bad_body)
+        with pytest.raises(
+            requests.exceptions.HTTPError,
+            match=rf"400 Client Error: .*{err_regex}.* for url: {url}",
+        ):
+            await _patch_classifiers(rc, scan_id, bad_body)
+        _log_delimiter()
+    # nothing changed from the bad requests
+    assert (await _get_scan_request(rc, scan_id))["classifiers"] == expected_classifiers
+    assert (
+        await request_and_validate(rc, OPENAPI_SPEC, "GET", f"/scan/{scan_id}/manifest")
+    )["classifiers"] == expected_classifiers
+
+    #
+    # ERROR: 404 -- unknown scan
+    #
+    with pytest.raises(requests.exceptions.HTTPError, match=r"404 Client Error"):
+        await _patch_classifiers(
+            rc, "0" * 11 + "x" + "0" * 20, {"classifiers": {"a": 1}}
+        )
+
+    #
+    # OK: rescan inherits the updated classifiers; updating a rescan keeps provenance
+    #
+    manifest_beta = await request_and_validate(
+        rc, OPENAPI_SPEC, "POST", f"/scan/{scan_id}/actions/rescan"
+    )
+    provenance = {"rescan": True, "origin_scan_id": scan_id}
+    assert manifest_beta["classifiers"] == {**expected_classifiers, **provenance}
+    resp = await _patch_classifiers(
+        rc, manifest_beta["scan_id"], {"classifiers": {"additional_tag": "other"}}
+    )
+    expected_classifiers["additional_tag"] = "other"
+    assert resp["classifiers"] == {**expected_classifiers, **provenance}
+
+    _log_delimiter()
+
+    #
+    # ERROR: 422 -- scan has a final result
+    #
+    await request_and_validate(
+        rc,
+        OPENAPI_SPEC,
+        "PUT",
+        f"/scan/{scan_id}/result",
+        {"skyscan_result": {"gamma": 5}, "is_final": True},
+    )
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=rf"422 Client Error: this scan has a final result--cannot update classifiers for url: {url}",
+    ):
+        await _patch_classifiers(rc, scan_id, {"classifiers": {"a": 1}})
+
+    #
+    # ERROR: 422 -- scan is deleted
+    #
+    await request_and_validate(
+        rc, OPENAPI_SPEC, "DELETE", f"/scan/{manifest_beta['scan_id']}"
+    )
+    url_beta = re.escape(f"{rc.address}/scan/{manifest_beta['scan_id']}/classifiers")
+    with pytest.raises(
+        requests.exceptions.HTTPError,
+        match=rf"422 Client Error: this scan has been deleted--cannot update classifiers for url: {url_beta}",
+    ):
+        await _patch_classifiers(
+            rc, manifest_beta["scan_id"], {"classifiers": {"a": 1}}
+        )
+
+
+########################################################################################
 # GET–EDIT–LAUNCH NEW SCAN TEST
 ########################################################################################
 

@@ -999,6 +999,96 @@ class ScanManifestHandler(BaseSkyDriverHandler):
 # -----------------------------------------------------------------------------
 
 
+class ScanClassifiersHandler(BaseSkyDriverHandler):
+    """Handles user updates to an existing scan's classifiers."""
+
+    ROUTE = r"/scan/(?P<scan_id>\w+)/classifiers$"
+
+    @service_account_auth(roles=[USER_ACCT])  # type: ignore
+    @maybe_redirect_scan_id(roles=[USER_ACCT])
+    @openapi_tools.validate_request(config.OPENAPI_SPEC)
+    @http_404_on_document_not_found  # only 'except' manually for custom handling
+    async def patch(self, scan_id: str) -> None:
+        """Merge the given classifiers into the scan's existing classifiers.
+
+        Keys not in the request are left unchanged. The update is applied to both
+        the manifest and the scan-request object, so that future rescans inherit it.
+        """
+        # type/size validation is done by the OpenAPI spec
+        classifiers = _validate_classifiers_fields(self.get_argument("classifiers"))
+        # response args
+        manifest_projection = self.get_argument("manifest_projection", "*")
+
+        # keys are used in mongo dot-notation (classifiers.<key>), so they must be safe
+        for key in classifiers:
+            if "." in key or key.startswith("$"):
+                msg = f"classifier key cannot contain '.' or start with '$': {key!r}"
+                raise web.HTTPError(400, reason=msg, log_message=msg)
+
+        doc = await self.db.manifests.find_one(
+            {"scan_id": scan_id}, projection=["is_deleted", "classifiers"]
+        )
+
+        # has it been deleted?
+        if doc["is_deleted"]:
+            msg = "this scan has been deleted--cannot update classifiers"
+            raise web.HTTPError(
+                422,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+        # is scan done?
+        if await get_scan_state_if_final_result_received(scan_id, self.db.results):
+            msg = "this scan has a final result--cannot update classifiers"
+            raise web.HTTPError(
+                422,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+        # would the merged classifiers be too large?
+        #   NOTE: this is a read-then-write check; a concurrent update could race it
+        if len({**doc["classifiers"], **classifiers}) > MAX_CLASSIFIERS_LEN:
+            msg = (
+                f"too many classifiers after merging--max is {MAX_CLASSIFIERS_LEN} "
+                f"(remove keys via a new scan or rescan instead)"
+            )
+            raise web.HTTPError(
+                400,
+                log_message=msg + f" for {scan_id=}",
+                reason=msg,
+            )
+
+        # OK -- ready to update...
+
+        # per-key '$set' so other classifiers (incl. rescan provenance) are untouched
+        set_classifiers = {f"classifiers.{k}": v for k, v in classifiers.items()}
+
+        # update the scan-request object first, so a rescan launched afterward inherits
+        #   NOTE: a rescan shares its origin scan's scan-request object, so updating a
+        #         rescan's classifiers also affects any later rescans of that origin
+        try:
+            await self.db.scan_requests.find_one_and_update(
+                get_scan_request_obj_filter(scan_id),
+                {"$set": set_classifiers},
+            )
+        except DocumentNotFoundException:
+            # very old scans may not have a scan-request object -- not fatal
+            LOGGER.warning(f"no scan-request object found to update for {scan_id=}")
+
+        manifest = await self.db.manifests.find_one_and_update(
+            {"scan_id": scan_id},
+            {"$set": {**set_classifiers, "last_updated": time.time()}},
+        )
+
+        self.write(
+            # we project now b/c we may have needed fields the user didn't want
+            dict_projection(manifest, manifest_projection)
+        )
+
+
+# -----------------------------------------------------------------------------
+
+
 class ScanI3EventHandler(BaseSkyDriverHandler):
     """Handles grabbing i3 events using scan ids."""
 

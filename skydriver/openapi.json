@@ -312,30 +312,8 @@
                                         ]
                                     },
                                     "classifiers": {
-                                        "type": "object",
-                                        "default": {},
-                                        "description": "Classifiers for the scan. STRICTER than the stored `Manifest.classifiers`: scalar values only, max 25 entries, keys and string-values max 25 chars. Cannot contain `rescan` or `origin_scan_id` sub-fields (reserved for rescan provenance).",
-                                        "additionalProperties": {
-                                            "oneOf": [
-                                                {
-                                                    "type": "string",
-                                                    "maxLength": 25
-                                                },
-                                                {
-                                                    "type": "boolean"
-                                                },
-                                                {
-                                                    "type": "number"
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
-                                            ]
-                                        },
-                                        "maxProperties": 25,
-                                        "propertyNames": {
-                                            "maxLength": 25
-                                        }
+                                        "$ref": "#/components/schemas/ClassifiersInput",
+                                        "default": {}
                                     },
                                     "priority": {
                                         "$ref": "#/components/schemas/Manifest/properties/priority",
@@ -740,6 +718,81 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/Error404"
+                    }
+                },
+                "description": "See `Manifest <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#manifest>`__."
+            }
+        },
+        "/scan/{scan_id}/classifiers": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ScanIdPath"
+                }
+            ],
+            "patch": {
+                "tags": [
+                    "scan"
+                ],
+                "summary": "Merge classifiers into an existing scan's classifiers",
+                "operationId": "patchScanClassifiers",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                    "classifiers"
+                                ],
+                                "properties": {
+                                    "no_redirect": {
+                                        "type": "boolean",
+                                        "default": false
+                                    },
+                                    "classifiers": {
+                                        "allOf": [
+                                            {
+                                                "$ref": "#/components/schemas/ClassifiersInput"
+                                            }
+                                        ],
+                                        "minProperties": 1,
+                                        "description": "Classifiers to merge into the scan's existing classifiers. Keys not given are left unchanged; given keys are added or overwritten. Keys cannot contain `.` or start with `$`. The merged result must not exceed 25 entries. Applied to both the manifest and the scan-request object (so future rescans inherit it)."
+                                    },
+                                    "manifest_projection": {
+                                        "$ref": "#/components/schemas/ManifestProjection"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated manifest.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Manifest"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error400"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error404"
+                    },
+                    "422": {
+                        "description": "Request is well-formed but the scan is in a state that disallows the action (deleted, or has a final result).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "description": "See `Manifest <https://wipacrepo.github.io/SkyDriver/apis/_generated/skydriver-objects.html#manifest>`__."
@@ -1836,6 +1889,31 @@
                 "maxProperties": 25,
                 "propertyNames": {
                     "maxLength": 128
+                }
+            },
+            "ClassifiersInput": {
+                "type": "object",
+                "description": "Classifiers for the scan. STRICTER than the stored `Manifest.classifiers`: scalar values only, max 25 entries, keys and string-values max 25 chars. Cannot contain `rescan` or `origin_scan_id` sub-fields (reserved for rescan provenance).",
+                "additionalProperties": {
+                    "oneOf": [
+                        {
+                            "type": "string",
+                            "maxLength": 25
+                        },
+                        {
+                            "type": "boolean"
+                        },
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "maxProperties": 25,
+                "propertyNames": {
+                    "maxLength": 25
                 }
             }
         }

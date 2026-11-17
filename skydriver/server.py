@@ -48,6 +48,7 @@ async def make(
         rest_handlers.ScanHandler,
         rest_handlers.ScanRequestHandler,
         rest_handlers.ScanManifestHandler,
+        rest_handlers.ScanClassifiersHandler,
         rest_handlers.ScanI3EventHandler,
         rest_handlers.ScanResultHandler,
         rest_handlers.ScanLauncherHandler,
