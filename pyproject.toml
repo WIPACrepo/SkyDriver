@@ -18,7 +18,9 @@ dependencies = [
     'jsonschema',
     'kubernetes',
     'openapi-core',
-    'pymongo',
+    # >=4.13: AsyncMongoClient is GA
+    # <4.18: 4.18+ requires MongoDB 4.4 (wire v9); production server is MongoDB 4.2 (wire v8)
+    'pymongo >= 4.13, < 4.18',
     'pyyaml',
     'requests',
     'tenacity',
