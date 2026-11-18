@@ -11,13 +11,19 @@ USER app
 #  - No 'COPY .' because we don't want to copy extra files (especially '.git/')
 #  - Mounting source files prevents unnecessary file duplication
 #  - Mounting '.git/' allows the Python project to build with 'setuptools-scm'
+#  - 'VERSION' (optional) overrides the 'setuptools-scm' version -- CI release builds pass
+#    the just-released version so it doesn't depend on the git tag being visible in '.git/';
+#    when empty (local/manual builds), the version is derived from '.git/' as usual
+#  - The override is scoped to this project's dist name, so dependencies are unaffected
+ARG VERSION=""
 RUN --mount=type=bind,source=.git,target=.git,ro \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml,ro \
     --mount=type=bind,source=ewms_init_container,target=ewms_init_container,ro \
     --mount=type=bind,source=s3_sidecar,target=s3_sidecar,ro \
     --mount=type=bind,source=skydriver,target=skydriver,ro \
     git config --global --add safe.directory /home/app \
-    && pip install --no-cache .
+    && SETUPTOOLS_SCM_PRETEND_VERSION_FOR_SKYDRIVER_S3_SIDECAR_EWMS_INIT_CONTAINER="$VERSION" \
+        pip install --no-cache .
 
 ENV PYTHONPATH=/home/app
 

@@ -4,11 +4,11 @@ import argparse
 import asyncio
 import logging
 
+from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[import-not-found]
 from rest_tools.client import RestClient
 
-from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
-
-logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
 
 
 async def add_workers(
@@ -21,9 +21,9 @@ async def add_workers(
             f"/scan/{scan_id}/actions/add-workers",
             {"n_workers": n_workers, "cluster_location": location},
         )
-        logging.info(f"{scan_id}: {resp}")
-    except Exception as e:
-        logging.error(f"Failed {scan_id}: {e}")
+        LOGGER.info(f"{scan_id}: {resp}")
+    except Exception as e:  # noqa: BLE001  # report failure for this scan, then continue
+        LOGGER.error(f"Failed {scan_id}: {e}")
 
 
 async def main():
@@ -71,4 +71,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-    logging.info("Done.")
+    LOGGER.info("Done.")

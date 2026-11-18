@@ -6,7 +6,6 @@ import dataclasses as dc
 import json
 import logging
 import os
-import time
 from pathlib import Path
 
 import boto3  # type: ignore[import-untyped]
@@ -190,7 +189,7 @@ async def get_ewms_attrs(
             break
         else:
             LOGGER.info("mqprofiles are not all activated, retrying soon...")
-            time.sleep(10)
+            await asyncio.sleep(10)
 
     LOGGER.info(f"mqprofiles: {mqprofiles}")
 
@@ -276,7 +275,7 @@ async def main() -> None:
     # 4. talk to ewms (again) & write to file
     ewms_dict = await get_ewms_attrs(ewms_rc, workflow_id)
     LOGGER.info(f"dumping EWMS attributes to '{args.json_out}'...")
-    with open(args.json_out, "w") as f:
+    with open(args.json_out, "w") as f:  # noqa: ASYNC230  # one-shot write at end of script
         json.dump(ewms_dict, f)
 
 

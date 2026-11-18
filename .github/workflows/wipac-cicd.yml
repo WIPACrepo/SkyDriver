@@ -6,6 +6,9 @@ on:
     branches: [ '**' ]
     tags-ignore: [ '**' ]
 
+permissions:  # default for all jobs (GITHUB_TOKEN) -- jobs widen as needed
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   # don't cancel on main/master/default
@@ -47,7 +50,7 @@ jobs:
     outputs:
       matrix: ${{ steps.versions.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
       - id: versions
@@ -58,9 +61,9 @@ jobs:
   # LINTERS
   #############################################################################
 
-  lint:
+  lint-python:
     needs: [ py-versions ]
-    uses: WIPACrepo/wipac-dev-workflows/.github/workflows/lint-python.yml@v1.26
+    uses: WIPACrepo/wipac-dev-workflows/.github/workflows/lint-python.yml@v1.35
     with:
       py-matrix-json: ${{ needs.py-versions.outputs.matrix }}
       max-complexity: 11  # ideal is ~10-15
@@ -74,11 +77,11 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' }} # dependabot cannot access PAT
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           ref: ${{ github.ref }}  # dont lock to sha (action needs to push)
-      - uses: WIPACrepo/wipac-dev-py-setup-action@v5.12
+      - uses: WIPACrepo/wipac-dev-py-setup-action@v5.13
         with:
           mode: PACKAGING
           python_min: 3.14
@@ -90,8 +93,11 @@ jobs:
 
   py-dependencies:
     runs-on: ubuntu-latest
+    permissions:  # for GITHUB_TOKEN
+      contents: read
+      actions: read  # look up prior runs' artifacts
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
           fetch-depth: 0  # setuptools-scm needs to access git tags
@@ -117,11 +123,11 @@ jobs:
       matrix:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
           fetch-depth: 0  # setuptools-scm needs to access git tags
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.py3 }}
 
@@ -158,15 +164,22 @@ jobs:
         py3: ${{ fromJSON(needs.py-versions.outputs.matrix) }}
     services:
       mongo:
-        image: bitnamilegacy/mongodb:4
+        # standalone (no replica set) -- skydriver does not use transactions/change streams
+        image: mongo:7
         ports:
           - 27017:27017
+        # job steps wait until the service reports healthy
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok'"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
           fetch-depth: 0  # setuptools-scm needs to access git tags
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.py3 }}
 
@@ -249,10 +262,12 @@ jobs:
           set -euo pipefail
           docker logs "${{ job.services.mongo.id }}" || true
 
-  test-build-docker:
+  docker-build:
+    name: "Docker Image"
+    if: format('refs/heads/{0}', github.event.repository.default_branch) != github.ref
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
           fetch-depth: 0  # setuptools-scm needs to access git tags
@@ -268,22 +283,70 @@ jobs:
   # TAG & RELEASE
   #############################################################################
 
-  tag-and-release:
+  release-version:
     # only run on main/default
     if: format('refs/heads/{0}', github.event.repository.default_branch) == github.ref
     needs:
       - py-versions
-      - lint
+      - lint-python
       - py-setup
       - py-dependencies
       - unit-tests
       - integration-tests
-      - test-build-docker
-    uses: WIPACrepo/wipac-dev-workflows/.github/workflows/tag-and-release.yml@v1.26
+    runs-on: ubuntu-latest
+    outputs:
+      next-version: ${{ steps.next-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # setuptools-scm needs to access git tags
+          ref: ${{ github.sha }}  # lock to triggered commit (github.ref is dynamic)
+      - name: Determine next version
+        uses: WIPACrepo/wipac-dev-next-version-action@v1.8
+        id: next-version
+        with:
+          force-patch-if-no-commit-token: true
+          ignore-paths: |
+            **/README.md
+            .github/**
+            .gitignore
+
+  tag-and-release:
+    # only run on main/default, and only if there is a new version
+    if: format('refs/heads/{0}', github.event.repository.default_branch) == github.ref && needs.release-version.outputs.next-version != ''
+    needs:
+      - py-versions
+      - lint-python
+      - py-setup
+      - py-dependencies
+      - unit-tests
+      - integration-tests
+      - release-version
+    uses: WIPACrepo/wipac-dev-workflows/.github/workflows/tag-and-release.yml@v1.35
+    permissions:  # for GITHUB_TOKEN
+      contents: write  # push git tag, create GitHub release
+      actions: read  # download this run's artifacts for the release
     with:
       project-type: python
       python-version: "${{ fromJSON(needs.py-versions.outputs.matrix)[0] }}"
       release-artifacts: |
         py-dependencies-logs
-    secrets:
-      TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # trigger image-publish.yml
+
+  image-publish:
+    # only run on main/default, and only if there is a new (just released) version
+    if: format('refs/heads/{0}', github.event.repository.default_branch) == github.ref && needs.release-version.outputs.next-version != ''
+    needs:
+      - tag-and-release
+      - release-version
+    uses: WIPACrepo/wipac-dev-workflows/.github/workflows/image-publish.yml@v1.35
+    permissions:  # for GITHUB_TOKEN
+      contents: read
+      packages: write  # push image to ghcr.io
+    with:
+      image_namespace: wipacrepo
+      image_name: skydriver
+      mode: BUILD
+      # pass the version explicitly (see Dockerfile) -- don't rely on setuptools-scm seeing the new git tag
+      build_args: |
+        VERSION=${{ needs.release-version.outputs.next-version }}
+      extra_build_tag: ${{ needs.release-version.outputs.next-version }}

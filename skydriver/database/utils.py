@@ -2,7 +2,7 @@
 
 import logging
 
-from pymongo import ASCENDING, AsyncMongoClient, DESCENDING
+from pymongo import ASCENDING, DESCENDING, AsyncMongoClient
 
 from ..config import ENV
 

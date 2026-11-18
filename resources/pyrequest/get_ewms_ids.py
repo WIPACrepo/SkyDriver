@@ -7,15 +7,14 @@ import logging
 import subprocess
 import sys
 import tempfile
+from collections.abc import AsyncIterable
 from pathlib import Path
-from typing import AsyncIterable
 from urllib.parse import urlparse
 
 import requests
+from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[import-not-found]
 from rest_tools.client import RestClient
 from wipac_dev_tools import logging_tools
-
-from _connect import get_rest_client  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
 
 EWMS_HELPER_SCRIPT_URLS = [
     "https://raw.githubusercontent.com/Observation-Management-Service/ewms-workflow-management-service/refs/heads/main/resources/get_all_ids.py",
@@ -66,7 +65,7 @@ def run_ewms_helper_script(ewms_args: str) -> list[dict]:
             )
             downloaded.append(dest)
 
-        script = [p for p in downloaded if p.name == "get_all_ids.py"][0]
+        script = next(p for p in downloaded if p.name == "get_all_ids.py")
 
         # check if the token file exists -- this is hard to do with subproc w/ captured stdout
         if (

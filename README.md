@@ -28,6 +28,7 @@ SkyDriver automates the entire scanning of an event: starting all servers and wo
 One of many workflows may be:
 
 1. Request a scan ([POST @ `/scan`](https://wipacrepo.github.io/SkyDriver/apis/skydriver.html#post--scan))
+1. (Optional) Add or update classifiers on the scan, e.g. `additional_tag` ([PATCH @ `/scan/SCAN_ID/classifiers`](https://wipacrepo.github.io/SkyDriver/apis/skydriver.html#patch--scan-scan_id-classifiers))
 1. Monitor the scanning status ([GET @ `/scan/SCAN_ID/status`](https://wipacrepo.github.io/SkyDriver/apis/skydriver.html#get--scan-scan_id-status))
 2. Check for progress updates ([GET @ `/scan/SCAN_ID/manifest`](https://wipacrepo.github.io/SkyDriver/apis/skydriver.html#get--scan-scan_id-manifest))
 3. Check for partial results ([GET @ `/scan/SCAN_ID/result`](https://wipacrepo.github.io/SkyDriver/apis/skydriver.html#get--scan-scan_id-result))

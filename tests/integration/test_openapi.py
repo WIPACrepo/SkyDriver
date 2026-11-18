@@ -21,7 +21,7 @@ async def test_00(server: Callable[[], RestClient]) -> None:
     spec_from_resp.pop("info")  # exists but server adds to it -- remove to compare
 
     # get spec from disk
-    with open(OPENAPI_PATH, "rb") as f:
+    with open(OPENAPI_PATH, "rb") as f:  # noqa: ASYNC230  # small local file, fine to block in a test
         spec_on_disk = json.load(f)
         spec_on_disk.pop("info")  # exists but server adds to it -- remove to compare
 

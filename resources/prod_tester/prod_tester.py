@@ -162,14 +162,14 @@ class TestParamSet:
 
     def to_json(self) -> dict[str, str | None]:
         """To a json-friendly dict."""
-        return dict(
-            event_file=str(self.event_file),
-            reco_algo=self.reco_algo,
-            result_file=str(self.result_file),
-            scan_id=self.scan_id,
-            test_status=self.test_status.name,
-            rescan_origin_id=self.rescan_origin_id,
-        )
+        return {
+            "event_file": str(self.event_file),
+            "reco_algo": self.reco_algo,
+            "result_file": str(self.result_file),
+            "scan_id": self.scan_id,
+            "test_status": self.test_status.name,
+            "rescan_origin_id": self.rescan_origin_id,
+        }
 
 
 ########################################################################################
@@ -438,7 +438,9 @@ class SingleScanToolbox:
     async def monitor(rc: RestClient, test: TestParamSet) -> dict:  # noqa: C901, PLR0915
         """Monitor an event scan until done; return the result."""
         if test.log_file is not None:
-            out_cm: contextlib.AbstractContextManager = open(test.log_file, "w")
+            out_cm: contextlib.AbstractContextManager = open(  # noqa: ASYNC230, SIM115  # used as a context manager below
+                test.log_file, "w"
+            )
         else:
             out_cm = contextlib.nullcontext(sys.stdout)
 
@@ -487,8 +489,8 @@ class SingleScanToolbox:
                     elif status["is_deleted"]:
                         test.test_status = TestStatus.DELETED
                         done = True
-                except Exception as e:  # 404 (scanner not yet online)
-                    printer.print_now(f"suppressed error: {repr(e)}")
+                except Exception as e:  # noqa: BLE001  # 404 (scanner not yet online)
+                    printer.print_now(f"suppressed error: {e!r}")
 
                 # get manifest.progress
                 try:
@@ -505,9 +507,9 @@ class SingleScanToolbox:
                         prev_progress = progress
                     else:
                         printer.print_now("<no change in manifest.progress>")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     # 404 (scanner not yet online) or KeyError (no progress yet)
-                    printer.print_now(f"suppressed error: {repr(e)}")
+                    printer.print_now(f"suppressed error: {e!r}")
 
                 # get result
                 try:
@@ -522,8 +524,8 @@ class SingleScanToolbox:
                         prev_result = result
                     else:
                         printer.print_now("<no change in result>")
-                except Exception as e:
-                    printer.print_now(f"suppressed error: {repr(e)}")
+                except Exception as e:  # noqa: BLE001  # keep polling
+                    printer.print_now(f"suppressed error: {e!r}")
 
                 # done? else, wait
                 if not done:
@@ -601,6 +603,7 @@ class ResultChecker:
             ],
             capture_output=True,
             text=True,
+            check=False,  # return code is checked below
         )
 
         if result.returncode == 0:
@@ -921,7 +924,7 @@ class FullTestSuite:
                 except TestException as e:
                     n_failed += 1
                     e.test.test_status = TestStatus.FAILED
-                    LOGGER.error(f"A test failed: {repr(e)}")
+                    LOGGER.error(f"A test failed: {e!r}")
 
         update_task.cancel()
         printer.display_test_status(tests)  # one final print

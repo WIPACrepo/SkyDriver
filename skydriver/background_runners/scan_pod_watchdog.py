@@ -61,12 +61,9 @@ async def _has_scan_been_rescanned(
     elif not sro["rescan_ids"]:
         # scan has never been rescanned -> OK to restart (new rescan)
         return False
-    elif sro["rescan_ids"][-1] == scan_id:
-        # this scan is the most recent -> OK to restart (new rescan)
-        return False
-    else:
-        # this scan already has a new rescan
-        return True
+    # if this scan is the most recent -> OK to restart (new rescan)
+    # otherwise, this scan already has a new rescan
+    return sro["rescan_ids"][-1] != scan_id
 
 
 async def _has_scan_been_rescanned_too_many_times_too_recently(
@@ -118,8 +115,8 @@ async def run(
     """The main loop."""
     try:  # we're only wrapping so we can add logging for any exception
         await _run(mongo_client, k8s_core_api)
-    except Exception as e:
-        LOGGER.exception(e)
+    except Exception:
+        LOGGER.exception("scan pod watchdog main loop failed")
         raise
 
 

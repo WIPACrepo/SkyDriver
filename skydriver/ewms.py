@@ -12,7 +12,7 @@ from .database.schema import (
     has_skydriver_requested_ewms_workflow,
 )
 
-LOGGER = logging.Logger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 async def request_stop_on_ewms(
@@ -40,7 +40,7 @@ async def request_stop_on_ewms(
     except requests.exceptions.HTTPError as e:
         LOGGER.warning(repr(e))
         if ENV.CI:
-            raise e
+            raise
 
 
 @aiocache.cached(ttl=ENV.CACHE_DURATION_EWMS)  # not too long, but avoid spamming ewms

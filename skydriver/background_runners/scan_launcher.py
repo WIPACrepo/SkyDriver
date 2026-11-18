@@ -31,17 +31,17 @@ async def put_on_backlog(
     """Enqueue k8s job to be started later by the scan launcher."""
     try:
         LOGGER.info(f"putting future scan on backlog ({scan_id=})")
-        entry = dict(
-            scan_id=scan_id,
-            timestamp=time.time(),
-            pickled_k8s_job=None,  # **DEPRECATED** replaced SkyScanK8sJob in db
-            priority=priority,
-            pending_timestamp=0.0,
-            next_attempt=0,
-        )
+        entry = {
+            "scan_id": scan_id,
+            "timestamp": time.time(),
+            "pickled_k8s_job": None,  # **DEPRECATED** replaced SkyScanK8sJob in db
+            "priority": priority,
+            "pending_timestamp": 0.0,
+            "next_attempt": 0,
+        }
         await scan_backlog.insert_one(entry)
-    except Exception as e:
-        LOGGER.exception(e)
+    except Exception:
+        LOGGER.exception(f"failed to put future scan on backlog ({scan_id=})")
         raise web.HTTPError(
             400,
             log_message="Failed to put future scan on backlog",
@@ -114,8 +114,8 @@ async def run(
     """The main loop."""
     try:  # we're only wrapping so we can add logging for any exception
         await _run(mongo_client, k8s_batch_api)
-    except Exception as e:
-        LOGGER.exception(e)
+    except Exception:
+        LOGGER.exception("scan launcher main loop failed")
         raise
 
 
@@ -148,7 +148,7 @@ async def _run(
 
         # get next entry
         try:
-            entry, manifest, scan_request_obj, skyscan_k8s_job = await get_next(
+            entry, manifest, _scan_request_obj, skyscan_k8s_job = await get_next(
                 db,
                 include_low_priority_scans=include_low_priority_scans,
             )
@@ -178,10 +178,10 @@ async def _run(
                 inf_retry_if_denied_by_job_quota=True,
                 logger=LOGGER,
             )
-        except kubernetes.utils.FailToCreateError as e:
+        except kubernetes.utils.FailToCreateError:
             # *** EXTREMELY RARE SCENARIO ***
             # k8s job (backlog entry) will be revived & restarted in future iteration
-            LOGGER.exception(e)
+            LOGGER.exception("failed to start k8s job (will be retried)")
             # fastforward to avoid idling after failure -- treat as "nothing started"
             timer_for_any_priority_scans.fastforward()
             continue  # 'get_next()' has built-in retry logic

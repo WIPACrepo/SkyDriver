@@ -2,7 +2,8 @@
 
 import asyncio
 import socket
-from typing import Any, AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable
+from typing import Any
 from unittest import mock
 from unittest.mock import Mock
 
@@ -12,7 +13,7 @@ import pytest_asyncio
 from pymongo import AsyncMongoClient
 from rest_tools.client import RestClient
 
-import skydriver.images  # noqa: F401  # export
+import skydriver.images  # export
 from skydriver.__main__ import main
 from skydriver.database import create_mongodb_client
 from skydriver.database.utils import drop_database

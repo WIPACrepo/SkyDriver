@@ -2,14 +2,16 @@
 
 import asyncio
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 from unittest import mock
 from unittest.mock import AsyncMock
 
-import skydriver
-import skydriver.images  # noqa: F401  # export
 from rest_tools.client import RestClient
 from rest_tools.openapi_tools import request_and_validate
+
+import skydriver
+import skydriver.images  # export
 from skydriver.config import OPENAPI_SPEC
 
 skydriver.config.config_logging()
